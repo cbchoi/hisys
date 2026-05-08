@@ -1,7 +1,8 @@
 """I7 Chief Editor runtime tests.
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
-HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017.
+HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
+HISYS-T-018.
 """
 
 from __future__ import annotations
@@ -131,6 +132,41 @@ def test_chief_editor_runtime_suppresses_repeated_alert_by_suppression_key(tmp_p
     assert decision["status"] == "suppressed"
     assert decision["action_taken"] == "none"
     assert decision["suppression_key"] == f"conflict:{second_memo.perspective_id}:{second_memo.signal_refs[0]}"
+
+
+
+def test_chief_editor_runtime_requests_approval_for_high_impact_alert(tmp_path: Path):
+    memo = _memo_for_decision(
+        "MEM-CE-HIGH-001",
+        review_status="flagged_conflict",
+        summary="critical temperature trend high",
+    )
+    report = MemoReviewReport(
+        reviewed_memo_refs=[memo.memo_id],
+        conflict_memo_refs=[memo.memo_id],
+    )
+    runtime = ChiefEditorRuntime(
+        instance=InstanceRoot(tmp_path),
+        policy=ChiefEditorPolicy(
+            policy_version="HISYS-CE-POLICY-001.fixture-v0",
+            conflict_severity="high",
+            target_channel="discord:#ops",
+        ),
+        producer_id="chief-editor-test",
+    )
+
+    decision_report = runtime.decide_run([memo], memo_review_report=report, yyyymmdd="20260508")
+
+    assert len(decision_report.alert_decision_refs) == 1
+    alert_id = decision_report.alert_decision_refs[0]
+    decision_path = tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.json"
+    decision = json.loads(decision_path.read_text(encoding="utf-8"))
+    assert decision["severity"] == "high"
+    assert decision["approval_status"] == "requested"
+    assert decision["status"] == "needs_approval"
+    assert decision["action_taken"] == "none"
+    assert decision["target_channel"] == "discord:#ops"
+    assert "approval" in decision["follow_up"].lower()
 
 
 

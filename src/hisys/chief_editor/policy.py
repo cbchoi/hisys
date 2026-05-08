@@ -1,7 +1,7 @@
 """Chief Editor policy rules.
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
-HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017.
+HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018.
 """
 
 from __future__ import annotations
@@ -51,21 +51,27 @@ class ChiefEditorPolicy:
                     status="suppressed",
                     producer_id=producer_id,
                 )
+            severity = self.conflict_severity
+            approval_required = severity in ("high", "critical") or self.target_channel != "runtime-local"
             return AlertDecisionRecord(
                 alert_id=_placeholder_alert_id(),
                 memo_refs=[memo.memo_id],
                 signal_refs=list(memo.signal_refs),
                 policy_version=self.policy_version,
                 trigger_reason="memo_conflict_detected",
-                severity=self.conflict_severity,  # type: ignore[arg-type]
+                severity=severity,  # type: ignore[arg-type]
                 confidence=memo.confidence,
                 novelty="new_runtime_conflict",
-                approval_status="not_required",
+                approval_status="requested" if approval_required else "not_required",
                 target_channel=self.target_channel,
                 action_taken="none",
                 suppression_key=suppression_key,
-                follow_up="Chief Editor review required before external escalation.",
-                status="pending",
+                follow_up=(
+                    "Human approval required before external escalation."
+                    if approval_required
+                    else "Chief Editor review required before external escalation."
+                ),
+                status="needs_approval" if approval_required else "pending",
                 producer_id=producer_id,
             )
         if memo.review_status == "flagged_duplicate":

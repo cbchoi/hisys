@@ -72,6 +72,17 @@ def _build_parser() -> argparse.ArgumentParser:
     decide.add_argument("--instance", required=True, help="runtime instance root containing memo review outputs")
     decide.add_argument("--date", required=True, help="YYYYMMDD memo review partition")
     decide.add_argument("--producer-id", default="chief-editor-cli", help="Chief Editor actor id")
+    decide.add_argument(
+        "--conflict-severity",
+        choices=["low", "medium", "high", "critical"],
+        default="medium",
+        help="fixture severity assigned to conflict alert candidates",
+    )
+    decide.add_argument(
+        "--target-channel",
+        default="runtime-local",
+        help="dry-run target channel metadata; does not send live alerts",
+    )
     return parser
 
 
@@ -116,6 +127,8 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             producer_id=args.producer_id,
+            conflict_severity=args.conflict_severity,
+            target_channel=args.target_channel,
         )
     parser.error(f"unknown command: {args.command}")
     return 2
@@ -359,7 +372,14 @@ def _load_memo_drafts(instance: InstanceRoot, yyyymmdd: str) -> list[ZettelMemo]
     return memos
 
 
-def _cmd_decide_alerts(*, instance_root: Path, yyyymmdd: str, producer_id: str) -> int:
+def _cmd_decide_alerts(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    producer_id: str,
+    conflict_severity: str = "medium",
+    target_channel: str = "runtime-local",
+) -> int:
     instance = InstanceRoot(instance_root)
     memos = _load_memo_drafts(instance, yyyymmdd)
     if not memos:
@@ -371,7 +391,11 @@ def _cmd_decide_alerts(*, instance_root: Path, yyyymmdd: str, producer_id: str) 
         return 1
     runtime = ChiefEditorRuntime(
         instance=instance,
-        policy=ChiefEditorPolicy.fixture_default(),
+        policy=ChiefEditorPolicy(
+            policy_version=ChiefEditorPolicy.fixture_default().policy_version,
+            conflict_severity=conflict_severity,
+            target_channel=target_channel,
+        ),
         producer_id=producer_id,
     )
     report = runtime.decide_run(memos, memo_review_report=memo_review_report, yyyymmdd=yyyymmdd)

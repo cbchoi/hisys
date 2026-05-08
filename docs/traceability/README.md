@@ -19,7 +19,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I4 CLI glue | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-D-015; HISYS-D-016 | `hisys validate-config`, fixture-backed `hisys collect`, Hermes Markdown boundary record persistence, and JSON/Markdown run summary persistence |
 | I5 Extraction foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 5; HISYS-FR-EXT-001..005 | Fixture-backed `RawObservation` -> `ExtractedSignal` extractor, local signal JSON persistence, and `hisys extract` CLI report path |
 | I6 Editorial foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Sections 6-7; HISYS-FR-PER-001..004; HISYS-FR-MEM-001..005 | Fixture-backed active perspective application, `ZettelMemo` draft JSON/Markdown persistence, `hisys draft-memo` CLI report path, and `hisys review-memos` duplicate/conflict flagging report path |
-| I7-A/B Chief Editor alert decision and suppression foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 8; HISYS-FR-CE-001..006; HISYS-CE-POLICY-001 | Fixture-backed Chief Editor policy reads runtime-local memo review outputs, persists `AlertDecisionRecord` JSON/Markdown decisions, records duplicate non-escalation decisions, suppresses same-date repeated `suppression_key` alert candidates, writes `alert-decision-report.{json,md}`, and exposes `hisys decide-alerts` without live alert sending |
+| I7-A/B/C Chief Editor alert decision, suppression, and approval-gate foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 8; HISYS-FR-CE-001..006; HISYS-CE-POLICY-001 | Fixture-backed Chief Editor policy reads runtime-local memo review outputs, persists `AlertDecisionRecord` JSON/Markdown decisions, records duplicate non-escalation decisions, suppresses same-date repeated `suppression_key` alert candidates, requests approval for high/critical or non-local target candidates, writes `alert-decision-report.{json,md}`, and exposes `hisys decide-alerts` without live alert sending |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -27,9 +27,10 @@ I6 is present as a fixture-backed editorial draft and duplicate/conflict review
 foundation that writes only runtime-local memo draft/report artifacts. I7-A is
 present as a fixture-backed Chief Editor alert decision foundation that writes
 runtime-local alert decisions/reports, suppresses same-date repeated alert
-candidates by `suppression_key`, and takes no live alert actions. Full
-workflow coverage remains pending; later increments (I7 approval workflow,
-connectors; I8 DARS loop; I9 hardening) are not implemented yet.
+candidates by `suppression_key`, requests approval for high/critical or non-local
+target alert candidates, and takes no live alert actions. Full workflow coverage
+remains pending; later increments (I7 connector dry-runs; I8 DARS loop; I9
+hardening) are not implemented yet.
 
 ## Module to controlled-doc map
 
@@ -65,9 +66,9 @@ connectors; I8 DARS loop; I9 hardening) are not implemented yet.
 | `hisys.extraction.runtime` | HISYS-FR-EXT-001..005, HISYS-D-015, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
 | `hisys.editor.drafter` | HISYS-FR-PER-001..004, HISYS-FR-MEM-001..005, HISYS-DATA-002, HISYS-T-011..012 | `tests/unit/test_editor_runtime.py` |
 | `hisys.editor.runtime` | HISYS-FR-PER-001..004, HISYS-FR-MEM-001..005, HISYS-D-015, HISYS-T-011..013 | `tests/unit/test_editor_runtime.py` |
-| `hisys.chief_editor.policy` | HISYS-FR-CE-001..006, HISYS-CE-POLICY-001, HISYS-T-014..017 | `tests/unit/test_chief_editor_runtime.py` |
-| `hisys.chief_editor.runtime` | HISYS-FR-CE-001..006, HISYS-D-015, HISYS-T-014..017 | `tests/unit/test_chief_editor_runtime.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..017 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
+| `hisys.chief_editor.policy` | HISYS-FR-CE-001..006, HISYS-CE-POLICY-001, HISYS-T-014..018 | `tests/unit/test_chief_editor_runtime.py` |
+| `hisys.chief_editor.runtime` | HISYS-FR-CE-001..006, HISYS-D-015, HISYS-T-014..018 | `tests/unit/test_chief_editor_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..018 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
@@ -128,14 +129,15 @@ For each path the tests assert:
   drafts, flags duplicated summaries as `flagged_duplicate`, flags simple
   high-vs-normal source conflicts as `flagged_conflict`, rewrites reviewed memo
   JSON/Markdown records, and persists memo review JSON/Markdown reports.
-- HISYS-T-014..017: Chief Editor foundation reads runtime-local memo review
+- HISYS-T-014..018: Chief Editor foundation reads runtime-local memo review
   reports and reviewed memo drafts, applies the fixture `HISYS-CE-POLICY-001`
   policy, creates `AlertDecisionRecord` JSON/Markdown records for conflict
   escalation candidates, records duplicate memo non-escalations as suppressed
   decisions, suppresses repeated same-date alert candidates whose
   `suppression_key` already appears in prior non-suppressed alert decisions,
-  persists alert decision JSON/Markdown reports, and performs no live alert sends
-  or external connector actions.
+  requests human approval for high/critical or non-local target candidates while
+  keeping `action_taken=none`, persists alert decision JSON/Markdown reports, and
+  performs no live alert sends or external connector actions.
 - HISYS-D-015: I4 persistence baseline is local JSON/JSONL, not a live database
   or external service.
 - HISYS-D-016: Hermes foundation is collection-only and scoped to preapproved

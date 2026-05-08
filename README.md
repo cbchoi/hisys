@@ -38,12 +38,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
   review over runtime-local memo drafts and flags draft status without writing to
   a live Obsidian vault.
-- Increment **I7-A/B foundation** (Chief Editor alert decisions and suppression)
-  - fixture-backed Chief Editor policy reads runtime-local memo review outputs,
-  creates `AlertDecisionRecord` JSON/Markdown records, records duplicate
-  non-escalation decisions, suppresses repeated alert candidates with the same
-  `suppression_key` in the same run/date, and writes alert decision reports via
-  `hisys decide-alerts` without sending live alerts.
+- Increment **I7-A/B/C foundation** (Chief Editor alert decisions, suppression,
+  and approval gate) - fixture-backed Chief Editor policy reads runtime-local
+  memo review outputs, creates `AlertDecisionRecord` JSON/Markdown records,
+  records duplicate non-escalation decisions, suppresses repeated alert
+  candidates with the same `suppression_key` in the same run/date, requests human
+  approval for high/critical or non-local target alert candidates, and writes
+  alert decision reports via `hisys decide-alerts` without sending live alerts.
 - Later increments (I7 suppression windows/approval workflow/connectors, I8-I9)
   are not implemented; controlled vault writer workflows remain pending.
 
@@ -91,7 +92,7 @@ into a project-local virtualenv (do not install globally):
     pip install -e '.[dev]'
     pytest
 
-`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-A commands are:
+`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-C commands are:
 
 ```bash
 hisys validate-config --instance examples/instance
@@ -124,7 +125,9 @@ duplicates/conflicts by updating draft status, and writes
 `decide-alerts` command reads runtime-local memo drafts plus the memo review
 report, applies the fixture Chief Editor policy, suppresses repeated alert
 candidates whose `suppression_key` already exists in same-date alert decisions,
-writes `data/alert-decisions/<YYYYMMDD>/` JSON/Markdown decisions and
+requests approval for high/critical or non-local target alert candidates while
+keeping `action_taken=none`, writes `data/alert-decisions/<YYYYMMDD>/`
+JSON/Markdown decisions and
 `reports/run-summaries/<YYYYMMDD>/alert-decision-report.{json,md}`, and does not
 send live alerts. These commands do not write to a live Obsidian vault or call
 external alert connectors.

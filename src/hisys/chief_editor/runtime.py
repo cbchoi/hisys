@@ -1,7 +1,8 @@
 """Chief Editor alert decision runtime.
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
-HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017.
+HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
+HISYS-T-018.
 """
 
 from __future__ import annotations
