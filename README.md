@@ -38,17 +38,19 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
   review over runtime-local memo drafts and flags draft status without writing to
   a live Obsidian vault.
-- Increment **I7-A/B/C/D/E foundation** (Chief Editor alert decisions,
-  suppression, approval gate, dry-run action planning, and approval transition
-  stub) - fixture-backed Chief Editor policy reads runtime-local memo review
-  outputs, creates `AlertDecisionRecord` JSON/Markdown records, records duplicate
-  non-escalation decisions, suppresses repeated alert candidates with the same
-  `suppression_key` in the same run/date, requests human approval for
-  high/critical or non-local target alert candidates, writes alert decision
-  reports via `hisys decide-alerts`, writes dry-run `AlertActionPlanRecord`
-  JSON/Markdown plus run reports via `hisys plan-alert-actions`, and applies
-  runtime-local approve/reject transitions via `hisys review-alert-approval`
-  without sending live alerts.
+- Increment **I7-A/B/C/D/E/F foundation** (Chief Editor alert decisions,
+  suppression, approval gate, dry-run action planning, approval transition stub,
+  and approved-decision send-candidate classification) - fixture-backed Chief
+  Editor policy reads runtime-local memo review outputs, creates
+  `AlertDecisionRecord` JSON/Markdown records, records duplicate non-escalation
+  decisions, suppresses repeated alert candidates with the same `suppression_key`
+  in the same run/date, requests human approval for high/critical or non-local
+  target alert candidates, writes alert decision reports via `hisys
+  decide-alerts`, applies runtime-local approve/reject transitions via `hisys
+  review-alert-approval`, and writes dry-run `AlertActionPlanRecord`
+  JSON/Markdown plus run reports via `hisys plan-alert-actions`, including
+  approved pending decisions as `would_send=true` candidates while live delivery
+  remains disabled.
 - Later increments (I7 suppression windows/approval workflow/connectors, I8-I9)
   are not implemented; controlled vault writer workflows remain pending.
 
@@ -97,7 +99,7 @@ into a project-local virtualenv (do not install globally):
     pip install -e '.[dev]'
     pytest
 
-`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-E commands are:
+`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-F commands are:
 
 ```bash
 hisys validate-config --instance examples/instance
@@ -143,7 +145,9 @@ JSON/Markdown decisions and
 send live alerts. The `plan-alert-actions` command reads local alert decisions,
 writes dry-run action plans under `data/alert-action-plans/<YYYYMMDD>/`, records
 why live delivery is blocked (`approval_required`, `suppressed`,
-`no_target_channel`, or `live_delivery_disabled`), persists
+`no_target_channel`, or `live_delivery_disabled`), marks approved pending
+candidate decisions with a target channel as `would_send=true` while keeping
+`live_delivery_permitted=false`, persists
 `reports/run-summaries/<YYYYMMDD>/alert-action-plan-report.{json,md}`, and never
 sends or triggers external connectors. The `review-alert-approval` command
 applies a runtime-local approve/reject transition to `needs_approval` decisions,

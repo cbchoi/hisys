@@ -2,7 +2,7 @@
 
 Traceability: HISYS-HARNESS-GUIDE-001, HISYS-FR-CE-001..006,
 HISYS-CE-POLICY-001, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018, HISYS-T-019, HISYS-T-020.
+HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021.
 
 ## Purpose
 
@@ -46,20 +46,23 @@ raw observation payloads directly.
    `reports/run-summaries/<YYYYMMDD>/alert-decision-report.{json,md}`.
 11. Read persisted alert decisions and write dry-run alert action plans under
     `data/alert-action-plans/<YYYYMMDD>/`.
-12. For each action plan, record `would_send=false`, `live_delivery_permitted=false`,
+12. For each action plan, record `live_delivery_permitted=false`,
     `action_taken=none`, and a blocked reason such as `approval_required`,
     `suppressed`, `no_target_channel`, or `live_delivery_disabled`.
-13. Persist the action-plan run summary under
+13. Mark approved pending decisions with target channels as dry-run send
+    candidates using `would_send=true`, but keep `live_delivery_permitted=false`
+    and `blocked_reason=live_delivery_disabled`.
+14. Persist the action-plan run summary under
     `reports/run-summaries/<YYYYMMDD>/alert-action-plan-report.{json,md}`.
-14. For fixture approval review, accept only requested decisions with
+15. For fixture approval review, accept only requested decisions with
     `approval_status=requested` and `status=needs_approval`.
-15. Apply `approved` by changing `approval_status=approved`, `status=pending`,
+16. Apply `approved` by changing `approval_status=approved`, `status=pending`,
     and preserving `action_taken=none`; apply `rejected` by changing
     `approval_status=rejected`, `status=closed`, and preserving
     `action_taken=none`.
-16. Persist the approval transition summary under
+17. Persist the approval transition summary under
     `reports/run-summaries/<YYYYMMDD>/alert-approval-transition-report.{json,md}`.
-17. Do not send Discord messages, direct messages, software triggers, handoffs,
+18. Do not send Discord messages, direct messages, software triggers, handoffs,
     or other live external actions in this harness stage.
 
 ## Pass Criteria
@@ -77,9 +80,10 @@ raw observation payloads directly.
   the schema gate, and high/critical or non-local target candidates are persisted
   as approval requests with `approval_status=requested`, `status=needs_approval`,
   and `action_taken=none`.
-- Dry-run action plans are valid JSON/Markdown artifacts, keep `would_send=false`,
-  `live_delivery_permitted=false`, and `action_taken=none`, and record an explicit
-  blocked reason.
+- Dry-run action plans are valid JSON/Markdown artifacts, keep
+  `live_delivery_permitted=false` and `action_taken=none`, and record an explicit
+  blocked reason; approved pending target-channel candidates may set
+  `would_send=true` but remain blocked by `live_delivery_disabled`.
 - Approval transitions only mutate runtime-local alert decision artifacts and
   reports: approved decisions become `approval_status=approved`, `status=pending`,
   `action_taken=none`; rejected decisions become `approval_status=rejected`,

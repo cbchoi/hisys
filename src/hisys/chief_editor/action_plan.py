@@ -1,7 +1,7 @@
 """Chief Editor dry-run alert action plan runtime.
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
-HISYS-D-015, HISYS-T-019.
+HISYS-D-015, HISYS-T-019, HISYS-T-021.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ class AlertActionPlanRecord(BaseModel):
     live_delivery_permitted: bool = False
     action_taken: Literal["none"] = "none"
     producer_id: str
-    policy_refs: list[str] = Field(default_factory=lambda: ["HISYS-FR-CE-006", "HISYS-T-019"])
+    policy_refs: list[str] = Field(default_factory=lambda: ["HISYS-FR-CE-006", "HISYS-T-019", "HISYS-T-021"])
 
 
 @dataclass(frozen=True)
@@ -47,7 +47,7 @@ class AlertActionPlanRunReport:
     would_send_refs: list[str] = field(default_factory=list)
     blocked_refs: list[str] = field(default_factory=list)
     skipped_decision_refs: list[str] = field(default_factory=list)
-    policy_refs: list[str] = field(default_factory=lambda: ["HISYS-FR-CE-006", "HISYS-T-019"])
+    policy_refs: list[str] = field(default_factory=lambda: ["HISYS-FR-CE-006", "HISYS-T-019", "HISYS-T-021"])
 
 
 class AlertActionPlanRuntime:
@@ -88,6 +88,7 @@ class AlertActionPlanRuntime:
         if decision.action_taken != "none":
             return None
         approval_required = decision.approval_status == "requested" or decision.status == "needs_approval"
+        would_send = False
         blocked_reason: BlockedReason | None = None
         if approval_required:
             blocked_reason = "approval_required"
@@ -96,13 +97,14 @@ class AlertActionPlanRuntime:
         elif not decision.target_channel:
             blocked_reason = "no_target_channel"
         else:
+            would_send = decision.approval_status in {"approved", "not_required"} and decision.status == "pending"
             blocked_reason = "live_delivery_disabled"
         return AlertActionPlanRecord(
             plan_id=_plan_id_for_alert(decision.alert_id),
             alert_decision_ref=decision.alert_id,
             target_channel=decision.target_channel,
             approval_required=approval_required,
-            would_send=False,
+            would_send=would_send,
             blocked_reason=blocked_reason,
             live_delivery_permitted=False,
             action_taken="none",

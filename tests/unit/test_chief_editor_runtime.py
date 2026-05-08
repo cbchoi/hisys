@@ -2,7 +2,7 @@
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
 HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018, HISYS-T-019, HISYS-T-020.
+HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021.
 """
 
 from __future__ import annotations
@@ -281,6 +281,39 @@ def test_alert_action_plan_runtime_writes_dry_run_plan_for_approval_request(tmp_
     assert plan["live_delivery_permitted"] is False
     assert plan["action_taken"] == "none"
     assert "discord:#ops" in markdown_path.read_text(encoding="utf-8")
+
+
+
+def test_alert_action_plan_runtime_marks_approved_decision_as_dry_run_send_candidate(tmp_path: Path):
+    alert_id = _write_high_impact_approval_request(tmp_path)
+    AlertApprovalTransitionRuntime(
+        instance=InstanceRoot(tmp_path),
+        reviewer_id="chief-editor-reviewer-test",
+    ).transition(
+        yyyymmdd="20260508",
+        alert_id=alert_id,
+        outcome="approved",
+        rationale="fixture approval for send candidate",
+    )
+
+    plan_report = AlertActionPlanRuntime(
+        instance=InstanceRoot(tmp_path),
+        producer_id="action-plan-test",
+    ).plan_run(yyyymmdd="20260508")
+
+    plan_id = f"PLAN-{alert_id[6:]}"
+    assert plan_report.alert_decision_refs == [alert_id]
+    assert plan_report.action_plan_refs == [plan_id]
+    assert plan_report.would_send_refs == [plan_id]
+    assert plan_report.blocked_refs == [plan_id]
+    plan_path = tmp_path / "data" / "alert-action-plans" / "20260508" / f"{plan_id}.json"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert plan["alert_decision_ref"] == alert_id
+    assert plan["approval_required"] is False
+    assert plan["would_send"] is True
+    assert plan["blocked_reason"] == "live_delivery_disabled"
+    assert plan["live_delivery_permitted"] is False
+    assert plan["action_taken"] == "none"
 
 
 

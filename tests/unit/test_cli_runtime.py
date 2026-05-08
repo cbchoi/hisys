@@ -4,7 +4,7 @@ Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
 HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019,
-HISYS-T-020.
+HISYS-T-020, HISYS-T-021.
 """
 
 from __future__ import annotations
@@ -627,6 +627,71 @@ def test_plan_alert_actions_command_writes_dry_run_action_plan(tmp_path: Path, c
     assert plan["alert_decision_ref"] == alert_id
     assert plan["would_send"] is False
     assert plan["blocked_reason"] == "approval_required"
+    assert plan["live_delivery_permitted"] is False
+    assert plan["action_taken"] == "none"
+
+
+
+def test_plan_alert_actions_command_marks_approved_decision_as_dry_run_send_candidate(
+    tmp_path: Path,
+    capsys,
+):
+    _prepare_flagged_conflict_memo(tmp_path, capsys)
+    assert (
+        main(
+            [
+                "decide-alerts",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260508",
+                "--conflict-severity",
+                "high",
+                "--target-channel",
+                "discord:#ops",
+            ]
+        )
+        == 0
+    )
+    decision_report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-decision-report.json"
+    alert_id = json.loads(decision_report_path.read_text(encoding="utf-8"))["alert_decision_refs"][0]
+    assert (
+        main(
+            [
+                "review-alert-approval",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260508",
+                "--alert-id",
+                alert_id,
+                "--outcome",
+                "approved",
+                "--rationale",
+                "fixture approval for dry-run send candidate",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    result = main(["plan-alert-actions", "--instance", str(tmp_path), "--date", "20260508"])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "would_send: 1" in captured.out
+    assert "blocked: 1" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-action-plan-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    plan_id = report["action_plan_refs"][0]
+    assert report["would_send_refs"] == [plan_id]
+    assert report["blocked_refs"] == [plan_id]
+    plan_path = tmp_path / "data" / "alert-action-plans" / "20260508" / f"{plan_id}.json"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert plan["alert_decision_ref"] == alert_id
+    assert plan["approval_required"] is False
+    assert plan["would_send"] is True
+    assert plan["blocked_reason"] == "live_delivery_disabled"
     assert plan["live_delivery_permitted"] is False
     assert plan["action_taken"] == "none"
 
