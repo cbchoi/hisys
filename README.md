@@ -16,7 +16,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
 - Increment **I1** (Schemas + IDs) - initial schema modules and tests in place.
 - Increment **I2** (Source governance) - initial in-memory source registry,
   fixture registry, and web compliance gate in place.
-- Later increments (I3-I9) are not implemented.
+- Increment **I3** (Adapter framework) - common DataSource contract,
+  fixture-backed hardware/web/agent/Hermes adapters, registry-gated adapter
+  runtime, health report, and failure isolation in place.
+- Later increments (I4-I9) are not implemented.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
 
@@ -30,7 +33,7 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
                    compliance, perspective, memo, alert, handoff, audit,
                    hermes_trace)
       registry/    source registry and web compliance collection gate
-      adapters/    base + hardware/web/agent/Hermes mocks
+      adapters/    base + hardware/web/agent/Hermes mocks and runtime manager
       investigator/, extraction/, editor/, chief_editor/,
       integrations/, audit/, config/, health/, cli/   (placeholders)
 
@@ -64,6 +67,8 @@ into a project-local virtualenv (do not install globally):
   required by `HISYS-IDD-001` HISYS-IF-016 and `HISYS-SCHEMA-001` Section 10.
 - Source collection is registry-gated. Web/news sources require controlled
   compliance review metadata before collection.
+- Adapter collection is failure-isolated; one failed source records an
+  AdapterErrorRecord without blocking unrelated collectable sources.
 - No live network calls; adapters are mocks fed from local fixtures.
 - No credentials or secrets are committed. Fixture tokens are explicitly fake.
 

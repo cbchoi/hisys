@@ -14,8 +14,9 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I0 Repository skeleton | HISYS-IMP-001 (implementation-plan.md) Section 3 | Complete |
 | I1 Schemas and IDs | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 (schema-definitions.md) | Initial Pydantic v2 models for all named records |
 | I2 Source governance | HISYS-IMP-001 Section 3; HISYS-SRC-REG-INIT-001; HISYS-CHECK-WEB-001 | Initial in-memory registry, fixture registry, and web compliance gate |
+| I3 Adapter framework | HISYS-IMP-001 Section 3; HISYS-IDD-001 HISYS-IF-003/HISYS-IF-015; HISYS-FIXTURE-001 | Common DataSource contract, fixture adapters, registry-gated runtime, health report, and failure isolation |
 
-Later increments (I3 adapter framework, I4 investigator,
+Later increments (I4 investigator,
 I5 extraction, I6 editorial, I7 chief editor, I8 DARS loop, I9 hardening) are
 **not** implemented; only minimal mocks exist to exercise the end-to-end trace
 path required by `HISYS-IMP-001` Section 4 ("Definition of Done for Phase-3").
@@ -31,6 +32,8 @@ path required by `HISYS-IMP-001` Section 4 ("Definition of Done for Phase-3").
 | `hisys.schemas.source` | HISYS-FR-SRC-001..005, HISYS-SCHEMA-001 Section 3 | `tests/unit/test_schemas.py` |
 | `hisys.schemas.compliance` | HISYS-CHECK-WEB-001, HISYS-NFR-SEC-003, HISYS-NFR-SEC-005, HISYS-CON-022..023 | `tests/unit/test_registry.py` |
 | `hisys.registry.source_registry` | HISYS-SRC-REG-INIT-001, HISYS-FR-SRC-001..005, HISYS-T-001..002 | `tests/unit/test_registry.py` |
+| `hisys.adapters.base` | HISYS-IDD-001 Section 4, HISYS-FR-DS-001..006, normalize/provenance/error contract | `tests/unit/test_adapters.py` |
+| `hisys.adapters.runtime` | HISYS-FR-DS-005, HISYS-NFR-REL-001, HISYS-CON-014, HISYS-T-006 | `tests/unit/test_adapters.py` |
 | `hisys.schemas.observation` | HISYS-FR-INV-002..005, HISYS-DATA-002, HISYS-SCHEMA-001 Section 4 | `tests/unit/test_schemas.py` |
 | `hisys.schemas.signal` | HISYS-FR-EXT-001..004, HISYS-SCHEMA-001 Section 5 | `tests/unit/test_schemas.py` |
 | `hisys.schemas.perspective` | HISYS-FR-PER-001..004, HISYS-SCHEMA-001 Section 6 | `tests/unit/test_schemas.py` |
@@ -39,7 +42,6 @@ path required by `HISYS-IMP-001` Section 4 ("Definition of Done for Phase-3").
 | `hisys.schemas.handoff` | HISYS-FR-AGT-001..005, HISYS-SCHEMA-001 Section 9, HISYS-DARS-CONTRACT-001 | `tests/unit/test_schemas.py` |
 | `hisys.schemas.hermes_trace` | HISYS-FR-DS-006, HISYS-FR-INV-006, HISYS-FR-AGT-005, HISYS-DATA-005, HISYS-SCHEMA-001 Section 10 | `tests/unit/test_schemas.py` |
 | `hisys.schemas.audit` | HISYS-FR-ADM-002, HISYS-SCHEMA-001 Section 11 | `tests/unit/test_schemas.py` |
-| `hisys.adapters.base` | HISYS-IDD-001 Section 4, HISYS-FR-DS-001..002 | `tests/unit/test_adapters.py` |
 | `hisys.adapters.hardware_mock` | HISYS-FIXTURE-001 hardware-mock-temperature, HISYS-T-003 | `tests/unit/test_adapters.py` |
 | `hisys.adapters.web_news_mock` | HISYS-FIXTURE-001 web-news-rss-permitted, HISYS-T-004 | `tests/unit/test_adapters.py` |
 | `hisys.adapters.agent_system_mock` | HISYS-FIXTURE-001 agent-dars-critique, HISYS-T-005 | `tests/unit/test_adapters.py` |
@@ -71,6 +73,9 @@ For each step the test asserts:
 - HISYS-CON-022..023: no live web/network calls in this code; only fixtures.
 - HISYS-T-001..002: source registry entries require governance metadata;
   web/news collection is blocked without compliance checklist evidence.
+- HISYS-T-003..006: adapter contract covers initialization, health,
+  collection, normalization, provenance capture, bounded error records, and
+  source failure isolation.
 - HISYS-CON-021: Python 3.11+ runtime baseline.
 - HISYS-NFR-SEC-001..002: only fake non-secret tokens in fixtures.
 - HISYS-DATA-005: Hermes provenance fields are non-optional in the trace
