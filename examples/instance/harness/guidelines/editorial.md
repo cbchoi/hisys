@@ -2,7 +2,7 @@
 
 Traceability: HISYS-HARNESS-GUIDE-001, HISYS-FR-PER-001..004,
 HISYS-FR-MEM-001..005, HISYS-DATA-002, HISYS-T-011, HISYS-T-012,
-HISYS-T-013.
+HISYS-T-013, HISYS-IF-007, HISYS-DATA-005.
 
 ## Purpose
 
@@ -24,7 +24,10 @@ vault.
 6. Run fixture duplicate/conflict review over `data/memo-drafts/<YYYYMMDD>/`.
 7. Persist a memo review report under
    `reports/run-summaries/<YYYYMMDD>/memo-review-report.{json,md}`.
-8. Do not write to the user's live Obsidian vault in this harness stage.
+8. For vault-writer readiness, build a dry-run Obsidian preview that validates
+   the sanitized target path, memo frontmatter/body, trace links, and runtime
+   boundary report under `runtime-boundary/obsidian/<YYYYMMDD>/`.
+9. Do not write to the user's live Obsidian vault in this harness stage.
 
 ## Pass Criteria
 
@@ -38,6 +41,9 @@ vault.
   `memo-review-report.{json,md}`.
 - Fixture high-vs-normal source conflicts are flagged as `flagged_conflict` and
   included in `memo-review-report.{json,md}`.
+- Vault-write previews report `live_write_permitted=false`, `action_taken=none`,
+  sanitized target paths, YAML frontmatter, wikilinks, and HISYS-IF-007/
+  HISYS-DATA-005 trace references without creating target vault directories.
 
 ## Non-goals
 

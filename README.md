@@ -89,7 +89,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   runtime-local `ZettelMemo` draft JSON/Markdown plus memo draft reports via
   `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
   review over runtime-local memo drafts and flags draft status without writing to
-  a live Obsidian vault.
+  a live Obsidian vault. The controlled vault-writer dry-run helper
+  `hisys.integrations.obsidian_vault` now builds sanitized target paths,
+  frontmatter/body previews, and runtime-boundary preview reports without
+  creating or modifying the target vault path.
 - Increment **I7-A/B/C/D/E/F/G/H foundation** (Chief Editor alert decisions,
   suppression, approval gate, dry-run action planning, approval transition stub,
   approved-decision send-candidate classification, disabled connector harness,
@@ -128,7 +131,8 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys.operations.release_readiness` summarizes quality-gate evidence,
   HISYS-T-024 trace-path completeness, and known release gaps for human review.
 - Later increments (real DARS adapter and expanded critique feedback)
-  are not implemented; controlled vault writer workflows remain pending.
+  are not implemented; live Obsidian vault writes remain pending behind the
+  dry-run vault-writer boundary.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
 
