@@ -29,7 +29,9 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   summaries.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
-  records and persists signal JSON under the local runtime instance.
+  records and persists signal JSON under the local runtime instance; `hisys
+  extract` connects collected runtime observations to persisted signal records
+  and extraction reports.
 - Later increments (I6-I9) are not implemented; I5 still needs expansion from
   fixture rules to richer extraction/versioning workflows.
 
@@ -74,7 +76,7 @@ into a project-local virtualenv (do not install globally):
     pip install -e '.[dev]'
     pytest
 
-`hisys --help` exposes the runtime CLI. Fixture-backed I4 commands are:
+`hisys --help` exposes the runtime CLI. Fixture-backed I4/I5 commands are:
 
 ```bash
 hisys validate-config --instance examples/instance
@@ -82,12 +84,16 @@ hisys collect --instance /tmp/hisys-run \
   --config-from examples/instance \
   --source SRC-HW-MOCK-001 \
   --date 20260508
+hisys extract --instance /tmp/hisys-run --date 20260508
 ```
 
 The `collect` command writes local JSON/JSONL runtime records and, for Hermes
 sources, Markdown boundary records under
 `runtime-boundary/hermes/<YYYYMMDD>/<campaign_id>/`. It does not perform live
-network calls or external side effects.
+network calls or external side effects. The `extract` command reads only local
+`data/raw-observations/<YYYYMMDD>/` JSON records, writes
+`data/extracted-signals/<YYYYMMDD>/` JSON records, and stores
+`reports/run-summaries/<YYYYMMDD>/extraction-report.{json,md}`.
 
 ## Quality and security constraints
 

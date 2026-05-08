@@ -2,7 +2,7 @@
 
 Traceability: HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001,
 HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
-HISYS-T-007, HISYS-T-008.
+HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010.
 """
 
 from __future__ import annotations
@@ -18,10 +18,11 @@ from .. import __version__
 from ..adapters import AgentSystemMockSource, HardwareMockSource, HermesToolMockSource, WebNewsMockSource
 from ..adapters.hermes_tool_mock import HermesCollectionInputs
 from ..config import InstanceRoot, load_source_registry
+from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..investigator import CollectionReport, InvestigatorRuntime
 from ..registry import SourceRegistry
-from ..schemas import SourceRegistryEntry
+from ..schemas import RawObservation, SourceRegistryEntry
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -47,6 +48,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     collect.add_argument("--date", required=True, help="YYYYMMDD output partition")
     collect.add_argument("--collector-id", default="investigator-cli", help="collector actor id")
+
+    extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
+    extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
+    extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
+    extract.add_argument("--producer-id", default="extractor-cli", help="extraction actor id")
     return parser
 
 
@@ -66,6 +72,12 @@ def main(argv: list[str] | None = None) -> int:
             source_ids=args.sources,
             yyyymmdd=args.date,
             collector_id=args.collector_id,
+        )
+    if args.command == "extract":
+        return _cmd_extract(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            producer_id=args.producer_id,
         )
     parser.error(f"unknown command: {args.command}")
     return 2
@@ -113,6 +125,69 @@ def _cmd_collect(
         print("no observations collected", file=sys.stderr)
         return 1
     return 0
+
+
+def _cmd_extract(*, instance_root: Path, yyyymmdd: str, producer_id: str) -> int:
+    instance = InstanceRoot(instance_root)
+    observations = _load_observations(instance, yyyymmdd)
+    if not observations:
+        print(f"no raw observations found for date {yyyymmdd}", file=sys.stderr)
+        return 1
+    runtime = ExtractionRuntime(
+        instance=instance,
+        extractor=FixtureSignalExtractor(method="fixture-rule-v0"),
+        producer_id=producer_id,
+    )
+    report = runtime.extract_run(observations, yyyymmdd=yyyymmdd)
+    report_path = _write_extraction_report(instance, report, yyyymmdd)
+    print(f"extraction run: report={report_path}")
+    print(f"observations: {len(report.requested_observation_refs)}")
+    print(f"signals: {len(report.extracted_signal_refs)}")
+    print(f"skipped: {len(report.skipped_observation_refs)}")
+    if not report.extracted_signal_refs:
+        print("no signals extracted", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _load_observations(instance: InstanceRoot, yyyymmdd: str) -> list[RawObservation]:
+    directory = instance.root / "data" / "raw-observations" / yyyymmdd
+    if not directory.exists():
+        return []
+    observations: list[RawObservation] = []
+    for path in sorted(directory.glob("OBS-*.json")):
+        observations.append(RawObservation.model_validate_json(path.read_text(encoding="utf-8")))
+    return observations
+
+
+def _write_extraction_report(instance: InstanceRoot, report: ExtractionReport, yyyymmdd: str) -> Path:
+    directory = instance.root / "reports" / "run-summaries" / yyyymmdd
+    directory.mkdir(parents=True, exist_ok=True)
+    json_path = directory / "extraction-report.json"
+    data = asdict(report)
+    json_path.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    markdown_path = directory / "extraction-report.md"
+    markdown_path.write_text(_format_extraction_report_markdown(report), encoding="utf-8")
+    return json_path
+
+
+def _format_extraction_report_markdown(report: ExtractionReport) -> str:
+    return "\n".join(
+        [
+            "# Hisys Extraction Report",
+            "",
+            f"- requested_observations: {len(report.requested_observation_refs)}",
+            f"- extracted_signals: {len(report.extracted_signal_refs)}",
+            f"- skipped_observations: {len(report.skipped_observation_refs)}",
+            "",
+            "## Extracted Signals",
+            *[f"- {ref}" for ref in report.extracted_signal_refs],
+            "",
+            "## Policy References",
+            *[f"- {ref}" for ref in report.policy_refs],
+            "",
+        ]
+    )
 
 
 def _build_fixture_adapters(

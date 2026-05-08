@@ -1,7 +1,8 @@
 """CLI runtime glue tests for the I4 Investigator increment.
 
 Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
-HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008.
+HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
+HISYS-T-010.
 """
 
 from __future__ import annotations
@@ -93,6 +94,51 @@ def test_collect_command_writes_hermes_boundary_markdown_for_hermes_source(
     assert "record_kind: tool_output" in markdown
     assert "SRC-HERMES-TOOL-001" in markdown
     assert "Fixture Hermes collection output" in markdown
+
+
+def test_extract_command_writes_signal_report_from_collected_observations(tmp_path: Path, capsys):
+    collect_result = main(
+        [
+            "collect",
+            "--instance",
+            str(tmp_path),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+        ]
+    )
+    assert collect_result == 0
+    capsys.readouterr()
+
+    result = main(["extract", "--instance", str(tmp_path), "--date", "20260508"])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "extraction run" in captured.out
+    assert "signals: 1" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "extraction-report.json"
+    assert report_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert len(report["requested_observation_refs"]) == 1
+    assert len(report["extracted_signal_refs"]) == 1
+    signal_id = report["extracted_signal_refs"][0]
+    signal_path = tmp_path / "data" / "extracted-signals" / "20260508" / f"{signal_id}.json"
+    assert signal_path.exists()
+    signal = json.loads(signal_path.read_text(encoding="utf-8"))
+    assert signal["observation_refs"] == report["requested_observation_refs"]
+    assert signal["signal_type"] == "anomaly"
+    assert "temperature_c" not in signal["claim_or_event"]
+
+
+def test_extract_command_rejects_missing_observation_partition(tmp_path: Path, capsys):
+    result = main(["extract", "--instance", str(tmp_path), "--date", "20260508"])
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "no raw observations found" in captured.err
 
 
 def test_collect_command_rejects_unknown_source_without_unhandled_exception(tmp_path: Path, capsys):
