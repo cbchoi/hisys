@@ -2,7 +2,7 @@
 
 Traceability: HISYS-HARNESS-GUIDE-001, HISYS-FR-CE-001..006,
 HISYS-CE-POLICY-001, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018, HISYS-T-019.
+HISYS-T-018, HISYS-T-019, HISYS-T-020.
 
 ## Purpose
 
@@ -17,7 +17,7 @@ Decision stage inputs:
 - `data/memo-drafts/<YYYYMMDD>/*.json`
 - `reports/run-summaries/<YYYYMMDD>/memo-review-report.json`
 
-Action-plan stage inputs:
+Action-plan and approval stage inputs:
 
 - `data/alert-decisions/<YYYYMMDD>/*.json`
 
@@ -51,7 +51,15 @@ raw observation payloads directly.
     `suppressed`, `no_target_channel`, or `live_delivery_disabled`.
 13. Persist the action-plan run summary under
     `reports/run-summaries/<YYYYMMDD>/alert-action-plan-report.{json,md}`.
-14. Do not send Discord messages, direct messages, software triggers, handoffs,
+14. For fixture approval review, accept only requested decisions with
+    `approval_status=requested` and `status=needs_approval`.
+15. Apply `approved` by changing `approval_status=approved`, `status=pending`,
+    and preserving `action_taken=none`; apply `rejected` by changing
+    `approval_status=rejected`, `status=closed`, and preserving
+    `action_taken=none`.
+16. Persist the approval transition summary under
+    `reports/run-summaries/<YYYYMMDD>/alert-approval-transition-report.{json,md}`.
+17. Do not send Discord messages, direct messages, software triggers, handoffs,
     or other live external actions in this harness stage.
 
 ## Pass Criteria
@@ -72,11 +80,17 @@ raw observation payloads directly.
 - Dry-run action plans are valid JSON/Markdown artifacts, keep `would_send=false`,
   `live_delivery_permitted=false`, and `action_taken=none`, and record an explicit
   blocked reason.
+- Approval transitions only mutate runtime-local alert decision artifacts and
+  reports: approved decisions become `approval_status=approved`, `status=pending`,
+  `action_taken=none`; rejected decisions become `approval_status=rejected`,
+  `status=closed`, `action_taken=none`.
 - JSON and Markdown outputs are deterministic enough for regression tests.
 - The CLI command `hisys decide-alerts --instance <root> --date <YYYYMMDD>`
   succeeds only when memo drafts and a memo review report are present.
 - The CLI command `hisys plan-alert-actions --instance <root> --date <YYYYMMDD>`
   succeeds only when alert decisions are present.
+- The CLI command `hisys review-alert-approval --instance <root> --date <YYYYMMDD>`
+  succeeds only for requested approval decisions and never triggers delivery.
 
 ## Non-goals
 
@@ -84,6 +98,6 @@ raw observation payloads directly.
 - Live Obsidian vault writes.
 - Suppression windows across historical runs.
 - Configurable suppression duration beyond the same-date fixture window.
-- Human approval transition workflow beyond creating approval-request records.
+- Human approval transition workflows beyond the fixture approve/reject stub.
 - Discord/software connector execution.
 - DARS handoff execution.

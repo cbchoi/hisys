@@ -38,15 +38,17 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
   review over runtime-local memo drafts and flags draft status without writing to
   a live Obsidian vault.
-- Increment **I7-A/B/C/D foundation** (Chief Editor alert decisions,
-  suppression, approval gate, and dry-run action planning) - fixture-backed Chief
-  Editor policy reads runtime-local memo review outputs, creates
-  `AlertDecisionRecord` JSON/Markdown records, records duplicate non-escalation
-  decisions, suppresses repeated alert candidates with the same `suppression_key`
-  in the same run/date, requests human approval for high/critical or non-local
-  target alert candidates, writes alert decision reports via `hisys
-  decide-alerts`, and writes dry-run `AlertActionPlanRecord` JSON/Markdown plus
-  run reports via `hisys plan-alert-actions` without sending live alerts.
+- Increment **I7-A/B/C/D/E foundation** (Chief Editor alert decisions,
+  suppression, approval gate, dry-run action planning, and approval transition
+  stub) - fixture-backed Chief Editor policy reads runtime-local memo review
+  outputs, creates `AlertDecisionRecord` JSON/Markdown records, records duplicate
+  non-escalation decisions, suppresses repeated alert candidates with the same
+  `suppression_key` in the same run/date, requests human approval for
+  high/critical or non-local target alert candidates, writes alert decision
+  reports via `hisys decide-alerts`, writes dry-run `AlertActionPlanRecord`
+  JSON/Markdown plus run reports via `hisys plan-alert-actions`, and applies
+  runtime-local approve/reject transitions via `hisys review-alert-approval`
+  without sending live alerts.
 - Later increments (I7 suppression windows/approval workflow/connectors, I8-I9)
   are not implemented; controlled vault writer workflows remain pending.
 
@@ -70,8 +72,8 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
       extraction/  fixture-backed signal extractor and persistence runtime
       editor/      fixture-backed memo drafter, local draft persistence, and
                    duplicate/conflict review runtime
-      chief_editor/ fixture-backed alert decision policy/runtime and dry-run
-                    alert action planning
+      chief_editor/ fixture-backed alert decision policy/runtime, approval
+                    transition stub, and dry-run alert action planning
       health/, cli/ runtime entry points / placeholders
 
     examples/instance/
@@ -95,7 +97,7 @@ into a project-local virtualenv (do not install globally):
     pip install -e '.[dev]'
     pytest
 
-`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-D commands are:
+`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-E commands are:
 
 ```bash
 hisys validate-config --instance examples/instance
@@ -110,6 +112,11 @@ hisys draft-memo --instance /tmp/hisys-run \
 hisys review-memos --instance /tmp/hisys-run --date 20260508
 hisys decide-alerts --instance /tmp/hisys-run --date 20260508
 hisys plan-alert-actions --instance /tmp/hisys-run --date 20260508
+hisys review-alert-approval --instance /tmp/hisys-run \
+  --date 20260508 \
+  --alert-id ALERT-... \
+  --outcome approved \
+  --rationale 'fixture approval'
 ```
 
 The `collect` command writes local JSON/JSONL runtime records and, for Hermes
@@ -138,8 +145,12 @@ writes dry-run action plans under `data/alert-action-plans/<YYYYMMDD>/`, records
 why live delivery is blocked (`approval_required`, `suppressed`,
 `no_target_channel`, or `live_delivery_disabled`), persists
 `reports/run-summaries/<YYYYMMDD>/alert-action-plan-report.{json,md}`, and never
-sends or triggers external connectors. These commands do not write to a live
-Obsidian vault or call external alert connectors.
+sends or triggers external connectors. The `review-alert-approval` command
+applies a runtime-local approve/reject transition to `needs_approval` decisions,
+updates the decision JSON/Markdown, writes
+`reports/run-summaries/<YYYYMMDD>/alert-approval-transition-report.{json,md}`,
+keeps `action_taken=none`, and never sends or triggers external connectors. These
+commands do not write to a live Obsidian vault or call external alert connectors.
 
 ## Quality and security constraints
 

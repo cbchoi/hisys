@@ -2,7 +2,7 @@
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
 HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018, HISYS-T-019.
+HISYS-T-018, HISYS-T-019, HISYS-T-020.
 """
 
 from __future__ import annotations
@@ -10,7 +10,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hisys.chief_editor import AlertActionPlanRuntime, ChiefEditorPolicy, ChiefEditorRuntime
+from hisys.chief_editor import (
+    AlertActionPlanRuntime,
+    AlertApprovalTransitionRuntime,
+    ChiefEditorPolicy,
+    ChiefEditorRuntime,
+)
 from hisys.config import InstanceRoot
 from hisys.editor import MemoReviewReport
 from hisys.schemas import ZettelMemo
@@ -170,6 +175,66 @@ def test_chief_editor_runtime_requests_approval_for_high_impact_alert(tmp_path: 
 
 
 
+def test_alert_approval_transition_runtime_approves_requested_decision(tmp_path: Path):
+    alert_id = _write_high_impact_approval_request(tmp_path)
+
+    report = AlertApprovalTransitionRuntime(
+        instance=InstanceRoot(tmp_path),
+        reviewer_id="chief-editor-reviewer-test",
+    ).transition(
+        yyyymmdd="20260508",
+        alert_id=alert_id,
+        outcome="approved",
+        rationale="fixture human approval granted",
+    )
+
+    assert report.alert_decision_ref == alert_id
+    assert report.previous_approval_status == "requested"
+    assert report.new_approval_status == "approved"
+    assert report.previous_status == "needs_approval"
+    assert report.new_status == "pending"
+    assert report.action_taken == "none"
+    decision_path = tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.json"
+    decision = json.loads(decision_path.read_text(encoding="utf-8"))
+    assert decision["approval_status"] == "approved"
+    assert decision["status"] == "pending"
+    assert decision["action_taken"] == "none"
+    assert "fixture human approval granted" in decision["follow_up"]
+    assert (tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.md").exists()
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-approval-transition-report.json"
+    report_json = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report_json["alert_decision_ref"] == alert_id
+    assert report_json["new_approval_status"] == "approved"
+
+
+def test_alert_approval_transition_runtime_rejects_requested_decision(tmp_path: Path):
+    alert_id = _write_high_impact_approval_request(tmp_path)
+
+    report = AlertApprovalTransitionRuntime(
+        instance=InstanceRoot(tmp_path),
+        reviewer_id="chief-editor-reviewer-test",
+    ).transition(
+        yyyymmdd="20260508",
+        alert_id=alert_id,
+        outcome="rejected",
+        rationale="fixture human approval rejected",
+    )
+
+    assert report.alert_decision_ref == alert_id
+    assert report.previous_approval_status == "requested"
+    assert report.new_approval_status == "rejected"
+    assert report.previous_status == "needs_approval"
+    assert report.new_status == "closed"
+    assert report.action_taken == "none"
+    decision_path = tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.json"
+    decision = json.loads(decision_path.read_text(encoding="utf-8"))
+    assert decision["approval_status"] == "rejected"
+    assert decision["status"] == "closed"
+    assert decision["action_taken"] == "none"
+    assert "fixture human approval rejected" in decision["outcome_feedback"]
+
+
+
 def test_alert_action_plan_runtime_writes_dry_run_plan_for_approval_request(tmp_path: Path):
     memo = _memo_for_decision(
         "MEM-CE-HIGH-PLAN-001",
@@ -216,6 +281,30 @@ def test_alert_action_plan_runtime_writes_dry_run_plan_for_approval_request(tmp_
     assert plan["live_delivery_permitted"] is False
     assert plan["action_taken"] == "none"
     assert "discord:#ops" in markdown_path.read_text(encoding="utf-8")
+
+
+
+def _write_high_impact_approval_request(tmp_path: Path) -> str:
+    memo = _memo_for_decision(
+        "MEM-CE-APPROVAL-001",
+        review_status="flagged_conflict",
+        summary="critical temperature trend high",
+    )
+    review_report = MemoReviewReport(
+        reviewed_memo_refs=[memo.memo_id],
+        conflict_memo_refs=[memo.memo_id],
+    )
+    decision_runtime = ChiefEditorRuntime(
+        instance=InstanceRoot(tmp_path),
+        policy=ChiefEditorPolicy(
+            policy_version="HISYS-CE-POLICY-001.fixture-v0",
+            conflict_severity="high",
+            target_channel="discord:#ops",
+        ),
+        producer_id="chief-editor-test",
+    )
+    decision_report = decision_runtime.decide_run([memo], memo_review_report=review_report, yyyymmdd="20260508")
+    return decision_report.alert_decision_refs[0]
 
 
 

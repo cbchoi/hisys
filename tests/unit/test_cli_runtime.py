@@ -3,7 +3,8 @@
 Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
-HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019.
+HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019,
+HISYS-T-020.
 """
 
 from __future__ import annotations
@@ -529,6 +530,61 @@ def test_decide_alerts_command_requests_approval_for_high_impact_candidate(tmp_p
     assert alert["status"] == "needs_approval"
     assert alert["action_taken"] == "none"
     assert alert["target_channel"] == "discord:#ops"
+
+
+
+def test_review_alert_approval_command_updates_requested_decision(tmp_path: Path, capsys):
+    _prepare_flagged_conflict_memo(tmp_path, capsys)
+    assert (
+        main(
+            [
+                "decide-alerts",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260508",
+                "--conflict-severity",
+                "high",
+                "--target-channel",
+                "discord:#ops",
+            ]
+        )
+        == 0
+    )
+    decision_report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-decision-report.json"
+    alert_id = json.loads(decision_report_path.read_text(encoding="utf-8"))["alert_decision_refs"][0]
+    capsys.readouterr()
+
+    result = main(
+        [
+            "review-alert-approval",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260508",
+            "--alert-id",
+            alert_id,
+            "--outcome",
+            "approved",
+            "--rationale",
+            "fixture approval via CLI",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "alert approval transition" in captured.out
+    assert "previous: requested/needs_approval" in captured.out
+    assert "new: approved/pending" in captured.out
+    decision_path = tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.json"
+    decision = json.loads(decision_path.read_text(encoding="utf-8"))
+    assert decision["approval_status"] == "approved"
+    assert decision["status"] == "pending"
+    assert decision["action_taken"] == "none"
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-approval-transition-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["alert_decision_ref"] == alert_id
+    assert report["new_approval_status"] == "approved"
 
 
 
