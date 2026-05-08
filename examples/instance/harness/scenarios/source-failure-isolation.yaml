@@ -1,0 +1,12 @@
+# Source failure isolation fixture scenario.
+# Traceability: HISYS-T-006, HISYS-T-007.
+scenario_id: SCN-SOURCE-FAILURE-ISOLATION-001
+sources:
+  - SRC-MISSING-001
+  - SRC-HW-MOCK-001
+expected_outputs:
+  skipped_sources:
+    - SRC-MISSING-001
+  raw_observations: 1
+  audit_events_min: 2
+live_network_allowed: false

@@ -1,0 +1,28 @@
+# Initial Hermes preapproved collection scope.
+# Traceability: HISYS-D-016, HISYS-FR-DS-006, HISYS-T-005A.
+scope_id: HERMES-SCOPE-001
+status: experimental
+allowed_source_ids:
+  - SRC-HERMES-TOOL-001
+allowed_collection_modes:
+  - user_input_reference
+  - read_only_search
+  - delegated_read_only_analysis
+allowed_outputs:
+  - runtime-boundary markdown records
+  - raw observation candidates
+  - Hermes collection traces
+  - audit events
+prohibited_actions:
+  - live notification delivery
+  - software trigger execution
+  - public posting
+  - credential collection or storage
+  - login bypass
+  - paywall bypass
+  - CAPTCHA bypass
+  - robots or terms-of-service bypass
+human_approval_required_for:
+  - high_impact_external_actions
+  - public_or_irreversible_actions
+  - software_trigger_actions

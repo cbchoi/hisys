@@ -1,0 +1,9 @@
+# Hardware anomaly fixture scenario.
+# Traceability: HISYS-T-007, HISYS-T-008.
+scenario_id: SCN-HARDWARE-ANOMALY-001
+sources:
+  - SRC-HW-MOCK-001
+expected_outputs:
+  raw_observations: 1
+  audit_events_min: 1
+live_network_allowed: false

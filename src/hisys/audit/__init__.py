@@ -1,4 +1,5 @@
-"""Placeholder for the audit subpackage; not implemented in I0/I1.
+"""Audit persistence helpers."""
 
-Reserved per HISYS-REPO-001 v0.2.1 (repository-structure baseline).
-"""
+from .writer import AuditJsonlWriter, redact_text
+
+__all__ = ["AuditJsonlWriter", "redact_text"]

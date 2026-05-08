@@ -1,4 +1,8 @@
-"""Placeholder for the investigator subpackage; not implemented in I0/I1.
+"""Investigator runtime package.
 
-Reserved per HISYS-REPO-001 v0.2.1 (repository-structure baseline).
+Traceability: HISYS-INST-INV-001, HISYS-FR-INV-001..006.
 """
+
+from .runtime import CollectionReport, InvestigatorRuntime
+
+__all__ = ["CollectionReport", "InvestigatorRuntime"]

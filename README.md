@@ -19,7 +19,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
 - Increment **I3** (Adapter framework) - common DataSource contract,
   fixture-backed hardware/web/agent/Hermes adapters, registry-gated adapter
   runtime, health report, and failure isolation in place.
-- Later increments (I4-I9) are not implemented.
+- Increment **I4 foundation** (Investigator runtime preconditions) - runtime
+  instance path abstraction, YAML config/source-registry loader, JSON/JSONL
+  audit/observation writers, Hermes Markdown boundary writer, Investigator
+  collection skeleton, CI smoke gate, and example runtime instance in place.
+- Later increments (I5-I9) are not implemented; I4 still needs expansion from
+  fixture-backed skeleton to full Investigator workflows.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
 
@@ -34,8 +39,14 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
                    hermes_trace)
       registry/    source registry and web compliance collection gate
       adapters/    base + hardware/web/agent/Hermes mocks and runtime manager
-      investigator/, extraction/, editor/, chief_editor/,
-      integrations/, audit/, config/, health/, cli/   (placeholders)
+      config/      runtime instance root and YAML config/source-registry loader
+      audit/       JSONL audit writer with minimal redaction
+      integrations/ Hermes Markdown boundary writer
+      investigator/ registry-gated collection skeleton
+      extraction/, editor/, chief_editor/, health/, cli/   (placeholders)
+
+    examples/instance/
+      config/, templates/, harness/guidelines/, harness/scenarios/, data/
 
     tests/
       unit/        schema, registry, and adapter unit tests
@@ -47,7 +58,7 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
 
 ## Quick start
 
-The package is pure Python with one runtime dependency (Pydantic v2). Install
+The package is pure Python with Pydantic v2 and PyYAML runtime dependencies. Install
 into a project-local virtualenv (do not install globally):
 
     python3 -m venv .venv

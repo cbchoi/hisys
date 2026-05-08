@@ -1,4 +1,6 @@
-"""Placeholder for the config subpackage; not implemented in I0/I1.
+"""Configuration and runtime instance helpers."""
 
-Reserved per HISYS-REPO-001 v0.2.1 (repository-structure baseline).
-"""
+from .instance import InstanceRoot
+from .loader import load_source_registry
+
+__all__ = ["InstanceRoot", "load_source_registry"]

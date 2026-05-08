@@ -15,11 +15,11 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I1 Schemas and IDs | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 (schema-definitions.md) | Initial Pydantic v2 models for all named records |
 | I2 Source governance | HISYS-IMP-001 Section 3; HISYS-SRC-REG-INIT-001; HISYS-CHECK-WEB-001 | Initial in-memory registry, fixture registry, and web compliance gate |
 | I3 Adapter framework | HISYS-IMP-001 Section 3; HISYS-IDD-001 HISYS-IF-003/HISYS-IF-015; HISYS-FIXTURE-001 | Common DataSource contract, fixture adapters, registry-gated runtime, health report, and failure isolation |
+| I4 Investigator foundation | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-HARNESS-GUIDE-001; HISYS-D-015; HISYS-D-016 | Runtime instance paths, YAML config loader, audit/observation persistence, Hermes boundary writer, Investigator collection skeleton, example instance, and CI smoke gate |
 
-Later increments (I4 investigator,
-I5 extraction, I6 editorial, I7 chief editor, I8 DARS loop, I9 hardening) are
-**not** implemented; only minimal mocks exist to exercise the end-to-end trace
-path required by `HISYS-IMP-001` Section 4 ("Definition of Done for Phase-3").
+I4 is present as a fixture-backed foundation/skeleton. Full Investigator
+workflow coverage remains pending; later increments (I5 extraction, I6 editorial,
+I7 chief editor, I8 DARS loop, I9 hardening) are not implemented yet.
 
 ## Module to controlled-doc map
 
@@ -46,6 +46,12 @@ path required by `HISYS-IMP-001` Section 4 ("Definition of Done for Phase-3").
 | `hisys.adapters.web_news_mock` | HISYS-FIXTURE-001 web-news-rss-permitted, HISYS-T-004 | `tests/unit/test_adapters.py` |
 | `hisys.adapters.agent_system_mock` | HISYS-FIXTURE-001 agent-dars-critique, HISYS-T-005 | `tests/unit/test_adapters.py` |
 | `hisys.adapters.hermes_tool_mock` | HISYS-FIXTURE-001 hermes-tool-hierarchy, HISYS-T-005A | `tests/unit/test_adapters.py`, `tests/integration/test_trace_path.py` |
+| `hisys.config.instance` | HISYS-RUNTIME-DIR-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_instance_config.py` |
+| `hisys.config.loader` | HISYS-FR-SRC-001..005, HISYS-T-001..002 | `tests/unit/test_instance_config.py`, `tests/unit/test_example_instance.py` |
+| `hisys.audit.writer` | HISYS-FR-ADM-002, HISYS-D-015, secret redaction guard | `tests/unit/test_runtime_writers.py` |
+| `hisys.integrations.hermes_boundary` | HISYS-FR-DS-006, HISYS-FR-INV-006, HISYS-DATA-005 | `tests/unit/test_runtime_writers.py` |
+| `hisys.investigator.runtime` | HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-007..008 | `tests/unit/test_investigator_runtime.py` |
+| `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
 
@@ -76,6 +82,13 @@ For each step the test asserts:
 - HISYS-T-003..006: adapter contract covers initialization, health,
   collection, normalization, provenance capture, bounded error records, and
   source failure isolation.
+- HISYS-T-007..008: Investigator foundation collects from registered sources,
+  writes RawObservation JSON records, skips unregistered sources, and appends
+  audit JSONL records in the example runtime instance.
+- HISYS-D-015: I4 persistence baseline is local JSON/JSONL, not a live database
+  or external service.
+- HISYS-D-016: Hermes foundation is collection-only and scoped to preapproved
+  registered sources and Markdown boundary records.
 - HISYS-CON-021: Python 3.11+ runtime baseline.
 - HISYS-NFR-SEC-001..002: only fake non-secret tokens in fixtures.
 - HISYS-DATA-005: Hermes provenance fields are non-optional in the trace

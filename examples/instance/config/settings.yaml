@@ -1,0 +1,7 @@
+# Example Hisys instance settings.
+# Traceability: HISYS-RUNTIME-DIR-001, HISYS-D-015.
+instance_id: HISYS-EXAMPLE-INSTANCE-001
+profile: fixture
+storage_backend: json_jsonl
+collector_id: investigator-example
+no_live_network: true

@@ -1,4 +1,5 @@
-"""Placeholder for the integrations subpackage; not implemented in I0/I1.
+"""External integration helpers."""
 
-Reserved per HISYS-REPO-001 v0.2.1 (repository-structure baseline).
-"""
+from .hermes_boundary import HermesBoundaryWriter
+
+__all__ = ["HermesBoundaryWriter"]

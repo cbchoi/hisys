@@ -21,12 +21,12 @@ classifiers = [
 ]
 dependencies = [
   "pydantic>=2.6,<3",
+  "pyyaml>=6",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8",
-  "pyyaml>=6",
 ]
 
 [project.scripts]

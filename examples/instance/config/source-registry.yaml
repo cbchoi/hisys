@@ -1,0 +1,59 @@
+# Example Hisys runtime source registry.
+# Traceability: HISYS-D-015, HISYS-D-016, HISYS-FR-SRC-001..005.
+sources:
+  - source_id: SRC-HW-MOCK-001
+    source_type: hardware_sensor
+    display_name: Mock calibrated hardware sensor
+    owner: lab-test
+    lifecycle_state: experimental
+    reliability_class: B
+    reliability_evidence:
+      - HISYS-FIXTURE-001
+    access_method: file
+    cadence: P1H
+    rate_limit: 60/min
+    usage_constraints:
+      - test_only
+      - not_production_source
+    retention_rule: P7D
+    producer_id: example-instance
+
+  - source_id: SRC-WEB-RSS-001
+    source_type: web_news
+    display_name: Permitted RSS/API-style fixture
+    owner: research
+    lifecycle_state: experimental
+    reliability_class: B
+    reliability_evidence:
+      - HISYS-CHECK-WEB-001
+      - HISYS-FIXTURE-001
+    access_method: rss
+    cadence: PT1H
+    rate_limit: 6/min
+    usage_constraints:
+      - citation_required
+      - no_full_text_storage
+      - fixture_only
+    retention_rule: P30D
+    compliance_review_ref: WEB-COMPL-SRC-WEB-RSS-001
+    producer_id: example-instance
+
+  - source_id: SRC-HERMES-TOOL-001
+    source_type: hermes_tool
+    display_name: Hermes preapproved tool collection fixture
+    owner: hermes-runtime
+    lifecycle_state: experimental
+    reliability_class: B
+    reliability_evidence:
+      - HISYS-IF-016
+      - HISYS-FIXTURE-001
+    access_method: hermes_tool
+    cadence: PT1H
+    rate_limit: 10/min
+    usage_constraints:
+      - preapproved_scope_only
+      - boundary_record_required
+    retention_rule: P30D
+    delegated_subagent_preapproval_ref: HERMES-PREAPPROVAL-001
+    scope_policy_ref: config/hermes-scope.yaml
+    producer_id: example-instance
