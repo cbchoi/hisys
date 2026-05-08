@@ -1,5 +1,9 @@
-"""CLI entry points (placeholder for I0/I1)."""
+"""Hisys CLI package.
 
-from .main import main
+Traceability: HISYS-PKG-ARCH-001 Section 3.
 
-__all__ = ["main"]
+Keep this package initializer side-effect free so `python -m hisys.cli.main`
+does not import the executable module before runpy executes it.
+"""
+
+__all__: list[str] = []
