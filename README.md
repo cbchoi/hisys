@@ -115,7 +115,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `dars_backend=loopback_placeholder`, `external_call_made=false`,
   `allowed_actions=advisory_only`, and `action_taken=none`, so a future DARS
   adapter can replace the loopback without changing downstream records.
-- Later increments (real DARS adapter, expanded critique feedback, I9 hardening)
+- Increment **I9-A security hardening** (HISYS-T-021 secret/redaction scan
+  baseline) - `hisys.security.secret_scan` and `scripts/scan_secrets.py` scan
+  repository/runtime files for assignment-style secret-like values, skip runtime
+  caches such as `.git`/`.pytest_cache`/`__pycache__`, and report only redacted
+  excerpts so validation output can be shared safely.
+- Later increments (real DARS adapter, expanded critique feedback, remaining I9
+  backup/restore, health status, and release-readiness traceability hardening)
   are not implemented; controlled vault writer workflows remain pending.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
@@ -141,7 +147,7 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
       chief_editor/ fixture-backed alert decision policy/runtime, approval
                     transition stub, and dry-run alert action planning
       agents/     runtime-local DARS advisory handoff/critique harness
-      health/, cli/ runtime entry points / placeholders
+      security/    secret-like value scanner and redacted scan reports
 
     examples/instance/
       config/, templates/, harness/guidelines/, harness/scenarios/, data/
