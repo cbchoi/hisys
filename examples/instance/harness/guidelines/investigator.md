@@ -39,6 +39,11 @@ EvidencePackage artifacts before the memo is synthesized.
    profiles require fundamentals, market trend, competitor, valuation, risk, and
    buy/hold/avoid/needs-more-evidence framing plus a not-financial-advice safety
    note and may dispatch `investment_decision_support`.
+12. If no `--agent` is supplied, verify the selected guideline produces the
+   default controlled evidence-agent plan: research idea discovery ->
+   `formalism_gap_analysis`, investment decision support ->
+   `investment_decision_support`, and general investigation -> no extra agent.
+   Explicit `--agent` values remain authoritative for manual plans.
 
 ## Pass Criteria
 
@@ -62,6 +67,9 @@ EvidencePackage artifacts before the memo is synthesized.
   candidates, evaluation scenarios, and research questions with evidence refs.
 - `investment_decision_support` runs include fundamentals, market/competitor,
   valuation/risk, and needs-more-evidence decision-frame claims with evidence refs.
+- Auto-planned purpose runs create research task/evidence package refs without
+  requiring explicit `--agent` when the purpose is research idea discovery or
+  investment decision support.
 - Investigation memos reference `source_refs`, `observation_refs`, `signal_refs`,
   `research_task_refs`, and `evidence_package_refs` but do not copy raw payload
   content into the memo body.

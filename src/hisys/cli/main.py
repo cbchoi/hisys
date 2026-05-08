@@ -6,7 +6,7 @@ HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
 HISYS-T-012, HISYS-T-013, HISYS-T-014, HISYS-T-015, HISYS-T-016,
 HISYS-T-017, HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021,
 HISYS-T-022, HISYS-T-023, HISYS-T-024, HISYS-T-025, HISYS-T-026,
-HISYS-T-030.
+HISYS-T-030, HISYS-T-031.
 """
 
 from __future__ import annotations
@@ -407,7 +407,7 @@ def _cmd_investigate_memo(
     signals = [_investigation_signal(observation, topic=topic, producer_id=collector_id) for observation in observations]
     for signal in signals:
         _write_investigation_signal(instance, signal, yyyymmdd)
-    requested_agent_types = agent_types or []
+    requested_agent_types = _select_agent_plan(explicit_agent_types=agent_types, guideline=guideline)
     research_tasks = _build_research_tasks(
         requested_agent_types,
         topic=topic,
@@ -451,6 +451,7 @@ def _cmd_investigate_memo(
             "HISYS-T-026",
             "HISYS-T-027",
             "HISYS-T-030",
+            "HISYS-T-031",
         ],
         research_task_refs=[task.task_id for task in research_tasks],
         evidence_package_refs=[package.package_id for package in evidence_packages],
@@ -565,6 +566,21 @@ def _select_guideline_profile(*, topic: str, goal: str, purpose: str = "auto") -
     if any(term in text for term in research_terms):
         return profiles["research_idea_discovery"]
     return profiles["general_investigation"]
+
+
+def _select_agent_plan(*, explicit_agent_types: list[str] | None, guideline: GuidelineProfile) -> list[str]:
+    """Select research agents from explicit CLI args or the purpose guideline.
+
+    Traceability: HISYS-T-031, HISYS-INST-INV-001, HISYS-FR-INV-001..006.
+    """
+
+    if explicit_agent_types:
+        return list(explicit_agent_types)
+    if guideline.profile_id == "research_idea_discovery":
+        return ["formalism_gap_analysis"]
+    if guideline.profile_id == "investment_decision_support":
+        return ["investment_decision_support"]
+    return []
 
 
 def _guideline_profiles() -> dict[str, GuidelineProfile]:

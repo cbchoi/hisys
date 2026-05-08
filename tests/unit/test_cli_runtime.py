@@ -210,8 +210,6 @@ def test_investigate_memo_auto_selects_research_idea_discovery_guideline(tmp_pat
             "Find new research ideas and gaps between existing formalisms.",
             "--perspective",
             "PERSP-OPS-001",
-            "--agent",
-            "formalism_gap_analysis",
         ]
     )
 
@@ -251,8 +249,6 @@ def test_investigate_memo_auto_selects_investment_decision_guideline(tmp_path):
             "Gather trends and company information to decide whether to buy the stock.",
             "--perspective",
             "PERSP-OPS-001",
-            "--agent",
-            "investment_decision_support",
         ]
     )
 
@@ -271,6 +267,39 @@ def test_investigate_memo_auto_selects_investment_decision_guideline(tmp_path):
     assert report["guideline_profile_id"] == "investment_decision_support"
     assert report["agent_ids"] == ["investment-decision-support-agent"]
     assert report["evidence_package_refs"] == ["EPKG-TASK-INV-001-INVEST"]
+
+
+def test_investigate_memo_preserves_explicit_agent_override_for_general_topic(tmp_path: Path):
+    result = main(
+        [
+            "investigate-memo",
+            "--instance",
+            str(tmp_path),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+            "--topic",
+            "hardware overheating risk",
+            "--goal",
+            "Assess whether evidence requires operations attention.",
+            "--perspective",
+            "PERSP-OPS-001",
+            "--agent",
+            "fixture",
+            "--agent",
+            "fixture_contradiction",
+        ]
+    )
+
+    assert result == 0
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["guideline_profile_id"] == "general_investigation"
+    assert report["agent_ids"] == ["fixture-research-agent", "fixture-contradiction-agent"]
+    assert report["evidence_package_refs"] == ["EPKG-TASK-INV-001-FIXTURE", "EPKG-TASK-INV-002-CONTRADICTION"]
 
 
 def test_investigate_memo_dispatches_multiple_fixture_agents(tmp_path: Path, capsys):

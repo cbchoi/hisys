@@ -58,6 +58,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   buy/hold/avoid/needs-more-evidence decision frame; the
   `investment_decision_support` agent returns bounded fixture evidence and records
   that outputs are not financial advice.
+- Increment **HISYS-T-031 Purpose-aware automatic agent planning** -
+  when no `--agent` is supplied, `hisys investigate-memo --purpose auto` now
+  converts the selected guideline into a default agent plan: `research_idea_discovery`
+  dispatches `formalism_gap_analysis`, `investment_decision_support` dispatches
+  `investment_decision_support`, and `general_investigation` dispatches no extra
+  agent. Explicit `--agent` values remain authoritative overrides/additions for
+  controlled manual plans.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
