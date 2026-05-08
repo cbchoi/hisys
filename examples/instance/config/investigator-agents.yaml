@@ -1,0 +1,20 @@
+# Investigator research-agent configuration.
+# Traceability: HISYS-T-027, HISYS-T-028.
+
+selenium_read_only:
+  enabled: false
+  read_only: true
+  max_pages: 5
+  max_depth: 1
+  allowed_domains: []
+  forbidden_actions:
+    - login
+    - post
+    - form_submit
+    - upload
+    - purchase
+    - credential_use
+
+delegated_llm:
+  enabled: false
+  require_evidence_package: true
