@@ -39,6 +39,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `data/research-tasks/<YYYYMMDD>/` and `data/evidence-packages/<YYYYMMDD>/`
   artifacts, and builds one template memo from validated evidence while
   Selenium/browser and delegated LLM agents remain disabled until harnesses pass.
+- Increment **HISYS-T-028 Selenium read-only research harness** - the
+  `SeleniumReadOnlyAgent` remains disabled-by-default, enforces read-only and
+  forbidden-action gates, rejects non-allowed live domains, validates local static
+  HTML fixture extraction into an `EvidencePackage`, records
+  `external_side_effects=false`, and does not start a browser or access the
+  network in this harness stage.
 - Increment **HISYS-T-029 Formalism domain fixture research** -
   `hisys investigate-memo --agent formalism_comparison --agent
   self_organization_mechanism` adds controlled domain fixtures for

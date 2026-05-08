@@ -27,7 +27,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | HISYS-T-030 Purpose-specific Investigator guidelines and evidence agents | HISYS-INST-INV-001; HISYS-FR-INV-001..006; HISYS-FR-MEM-001..005; HISYS-TPL-RESEARCH-SEARCH-001 | Implemented: `investigate-memo --purpose auto` selects `general_investigation`, `research_idea_discovery`, or `investment_decision_support` guideline profiles from topic/goal cues and records the selected `guideline_profile_id` in memo tags/body and the run report; `formalism_gap_analysis` produces explicit DSDEVS/graph-rewriting/ABM gap statements, hybrid novelty candidates, evaluation scenarios, and research questions; `investment_decision_support` produces bounded company fundamentals, market/competitor, valuation/risk, and needs-more-evidence decision-frame claims with a not-financial-advice safety limitation |
 | HISYS-T-031 Purpose-aware automatic agent planning | HISYS-INST-INV-001; HISYS-FR-INV-001..006; HISYS-FR-MEM-001..005; HISYS-TPL-RESEARCH-SEARCH-001 | Implemented: if no explicit `--agent` is supplied, `investigate-memo` converts the selected guideline profile into a default evidence-agent plan: `research_idea_discovery` -> `formalism_gap_analysis`, `investment_decision_support` -> `investment_decision_support`, and `general_investigation` -> no extra agent; explicit `--agent` lists remain authoritative |
 | HISYS-T-032 Configurable Investigator connector registry | HISYS-INST-INV-001; HISYS-FR-INV-001..006; HISYS-FR-MEM-001..005; HISYS-DATA-005; HISYS-TPL-RESEARCH-SEARCH-001 | Implemented: `investigator-agents.yaml` declares global connector safety policy, purpose default/optional agent plans, and disabled optional connector definitions for publisher web search, Claude/Codex read-only evidence extraction, local LLM offline mapping, market/news search, and company filing search; `investigate-memo` resolves the default plan from config and records `agent_plan_source`, `disabled_optional_agent_refs`, and `blocked_agent_refs` in the run report while preventing disabled explicit external connector execution |
-| Planned HISYS-T-028 Selenium read-only research harness | docs/plans/investigator-multi-agent-research.md; HISYS-CON-022..023; HISYS-D-015; HISYS-DATA-002 | Planned: add disabled-by-default Selenium/browser read-only adapter with local static HTML fixture tests, allowed-domain/read-only action gates, screenshot/DOM/hash evidence capture, and no live browsing until harness approval |
+| HISYS-T-028 Selenium read-only research harness | docs/plans/investigator-multi-agent-research.md; HISYS-CON-022..023; HISYS-D-015; HISYS-DATA-002 | Implemented: disabled-by-default `SeleniumReadOnlyAgent` enforces read-only and forbidden-action gates, rejects non-allowed live domains, extracts only local static HTML fixture content into an `EvidencePackage` with hash/path/title evidence, records `external_side_effects=false`, and performs no live browsing or network access |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -42,12 +42,12 @@ CLI override, writes dry-run alert action plans with blocked reasons
 and approved pending send-candidate markers, applies runtime-local approve/reject
 transitions while keeping `action_taken=none`, takes no live alert actions, and
 I8-A/B adds runtime-local advisory DARS handoff loopback artifacts without
-implementing DARS or making live DARS calls. Planned next Investigator work is
-tracked in `docs/plans/investigator-multi-agent-research.md`: HISYS-T-027 adds
-multi-agent fixture research packages and HISYS-T-028 adds a disabled-by-default
-Selenium read-only harness. Full workflow coverage
-remains pending; later increments (real DARS adapter, critique feedback, I9
-hardening) are not implemented yet.
+implementing DARS or making live DARS calls. Investigator multi-agent fixture
+research, the disabled Selenium read-only harness, purpose-specific evidence
+agents, purpose-aware auto-planning, and the configurable connector registry are
+implemented. Full workflow coverage remains pending; later increments (real DARS
+adapter, critique feedback, I9 hardening, and any explicitly approved live
+connector adapter) are not implemented yet.
 
 ## Module to controlled-doc map
 
@@ -158,12 +158,12 @@ For each path the tests assert:
   writes `investigation-memo-report.{json,md}`, and keeps raw payload content out
   of the memo body by preserving only observation, signal, source, payload-ref,
   and payload-hash references.
-- Planned HISYS-T-027: Multi-agent Investigator research introduces explicit
+- HISYS-T-027: Multi-agent Investigator research introduces explicit
   `ResearchTask` and `EvidencePackage` contracts, fixture research agents,
   evidence package validation/merging, and `investigate-memo --agent ...` so
   several subagents can research independently while the Investigator remains
   the only component that builds the final template memo.
-- Planned HISYS-T-028: Selenium/browser research remains disabled by default and
+- HISYS-T-028: Selenium/browser research remains disabled by default and
   is limited to a read-only harness using allowed domains/static local HTML,
   forbidden action gates, DOM/text/hash evidence capture, and
   `external_side_effects=false` package validation before any live browsing can
