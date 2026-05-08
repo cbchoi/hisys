@@ -115,12 +115,12 @@ def _build_parser() -> argparse.ArgumentParser:
     execute.add_argument("--connector-id", default="disabled-fixture-connector", help="disabled fixture connector id")
     dars = sub.add_parser(
         "request-dars-critique",
-        help="create runtime-local advisory DARS handoff and ingest fixture critique",
+        help="record runtime-local advisory DARS handoff loopback placeholder",
     )
     dars.add_argument("--instance", required=True, help="runtime instance root containing connector executions")
     dars.add_argument("--date", required=True, help="YYYYMMDD connector-execution partition")
     dars.add_argument("--source-execution-id", required=True, help="connector execution id used as handoff evidence")
-    dars.add_argument("--critique-text", required=True, help="fixture DARS advisory critique text")
+    dars.add_argument("--critique-text", help="optional fixture critique text; omitted means loopback placeholder until DARS exists")
     dars.add_argument("--producer-id", default="dars-fixture-cli", help="DARS fixture producer id")
     return parser
 
@@ -524,17 +524,27 @@ def _cmd_request_dars_critique(
     producer_id: str,
 ) -> int:
     instance = InstanceRoot(instance_root)
-    report = DarsRuntime(instance=instance).run_fixture_critique(
-        yyyymmdd=yyyymmdd,
-        source_execution_id=source_execution_id,
-        critique_text=critique_text,
-        producer_id=producer_id,
+    report = (
+        DarsRuntime(instance=instance).run_fixture_critique(
+            yyyymmdd=yyyymmdd,
+            source_execution_id=source_execution_id,
+            critique_text=critique_text,
+            producer_id=producer_id,
+        )
+        if critique_text
+        else DarsRuntime(instance=instance).run_loopback_placeholder(
+            yyyymmdd=yyyymmdd,
+            source_execution_id=source_execution_id,
+            producer_id=producer_id,
+        )
     )
     print(f"dars critique: report={instance.root / report.report_ref}")
     print(f"handoffs: {len(report.handoff_refs)}")
     print(f"critiques: {len(report.critique_refs)}")
     print(f"linked_executions: {len(report.linked_execution_refs)}")
     print(f"skipped_executions: {len(report.skipped_execution_refs)}")
+    print("dars_backend: loopback_placeholder")
+    print("external_call_made: false")
     return 0 if report.handoff_refs else 1
 
 

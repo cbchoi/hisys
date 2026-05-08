@@ -1,7 +1,11 @@
-"""Runtime-local DARS advisory critique handoff foundation.
+"""Runtime-local DARS advisory handoff loopback foundation.
+
+DARS is intentionally not implemented here. This module records the handoff
+contract and returns a local loopback placeholder so a future DARS adapter can be
+attached without changing downstream artifact shapes.
 
 Traceability: HISYS-FR-AGT-001..005, HISYS-DARS-CONTRACT-001,
-HISYS-D-015, HISYS-T-023.
+HISYS-D-015, HISYS-T-023, HISYS-T-024.
 """
 
 from __future__ import annotations
@@ -23,11 +27,13 @@ class DarsCritiqueRecord(BaseModel):
     source_execution_ref: str
     target_agent_system: str = "DARS"
     critique_text: str
+    dars_backend: Literal["loopback_placeholder"] = "loopback_placeholder"
+    external_call_made: bool = False
     allowed_actions: Literal["advisory_only"] = "advisory_only"
     action_taken: Literal["none"] = "none"
     status: Literal["received"] = "received"
     producer_id: str
-    policy_refs: list[str] = Field(default_factory=lambda: ["HISYS-FR-AGT-001", "HISYS-FR-AGT-002", "HISYS-FR-AGT-003", "HISYS-T-023"])
+    policy_refs: list[str] = Field(default_factory=lambda: ["HISYS-FR-AGT-001", "HISYS-FR-AGT-002", "HISYS-FR-AGT-003", "HISYS-T-023", "HISYS-T-024"])
 
 
 @dataclass(frozen=True)
@@ -37,14 +43,32 @@ class DarsCritiqueReport:
     critique_refs: list[str] = field(default_factory=list)
     linked_execution_refs: list[str] = field(default_factory=list)
     skipped_execution_refs: list[str] = field(default_factory=list)
-    policy_refs: list[str] = field(default_factory=lambda: ["HISYS-FR-AGT-001", "HISYS-FR-AGT-002", "HISYS-FR-AGT-003", "HISYS-T-023"])
+    policy_refs: list[str] = field(default_factory=lambda: ["HISYS-FR-AGT-001", "HISYS-FR-AGT-002", "HISYS-FR-AGT-003", "HISYS-T-023", "HISYS-T-024"])
 
 
 class DarsRuntime:
-    """Prepare advisory DARS handoffs and ingest fixture critiques locally."""
+    """Record advisory DARS handoff contracts; use loopback until DARS exists."""
 
     def __init__(self, *, instance: InstanceRoot) -> None:
         self.instance = instance
+
+    def run_loopback_placeholder(
+        self,
+        *,
+        yyyymmdd: str,
+        source_execution_id: str,
+        producer_id: str,
+    ) -> DarsCritiqueReport:
+        return self.run_fixture_critique(
+            yyyymmdd=yyyymmdd,
+            source_execution_id=source_execution_id,
+            critique_text=(
+                "DARS is not implemented yet; loopback placeholder returned so "
+                "the handoff contract can be validated and replaced by a future "
+                "DARS adapter without changing downstream artifacts."
+            ),
+            producer_id=producer_id,
+        )
 
     def run_fixture_critique(
         self,
@@ -76,6 +100,8 @@ class DarsRuntime:
             constraints=[
                 "advisory_only",
                 "no live external action",
+                "dars_backend=loopback_placeholder",
+                "external_call_made=false",
                 "do not mutate alert decisions or connector executions",
             ],
             expected_output="advisory critique text and optional improvement notes",
@@ -147,6 +173,8 @@ def _write_critique(instance: InstanceRoot, yyyymmdd: str, critique: DarsCritiqu
             f"- handoff_ref: {critique.handoff_ref}",
             f"- source_execution_ref: {critique.source_execution_ref}",
             f"- allowed_actions: {critique.allowed_actions}",
+            f"- dars_backend: {critique.dars_backend}",
+            f"- external_call_made: {critique.external_call_made}",
             f"- action_taken: {critique.action_taken}",
             "",
             critique.critique_text,

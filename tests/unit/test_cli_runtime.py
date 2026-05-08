@@ -4,7 +4,7 @@ Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
 HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019,
-HISYS-T-020, HISYS-T-021, HISYS-T-022, HISYS-T-023.
+HISYS-T-020, HISYS-T-021, HISYS-T-022, HISYS-T-023, HISYS-T-024.
 """
 
 from __future__ import annotations
@@ -771,6 +771,40 @@ def test_request_dars_critique_command_records_advisory_result(tmp_path: Path, c
     critique = json.loads((tmp_path / "data" / "agent-critiques" / "20260508" / f"{critique_id}.json").read_text(encoding="utf-8"))
     assert critique["handoff_ref"] == handoff_id
     assert critique["source_execution_ref"] == execution_id
+
+
+
+def test_request_dars_critique_command_can_loop_back_without_dars_implementation(tmp_path: Path, capsys):
+    _prepare_flagged_conflict_memo(tmp_path, capsys)
+    assert main([
+        "decide-alerts", "--instance", str(tmp_path), "--date", "20260508",
+        "--conflict-severity", "high", "--target-channel", "discord:#ops",
+    ]) == 0
+    alert_id = json.loads((tmp_path / "reports" / "run-summaries" / "20260508" / "alert-decision-report.json").read_text(encoding="utf-8"))["alert_decision_refs"][0]
+    assert main([
+        "review-alert-approval", "--instance", str(tmp_path), "--date", "20260508",
+        "--alert-id", alert_id, "--outcome", "approved", "--rationale", "fixture loopback dars test",
+    ]) == 0
+    assert main(["plan-alert-actions", "--instance", str(tmp_path), "--date", "20260508"]) == 0
+    assert main(["execute-alert-actions", "--instance", str(tmp_path), "--date", "20260508"]) == 0
+    exec_report = json.loads((tmp_path / "reports" / "run-summaries" / "20260508" / "alert-connector-execution-report.json").read_text(encoding="utf-8"))
+    execution_id = exec_report["execution_refs"][0]
+    capsys.readouterr()
+
+    result = main([
+        "request-dars-critique", "--instance", str(tmp_path), "--date", "20260508",
+        "--source-execution-id", execution_id,
+    ])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "dars_backend: loopback_placeholder" in captured.out
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260508" / "dars-critique-report.json").read_text(encoding="utf-8"))
+    critique_id = report["critique_refs"][0]
+    critique = json.loads((tmp_path / "data" / "agent-critiques" / "20260508" / f"{critique_id}.json").read_text(encoding="utf-8"))
+    assert critique["dars_backend"] == "loopback_placeholder"
+    assert critique["external_call_made"] is False
+    assert critique["action_taken"] == "none"
 
 
 

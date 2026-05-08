@@ -20,7 +20,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I5 Extraction foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 5; HISYS-FR-EXT-001..005 | Fixture-backed `RawObservation` -> `ExtractedSignal` extractor, local signal JSON persistence, and `hisys extract` CLI report path |
 | I6 Editorial foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Sections 6-7; HISYS-FR-PER-001..004; HISYS-FR-MEM-001..005 | Fixture-backed active perspective application, `ZettelMemo` draft JSON/Markdown persistence, `hisys draft-memo` CLI report path, and `hisys review-memos` duplicate/conflict flagging report path |
 | I7-A/B/C/D/E/F/G Chief Editor alert decision, suppression, approval-gate, dry-run action-plan, approval-transition, send-candidate, and disabled-connector foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 8; HISYS-FR-CE-001..006; HISYS-CE-POLICY-001; HISYS-FR-AGT-004 | Fixture-backed Chief Editor policy reads runtime-local memo review outputs, persists `AlertDecisionRecord` JSON/Markdown decisions, records duplicate non-escalation decisions, suppresses same-date repeated `suppression_key` alert candidates, requests approval for high/critical or non-local target candidates, writes `alert-decision-report.{json,md}`, applies runtime-local approve/reject transitions with `alert-approval-transition-report.{json,md}`, writes dry-run `alert-action-plan-report.{json,md}` with approved pending decisions marked as `would_send=true` candidates while live delivery remains disabled, writes disabled connector execution records/reports with `execution_status=blocked`, and exposes `hisys decide-alerts`/`hisys review-alert-approval`/`hisys plan-alert-actions`/`hisys execute-alert-actions` without live alert sending |
-| I8-A DARS advisory handoff loop foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 9; HISYS-FR-AGT-001..005; HISYS-DARS-CONTRACT-001 | Runtime-local `hisys request-dars-critique` creates advisory-only `AgentHandoffPackage` JSON/Markdown records linked to disabled connector executions, ingests fixture DARS critique JSON/Markdown records, writes `dars-critique-report.{json,md}`, and performs no live DARS call or external action |
+| I8-A/B DARS advisory handoff loopback contract | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 9; HISYS-FR-AGT-001..005; HISYS-DARS-CONTRACT-001 | Runtime-local `hisys request-dars-critique` creates advisory-only `AgentHandoffPackage` JSON/Markdown records linked to disabled connector executions and returns loopback placeholder critique records by default because DARS is not implemented yet; artifacts record `dars_backend=loopback_placeholder`, `external_call_made=false`, `allowed_actions=advisory_only`, `action_taken=none`, and no live DARS call or external action occurs |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -32,10 +32,10 @@ candidates by `suppression_key`, requests approval for high/critical or non-loca
 target alert candidates, writes dry-run alert action plans with blocked reasons
 and approved pending send-candidate markers, applies runtime-local approve/reject
 transitions while keeping `action_taken=none`, takes no live alert actions, and
-I8-A adds runtime-local advisory DARS handoff/critique artifacts without live
-DARS calls. Full workflow coverage
-remains pending; later increments (I7 live connector adapters after harness
-approval; I8 DARS loop; I9 hardening) are not implemented yet.
+I8-A/B adds runtime-local advisory DARS handoff loopback artifacts without
+implementing DARS or making live DARS calls. Full workflow coverage
+remains pending; later increments (real DARS adapter, critique feedback, I9
+hardening) are not implemented yet.
 
 ## Module to controlled-doc map
 
@@ -76,8 +76,8 @@ approval; I8 DARS loop; I9 hardening) are not implemented yet.
 | `hisys.chief_editor.action_plan` | HISYS-FR-CE-001..006, HISYS-D-015, HISYS-T-019, HISYS-T-021 | `tests/unit/test_chief_editor_runtime.py` |
 | `hisys.chief_editor.approval` | HISYS-FR-CE-006, HISYS-D-015, HISYS-T-020 | `tests/unit/test_chief_editor_runtime.py` |
 | `hisys.chief_editor.connector` | HISYS-FR-CE-006, HISYS-FR-AGT-004, HISYS-D-015, HISYS-T-022 | `tests/unit/test_alert_connector_runtime.py` |
-| `hisys.agents.dars` | HISYS-FR-AGT-001..005, HISYS-DARS-CONTRACT-001, HISYS-D-015, HISYS-T-023 | `tests/unit/test_dars_runtime.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..023 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
+| `hisys.agents.dars` | HISYS-FR-AGT-001..005, HISYS-DARS-CONTRACT-001, HISYS-D-015, HISYS-T-023..024 | `tests/unit/test_dars_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..024 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
@@ -155,11 +155,14 @@ For each path the tests assert:
   `execution_status=blocked`, `live_delivery_permitted=false`, and
   `action_taken=none`, and performs no live alert sends or external connector
   actions.
-- HISYS-T-023: I8-A DARS foundation creates runtime-local advisory
+- HISYS-T-023..024: I8-A/B DARS foundation creates runtime-local advisory
   `AgentHandoffPackage` JSON/Markdown artifacts from disabled connector
-  execution evidence, ingests fixture DARS critique JSON/Markdown records,
-  persists `dars-critique-report.{json,md}`, keeps `allowed_actions=advisory_only`
-  and `action_taken=none`, and performs no live DARS or external action.
+  execution evidence and returns loopback placeholder critique JSON/Markdown
+  records because DARS is intentionally not implemented yet. The contract
+  records `dars_backend=loopback_placeholder`, `external_call_made=false`,
+  `allowed_actions=advisory_only`, and `action_taken=none`, persists
+  `dars-critique-report.{json,md}`, and is shaped so a future DARS adapter can
+  replace the loopback without changing downstream artifacts.
 - HISYS-D-015: I4 persistence baseline is local JSON/JSONL, not a live database
   or external service.
 - HISYS-D-016: Hermes foundation is collection-only and scoped to preapproved
