@@ -1,7 +1,7 @@
 # Audit and Traceability Harness Guideline
 
 Traceability: HISYS-FR-ADM-002, HISYS-FR-ADM-004, HISYS-T-008,
-HISYS-T-021, HISYS-T-023, HISYS-T-024.
+HISYS-T-021, HISYS-T-023, HISYS-T-024, HISYS-CON-*.
 
 ## Procedure
 
@@ -22,6 +22,9 @@ HISYS-T-021, HISYS-T-023, HISYS-T-024.
 8. Check operator health status locally before live operation; health checks must
    report missing runtime directories and disabled/loopback connector posture
    without probing external services.
+9. Produce a release-readiness evidence report that names quality-gate evidence,
+   HISYS-T-024 trace path refs, known gaps, and whether the package is ready for
+   human review or must continue hardening.
 
 ## Pass Criteria
 
@@ -38,3 +41,6 @@ HISYS-T-021, HISYS-T-023, HISYS-T-024.
 - Health status reports show `ok` only when required runtime directories exist;
   disabled alert delivery and DARS loopback status are reported as safe connector
   posture rather than live external availability.
+- Release-readiness reports include required quality gates, HISYS-T-024 trace
+  path refs, known gaps, and an explicit human-review-ready vs continue-hardening
+  decision.

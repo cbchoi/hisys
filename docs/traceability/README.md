@@ -25,6 +25,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I9-A Secret/redaction scan baseline | HISYS-IMP-001 Section 3; HISYS-T-021; HISYS-NFR-SEC-001..002; HISYS-FR-ADM-001; HISYS-R-008 | `hisys.security.secret_scan` and `scripts/scan_secrets.py` scan repository/runtime text files for assignment-style secret-like values, skip runtime caches, and emit redacted reports only so quality-gate output does not leak matched values |
 | I9-B Backup manifest and restore dry-run baseline | HISYS-IMP-001 Section 3; HISYS-T-023; HISYS-FR-ADM-003; HISYS-DATA-001..004 | `hisys.operations.backup` creates runtime-local zip backups plus SHA-256 manifests for controlled config/templates/harness/data/runtime-boundary/report files, excludes local-only secrets/tmp/cache/logs/backups, and verifies archive members through restore dry-run reports without writing restored files |
 | I9-C Operator health status baseline | HISYS-IMP-001 Section 3; HISYS-FR-ADM-004; HISYS-T-006; HISYS-T-020; HISYS-T-023; HISYS-FR-AGT-004; HISYS-DARS-CONTRACT-001 | `hisys.operations.health` reports required runtime-directory readiness and disabled/loopback connector status without live external probes or side effects |
+| I9-D Release-readiness evidence baseline | HISYS-IMP-001 Section 4; HISYS-T-024; HISYS-FR-ADM-001..004; HISYS-DATA-001..005; HISYS-CON-* | `hisys.operations.release_readiness` summarizes required quality gates, HISYS-T-024 trace-path evidence, known gaps, and the human-review/continue-hardening release decision without running live connectors |
 | HISYS-T-027 Investigator multi-agent fixture research | docs/plans/investigator-multi-agent-research.md; HISYS-INST-INV-001; HISYS-FR-INV-001..006; HISYS-FR-MEM-001..005; HISYS-TPL-RESEARCH-SEARCH-001 | Implemented: `ResearchTask`, `EvidencePackage`, fixture research agents, evidence gate/merger, and `investigate-memo --agent ...` orchestration let multiple deterministic agents produce validated evidence packages before one template-based memo is built |
 | HISYS-T-029 Formalism domain fixture research | HISYS-INST-INV-001; HISYS-FR-INV-001..006; HISYS-FR-MEM-001..005; HISYS-TPL-RESEARCH-SEARCH-001 | Implemented: `formalism_comparison` and `self_organization_mechanism` research agents produce domain-specific `EvidencePackage` claims about Dynamic Structure DEVS, graph rewriting, agent-based modeling, assessment criteria, selection heuristics, expressiveness/simulation/verification tradeoffs, self-organization mechanisms, and open questions for simulation semantics/proof/topology-change requirements |
 | HISYS-T-030 Purpose-specific Investigator guidelines and evidence agents | HISYS-INST-INV-001; HISYS-FR-INV-001..006; HISYS-FR-MEM-001..005; HISYS-TPL-RESEARCH-SEARCH-001 | Implemented: `investigate-memo --purpose auto` selects `general_investigation`, `research_idea_discovery`, or `investment_decision_support` guideline profiles from topic/goal cues and records the selected `guideline_profile_id` in memo tags/body and the run report; `formalism_gap_analysis` produces explicit DSDEVS/graph-rewriting/ABM gap statements, hybrid novelty candidates, evaluation scenarios, and research questions; `investment_decision_support` produces bounded company fundamentals, market/competitor, valuation/risk, and needs-more-evidence decision-frame claims with a not-financial-advice safety limitation |
@@ -50,11 +51,12 @@ research, the disabled Selenium read-only harness, purpose-specific evidence
 agents, purpose-aware auto-planning, and the configurable connector registry are
 implemented. I9-A adds a redacted secret-like value scanner for HISYS-T-021
 quality gates, I9-B adds backup manifest plus restore dry-run verification for
-HISYS-T-023, and I9-C adds local operator health status for required runtime
-directories and disabled/loopback connector posture. Full workflow coverage
-remains pending; later increments (real DARS adapter, critique feedback,
-remaining I9 release-readiness traceability hardening, and any explicitly
-approved live connector adapter) are not implemented yet.
+HISYS-T-023, I9-C adds local operator health status for required runtime
+directories and disabled/loopback connector posture, and I9-D adds
+release-readiness evidence summaries for HISYS-T-024 trace path and gate status.
+Full workflow coverage remains pending; later increments (real DARS adapter,
+critique feedback, and any explicitly approved live connector adapter) are not
+implemented yet.
 
 ## Module to controlled-doc map
 
@@ -99,6 +101,7 @@ approved live connector adapter) are not implemented yet.
 | `hisys.agents.dars` | HISYS-FR-AGT-001..005, HISYS-DARS-CONTRACT-001, HISYS-D-015, HISYS-T-023..024 | `tests/unit/test_dars_runtime.py` |
 | `hisys.operations.backup` | HISYS-T-023, HISYS-FR-ADM-003, HISYS-DATA-001..004 | `tests/unit/test_backup_restore.py` |
 | `hisys.operations.health` | HISYS-FR-ADM-004, HISYS-T-006, HISYS-T-020, HISYS-T-023, HISYS-FR-AGT-004, HISYS-DARS-CONTRACT-001 | `tests/unit/test_health_status.py` |
+| `hisys.operations.release_readiness` | HISYS-T-024, HISYS-FR-ADM-001..004, HISYS-DATA-001..005, HISYS-CON-* | `tests/unit/test_release_readiness.py` |
 | `hisys.security.secret_scan` | HISYS-T-021, HISYS-NFR-SEC-001..002, HISYS-FR-ADM-001, HISYS-R-008 | `tests/unit/test_secret_scan.py` |
 | `scripts/scan_secrets.py` | HISYS-T-021 quality-gate script | `tests/unit/test_secret_scan.py` |
 | `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..026 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
