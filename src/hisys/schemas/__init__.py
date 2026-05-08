@@ -7,6 +7,7 @@ the same trace machine-readable for ``scripts/validate_traceability.py``.
 
 from .base import BaseRecord, SCHEMA_VERSION
 from .source import SourceRegistryEntry
+from .compliance import WebComplianceReview
 from .observation import RawObservation, ProvenanceBundle, DataQuality
 from .signal import ExtractedSignal
 from .perspective import PerspectiveProfile
@@ -20,6 +21,7 @@ __all__ = [
     "BaseRecord",
     "SCHEMA_VERSION",
     "SourceRegistryEntry",
+    "WebComplianceReview",
     "RawObservation",
     "ProvenanceBundle",
     "DataQuality",

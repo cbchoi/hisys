@@ -14,7 +14,9 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
 
 - Increment **I0** (Repository skeleton) - in place.
 - Increment **I1** (Schemas + IDs) - initial schema modules and tests in place.
-- Later increments (I2-I9) are not implemented.
+- Increment **I2** (Source governance) - initial in-memory source registry,
+  fixture registry, and web compliance gate in place.
+- Later increments (I3-I9) are not implemented.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
 
@@ -25,14 +27,15 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
     src/hisys/
       core/        IDs, time, errors, result types
       schemas/     Pydantic v2 records (source, observation, signal,
-                   perspective, memo, alert, handoff, audit, hermes_trace)
-      registry/    (placeholder)
+                   compliance, perspective, memo, alert, handoff, audit,
+                   hermes_trace)
+      registry/    source registry and web compliance collection gate
       adapters/    base + hardware/web/agent/Hermes mocks
       investigator/, extraction/, editor/, chief_editor/,
       integrations/, audit/, config/, health/, cli/   (placeholders)
 
     tests/
-      unit/        schema and adapter unit tests
+      unit/        schema, registry, and adapter unit tests
       integration/ end-to-end trace path test
       fixtures/    declarative fixture data
 
@@ -59,6 +62,8 @@ into a project-local virtualenv (do not install globally):
   delegated task / tool invocation IDs, prompt/query and output references,
   Markdown boundary record path, preapproved scope, and approval state, as
   required by `HISYS-IDD-001` HISYS-IF-016 and `HISYS-SCHEMA-001` Section 10.
+- Source collection is registry-gated. Web/news sources require controlled
+  compliance review metadata before collection.
 - No live network calls; adapters are mocks fed from local fixtures.
 - No credentials or secrets are committed. Fixture tokens are explicitly fake.
 

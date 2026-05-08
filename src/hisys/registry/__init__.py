@@ -1,4 +1,21 @@
-"""Placeholder for the registry subpackage; not implemented in I0/I1.
+"""Source registry governance for I2.
 
-Reserved per HISYS-REPO-001 v0.2.1 (repository-structure baseline).
+Traceability: HISYS-FR-SRC-001..005, HISYS-NFR-SEC-003,
+HISYS-NFR-SEC-005, HISYS-T-001, HISYS-T-002.
 """
+
+from .source_registry import (
+    SourceBlockedError,
+    SourceNotRegisteredError,
+    SourceRegistry,
+    SourceRegistryError,
+    build_initial_fixture_registry,
+)
+
+__all__ = [
+    "SourceRegistry",
+    "SourceRegistryError",
+    "SourceNotRegisteredError",
+    "SourceBlockedError",
+    "build_initial_fixture_registry",
+]
