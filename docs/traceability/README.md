@@ -47,18 +47,18 @@ hardening) are not implemented yet.
 | `hisys.adapters.hardware_mock` | HISYS-FIXTURE-001 hardware-mock-temperature, HISYS-T-003 | `tests/unit/test_adapters.py` |
 | `hisys.adapters.web_news_mock` | HISYS-FIXTURE-001 web-news-rss-permitted, HISYS-T-004 | `tests/unit/test_adapters.py` |
 | `hisys.adapters.agent_system_mock` | HISYS-FIXTURE-001 agent-dars-critique, HISYS-T-005 | `tests/unit/test_adapters.py` |
-| `hisys.adapters.hermes_tool_mock` | HISYS-FIXTURE-001 hermes-tool-hierarchy, HISYS-T-005A | `tests/unit/test_adapters.py`, `tests/integration/test_trace_path.py` |
+| `hisys.adapters.hermes_tool_mock` | HISYS-FIXTURE-001 hermes-tool-hierarchy, HISYS-T-005A | `tests/unit/test_adapters.py`, `tests/integration/test_trace_path.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `hisys.config.instance` | HISYS-RUNTIME-DIR-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_instance_config.py` |
 | `hisys.config.loader` | HISYS-FR-SRC-001..005, HISYS-T-001..002 | `tests/unit/test_instance_config.py`, `tests/unit/test_example_instance.py` |
 | `hisys.audit.writer` | HISYS-FR-ADM-002, HISYS-D-015, secret redaction guard | `tests/unit/test_runtime_writers.py` |
 | `hisys.integrations.hermes_boundary` | HISYS-FR-DS-006, HISYS-FR-INV-006, HISYS-DATA-005 | `tests/unit/test_runtime_writers.py` |
 | `hisys.investigator.runtime` | HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-007..008 | `tests/unit/test_investigator_runtime.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..008 | `tests/unit/test_cli_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..008 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
 
-`tests/integration/test_trace_path.py` exercises the path required by
+`tests/integration/test_trace_path.py` exercises the schema-level path required by
 `HISYS-IMP-001` Section 4 and `HISYS-T-024`:
 
     SourceRegistryEntry
@@ -68,7 +68,17 @@ hardening) are not implemented yet.
       -> AlertDecisionRecord
       -> AuditEvent
 
-For each step the test asserts:
+`tests/integration/test_cli_hermes_runtime.py` exercises the runtime CLI path:
+
+    validate-config
+      -> collect SRC-HERMES-TOOL-001
+      -> RawObservation JSON
+      -> HermesCollectionTrace JSON
+      -> Hermes Markdown boundary record
+      -> Audit JSONL
+      -> collection-report JSON/Markdown
+
+For each path the tests assert:
 
 - evidence and interpretation records are linked but distinct;
 - Hermes hierarchical fields (campaign_id, hermes_parent_run_id, user_input_ref,
