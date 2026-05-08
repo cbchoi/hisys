@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 from urllib.parse import urlparse
+import hashlib
+import re
 
 from pydantic import BaseModel, Field
 
-from .research import EvidencePackage, ResearchTask
+from .research import ClaimRecord, EvidenceItem, EvidencePackage, ResearchTask
 
 
 class BrowserAgentSafetyError(ValueError):
@@ -70,7 +72,38 @@ class SeleniumReadOnlyAgent:
             raise BrowserAgentSafetyError(f"browser URL scheme not allowed: {parsed.scheme}")
 
     def _read_static_fixture(self, task: ResearchTask) -> EvidencePackage:
-        raise BrowserAgentSafetyError("static browser fixture extraction is not implemented until HISYS-T-028 Task 7")
+        path = local_file_from_task(task)
+        if not path.exists() or not path.is_file():
+            raise BrowserAgentSafetyError(f"local browser fixture not found: {path}")
+        html = path.read_text(encoding="utf-8")
+        title = _extract_title(html)
+        text = _html_to_text(html)
+        digest = hashlib.sha256(html.encode("utf-8")).hexdigest()
+        evidence = EvidenceItem(
+            evidence_id=f"EV-{task.task_id}-BROWSER-001",
+            task_id=task.task_id,
+            agent_id=self.agent_id,
+            path=str(path),
+            title=title,
+            quoted_text=text[:500],
+            retrieved_at="2026-05-08T00:00:00Z",
+            content_hash=f"sha256:{digest}",
+        )
+        claim = ClaimRecord(
+            claim_id=f"CLAIM-{task.task_id}-BROWSER-001",
+            text=f"Local static browser fixture provides read-only evidence for: {task.question}",
+            confidence=0.75,
+            evidence_refs=[evidence.evidence_id],
+        )
+        return EvidencePackage(
+            package_id=f"EPKG-{task.task_id}-BROWSER",
+            task_id=task.task_id,
+            agent_id=self.agent_id,
+            agent_type="selenium_read_only",
+            claims=[claim],
+            evidence=[evidence],
+            actions_taken=["read_local_static_html"],
+        )
 
 
 def local_file_from_task(task: ResearchTask) -> Path:
@@ -81,3 +114,25 @@ def local_file_from_task(task: ResearchTask) -> Path:
     if parsed.scheme == "file":
         return Path(parsed.path)
     return Path(target)
+
+
+
+def _extract_title(html: str) -> str:
+    match = re.search(r"<title[^>]*>(.*?)</title>", html, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return "Untitled browser evidence"
+    return _collapse_ws(_strip_tags(match.group(1)))
+
+
+def _html_to_text(html: str) -> str:
+    body = re.sub(r"<script.*?</script>", " ", html, flags=re.IGNORECASE | re.DOTALL)
+    body = re.sub(r"<style.*?</style>", " ", body, flags=re.IGNORECASE | re.DOTALL)
+    return _collapse_ws(_strip_tags(body))
+
+
+def _strip_tags(value: str) -> str:
+    return re.sub(r"<[^>]+>", " ", value)
+
+
+def _collapse_ws(value: str) -> str:
+    return " ".join(value.split())
