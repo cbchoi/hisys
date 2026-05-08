@@ -1,13 +1,15 @@
 """Investigator runtime package.
 
 Traceability: HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-027,
-HISYS-T-029.
+HISYS-T-029, HISYS-T-030.
 """
 
 from .agents import (
     FixtureContradictionAgent,
     FixtureResearchAgent,
     FormalismComparisonAgent,
+    FormalismGapAnalysisAgent,
+    InvestmentDecisionSupportAgent,
     ResearchAgent,
     SelfOrganizationMechanismAgent,
     create_research_agent,
@@ -35,6 +37,8 @@ __all__ = [
     "FixtureContradictionAgent",
     "FixtureResearchAgent",
     "FormalismComparisonAgent",
+    "FormalismGapAnalysisAgent",
+    "InvestmentDecisionSupportAgent",
     "InvestigatorRuntime",
     "MergedEvidence",
     "ResearchAgent",

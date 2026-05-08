@@ -14,6 +14,8 @@ from hisys.investigator import (
     FixtureContradictionAgent,
     FixtureResearchAgent,
     FormalismComparisonAgent,
+    FormalismGapAnalysisAgent,
+    InvestmentDecisionSupportAgent,
     SelfOrganizationMechanismAgent,
     ResearchTask,
     create_research_agent,
@@ -183,3 +185,58 @@ def test_self_organization_mechanism_agent_returns_modeling_criteria_and_open_qu
     assert "structural change as first-class state" in claim_text
     assert "Does the target formalism need executable simulation semantics?" in package.open_questions
     assert "Does it need compositional proof or verification support?" in package.open_questions
+
+
+def test_formalism_gap_analysis_agent_returns_gap_and_idea_discovery_evidence():
+    task = ResearchTask(
+        task_id="TASK-GAP-001",
+        agent_type="formalism_gap_analysis",
+        question="Find research gaps for self-organizing system formalisms.",
+        query="formalism gap for self organizing systems",
+        allowed_source_ids=["SRC-FORMALISM-GAP-FIXTURE-001"],
+    )
+
+    package = create_research_agent("formalism_gap_analysis").run(task)
+
+    assert isinstance(create_research_agent("formalism_gap_analysis"), FormalismGapAnalysisAgent)
+    assert package.agent_id == "formalism-gap-analysis-agent"
+    assert package.agent_type == "formalism_gap_analysis"
+    assert package.external_side_effects is False
+    claim_text = "\n".join(claim.text for claim in package.claims)
+    assert "Gap statement" in claim_text
+    assert "DSDEVS" in claim_text
+    assert "graph rewriting" in claim_text
+    assert "agent-based modeling" in claim_text
+    assert "Self-organizing Dynamic Structure DEVS" in claim_text
+    assert "local interaction rules trigger dynamic-structure transitions" in claim_text
+    assert "evaluation scenario" in claim_text
+    assert "hybrid" in claim_text
+    assert all(claim.evidence_refs for claim in package.claims)
+    assert "Can graph rewrite rules be embedded as structural-transition guards in DSDEVS?" in package.open_questions
+
+
+def test_investment_decision_support_agent_returns_bounded_stock_evidence_frame():
+    task = ResearchTask(
+        task_id="TASK-INVEST-001",
+        agent_type="investment_decision_support",
+        question="Assess whether semiconductor company stock evidence supports buy, hold, avoid, or more evidence.",
+        query="semiconductor company stock trend buy decision",
+        allowed_source_ids=["SRC-INVESTMENT-FIXTURE-001"],
+    )
+
+    package = create_research_agent("investment_decision_support").run(task)
+
+    assert isinstance(create_research_agent("investment_decision_support"), InvestmentDecisionSupportAgent)
+    assert package.agent_id == "investment-decision-support-agent"
+    assert package.agent_type == "investment_decision_support"
+    assert package.external_side_effects is False
+    claim_text = "\n".join(claim.text for claim in package.claims)
+    assert "Company fundamentals" in claim_text
+    assert "revenue growth" in claim_text
+    assert "Market trend" in claim_text
+    assert "competitors" in claim_text
+    assert "valuation" in claim_text
+    assert "risk factors" in claim_text
+    assert "Decision frame: needs more evidence" in claim_text
+    assert "not financial advice" in "\n".join(package.limitations)
+    assert "What current valuation multiples and earnings revisions support or contradict the thesis?" in package.open_questions

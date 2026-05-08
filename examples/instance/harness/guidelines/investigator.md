@@ -35,9 +35,10 @@ EvidencePackage artifacts before the memo is synthesized.
    evidence trace, interpretation, agent limitations, and open questions.
 11. For purpose-specific runs, use `--purpose auto` or an explicit purpose
    profile. Research idea discovery profiles require gap/novelty/evaluation
-   framing; investment decision-support profiles require fundamentals, market
-   trend, competitor, valuation, risk, and buy/hold/avoid/needs-more-evidence
-   framing plus a not-financial-advice safety note.
+   framing and may dispatch `formalism_gap_analysis`; investment decision-support
+   profiles require fundamentals, market trend, competitor, valuation, risk, and
+   buy/hold/avoid/needs-more-evidence framing plus a not-financial-advice safety
+   note and may dispatch `investment_decision_support`.
 
 ## Pass Criteria
 
@@ -57,6 +58,10 @@ EvidencePackage artifacts before the memo is synthesized.
 - Purpose-specific guideline runs persist `guideline_profile_id` in the report
   and memo tags/body; auto-selected investment decision-support runs include
   the not-financial-advice safety note and bounded evidence requirements.
+- `formalism_gap_analysis` runs include explicit gap statements, hybrid novelty
+  candidates, evaluation scenarios, and research questions with evidence refs.
+- `investment_decision_support` runs include fundamentals, market/competitor,
+  valuation/risk, and needs-more-evidence decision-frame claims with evidence refs.
 - Investigation memos reference `source_refs`, `observation_refs`, `signal_refs`,
   `research_task_refs`, and `evidence_package_refs` but do not copy raw payload
   content into the memo body.

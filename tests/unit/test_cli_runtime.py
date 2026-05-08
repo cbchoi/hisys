@@ -211,7 +211,7 @@ def test_investigate_memo_auto_selects_research_idea_discovery_guideline(tmp_pat
             "--perspective",
             "PERSP-OPS-001",
             "--agent",
-            "formalism_comparison",
+            "formalism_gap_analysis",
         ]
     )
 
@@ -223,8 +223,12 @@ def test_investigate_memo_auto_selects_research_idea_discovery_guideline(tmp_pat
     assert "Gap statements between competing ideas" in memo_text
     assert "Novelty candidates and synthesis opportunities" in memo_text
     assert "Evaluation scenarios for validating the new idea" in memo_text
+    assert "Self-organizing Dynamic Structure DEVS" in memo_text
+    assert "Can graph rewrite rules be embedded as structural-transition guards in DSDEVS?" in memo_text
     report = json.loads((instance / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json").read_text())
     assert report["guideline_profile_id"] == "research_idea_discovery"
+    assert report["agent_ids"] == ["formalism-gap-analysis-agent"]
+    assert report["evidence_package_refs"] == ["EPKG-TASK-INV-001-GAP"]
     assert "HISYS-T-030" in report["policy_refs"]
 
 
@@ -247,6 +251,8 @@ def test_investigate_memo_auto_selects_investment_decision_guideline(tmp_path):
             "Gather trends and company information to decide whether to buy the stock.",
             "--perspective",
             "PERSP-OPS-001",
+            "--agent",
+            "investment_decision_support",
         ]
     )
 
@@ -258,9 +264,13 @@ def test_investigate_memo_auto_selects_investment_decision_guideline(tmp_path):
     assert "Company fundamentals and financial health" in memo_text
     assert "Market trend, competitors, valuation, and risk factors" in memo_text
     assert "Decision framing: buy, hold, avoid, or needs more evidence" in memo_text
+    assert "Company fundamentals" in memo_text
+    assert "Decision frame: needs more evidence" in memo_text
     assert "not financial advice" in memo_text
     report = json.loads((instance / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json").read_text())
     assert report["guideline_profile_id"] == "investment_decision_support"
+    assert report["agent_ids"] == ["investment-decision-support-agent"]
+    assert report["evidence_package_refs"] == ["EPKG-TASK-INV-001-INVEST"]
 
 
 def test_investigate_memo_dispatches_multiple_fixture_agents(tmp_path: Path, capsys):

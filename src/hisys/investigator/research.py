@@ -1,6 +1,6 @@
 """Investigator multi-agent research evidence contracts.
 
-Traceability: HISYS-T-027, HISYS-T-029, HISYS-INST-INV-001,
+Traceability: HISYS-T-027, HISYS-T-029, HISYS-T-030, HISYS-INST-INV-001,
 HISYS-FR-INV-001..006, HISYS-FR-MEM-001..005, HISYS-D-015,
 HISYS-DATA-002, HISYS-TPL-RESEARCH-SEARCH-001.
 """
@@ -17,6 +17,8 @@ AgentType = Literal[
     "fixture_contradiction",
     "formalism_comparison",
     "self_organization_mechanism",
+    "formalism_gap_analysis",
+    "investment_decision_support",
     "local_pdf",
     "selenium_read_only",
     "delegated_llm",

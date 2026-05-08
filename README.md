@@ -48,13 +48,16 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   tradeoffs, local interaction rules, emergent global structure, and structural change as
   first-class state, plus domain-specific open questions about simulation
   semantics, proof/verification, and topology change representation.
-- Increment **HISYS-T-030 Purpose-specific Investigator guidelines** -
+- Increment **HISYS-T-030 Purpose-specific Investigator guidelines and evidence agents** -
   `hisys investigate-memo --purpose auto` selects a memo guideline profile from
   the requested topic/goal. `research_idea_discovery` requires gap statements,
-  novelty/synthesis opportunities, and evaluation scenarios; `investment_decision_support`
+  novelty/synthesis opportunities, and evaluation scenarios and can dispatch the
+  `formalism_gap_analysis` agent to produce explicit DSDEVS/graph-rewriting/ABM
+  gap statements, hybrid novelty candidates, and evaluation scenarios. `investment_decision_support`
   requires company fundamentals, market/competitor/valuation/risk evidence, and a
-  buy/hold/avoid/needs-more-evidence decision frame while recording that fixture
-  outputs are not financial advice.
+  buy/hold/avoid/needs-more-evidence decision frame; the
+  `investment_decision_support` agent returns bounded fixture evidence and records
+  that outputs are not financial advice.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

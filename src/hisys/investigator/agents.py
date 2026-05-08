@@ -1,6 +1,6 @@
 """Fixture Investigator research agents.
 
-Traceability: HISYS-T-027, HISYS-T-029, HISYS-INST-INV-001,
+Traceability: HISYS-T-027, HISYS-T-029, HISYS-T-030, HISYS-INST-INV-001,
 HISYS-FR-INV-001..006, HISYS-FR-MEM-001..005, HISYS-D-015,
 HISYS-DATA-002.
 """
@@ -254,6 +254,159 @@ class SelfOrganizationMechanismAgent:
         )
 
 
+class FormalismGapAnalysisAgent:
+    """Purpose fixture agent for research gap and idea discovery memos."""
+
+    agent_id = "formalism-gap-analysis-agent"
+    agent_type = "formalism_gap_analysis"
+
+    def run(self, task: ResearchTask) -> EvidencePackage:
+        evidence = EvidenceItem(
+            evidence_id=f"EV-{task.task_id}-GAP-001",
+            task_id=task.task_id,
+            agent_id=self.agent_id,
+            source_id="SRC-FORMALISM-GAP-FIXTURE-001",
+            path="fixture://research/formalisms/formalism-gap-analysis.json",
+            title="Formalism gap analysis for self-organizing systems",
+            quoted_text=(
+                "Gap analysis fixture: DSDEVS provides executable dynamic-structure semantics but "
+                "does not by itself explain how decentralized local interactions generate structural "
+                "transitions. Graph rewriting provides native topology transformations and invariants "
+                "but needs an execution strategy for discrete-event simulation. Agent-based modeling "
+                "captures local emergence but often leaves structural change and verification as "
+                "implementation discipline. Hybrid opportunity: Self-organizing Dynamic Structure DEVS "
+                "where local interaction rules trigger graph-constrained dynamic-structure transitions."
+            ),
+            retrieved_at="2026-05-08T00:00:00Z",
+            content_hash="sha256:formalism-gap-analysis-fixture-v1",
+        )
+        claims = [
+            ClaimRecord(
+                claim_id=f"CLAIM-{task.task_id}-GAP-001",
+                text=(
+                    "Gap statement: DSDEVS supports executable dynamic structure, graph rewriting "
+                    "supports topology transformations, and agent-based modeling supports emergence, "
+                    "but none of the three alone fully combines decentralized local-rule emergence, "
+                    "first-class structural transition semantics, and executable verification-oriented simulation."
+                ),
+                confidence=0.84,
+                evidence_refs=[evidence.evidence_id],
+            ),
+            ClaimRecord(
+                claim_id=f"CLAIM-{task.task_id}-IDEA-001",
+                text=(
+                    "Novelty candidate: Self-organizing Dynamic Structure DEVS, a hybrid formalism in "
+                    "which local interaction rules trigger dynamic-structure transitions constrained by "
+                    "graph rewriting invariants while retaining DEVS-style executable simulation semantics."
+                ),
+                confidence=0.8,
+                evidence_refs=[evidence.evidence_id],
+            ),
+            ClaimRecord(
+                claim_id=f"CLAIM-{task.task_id}-EVAL-001",
+                text=(
+                    "An evaluation scenario should compare whether a hybrid model can reproduce emergent "
+                    "topology adaptation, preserve traceable structural-transition records, and support "
+                    "simulation/proof obligations better than DSDEVS, graph rewriting, or agent-based modeling alone."
+                ),
+                confidence=0.78,
+                evidence_refs=[evidence.evidence_id],
+            ),
+        ]
+        return EvidencePackage(
+            package_id=f"EPKG-{task.task_id}-GAP",
+            task_id=task.task_id,
+            agent_id=self.agent_id,
+            agent_type="formalism_gap_analysis",
+            claims=claims,
+            evidence=[evidence],
+            limitations=[
+                "Gap-analysis fixture is a controlled hypothesis generator, not a live literature review."
+            ],
+            open_questions=[
+                "Can graph rewrite rules be embedded as structural-transition guards in DSDEVS?",
+                "How can local interaction rules trigger dynamic-structure transitions without central orchestration?",
+                "Which benchmark scenario best exposes the gap between emergence, topology change, and verifiability?",
+            ],
+            actions_taken=["formalism_gap_analysis_fixture"],
+        )
+
+
+class InvestmentDecisionSupportAgent:
+    """Purpose fixture agent for bounded investment decision-support evidence."""
+
+    agent_id = "investment-decision-support-agent"
+    agent_type = "investment_decision_support"
+
+    def run(self, task: ResearchTask) -> EvidencePackage:
+        evidence = EvidenceItem(
+            evidence_id=f"EV-{task.task_id}-INVEST-001",
+            task_id=task.task_id,
+            agent_id=self.agent_id,
+            source_id="SRC-INVESTMENT-FIXTURE-001",
+            path="fixture://research/investment/decision-support-frame.json",
+            title="Investment decision-support evidence frame",
+            quoted_text=(
+                "Investment fixture: Company fundamentals require revenue growth, margin trend, cash/debt, "
+                "and earnings-quality evidence. Market trend requires demand-cycle, sector momentum, and "
+                "competitor comparison. Valuation requires multiples, growth expectations, and downside cases. "
+                "Risk factors include cyclicality, customer concentration, regulation, execution risk, and "
+                "valuation compression. Decision frame remains needs more evidence until current, corroborated "
+                "financial filings and market data are available."
+            ),
+            retrieved_at="2026-05-08T00:00:00Z",
+            content_hash="sha256:investment-decision-support-fixture-v1",
+        )
+        claims = [
+            ClaimRecord(
+                claim_id=f"CLAIM-{task.task_id}-FUND-001",
+                text=(
+                    "Company fundamentals should be assessed with revenue growth, margin trend, cash/debt, "
+                    "earnings quality, and whether growth is recurring or cycle-driven."
+                ),
+                confidence=0.76,
+                evidence_refs=[evidence.evidence_id],
+            ),
+            ClaimRecord(
+                claim_id=f"CLAIM-{task.task_id}-MARKET-001",
+                text=(
+                    "Market trend analysis should compare sector demand, competitors, pricing power, and "
+                    "whether the company is gaining or losing share against relevant peers."
+                ),
+                confidence=0.74,
+                evidence_refs=[evidence.evidence_id],
+            ),
+            ClaimRecord(
+                claim_id=f"CLAIM-{task.task_id}-DECISION-001",
+                text=(
+                    "Valuation and risk factors must be checked before action; Decision frame: needs more "
+                    "evidence because the fixture does not include current valuation, filings, price, multiples, "
+                    "risk factors, or analyst revisions."
+                ),
+                confidence=0.72,
+                evidence_refs=[evidence.evidence_id],
+            ),
+        ]
+        return EvidencePackage(
+            package_id=f"EPKG-{task.task_id}-INVEST",
+            task_id=task.task_id,
+            agent_id=self.agent_id,
+            agent_type="investment_decision_support",
+            claims=claims,
+            evidence=[evidence],
+            limitations=[
+                "Investment fixture is not financial advice and does not use live market data.",
+                "A buy/hold/avoid action requires current filings, prices, valuation context, and risk corroboration.",
+            ],
+            open_questions=[
+                "What current valuation multiples and earnings revisions support or contradict the thesis?",
+                "Are revenue growth and margins improving relative to competitors?",
+                "Which risk factor would invalidate a buy thesis first?",
+            ],
+            actions_taken=["investment_decision_support_fixture"],
+        )
+
+
 def create_research_agent(agent_type: str) -> ResearchAgent:
     """Create a governed fixture research agent by type."""
 
@@ -265,4 +418,8 @@ def create_research_agent(agent_type: str) -> ResearchAgent:
         return FormalismComparisonAgent()
     if agent_type == "self_organization_mechanism":
         return SelfOrganizationMechanismAgent()
+    if agent_type == "formalism_gap_analysis":
+        return FormalismGapAnalysisAgent()
+    if agent_type == "investment_decision_support":
+        return InvestmentDecisionSupportAgent()
     raise ValueError(f"Unsupported research agent type: {agent_type}")
