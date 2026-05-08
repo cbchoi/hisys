@@ -7,8 +7,9 @@ HISYS-T-013.
 ## Purpose
 
 Validate that Associate Editor behavior turns extracted interpretation signals
-into atomic Zettelkasten memo drafts while preserving evidence links and keeping
-runtime tests isolated from a live Obsidian vault.
+into atomic Zettelkasten memo drafts, performs fixture duplicate/conflict review,
+preserves evidence links, and keeps runtime tests isolated from a live Obsidian
+vault.
 
 ## Procedure
 
@@ -20,7 +21,10 @@ runtime tests isolated from a live Obsidian vault.
    `data/memo-drafts/<YYYYMMDD>/` inside the runtime instance.
 5. Persist a memo draft report under
    `reports/run-summaries/<YYYYMMDD>/memo-draft-report.{json,md}`.
-6. Do not write to the user's live Obsidian vault in this harness stage.
+6. Run fixture duplicate/conflict review over `data/memo-drafts/<YYYYMMDD>/`.
+7. Persist a memo review report under
+   `reports/run-summaries/<YYYYMMDD>/memo-review-report.{json,md}`.
+8. Do not write to the user's live Obsidian vault in this harness stage.
 
 ## Pass Criteria
 
@@ -30,9 +34,13 @@ runtime tests isolated from a live Obsidian vault.
 - Memo bodies include trace references but do not copy raw payload fields or
   secret-like fixture values.
 - JSON and Markdown outputs are deterministic enough for regression tests.
+- Duplicate memo drafts are flagged as `flagged_duplicate` and included in
+  `memo-review-report.{json,md}`.
+- Fixture high-vs-normal source conflicts are flagged as `flagged_conflict` and
+  included in `memo-review-report.{json,md}`.
 
 ## Non-goals
 
 - Live Obsidian vault writes.
-- Duplicate/conflict adjudication beyond future stub coverage.
+- Semantic duplicate/conflict adjudication beyond deterministic fixture stubs.
 - Chief Editor alert policy or DARS handoff execution.

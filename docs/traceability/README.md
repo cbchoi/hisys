@@ -18,14 +18,14 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I4 Investigator foundation | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-HARNESS-GUIDE-001; HISYS-D-015; HISYS-D-016 | Runtime instance paths, YAML config loader, audit/observation persistence, Hermes boundary writer, Investigator collection skeleton, example instance, and CI smoke gate |
 | I4 CLI glue | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-D-015; HISYS-D-016 | `hisys validate-config`, fixture-backed `hisys collect`, Hermes Markdown boundary record persistence, and JSON/Markdown run summary persistence |
 | I5 Extraction foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 5; HISYS-FR-EXT-001..005 | Fixture-backed `RawObservation` -> `ExtractedSignal` extractor, local signal JSON persistence, and `hisys extract` CLI report path |
-| I6 Editorial foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Sections 6-7; HISYS-FR-PER-001..004; HISYS-FR-MEM-001..005 | Fixture-backed active perspective application, `ZettelMemo` draft JSON/Markdown persistence, and `hisys draft-memo` CLI report path |
+| I6 Editorial foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Sections 6-7; HISYS-FR-PER-001..004; HISYS-FR-MEM-001..005 | Fixture-backed active perspective application, `ZettelMemo` draft JSON/Markdown persistence, `hisys draft-memo` CLI report path, and `hisys review-memos` duplicate/conflict flagging report path |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
-I6 is present as a fixture-backed editorial draft foundation that writes only
-runtime-local memo draft artifacts. Full workflow coverage remains pending;
-later increments (I7 chief editor, I8 DARS loop, I9 hardening) are not
-implemented yet.
+I6 is present as a fixture-backed editorial draft and duplicate/conflict review
+foundation that writes only runtime-local memo draft/report artifacts. Full
+workflow coverage remains pending; later increments (I7 chief editor, I8 DARS
+loop, I9 hardening) are not implemented yet.
 
 ## Module to controlled-doc map
 
@@ -60,8 +60,8 @@ implemented yet.
 | `hisys.extraction.extractor` | HISYS-FR-EXT-001..005, HISYS-DATA-002, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
 | `hisys.extraction.runtime` | HISYS-FR-EXT-001..005, HISYS-D-015, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
 | `hisys.editor.drafter` | HISYS-FR-PER-001..004, HISYS-FR-MEM-001..005, HISYS-DATA-002, HISYS-T-011..012 | `tests/unit/test_editor_runtime.py` |
-| `hisys.editor.runtime` | HISYS-FR-PER-001..004, HISYS-FR-MEM-001..005, HISYS-D-015, HISYS-T-011..012 | `tests/unit/test_editor_runtime.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..012 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
+| `hisys.editor.runtime` | HISYS-FR-PER-001..004, HISYS-FR-MEM-001..005, HISYS-D-015, HISYS-T-011..013 | `tests/unit/test_editor_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..013 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
@@ -118,6 +118,10 @@ For each path the tests assert:
   `ZettelMemo` draft records with source/signal refs, confidence, tags,
   revision/review metadata, avoids raw payload copying, and persists runtime-
   local JSON/Markdown memo drafts plus memo draft reports.
+- HISYS-T-013: Fixture duplicate/conflict review scans runtime-local memo
+  drafts, flags duplicated summaries as `flagged_duplicate`, flags simple
+  high-vs-normal source conflicts as `flagged_conflict`, rewrites reviewed memo
+  JSON/Markdown records, and persists memo review JSON/Markdown reports.
 - HISYS-D-015: I4 persistence baseline is local JSON/JSONL, not a live database
   or external service.
 - HISYS-D-016: Hermes foundation is collection-only and scoped to preapproved

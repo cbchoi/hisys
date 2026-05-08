@@ -35,10 +35,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
 - Increment **I6 foundation** (Editorial pipeline) - fixture-backed Associate
   Editor applies an active `PerspectiveProfile` to extracted signals and writes
   runtime-local `ZettelMemo` draft JSON/Markdown plus memo draft reports via
-  `hisys draft-memo`; it does not write to a live Obsidian vault.
+  `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
+  review over runtime-local memo drafts and flags draft status without writing to
+  a live Obsidian vault.
 - Later increments (I7-I9) are not implemented; I6 still needs expansion from
-  fixture memo drafting to duplicate/conflict review and controlled vault writer
-  workflows.
+  duplicate/conflict review stubs to controlled vault writer workflows.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
 
@@ -58,7 +59,8 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
       integrations/ Hermes Markdown boundary writer
       investigator/ registry-gated collection skeleton
       extraction/  fixture-backed signal extractor and persistence runtime
-      editor/      fixture-backed memo drafter and local draft persistence runtime
+      editor/      fixture-backed memo drafter, local draft persistence, and
+                   duplicate/conflict review runtime
       chief_editor/, health/, cli/   (placeholders / runtime entry points)
 
     examples/instance/
@@ -94,6 +96,7 @@ hisys extract --instance /tmp/hisys-run --date 20260508
 hisys draft-memo --instance /tmp/hisys-run \
   --date 20260508 \
   --perspective PERSP-OPS-001
+hisys review-memos --instance /tmp/hisys-run --date 20260508
 ```
 
 The `collect` command writes local JSON/JSONL runtime records and, for Hermes
@@ -106,8 +109,11 @@ network calls or external side effects. The `extract` command reads only local
 `draft-memo` command reads local signal and observation records, applies the
 fixture active perspective `PERSP-OPS-001`, and writes runtime-local draft
 memos under `data/memo-drafts/<YYYYMMDD>/` plus
-`reports/run-summaries/<YYYYMMDD>/memo-draft-report.{json,md}`; it does not
-write to a live Obsidian vault.
+`reports/run-summaries/<YYYYMMDD>/memo-draft-report.{json,md}`. The
+`review-memos` command reads only runtime-local memo draft JSON, flags fixture
+duplicates/conflicts by updating draft status, and writes
+`reports/run-summaries/<YYYYMMDD>/memo-review-report.{json,md}`; neither command
+writes to a live Obsidian vault.
 
 ## Quality and security constraints
 

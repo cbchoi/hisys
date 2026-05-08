@@ -2,7 +2,7 @@
 
 Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
-HISYS-T-010, HISYS-T-011, HISYS-T-012.
+HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013.
 """
 
 from __future__ import annotations
@@ -186,6 +186,55 @@ def test_draft_memo_command_writes_runtime_local_memo_draft(tmp_path: Path, caps
     markdown = memo_md_path.read_text(encoding="utf-8")
     assert "# Operations perspective" in markdown
     assert "temperature_c" not in markdown
+
+
+def test_review_memos_command_flags_duplicate_runtime_drafts(tmp_path: Path, capsys):
+    collect_result = main(
+        [
+            "collect",
+            "--instance",
+            str(tmp_path),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+        ]
+    )
+    assert collect_result == 0
+    extract_result = main(["extract", "--instance", str(tmp_path), "--date", "20260508"])
+    assert extract_result == 0
+    for _ in range(2):
+        draft_result = main(
+            [
+                "draft-memo",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260508",
+                "--perspective",
+                "PERSP-OPS-001",
+            ]
+        )
+        assert draft_result == 0
+    capsys.readouterr()
+
+    result = main(["review-memos", "--instance", str(tmp_path), "--date", "20260508"])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "memo review run" in captured.out
+    assert "duplicates: 2" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "memo-review-report.json"
+    assert report_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert len(report["reviewed_memo_refs"]) == 2
+    assert len(report["duplicate_memo_refs"]) == 2
+    for memo_id in report["duplicate_memo_refs"]:
+        memo_path = tmp_path / "data" / "memo-drafts" / "20260508" / f"{memo_id}.json"
+        memo = json.loads(memo_path.read_text(encoding="utf-8"))
+        assert memo["review_status"] == "flagged_duplicate"
 
 
 def test_extract_command_rejects_missing_observation_partition(tmp_path: Path, capsys):

@@ -3,7 +3,7 @@
 Traceability: HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001,
 HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
 HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
-HISYS-T-012.
+HISYS-T-012, HISYS-T-013.
 """
 
 from __future__ import annotations
@@ -19,12 +19,12 @@ from .. import __version__
 from ..adapters import AgentSystemMockSource, HardwareMockSource, HermesToolMockSource, WebNewsMockSource
 from ..adapters.hermes_tool_mock import HermesCollectionInputs
 from ..config import InstanceRoot, load_source_registry
-from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport
+from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..investigator import CollectionReport, InvestigatorRuntime
 from ..registry import SourceRegistry
-from ..schemas import ExtractedSignal, PerspectiveProfile, RawObservation, SourceRegistryEntry
+from ..schemas import ExtractedSignal, PerspectiveProfile, RawObservation, SourceRegistryEntry, ZettelMemo
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -61,6 +61,11 @@ def _build_parser() -> argparse.ArgumentParser:
     draft.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
     draft.add_argument("--perspective", required=True, help="PerspectiveProfile ID to apply")
     draft.add_argument("--producer-id", default="associate-editor-cli", help="memo drafting actor id")
+
+    review = sub.add_parser("review-memos", help="run fixture duplicate/conflict review over memo drafts")
+    review.add_argument("--instance", required=True, help="runtime instance root containing memo drafts")
+    review.add_argument("--date", required=True, help="YYYYMMDD memo draft partition")
+    review.add_argument("--producer-id", default="memo-review-cli", help="memo review actor id")
     return parser
 
 
@@ -92,6 +97,12 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             perspective_id=args.perspective,
+            producer_id=args.producer_id,
+        )
+    if args.command == "review-memos":
+        return _cmd_review_memos(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
             producer_id=args.producer_id,
         )
     parser.error(f"unknown command: {args.command}")
@@ -307,6 +318,33 @@ def _format_memo_draft_report_markdown(report: MemoDraftReport) -> str:
             "",
         ]
     )
+
+
+def _cmd_review_memos(*, instance_root: Path, yyyymmdd: str, producer_id: str) -> int:
+    instance = InstanceRoot(instance_root)
+    memos = _load_memo_drafts(instance, yyyymmdd)
+    if not memos:
+        print(f"no memo drafts found for date {yyyymmdd}", file=sys.stderr)
+        return 1
+    runtime = MemoReviewRuntime(instance=instance, producer_id=producer_id)
+    report = runtime.review_run(memos, yyyymmdd=yyyymmdd)
+    report_path = instance.root / "reports" / "run-summaries" / yyyymmdd / "memo-review-report.json"
+    print(f"memo review run: report={report_path}")
+    print(f"reviewed: {len(report.reviewed_memo_refs)}")
+    print(f"duplicates: {len(report.duplicate_memo_refs)}")
+    print(f"conflicts: {len(report.conflict_memo_refs)}")
+    print(f"clean: {len(report.clean_memo_refs)}")
+    return 0
+
+
+def _load_memo_drafts(instance: InstanceRoot, yyyymmdd: str) -> list[ZettelMemo]:
+    directory = instance.root / "data" / "memo-drafts" / yyyymmdd
+    if not directory.exists():
+        return []
+    memos: list[ZettelMemo] = []
+    for path in sorted(directory.glob("MEM-*.json")):
+        memos.append(ZettelMemo.model_validate_json(path.read_text(encoding="utf-8")))
+    return memos
 
 
 def _build_fixture_adapters(
