@@ -3,7 +3,7 @@
 Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
-HISYS-T-015, HISYS-T-016.
+HISYS-T-015, HISYS-T-016, HISYS-T-017.
 """
 
 from __future__ import annotations
@@ -311,6 +311,81 @@ def test_decide_alerts_command_writes_alert_decision_records(tmp_path: Path, cap
     assert alert["memo_refs"] == [memo_id]
     assert alert["trigger_reason"] == "memo_conflict_detected"
     assert alert["action_taken"] == "none"
+
+
+def test_decide_alerts_command_suppresses_repeated_alert_decision(tmp_path: Path, capsys):
+    collect_result = main(
+        [
+            "collect",
+            "--instance",
+            str(tmp_path),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+        ]
+    )
+    assert collect_result == 0
+    assert main(["extract", "--instance", str(tmp_path), "--date", "20260508"]) == 0
+    assert (
+        main(
+            [
+                "draft-memo",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260508",
+                "--perspective",
+                "PERSP-OPS-001",
+            ]
+        )
+        == 0
+    )
+    memo_report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "memo-draft-report.json"
+    memo_id = json.loads(memo_report_path.read_text(encoding="utf-8"))["draft_memo_refs"][0]
+    memo_path = tmp_path / "data" / "memo-drafts" / "20260508" / f"{memo_id}.json"
+    memo = json.loads(memo_path.read_text(encoding="utf-8"))
+    memo["review_status"] = "flagged_conflict"
+    memo["status"] = "flagged_conflict"
+    memo_path.write_text(json.dumps(memo, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    review_report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "memo-review-report.json"
+    review_report_path.write_text(
+        json.dumps(
+            {
+                "reviewed_memo_refs": [memo_id],
+                "duplicate_memo_refs": [],
+                "conflict_memo_refs": [memo_id],
+                "clean_memo_refs": [],
+                "policy_refs": ["HISYS-FR-MEM-004", "HISYS-T-013"],
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    assert main(["decide-alerts", "--instance", str(tmp_path), "--date", "20260508"]) == 0
+    capsys.readouterr()
+
+    result = main(["decide-alerts", "--instance", str(tmp_path), "--date", "20260508"])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "alert_decisions: 0" in captured.out
+    assert "non_escalation_decisions: 1" in captured.out
+    assert "suppressed_memos: 1" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-decision-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["alert_decision_refs"] == []
+    assert report["suppressed_memo_refs"] == [memo_id]
+    suppressed_id = report["non_escalation_decision_refs"][0]
+    decision_path = tmp_path / "data" / "alert-decisions" / "20260508" / f"{suppressed_id}.json"
+    decision = json.loads(decision_path.read_text(encoding="utf-8"))
+    assert decision["trigger_reason"] == "suppression_window_duplicate_alert"
+    assert decision["status"] == "suppressed"
+
 
 
 def test_extract_command_rejects_missing_observation_partition(tmp_path: Path, capsys):

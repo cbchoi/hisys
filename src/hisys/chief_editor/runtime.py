@@ -1,7 +1,7 @@
 """Chief Editor alert decision runtime.
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
-HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016.
+HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017.
 """
 
 from __future__ import annotations
@@ -53,16 +53,33 @@ class ChiefEditorRuntime:
         non_escalation_refs: list[str] = []
         suppressed_refs: list[str] = []
         skipped_refs: list[str] = []
+        existing_suppression_keys = _load_existing_suppression_keys(self.instance, yyyymmdd)
+        current_suppression_keys: set[str] = set()
         for memo_id in memo_review_report.reviewed_memo_refs:
             memo = memo_by_id.get(memo_id)
             if memo is None:
                 skipped_refs.append(memo_id)
                 continue
-            decision = self.policy.decide(memo, producer_id=self.producer_id)
+            candidate = self.policy.decide(memo, producer_id=self.producer_id)
+            if candidate is None:
+                skipped_refs.append(memo_id)
+                continue
+            suppress_repeated = (
+                candidate.status != "suppressed"
+                and candidate.suppression_key is not None
+                and candidate.suppression_key in existing_suppression_keys | current_suppression_keys
+            )
+            decision = self.policy.decide(
+                memo,
+                producer_id=self.producer_id,
+                suppress_repeated_alert=suppress_repeated,
+            )
             if decision is None:
                 skipped_refs.append(memo_id)
                 continue
             decision = decision.model_copy(update={"alert_id": make_id(IdNamespace.ALERT)})
+            if decision.suppression_key is not None:
+                current_suppression_keys.add(decision.suppression_key)
             self._write_decision(decision, yyyymmdd)
             if decision.status == "suppressed":
                 suppressed_refs.extend(decision.memo_refs)
@@ -96,6 +113,18 @@ class ChiefEditorRuntime:
         markdown_path = directory / "alert-decision-report.md"
         markdown_path.write_text(_report_to_markdown(report), encoding="utf-8")
         return json_path
+
+
+def _load_existing_suppression_keys(instance: InstanceRoot, yyyymmdd: str) -> set[str]:
+    directory = instance.root / "data" / "alert-decisions" / yyyymmdd
+    if not directory.exists():
+        return set()
+    keys: set[str] = set()
+    for path in sorted(directory.glob("ALERT-*.json")):
+        decision = AlertDecisionRecord.model_validate_json(path.read_text(encoding="utf-8"))
+        if decision.suppression_key and decision.status != "suppressed":
+            keys.add(decision.suppression_key)
+    return keys
 
 
 def _to_json(record: BaseModel) -> str:

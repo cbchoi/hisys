@@ -38,11 +38,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
   review over runtime-local memo drafts and flags draft status without writing to
   a live Obsidian vault.
-- Increment **I7-A foundation** (Chief Editor alert decisions) - fixture-backed
-  Chief Editor policy reads runtime-local memo review outputs, creates
-  `AlertDecisionRecord` JSON/Markdown records, records duplicate non-escalation
-  decisions, and writes alert decision reports via `hisys decide-alerts` without
-  sending live alerts.
+- Increment **I7-A/B foundation** (Chief Editor alert decisions and suppression)
+  - fixture-backed Chief Editor policy reads runtime-local memo review outputs,
+  creates `AlertDecisionRecord` JSON/Markdown records, records duplicate
+  non-escalation decisions, suppresses repeated alert candidates with the same
+  `suppression_key` in the same run/date, and writes alert decision reports via
+  `hisys decide-alerts` without sending live alerts.
 - Later increments (I7 suppression windows/approval workflow/connectors, I8-I9)
   are not implemented; controlled vault writer workflows remain pending.
 
@@ -121,8 +122,9 @@ memos under `data/memo-drafts/<YYYYMMDD>/` plus
 duplicates/conflicts by updating draft status, and writes
 `reports/run-summaries/<YYYYMMDD>/memo-review-report.{json,md}`. The
 `decide-alerts` command reads runtime-local memo drafts plus the memo review
-report, applies the fixture Chief Editor policy, writes
-`data/alert-decisions/<YYYYMMDD>/` JSON/Markdown decisions and
+report, applies the fixture Chief Editor policy, suppresses repeated alert
+candidates whose `suppression_key` already exists in same-date alert decisions,
+writes `data/alert-decisions/<YYYYMMDD>/` JSON/Markdown decisions and
 `reports/run-summaries/<YYYYMMDD>/alert-decision-report.{json,md}`, and does not
 send live alerts. These commands do not write to a live Obsidian vault or call
 external alert connectors.

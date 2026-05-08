@@ -1,7 +1,7 @@
 """I7 Chief Editor runtime tests.
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
-HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016.
+HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017.
 """
 
 from __future__ import annotations
@@ -86,6 +86,52 @@ def test_chief_editor_runtime_records_suppressed_decision_for_duplicate_memo(tmp
     assert decision["severity"] == "low"
     assert decision["status"] == "suppressed"
     assert decision["action_taken"] == "none"
+
+
+def test_chief_editor_runtime_suppresses_repeated_alert_by_suppression_key(tmp_path: Path):
+    first_memo = _memo_for_decision(
+        "MEM-CE-CONFLICT-001",
+        review_status="flagged_conflict",
+        summary="temperature trend high",
+    )
+    second_memo = _memo_for_decision(
+        "MEM-CE-CONFLICT-002",
+        review_status="flagged_conflict",
+        summary="temperature trend high again",
+    )
+    runtime = ChiefEditorRuntime(
+        instance=InstanceRoot(tmp_path),
+        policy=ChiefEditorPolicy.fixture_default(),
+        producer_id="chief-editor-test",
+    )
+    first_report = MemoReviewReport(
+        reviewed_memo_refs=[first_memo.memo_id],
+        conflict_memo_refs=[first_memo.memo_id],
+    )
+    second_report = MemoReviewReport(
+        reviewed_memo_refs=[second_memo.memo_id],
+        conflict_memo_refs=[second_memo.memo_id],
+    )
+
+    first_decision_report = runtime.decide_run(
+        [first_memo], memo_review_report=first_report, yyyymmdd="20260508"
+    )
+    second_decision_report = runtime.decide_run(
+        [second_memo], memo_review_report=second_report, yyyymmdd="20260508"
+    )
+
+    assert len(first_decision_report.alert_decision_refs) == 1
+    assert second_decision_report.alert_decision_refs == []
+    assert second_decision_report.suppressed_memo_refs == [second_memo.memo_id]
+    assert len(second_decision_report.non_escalation_decision_refs) == 1
+    alert_id = second_decision_report.non_escalation_decision_refs[0]
+    decision_path = tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.json"
+    decision = json.loads(decision_path.read_text(encoding="utf-8"))
+    assert decision["trigger_reason"] == "suppression_window_duplicate_alert"
+    assert decision["status"] == "suppressed"
+    assert decision["action_taken"] == "none"
+    assert decision["suppression_key"] == f"conflict:{second_memo.perspective_id}:{second_memo.signal_refs[0]}"
+
 
 
 def _memo_for_decision(memo_id: str, *, review_status: str, summary: str) -> ZettelMemo:

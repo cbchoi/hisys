@@ -1,7 +1,7 @@
 """Chief Editor policy rules.
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
-HISYS-T-014, HISYS-T-015, HISYS-T-016.
+HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017.
 """
 
 from __future__ import annotations
@@ -24,8 +24,33 @@ class ChiefEditorPolicy:
     def fixture_default(cls) -> "ChiefEditorPolicy":
         return cls(policy_version="HISYS-CE-POLICY-001.fixture-v0")
 
-    def decide(self, memo: ZettelMemo, *, producer_id: str) -> AlertDecisionRecord | None:
+    def decide(
+        self,
+        memo: ZettelMemo,
+        *,
+        producer_id: str,
+        suppress_repeated_alert: bool = False,
+    ) -> AlertDecisionRecord | None:
         if memo.review_status == "flagged_conflict":
+            suppression_key = _suppression_key("conflict", memo)
+            if suppress_repeated_alert:
+                return AlertDecisionRecord(
+                    alert_id=_placeholder_alert_id(),
+                    memo_refs=[memo.memo_id],
+                    signal_refs=list(memo.signal_refs),
+                    policy_version=self.policy_version,
+                    trigger_reason="suppression_window_duplicate_alert",
+                    severity="low",
+                    confidence=memo.confidence,
+                    novelty="repeated_runtime_alert",
+                    approval_status="not_required",
+                    target_channel=None,
+                    action_taken="none",
+                    suppression_key=suppression_key,
+                    follow_up="Suppressed by fixture suppression window; retain audit record only.",
+                    status="suppressed",
+                    producer_id=producer_id,
+                )
             return AlertDecisionRecord(
                 alert_id=_placeholder_alert_id(),
                 memo_refs=[memo.memo_id],
@@ -38,7 +63,7 @@ class ChiefEditorPolicy:
                 approval_status="not_required",
                 target_channel=self.target_channel,
                 action_taken="none",
-                suppression_key=_suppression_key("conflict", memo),
+                suppression_key=suppression_key,
                 follow_up="Chief Editor review required before external escalation.",
                 status="pending",
                 producer_id=producer_id,
