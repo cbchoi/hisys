@@ -14,6 +14,11 @@ HISYS-T-024.
 5. Run `python3 scripts/scan_secrets.py --json <repo-or-runtime-root>` as an
    I9 quality gate when validating release/hardening increments; the report must
    contain only redacted excerpts.
+6. For backup/restore hardening, create a runtime-local backup archive and
+   manifest for controlled config/templates/harness/data/runtime-boundary/report
+   files, excluding local-only secrets/tmp/cache/log/backups directories.
+7. Verify restore readiness with a dry-run report before any restore writes are
+   allowed.
 
 ## Pass Criteria
 
@@ -23,3 +28,7 @@ HISYS-T-024.
 - No raw secret values appear in audit summaries.
 - Secret-scan reports expose only redacted excerpts such as `[REDACTED]` and
   return no findings for the clean product repo/runtime fixture.
+- Backup manifests include SHA-256 hashes for controlled runtime files and do not
+  include local-only `secrets/`, `tmp/`, `cache/`, `logs/`, or `backups/` content.
+- Restore dry-run reports verify archive hashes and list what would be restored
+  without writing target files.
