@@ -22,6 +22,8 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I6 Editorial foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Sections 6-7; HISYS-FR-PER-001..004; HISYS-FR-MEM-001..005 | Fixture-backed active perspective application, `ZettelMemo` draft JSON/Markdown persistence, `hisys draft-memo` CLI report path, and `hisys review-memos` duplicate/conflict flagging report path |
 | I7-A/B/C/D/E/F/G/H Chief Editor alert decision, suppression, approval-gate, dry-run action-plan, approval-transition, send-candidate, disabled-connector, and product-factory foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 8; HISYS-FR-CE-001..006; HISYS-CE-POLICY-001; HISYS-FR-AGT-004 | Fixture-backed Chief Editor policy reads runtime-local memo review outputs, persists `AlertDecisionRecord` JSON/Markdown decisions, records duplicate non-escalation decisions, suppresses same-date repeated `suppression_key` alert candidates, requests approval for high/critical or non-local target candidates, selects `analysis_only` or `alert_delivery_dry_run` products from config/CLI, writes `alert-decision-report.{json,md}`, applies runtime-local approve/reject transitions with `alert-approval-transition-report.{json,md}`, writes dry-run `alert-action-plan-report.{json,md}` with approved pending decisions marked as `would_send=true` candidates while live delivery remains disabled, writes disabled connector execution records/reports with `execution_status=blocked`, and exposes `hisys decide-alerts`/`hisys review-alert-approval`/`hisys plan-alert-actions`/`hisys execute-alert-actions` without live alert sending |
 | I8-A/B DARS advisory handoff loopback contract | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 9; HISYS-FR-AGT-001..005; HISYS-DARS-CONTRACT-001 | Runtime-local `hisys request-dars-critique` creates advisory-only `AgentHandoffPackage` JSON/Markdown records linked to disabled connector executions and returns loopback placeholder critique records by default because DARS is not implemented yet; artifacts record `dars_backend=loopback_placeholder`, `external_call_made=false`, `allowed_actions=advisory_only`, `action_taken=none`, and no live DARS call or external action occurs |
+| Planned HISYS-T-027 Investigator multi-agent fixture research | docs/plans/investigator-multi-agent-research.md; HISYS-INST-INV-001; HISYS-FR-INV-001..006; HISYS-FR-MEM-001..005; HISYS-TPL-RESEARCH-SEARCH-001 | Planned: add `ResearchTask`, `EvidencePackage`, fixture research agents, evidence gate/merger, and `investigate-memo --agent ...` orchestration so multiple agents produce validated evidence packages before one template-based memo is built |
+| Planned HISYS-T-028 Selenium read-only research harness | docs/plans/investigator-multi-agent-research.md; HISYS-CON-022..023; HISYS-D-015; HISYS-DATA-002 | Planned: add disabled-by-default Selenium/browser read-only adapter with local static HTML fixture tests, allowed-domain/read-only action gates, screenshot/DOM/hash evidence capture, and no live browsing until harness approval |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -36,7 +38,10 @@ CLI override, writes dry-run alert action plans with blocked reasons
 and approved pending send-candidate markers, applies runtime-local approve/reject
 transitions while keeping `action_taken=none`, takes no live alert actions, and
 I8-A/B adds runtime-local advisory DARS handoff loopback artifacts without
-implementing DARS or making live DARS calls. Full workflow coverage
+implementing DARS or making live DARS calls. Planned next Investigator work is
+tracked in `docs/plans/investigator-multi-agent-research.md`: HISYS-T-027 adds
+multi-agent fixture research packages and HISYS-T-028 adds a disabled-by-default
+Selenium read-only harness. Full workflow coverage
 remains pending; later increments (real DARS adapter, critique feedback, I9
 hardening) are not implemented yet.
 
@@ -149,6 +154,16 @@ For each path the tests assert:
   writes `investigation-memo-report.{json,md}`, and keeps raw payload content out
   of the memo body by preserving only observation, signal, source, payload-ref,
   and payload-hash references.
+- Planned HISYS-T-027: Multi-agent Investigator research introduces explicit
+  `ResearchTask` and `EvidencePackage` contracts, fixture research agents,
+  evidence package validation/merging, and `investigate-memo --agent ...` so
+  several subagents can research independently while the Investigator remains
+  the only component that builds the final template memo.
+- Planned HISYS-T-028: Selenium/browser research remains disabled by default and
+  is limited to a read-only harness using allowed domains/static local HTML,
+  forbidden action gates, DOM/text/hash evidence capture, and
+  `external_side_effects=false` package validation before any live browsing can
+  be considered.
 - HISYS-T-014..025: Chief Editor foundation reads runtime-local memo review
   reports and reviewed memo drafts, applies the fixture `HISYS-CE-POLICY-001`
   policy through a product factory selected by `config/chief-editor.yaml` or CLI,
