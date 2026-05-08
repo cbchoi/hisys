@@ -1,0 +1,20 @@
+# HISYS-FIXTURE-001 hermes-tool-hierarchy: source registry entry for the
+# Hermes preapproved tool collection used in the I0/I1 trace path test.
+# All values are non-secret; tokens are explicitly fake.
+source_id: SRC-HERMES-TOOL-001
+source_type: hermes_tool
+display_name: Hermes preapproved tool collection
+owner: hermes-runtime
+lifecycle_state: experimental
+reliability_class: C
+access_method: hermes_tool
+cadence: PT1H
+rate_limit: 10/min
+usage_constraints:
+  - preapproved_scope_only
+retention_rule: P30D
+scope_policy_ref: HERMES-SCOPE-001
+delegated_subagent_preapproval_ref: HERMES-PREAPPROVAL-001
+high_impact_external_action_class: none
+producer_id: fixture-hermes
+status: experimental

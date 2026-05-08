@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hisys"
+version = "0.0.1"
+description = "Hisys Hierarchical Investigation System - product code skeleton (I0/I1)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "TBD" }
+authors = [{ name = "SysAI Lab" }]
+keywords = ["iso9001", "investigation", "obsidian", "zettelkasten", "agents"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+]
+dependencies = [
+  "pydantic>=2.6,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "pyyaml>=6",
+]
+
+[project.scripts]
+hisys = "hisys.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["hisys*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+pythonpath = ["src"]
+
+[tool.hisys.traceability]
+requirements_baseline = "HISYS-SRS-001 v0.6.2"
+constraints_baseline = "HISYS-CONSTRAINTS-001 v0.2.1"
+schema_baseline = "HISYS-SCHEMA-001 v0.2.2"
+repo_structure_baseline = "HISYS-REPO-001 v0.2.1"
+implementation_plan = "HISYS-IMP-001 v0.2.1"
+controlled_docs_root = "../../pre-develop/Hisys"
