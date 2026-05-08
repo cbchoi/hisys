@@ -5,7 +5,7 @@ HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
 HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019,
 HISYS-T-020, HISYS-T-021, HISYS-T-022, HISYS-T-023, HISYS-T-024,
-HISYS-T-025, HISYS-T-026.
+HISYS-T-025, HISYS-T-026, HISYS-T-027.
 """
 
 from __future__ import annotations
@@ -134,6 +134,58 @@ def test_investigate_memo_command_researches_topic_and_writes_template_memo(tmp_
     assert "Investigation Memo: hardware overheating risk" in markdown
     assert "## Investigation Findings" in markdown
 
+
+
+
+def test_investigate_memo_dispatches_multiple_fixture_agents(tmp_path: Path, capsys):
+    result = main(
+        [
+            "investigate-memo",
+            "--instance",
+            str(tmp_path),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+            "--topic",
+            "hardware overheating risk",
+            "--goal",
+            "Assess whether evidence requires operations attention.",
+            "--perspective",
+            "PERSP-OPS-001",
+            "--agent",
+            "fixture",
+            "--agent",
+            "fixture_contradiction",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "agents: 2" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert len(report["research_task_refs"]) == 2
+    assert len(report["evidence_package_refs"]) == 2
+    assert report["agent_ids"] == ["fixture-research-agent", "fixture-contradiction-agent"]
+    assert report["open_questions"] == ["Is the observed condition repeated across time or independent sources?"]
+    for task_id in report["research_task_refs"]:
+        assert (tmp_path / "data" / "research-tasks" / "20260508" / f"{task_id}.json").exists()
+    for package_id in report["evidence_package_refs"]:
+        assert (tmp_path / "data" / "evidence-packages" / "20260508" / f"{package_id}.json").exists()
+    memo_id = report["memo_refs"][0]
+    memo = json.loads(
+        (tmp_path / "data" / "investigation-memos" / "20260508" / f"{memo_id}.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert "## Research Agent Evidence" in memo["body"]
+    assert "fixture-research-agent" in memo["body"]
+    assert "fixture-contradiction-agent" in memo["body"]
+    assert "## Agent Limitations" in memo["body"]
+    assert "## Open Questions" in memo["body"]
 
 
 def test_validate_config_accepts_example_instance(capsys):

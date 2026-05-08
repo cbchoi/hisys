@@ -34,7 +34,13 @@ from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
-from ..investigator import CollectionReport, InvestigatorRuntime
+from ..investigator import (
+    CollectionReport,
+    InvestigatorRuntime,
+    ResearchTask,
+    create_research_agent,
+    merge_evidence_packages,
+)
 from ..registry import SourceRegistry
 from ..schemas import ExtractedSignal, PerspectiveProfile, RawObservation, SourceRegistryEntry, ZettelMemo
 
@@ -57,6 +63,11 @@ class InvestigationMemoReport:
     memo_paths: list[str]
     skipped_source_ids: list[str]
     policy_refs: list[str]
+    research_task_refs: list[str] | None = None
+    evidence_package_refs: list[str] | None = None
+    agent_ids: list[str] | None = None
+    limitations: list[str] | None = None
+    open_questions: list[str] | None = None
 
 
 def _record_json(record: object) -> str:
@@ -118,6 +129,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="memo template id; default uses examples/instance/templates/collection/research-topic-search-template.md",
     )
     investigate_memo.add_argument("--collector-id", default="investigator-cli", help="collector actor id")
+    investigate_memo.add_argument(
+        "--agent",
+        dest="agents",
+        action="append",
+        default=[],
+        help="research agent type to dispatch; repeat for multiple agents (fixture, fixture_contradiction)",
+    )
 
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
@@ -215,6 +233,7 @@ def main(argv: list[str] | None = None) -> int:
             perspective_id=args.perspective,
             template_id=args.template_id,
             collector_id=args.collector_id,
+            agent_types=args.agents,
         )
     if args.command == "extract":
         return _cmd_extract(
@@ -332,6 +351,7 @@ def _cmd_investigate_memo(
     perspective_id: str,
     template_id: str,
     collector_id: str,
+    agent_types: list[str] | None = None,
 ) -> int:
     """Run a template-driven Investigator research-to-memo path.
 
@@ -361,6 +381,20 @@ def _cmd_investigate_memo(
     signals = [_investigation_signal(observation, topic=topic, producer_id=collector_id) for observation in observations]
     for signal in signals:
         _write_investigation_signal(instance, signal, yyyymmdd)
+    requested_agent_types = agent_types or []
+    research_tasks = _build_research_tasks(
+        requested_agent_types,
+        topic=topic,
+        goal=goal,
+        source_ids=source_ids,
+    )
+    evidence_packages = []
+    for task in research_tasks:
+        package = create_research_agent(task.agent_type).run(task)
+        evidence_packages.append(package)
+        _write_research_task(instance, task, yyyymmdd)
+        _write_evidence_package(instance, package, yyyymmdd)
+    merged_evidence = merge_evidence_packages(evidence_packages) if evidence_packages else None
     memo = _investigation_memo(
         topic=topic,
         goal=goal,
@@ -369,6 +403,7 @@ def _cmd_investigate_memo(
         observations=observations,
         signals=signals,
         producer_id=collector_id,
+        merged_evidence=merged_evidence,
     )
     memo_paths = _write_investigation_memo(instance, memo, yyyymmdd)
     report = InvestigationMemoReport(
@@ -387,13 +422,20 @@ def _cmd_investigate_memo(
             "HISYS-DATA-002",
             "HISYS-TPL-RESEARCH-SEARCH-001",
             "HISYS-T-026",
+            "HISYS-T-027",
         ],
+        research_task_refs=[task.task_id for task in research_tasks],
+        evidence_package_refs=[package.package_id for package in evidence_packages],
+        agent_ids=merged_evidence.agent_ids if merged_evidence else [],
+        limitations=merged_evidence.limitations if merged_evidence else [],
+        open_questions=merged_evidence.open_questions if merged_evidence else [],
     )
     report_path = _write_investigation_report(instance, report, yyyymmdd)
     print(f"investigation memo run: report={report_path}")
     print(f"sources: {len(report.source_refs)}")
     print(f"observations: {len(report.observation_refs)}")
     print(f"signals: {len(report.signal_refs)}")
+    print(f"agents: {len(report.agent_ids or [])}")
     print(f"memos: {len(report.memo_refs)}")
     print(f"memo: {instance.root / report.memo_paths[0]}")
     return 0
@@ -433,6 +475,7 @@ def _investigation_memo(
     observations: list[RawObservation],
     signals: list[ExtractedSignal],
     producer_id: str,
+    merged_evidence: object | None = None,
 ) -> ZettelMemo:
     source_refs = sorted({obs.source_id for obs in observations})
     signal_refs = [signal.signal_id for signal in signals]
@@ -444,6 +487,7 @@ def _investigation_memo(
         perspective=perspective,
         observations=observations,
         signals=signals,
+        merged_evidence=merged_evidence,
     )
     return ZettelMemo(
         memo_id=make_id(IdNamespace.MEMO),
@@ -483,6 +527,7 @@ def _format_investigation_memo_body(
     perspective: PerspectiveProfile,
     observations: list[RawObservation],
     signals: list[ExtractedSignal],
+    merged_evidence: object | None = None,
 ) -> str:
     query_set = [
         f"{topic} operations evidence",
@@ -502,6 +547,20 @@ def _format_investigation_memo_body(
         f"- signal `{signal.signal_id}` references observations: {', '.join(signal.observation_refs)}"
         for signal in signals
     ]
+    agent_evidence = []
+    agent_limitations = []
+    agent_open_questions = []
+    if merged_evidence is not None:
+        for claim in merged_evidence.claims:  # type: ignore[attr-defined]
+            agent_evidence.append(
+                f"- {claim.text} (claim `{claim.claim_id}`, evidence: {', '.join(claim.evidence_refs)})"
+            )
+        agent_limitations = [f"- {item}" for item in merged_evidence.limitations]  # type: ignore[attr-defined]
+        agent_open_questions = [f"- {item}" for item in merged_evidence.open_questions]  # type: ignore[attr-defined]
+        for evidence in merged_evidence.evidence:  # type: ignore[attr-defined]
+            signal_trace.append(
+                f"- research evidence `{evidence.evidence_id}` by `{evidence.agent_id}` -> `{evidence.title}`"
+            )
     return "\n".join(
         [
             f"# Investigation Memo: {topic}",
@@ -526,6 +585,9 @@ def _format_investigation_memo_body(
             "## Investigation Findings",
             *(findings or ["- No extracted findings."]),
             "",
+            "## Research Agent Evidence",
+            *(agent_evidence or ["- No research agent evidence packages were dispatched in this run."]),
+            "",
             "## Evidence Trace",
             *evidence_trace,
             *signal_trace,
@@ -534,9 +596,14 @@ def _format_investigation_memo_body(
             "- The memo separates evidence from interpretation: RawObservation files keep payload references and hashes, while this memo records the Investigator's template-based judgment.",
             "- The raw payload is not copied into the memo body; downstream reviewers must follow the observation refs for evidence inspection.",
             "",
+            "## Agent Limitations",
+            *(agent_limitations or ["- none"]),
+            "",
             "## Open Questions",
-            "- Should this finding be corroborated with an independent source before Chief Editor escalation?",
-            "- Is this a one-off fixture anomaly or part of a repeated temporal pattern?",
+            *(agent_open_questions or [
+                "- Should this finding be corroborated with an independent source before Chief Editor escalation?",
+                "- Is this a one-off fixture anomaly or part of a repeated temporal pattern?",
+            ]),
             "",
         ]
     )
@@ -547,6 +614,23 @@ def _write_investigation_signal(instance: InstanceRoot, signal: ExtractedSignal,
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{signal.signal_id}.json"
     path.write_text(_record_json(signal), encoding="utf-8")
+    return path
+
+
+def _write_research_task(instance: InstanceRoot, task: ResearchTask, yyyymmdd: str) -> Path:
+    directory = instance.root / "data" / "research-tasks" / yyyymmdd
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{task.task_id}.json"
+    path.write_text(_record_json(task), encoding="utf-8")
+    return path
+
+
+def _write_evidence_package(instance: InstanceRoot, package: object, yyyymmdd: str) -> Path:
+    directory = instance.root / "data" / "evidence-packages" / yyyymmdd
+    directory.mkdir(parents=True, exist_ok=True)
+    package_id = package.package_id  # type: ignore[attr-defined]
+    path = directory / f"{package_id}.json"
+    path.write_text(_record_json(package), encoding="utf-8")
     return path
 
 
@@ -609,6 +693,23 @@ def _format_investigation_report_markdown(report: InvestigationMemoReport) -> st
             "",
         ]
     )
+
+
+def _build_research_tasks(
+    agent_types: list[str], *, topic: str, goal: str, source_ids: list[str]
+) -> list[ResearchTask]:
+    tasks: list[ResearchTask] = []
+    for index, agent_type in enumerate(agent_types, start=1):
+        tasks.append(
+            ResearchTask(
+                task_id=f"TASK-INV-{index:03d}",
+                agent_type=agent_type,  # type: ignore[arg-type]
+                question=goal,
+                query=f"{topic} evidence task {index}",
+                allowed_source_ids=source_ids,
+            )
+        )
+    return tasks
 
 
 def _cmd_extract(*, instance_root: Path, yyyymmdd: str, producer_id: str) -> int:
