@@ -2,7 +2,7 @@
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
 HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018.
+HISYS-T-018, HISYS-T-019.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hisys.chief_editor import ChiefEditorPolicy, ChiefEditorRuntime
+from hisys.chief_editor import AlertActionPlanRuntime, ChiefEditorPolicy, ChiefEditorRuntime
 from hisys.config import InstanceRoot
 from hisys.editor import MemoReviewReport
 from hisys.schemas import ZettelMemo
@@ -167,6 +167,55 @@ def test_chief_editor_runtime_requests_approval_for_high_impact_alert(tmp_path: 
     assert decision["action_taken"] == "none"
     assert decision["target_channel"] == "discord:#ops"
     assert "approval" in decision["follow_up"].lower()
+
+
+
+def test_alert_action_plan_runtime_writes_dry_run_plan_for_approval_request(tmp_path: Path):
+    memo = _memo_for_decision(
+        "MEM-CE-HIGH-PLAN-001",
+        review_status="flagged_conflict",
+        summary="critical temperature trend high",
+    )
+    review_report = MemoReviewReport(
+        reviewed_memo_refs=[memo.memo_id],
+        conflict_memo_refs=[memo.memo_id],
+    )
+    decision_runtime = ChiefEditorRuntime(
+        instance=InstanceRoot(tmp_path),
+        policy=ChiefEditorPolicy(
+            policy_version="HISYS-CE-POLICY-001.fixture-v0",
+            conflict_severity="high",
+            target_channel="discord:#ops",
+        ),
+        producer_id="chief-editor-test",
+    )
+    decision_report = decision_runtime.decide_run([memo], memo_review_report=review_report, yyyymmdd="20260508")
+    alert_id = decision_report.alert_decision_refs[0]
+
+    plan_report = AlertActionPlanRuntime(
+        instance=InstanceRoot(tmp_path),
+        producer_id="action-plan-test",
+    ).plan_run(yyyymmdd="20260508")
+
+    assert plan_report.alert_decision_refs == [alert_id]
+    assert plan_report.action_plan_refs == [f"PLAN-{alert_id[6:]}"]
+    assert plan_report.would_send_refs == []
+    assert plan_report.blocked_refs == [f"PLAN-{alert_id[6:]}"]
+    plan_path = tmp_path / "data" / "alert-action-plans" / "20260508" / f"PLAN-{alert_id[6:]}.json"
+    markdown_path = tmp_path / "data" / "alert-action-plans" / "20260508" / f"PLAN-{alert_id[6:]}.md"
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-action-plan-report.json"
+    assert plan_path.exists()
+    assert markdown_path.exists()
+    assert report_path.exists()
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert plan["alert_decision_ref"] == alert_id
+    assert plan["target_channel"] == "discord:#ops"
+    assert plan["approval_required"] is True
+    assert plan["would_send"] is False
+    assert plan["blocked_reason"] == "approval_required"
+    assert plan["live_delivery_permitted"] is False
+    assert plan["action_taken"] == "none"
+    assert "discord:#ops" in markdown_path.read_text(encoding="utf-8")
 
 
 

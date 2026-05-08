@@ -3,7 +3,8 @@
 Traceability: HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001,
 HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
 HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
-HISYS-T-012, HISYS-T-013, HISYS-T-014, HISYS-T-015, HISYS-T-016.
+HISYS-T-012, HISYS-T-013, HISYS-T-014, HISYS-T-015, HISYS-T-016,
+HISYS-T-017, HISYS-T-018, HISYS-T-019.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from typing import Iterable
 from .. import __version__
 from ..adapters import AgentSystemMockSource, HardwareMockSource, HermesToolMockSource, WebNewsMockSource
 from ..adapters.hermes_tool_mock import HermesCollectionInputs
-from ..chief_editor import ChiefEditorPolicy, ChiefEditorRuntime
+from ..chief_editor import AlertActionPlanRuntime, ChiefEditorPolicy, ChiefEditorRuntime
 from ..config import InstanceRoot, load_source_registry
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -83,6 +84,10 @@ def _build_parser() -> argparse.ArgumentParser:
         default="runtime-local",
         help="dry-run target channel metadata; does not send live alerts",
     )
+    plan = sub.add_parser("plan-alert-actions", help="write fixture dry-run alert action plans")
+    plan.add_argument("--instance", required=True, help="runtime instance root containing alert decisions")
+    plan.add_argument("--date", required=True, help="YYYYMMDD alert decision partition")
+    plan.add_argument("--producer-id", default="alert-action-plan-cli", help="action planner actor id")
     return parser
 
 
@@ -129,6 +134,12 @@ def main(argv: list[str] | None = None) -> int:
             producer_id=args.producer_id,
             conflict_severity=args.conflict_severity,
             target_channel=args.target_channel,
+        )
+    if args.command == "plan-alert-actions":
+        return _cmd_plan_alert_actions(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            producer_id=args.producer_id,
         )
     parser.error(f"unknown command: {args.command}")
     return 2
@@ -410,6 +421,28 @@ def _cmd_decide_alerts(
         print("no alert decisions created", file=sys.stderr)
         return 1
     return 0
+
+
+def _cmd_plan_alert_actions(*, instance_root: Path, yyyymmdd: str, producer_id: str) -> int:
+    instance = InstanceRoot(instance_root)
+    alert_dir = instance.root / "data" / "alert-decisions" / yyyymmdd
+    if not alert_dir.exists() or not list(alert_dir.glob("ALERT-*.json")):
+        print(f"no alert decisions found for date {yyyymmdd}", file=sys.stderr)
+        return 1
+    runtime = AlertActionPlanRuntime(instance=instance, producer_id=producer_id)
+    report = runtime.plan_run(yyyymmdd=yyyymmdd)
+    report_path = instance.root / "reports" / "run-summaries" / yyyymmdd / "alert-action-plan-report.json"
+    print(f"alert action plan run: report={report_path}")
+    print(f"alert_decisions: {len(report.alert_decision_refs)}")
+    print(f"action_plans: {len(report.action_plan_refs)}")
+    print(f"would_send: {len(report.would_send_refs)}")
+    print(f"blocked: {len(report.blocked_refs)}")
+    print(f"skipped_decisions: {len(report.skipped_decision_refs)}")
+    if not report.action_plan_refs:
+        print("no alert action plans created", file=sys.stderr)
+        return 1
+    return 0
+
 
 
 def _load_memo_review_report(instance: InstanceRoot, yyyymmdd: str) -> MemoReviewReport | None:

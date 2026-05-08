@@ -3,7 +3,7 @@
 Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
-HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018.
+HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019.
 """
 
 from __future__ import annotations
@@ -15,6 +15,65 @@ from hisys.cli.main import main
 
 
 EXAMPLE_INSTANCE = Path(__file__).resolve().parents[2] / "examples" / "instance"
+
+
+def _prepare_flagged_conflict_memo(tmp_path: Path, capsys) -> str:
+    assert (
+        main(
+            [
+                "collect",
+                "--instance",
+                str(tmp_path),
+                "--config-from",
+                str(EXAMPLE_INSTANCE),
+                "--source",
+                "SRC-HW-MOCK-001",
+                "--date",
+                "20260508",
+            ]
+        )
+        == 0
+    )
+    assert main(["extract", "--instance", str(tmp_path), "--date", "20260508"]) == 0
+    assert (
+        main(
+            [
+                "draft-memo",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260508",
+                "--perspective",
+                "PERSP-OPS-001",
+            ]
+        )
+        == 0
+    )
+    memo_report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "memo-draft-report.json"
+    memo_id = json.loads(memo_report_path.read_text(encoding="utf-8"))["draft_memo_refs"][0]
+    memo_path = tmp_path / "data" / "memo-drafts" / "20260508" / f"{memo_id}.json"
+    memo = json.loads(memo_path.read_text(encoding="utf-8"))
+    memo["review_status"] = "flagged_conflict"
+    memo["status"] = "flagged_conflict"
+    memo_path.write_text(json.dumps(memo, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    review_report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "memo-review-report.json"
+    review_report_path.write_text(
+        json.dumps(
+            {
+                "reviewed_memo_refs": [memo_id],
+                "duplicate_memo_refs": [],
+                "conflict_memo_refs": [memo_id],
+                "clean_memo_refs": [],
+                "policy_refs": ["HISYS-FR-MEM-004", "HISYS-T-013"],
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    return memo_id
 
 
 def test_validate_config_accepts_example_instance(capsys):
@@ -470,6 +529,50 @@ def test_decide_alerts_command_requests_approval_for_high_impact_candidate(tmp_p
     assert alert["status"] == "needs_approval"
     assert alert["action_taken"] == "none"
     assert alert["target_channel"] == "discord:#ops"
+
+
+
+def test_plan_alert_actions_command_writes_dry_run_action_plan(tmp_path: Path, capsys):
+    _prepare_flagged_conflict_memo(tmp_path, capsys)
+    assert (
+        main(
+            [
+                "decide-alerts",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260508",
+                "--conflict-severity",
+                "high",
+                "--target-channel",
+                "discord:#ops",
+            ]
+        )
+        == 0
+    )
+    decision_report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-decision-report.json"
+    alert_id = json.loads(decision_report_path.read_text(encoding="utf-8"))["alert_decision_refs"][0]
+    capsys.readouterr()
+
+    result = main(["plan-alert-actions", "--instance", str(tmp_path), "--date", "20260508"])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "alert action plan run" in captured.out
+    assert "action_plans: 1" in captured.out
+    assert "would_send: 0" in captured.out
+    assert "blocked: 1" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-action-plan-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["alert_decision_refs"] == [alert_id]
+    plan_id = report["action_plan_refs"][0]
+    plan_path = tmp_path / "data" / "alert-action-plans" / "20260508" / f"{plan_id}.json"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert plan["alert_decision_ref"] == alert_id
+    assert plan["would_send"] is False
+    assert plan["blocked_reason"] == "approval_required"
+    assert plan["live_delivery_permitted"] is False
+    assert plan["action_taken"] == "none"
 
 
 

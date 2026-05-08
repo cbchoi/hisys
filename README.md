@@ -38,13 +38,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
   review over runtime-local memo drafts and flags draft status without writing to
   a live Obsidian vault.
-- Increment **I7-A/B/C foundation** (Chief Editor alert decisions, suppression,
-  and approval gate) - fixture-backed Chief Editor policy reads runtime-local
-  memo review outputs, creates `AlertDecisionRecord` JSON/Markdown records,
-  records duplicate non-escalation decisions, suppresses repeated alert
-  candidates with the same `suppression_key` in the same run/date, requests human
-  approval for high/critical or non-local target alert candidates, and writes
-  alert decision reports via `hisys decide-alerts` without sending live alerts.
+- Increment **I7-A/B/C/D foundation** (Chief Editor alert decisions,
+  suppression, approval gate, and dry-run action planning) - fixture-backed Chief
+  Editor policy reads runtime-local memo review outputs, creates
+  `AlertDecisionRecord` JSON/Markdown records, records duplicate non-escalation
+  decisions, suppresses repeated alert candidates with the same `suppression_key`
+  in the same run/date, requests human approval for high/critical or non-local
+  target alert candidates, writes alert decision reports via `hisys
+  decide-alerts`, and writes dry-run `AlertActionPlanRecord` JSON/Markdown plus
+  run reports via `hisys plan-alert-actions` without sending live alerts.
 - Later increments (I7 suppression windows/approval workflow/connectors, I8-I9)
   are not implemented; controlled vault writer workflows remain pending.
 
@@ -68,7 +70,8 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
       extraction/  fixture-backed signal extractor and persistence runtime
       editor/      fixture-backed memo drafter, local draft persistence, and
                    duplicate/conflict review runtime
-      chief_editor/ fixture-backed alert decision policy/runtime
+      chief_editor/ fixture-backed alert decision policy/runtime and dry-run
+                    alert action planning
       health/, cli/ runtime entry points / placeholders
 
     examples/instance/
@@ -92,7 +95,7 @@ into a project-local virtualenv (do not install globally):
     pip install -e '.[dev]'
     pytest
 
-`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-C commands are:
+`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-D commands are:
 
 ```bash
 hisys validate-config --instance examples/instance
@@ -106,6 +109,7 @@ hisys draft-memo --instance /tmp/hisys-run \
   --perspective PERSP-OPS-001
 hisys review-memos --instance /tmp/hisys-run --date 20260508
 hisys decide-alerts --instance /tmp/hisys-run --date 20260508
+hisys plan-alert-actions --instance /tmp/hisys-run --date 20260508
 ```
 
 The `collect` command writes local JSON/JSONL runtime records and, for Hermes
@@ -129,8 +133,13 @@ requests approval for high/critical or non-local target alert candidates while
 keeping `action_taken=none`, writes `data/alert-decisions/<YYYYMMDD>/`
 JSON/Markdown decisions and
 `reports/run-summaries/<YYYYMMDD>/alert-decision-report.{json,md}`, and does not
-send live alerts. These commands do not write to a live Obsidian vault or call
-external alert connectors.
+send live alerts. The `plan-alert-actions` command reads local alert decisions,
+writes dry-run action plans under `data/alert-action-plans/<YYYYMMDD>/`, records
+why live delivery is blocked (`approval_required`, `suppressed`,
+`no_target_channel`, or `live_delivery_disabled`), persists
+`reports/run-summaries/<YYYYMMDD>/alert-action-plan-report.{json,md}`, and never
+sends or triggers external connectors. These commands do not write to a live
+Obsidian vault or call external alert connectors.
 
 ## Quality and security constraints
 

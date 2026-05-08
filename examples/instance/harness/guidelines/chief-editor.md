@@ -2,7 +2,7 @@
 
 Traceability: HISYS-HARNESS-GUIDE-001, HISYS-FR-CE-001..006,
 HISYS-CE-POLICY-001, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018.
+HISYS-T-018, HISYS-T-019.
 
 ## Purpose
 
@@ -12,8 +12,14 @@ live Obsidian vault, or invoking external connectors.
 
 ## Inputs
 
+Decision stage inputs:
+
 - `data/memo-drafts/<YYYYMMDD>/*.json`
 - `reports/run-summaries/<YYYYMMDD>/memo-review-report.json`
+
+Action-plan stage inputs:
+
+- `data/alert-decisions/<YYYYMMDD>/*.json`
 
 The harness stage uses reviewed `ZettelMemo` records only. It must not inspect
 raw observation payloads directly.
@@ -38,7 +44,14 @@ raw observation payloads directly.
    Markdown.
 10. Persist the run summary under
    `reports/run-summaries/<YYYYMMDD>/alert-decision-report.{json,md}`.
-11. Do not send Discord messages, direct messages, software triggers, handoffs,
+11. Read persisted alert decisions and write dry-run alert action plans under
+    `data/alert-action-plans/<YYYYMMDD>/`.
+12. For each action plan, record `would_send=false`, `live_delivery_permitted=false`,
+    `action_taken=none`, and a blocked reason such as `approval_required`,
+    `suppressed`, `no_target_channel`, or `live_delivery_disabled`.
+13. Persist the action-plan run summary under
+    `reports/run-summaries/<YYYYMMDD>/alert-action-plan-report.{json,md}`.
+14. Do not send Discord messages, direct messages, software triggers, handoffs,
     or other live external actions in this harness stage.
 
 ## Pass Criteria
@@ -56,9 +69,14 @@ raw observation payloads directly.
   the schema gate, and high/critical or non-local target candidates are persisted
   as approval requests with `approval_status=requested`, `status=needs_approval`,
   and `action_taken=none`.
+- Dry-run action plans are valid JSON/Markdown artifacts, keep `would_send=false`,
+  `live_delivery_permitted=false`, and `action_taken=none`, and record an explicit
+  blocked reason.
 - JSON and Markdown outputs are deterministic enough for regression tests.
 - The CLI command `hisys decide-alerts --instance <root> --date <YYYYMMDD>`
   succeeds only when memo drafts and a memo review report are present.
+- The CLI command `hisys plan-alert-actions --instance <root> --date <YYYYMMDD>`
+  succeeds only when alert decisions are present.
 
 ## Non-goals
 
