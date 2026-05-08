@@ -2,7 +2,8 @@
 
 Traceability: HISYS-HARNESS-GUIDE-001, HISYS-FR-CE-001..006,
 HISYS-CE-POLICY-001, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021, HISYS-T-022.
+HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021, HISYS-T-022,
+HISYS-T-025.
 
 ## Purpose
 
@@ -28,9 +29,13 @@ raw observation payloads directly.
 
 1. Load runtime-local memo drafts for the run date.
 2. Load the memo review report for the same run date.
-3. Apply the fixture Chief Editor policy version
+3. Select the configured Chief Editor product from `config/chief-editor.yaml` or
+   the CLI override:
+   - `analysis_only`: record judgment only; no alert target/send candidate.
+   - `alert_delivery_dry_run`: preserve alert-delivery dry-run candidate path.
+4. Apply the fixture Chief Editor policy version
    `HISYS-CE-POLICY-001.fixture-v0`.
-4. Convert `flagged_conflict` memos into pending `AlertDecisionRecord` records.
+5. Convert `flagged_conflict` memos into pending `AlertDecisionRecord` records.
 5. Convert `flagged_duplicate` memos into suppressed non-escalation decision
    records so suppression is auditable.
 6. Before persisting a new escalation candidate, compare its `suppression_key`
@@ -87,6 +92,11 @@ raw observation payloads directly.
   the schema gate, and high/critical or non-local target candidates are persisted
   as approval requests with `approval_status=requested`, `status=needs_approval`,
   and `action_taken=none`.
+- `analysis_only` product decisions keep `action_taken=none`, set
+  `target_channel=null`, `approval_status=not_required`, and `status=closed` so
+  downstream action planning records `would_send=false`/`no_target_channel`.
+- `alert_delivery_dry_run` product decisions may enter approval/action-plan
+  flow, but still cannot send because live delivery remains disabled.
 - Dry-run action plans are valid JSON/Markdown artifacts, keep
   `live_delivery_permitted=false` and `action_taken=none`, and record an explicit
   blocked reason; approved pending target-channel candidates may set

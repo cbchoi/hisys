@@ -1,0 +1,9 @@
+# Chief Editor product selection.
+# Traceability: HISYS-FR-CE-001..006, HISYS-T-025.
+#
+# Supported product_type values:
+# - analysis_only: record Chief Editor judgment only; no alert target or send candidate.
+# - alert_delivery_dry_run: default dry-run alert delivery product; still no live send.
+product_type: alert_delivery_dry_run
+conflict_severity: medium
+target_channel: runtime-local

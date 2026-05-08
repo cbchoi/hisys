@@ -4,7 +4,8 @@ Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
 HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019,
-HISYS-T-020, HISYS-T-021, HISYS-T-022, HISYS-T-023, HISYS-T-024.
+HISYS-T-020, HISYS-T-021, HISYS-T-022, HISYS-T-023, HISYS-T-024,
+HISYS-T-025.
 """
 
 from __future__ import annotations
@@ -805,6 +806,33 @@ def test_request_dars_critique_command_can_loop_back_without_dars_implementation
     assert critique["dars_backend"] == "loopback_placeholder"
     assert critique["external_call_made"] is False
     assert critique["action_taken"] == "none"
+
+
+
+def test_decide_alerts_command_uses_analysis_only_product_from_config(tmp_path: Path, capsys):
+    _prepare_flagged_conflict_memo(tmp_path, capsys)
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(parents=True)
+    (config_dir / "chief-editor.yaml").write_text(
+        "product_type: analysis_only\n"
+        "target_channel: discord:#ops\n"
+        "conflict_severity: high\n",
+        encoding="utf-8",
+    )
+
+    result = main(["decide-alerts", "--instance", str(tmp_path), "--date", "20260508"])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "product_type: analysis_only" in captured.out
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260508" / "alert-decision-report.json").read_text(encoding="utf-8"))
+    alert_id = report["alert_decision_refs"][0]
+    decision = json.loads((tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.json").read_text(encoding="utf-8"))
+    assert decision["severity"] == "high"
+    assert decision["target_channel"] is None
+    assert decision["approval_status"] == "not_required"
+    assert decision["status"] == "closed"
+    assert decision["action_taken"] == "none"
 
 
 

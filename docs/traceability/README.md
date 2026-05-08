@@ -19,7 +19,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I4 CLI glue | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-D-015; HISYS-D-016 | `hisys validate-config`, fixture-backed `hisys collect`, Hermes Markdown boundary record persistence, and JSON/Markdown run summary persistence |
 | I5 Extraction foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 5; HISYS-FR-EXT-001..005 | Fixture-backed `RawObservation` -> `ExtractedSignal` extractor, local signal JSON persistence, and `hisys extract` CLI report path |
 | I6 Editorial foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Sections 6-7; HISYS-FR-PER-001..004; HISYS-FR-MEM-001..005 | Fixture-backed active perspective application, `ZettelMemo` draft JSON/Markdown persistence, `hisys draft-memo` CLI report path, and `hisys review-memos` duplicate/conflict flagging report path |
-| I7-A/B/C/D/E/F/G Chief Editor alert decision, suppression, approval-gate, dry-run action-plan, approval-transition, send-candidate, and disabled-connector foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 8; HISYS-FR-CE-001..006; HISYS-CE-POLICY-001; HISYS-FR-AGT-004 | Fixture-backed Chief Editor policy reads runtime-local memo review outputs, persists `AlertDecisionRecord` JSON/Markdown decisions, records duplicate non-escalation decisions, suppresses same-date repeated `suppression_key` alert candidates, requests approval for high/critical or non-local target candidates, writes `alert-decision-report.{json,md}`, applies runtime-local approve/reject transitions with `alert-approval-transition-report.{json,md}`, writes dry-run `alert-action-plan-report.{json,md}` with approved pending decisions marked as `would_send=true` candidates while live delivery remains disabled, writes disabled connector execution records/reports with `execution_status=blocked`, and exposes `hisys decide-alerts`/`hisys review-alert-approval`/`hisys plan-alert-actions`/`hisys execute-alert-actions` without live alert sending |
+| I7-A/B/C/D/E/F/G/H Chief Editor alert decision, suppression, approval-gate, dry-run action-plan, approval-transition, send-candidate, disabled-connector, and product-factory foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 8; HISYS-FR-CE-001..006; HISYS-CE-POLICY-001; HISYS-FR-AGT-004 | Fixture-backed Chief Editor policy reads runtime-local memo review outputs, persists `AlertDecisionRecord` JSON/Markdown decisions, records duplicate non-escalation decisions, suppresses same-date repeated `suppression_key` alert candidates, requests approval for high/critical or non-local target candidates, selects `analysis_only` or `alert_delivery_dry_run` products from config/CLI, writes `alert-decision-report.{json,md}`, applies runtime-local approve/reject transitions with `alert-approval-transition-report.{json,md}`, writes dry-run `alert-action-plan-report.{json,md}` with approved pending decisions marked as `would_send=true` candidates while live delivery remains disabled, writes disabled connector execution records/reports with `execution_status=blocked`, and exposes `hisys decide-alerts`/`hisys review-alert-approval`/`hisys plan-alert-actions`/`hisys execute-alert-actions` without live alert sending |
 | I8-A/B DARS advisory handoff loopback contract | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 9; HISYS-FR-AGT-001..005; HISYS-DARS-CONTRACT-001 | Runtime-local `hisys request-dars-critique` creates advisory-only `AgentHandoffPackage` JSON/Markdown records linked to disabled connector executions and returns loopback placeholder critique records by default because DARS is not implemented yet; artifacts record `dars_backend=loopback_placeholder`, `external_call_made=false`, `allowed_actions=advisory_only`, `action_taken=none`, and no live DARS call or external action occurs |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
@@ -29,7 +29,9 @@ foundation that writes only runtime-local memo draft/report artifacts. I7-A is
 present as a fixture-backed Chief Editor alert decision foundation that writes
 runtime-local alert decisions/reports, suppresses same-date repeated alert
 candidates by `suppression_key`, requests approval for high/critical or non-local
-target alert candidates, writes dry-run alert action plans with blocked reasons
+target alert candidates, selects a Chief Editor product factory variant
+(`analysis_only` or `alert_delivery_dry_run`) from `config/chief-editor.yaml` or
+CLI override, writes dry-run alert action plans with blocked reasons
 and approved pending send-candidate markers, applies runtime-local approve/reject
 transitions while keeping `action_taken=none`, takes no live alert actions, and
 I8-A/B adds runtime-local advisory DARS handoff loopback artifacts without
@@ -73,11 +75,12 @@ hardening) are not implemented yet.
 | `hisys.editor.runtime` | HISYS-FR-PER-001..004, HISYS-FR-MEM-001..005, HISYS-D-015, HISYS-T-011..013 | `tests/unit/test_editor_runtime.py` |
 | `hisys.chief_editor.policy` | HISYS-FR-CE-001..006, HISYS-CE-POLICY-001, HISYS-T-014..018 | `tests/unit/test_chief_editor_runtime.py` |
 | `hisys.chief_editor.runtime` | HISYS-FR-CE-001..006, HISYS-D-015, HISYS-T-014..018 | `tests/unit/test_chief_editor_runtime.py` |
+| `hisys.chief_editor.product` | HISYS-FR-CE-001..006, HISYS-CE-POLICY-001, HISYS-D-015, HISYS-T-025 | `tests/unit/test_chief_editor_runtime.py` |
 | `hisys.chief_editor.action_plan` | HISYS-FR-CE-001..006, HISYS-D-015, HISYS-T-019, HISYS-T-021 | `tests/unit/test_chief_editor_runtime.py` |
 | `hisys.chief_editor.approval` | HISYS-FR-CE-006, HISYS-D-015, HISYS-T-020 | `tests/unit/test_chief_editor_runtime.py` |
 | `hisys.chief_editor.connector` | HISYS-FR-CE-006, HISYS-FR-AGT-004, HISYS-D-015, HISYS-T-022 | `tests/unit/test_alert_connector_runtime.py` |
 | `hisys.agents.dars` | HISYS-FR-AGT-001..005, HISYS-DARS-CONTRACT-001, HISYS-D-015, HISYS-T-023..024 | `tests/unit/test_dars_runtime.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..024 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..025 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
@@ -138,14 +141,17 @@ For each path the tests assert:
   drafts, flags duplicated summaries as `flagged_duplicate`, flags simple
   high-vs-normal source conflicts as `flagged_conflict`, rewrites reviewed memo
   JSON/Markdown records, and persists memo review JSON/Markdown reports.
-- HISYS-T-014..022: Chief Editor foundation reads runtime-local memo review
+- HISYS-T-014..025: Chief Editor foundation reads runtime-local memo review
   reports and reviewed memo drafts, applies the fixture `HISYS-CE-POLICY-001`
-  policy, creates `AlertDecisionRecord` JSON/Markdown records for conflict
+  policy through a product factory selected by `config/chief-editor.yaml` or CLI,
+  creates `AlertDecisionRecord` JSON/Markdown records for conflict
   escalation candidates, records duplicate memo non-escalations as suppressed
   decisions, suppresses repeated same-date alert candidates whose
   `suppression_key` already appears in prior non-suppressed alert decisions,
   requests human approval for high/critical or non-local target candidates while
-  keeping `action_taken=none`, persists alert decision JSON/Markdown reports,
+  keeping `action_taken=none`, lets `analysis_only` close judgments with
+  `target_channel=null` and no send candidate while `alert_delivery_dry_run`
+  preserves the approval/action-plan path, persists alert decision JSON/Markdown reports,
   writes dry-run `AlertActionPlanRecord` JSON/Markdown records and action-plan
   reports with blocked reasons and approved pending `would_send=true` candidate
   markers while `live_delivery_permitted=false`, applies runtime-local

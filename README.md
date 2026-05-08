@@ -38,14 +38,17 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
   review over runtime-local memo drafts and flags draft status without writing to
   a live Obsidian vault.
-- Increment **I7-A/B/C/D/E/F/G foundation** (Chief Editor alert decisions,
+- Increment **I7-A/B/C/D/E/F/G/H foundation** (Chief Editor alert decisions,
   suppression, approval gate, dry-run action planning, approval transition stub,
-  approved-decision send-candidate classification, and disabled connector harness) - fixture-backed Chief
+  approved-decision send-candidate classification, disabled connector harness,
+  and product factory selection) - fixture-backed Chief
   Editor policy reads runtime-local memo review outputs, creates
   `AlertDecisionRecord` JSON/Markdown records, records duplicate non-escalation
   decisions, suppresses repeated alert candidates with the same `suppression_key`
   in the same run/date, requests human approval for high/critical or non-local
-  target alert candidates, writes alert decision reports via `hisys
+  target alert candidates, selects either `analysis_only` or
+  `alert_delivery_dry_run` Chief Editor products from
+  `config/chief-editor.yaml`/CLI, writes alert decision reports via `hisys
   decide-alerts`, applies runtime-local approve/reject transitions via `hisys
   review-alert-approval`, and writes dry-run `AlertActionPlanRecord`
   JSON/Markdown plus run reports via `hisys plan-alert-actions`, including
@@ -123,6 +126,9 @@ hisys draft-memo --instance /tmp/hisys-run \
   --perspective PERSP-OPS-001
 hisys review-memos --instance /tmp/hisys-run --date 20260508
 hisys decide-alerts --instance /tmp/hisys-run --date 20260508
+# Product can also be selected per run:
+#   --product-type analysis_only
+#   --product-type alert_delivery_dry_run
 hisys plan-alert-actions --instance /tmp/hisys-run --date 20260508
 hisys review-alert-approval --instance /tmp/hisys-run \
   --date 20260508 \
@@ -152,13 +158,18 @@ memos under `data/memo-drafts/<YYYYMMDD>/` plus
 duplicates/conflicts by updating draft status, and writes
 `reports/run-summaries/<YYYYMMDD>/memo-review-report.{json,md}`. The
 `decide-alerts` command reads runtime-local memo drafts plus the memo review
-report, applies the fixture Chief Editor policy, suppresses repeated alert
+report, applies the fixture Chief Editor policy through a configuration-selected
+product factory, suppresses repeated alert
 candidates whose `suppression_key` already exists in same-date alert decisions,
 requests approval for high/critical or non-local target alert candidates while
 keeping `action_taken=none`, writes `data/alert-decisions/<YYYYMMDD>/`
 JSON/Markdown decisions and
 `reports/run-summaries/<YYYYMMDD>/alert-decision-report.{json,md}`, and does not
-send live alerts. The `plan-alert-actions` command reads local alert decisions,
+send live alerts. `product_type=analysis_only` records the Chief Editor judgment
+but forces `target_channel=null`, `approval_status=not_required`, `status=closed`,
+and `action_taken=none`; `product_type=alert_delivery_dry_run` preserves the
+existing approval/action-plan path while still prohibiting live delivery. The
+`plan-alert-actions` command reads local alert decisions,
 writes dry-run action plans under `data/alert-action-plans/<YYYYMMDD>/`, records
 why live delivery is blocked (`approval_required`, `suppressed`,
 `no_target_channel`, or `live_delivery_disabled`), marks approved pending

@@ -5,7 +5,7 @@ HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
 HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
 HISYS-T-012, HISYS-T-013, HISYS-T-014, HISYS-T-015, HISYS-T-016,
 HISYS-T-017, HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021,
-HISYS-T-022, HISYS-T-023.
+HISYS-T-022, HISYS-T-023, HISYS-T-024, HISYS-T-025.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from ..chief_editor import (
     AlertConnectorRuntime,
     ChiefEditorPolicy,
     ChiefEditorRuntime,
+    create_chief_editor_product,
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
@@ -89,8 +90,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     decide.add_argument(
         "--target-channel",
-        default="runtime-local",
-        help="dry-run target channel metadata; does not send live alerts",
+        help="dry-run target channel metadata; omitted means config/default selection",
+    )
+    decide.add_argument(
+        "--product-type",
+        choices=["analysis_only", "alert_delivery_dry_run"],
+        help="Chief Editor product selection; defaults to config/chief-editor.yaml or alert_delivery_dry_run",
     )
     plan = sub.add_parser("plan-alert-actions", help="write fixture dry-run alert action plans")
     plan.add_argument("--instance", required=True, help="runtime instance root containing alert decisions")
@@ -168,6 +173,7 @@ def main(argv: list[str] | None = None) -> int:
             producer_id=args.producer_id,
             conflict_severity=args.conflict_severity,
             target_channel=args.target_channel,
+            product_type=args.product_type,
         )
     if args.command == "plan-alert-actions":
         return _cmd_plan_alert_actions(
@@ -446,7 +452,8 @@ def _cmd_decide_alerts(
     yyyymmdd: str,
     producer_id: str,
     conflict_severity: str = "medium",
-    target_channel: str = "runtime-local",
+    target_channel: str | None = None,
+    product_type: str | None = None,
 ) -> int:
     instance = InstanceRoot(instance_root)
     memos = _load_memo_drafts(instance, yyyymmdd)
@@ -457,18 +464,22 @@ def _cmd_decide_alerts(
     if memo_review_report is None:
         print(f"no memo review report found for date {yyyymmdd}", file=sys.stderr)
         return 1
-    runtime = ChiefEditorRuntime(
+    config = _load_chief_editor_config(instance)
+    selected_product_type = product_type or str(config.get("product_type", "alert_delivery_dry_run"))
+    selected_conflict_severity = str(config.get("conflict_severity", conflict_severity))
+    selected_target_channel = target_channel or str(config.get("target_channel", "runtime-local"))
+    product = create_chief_editor_product(
+        product_type=selected_product_type,  # type: ignore[arg-type]
         instance=instance,
-        policy=ChiefEditorPolicy(
-            policy_version=ChiefEditorPolicy.fixture_default().policy_version,
-            conflict_severity=conflict_severity,
-            target_channel=target_channel,
-        ),
+        policy=ChiefEditorPolicy.fixture_default(),
         producer_id=producer_id,
+        conflict_severity=selected_conflict_severity,
+        target_channel=selected_target_channel,
     )
-    report = runtime.decide_run(memos, memo_review_report=memo_review_report, yyyymmdd=yyyymmdd)
+    report = product.decide_run(memos, memo_review_report=memo_review_report, yyyymmdd=yyyymmdd)
     report_path = instance.root / "reports" / "run-summaries" / yyyymmdd / "alert-decision-report.json"
     print(f"alert decision run: report={report_path}")
+    print(f"product_type: {selected_product_type}")
     print(f"reviewed: {len(report.reviewed_memo_refs)}")
     print(f"alert_decisions: {len(report.alert_decision_refs)}")
     print(f"non_escalation_decisions: {len(report.non_escalation_decision_refs)}")
@@ -579,6 +590,19 @@ def _cmd_review_alert_approval(
     print(f"new: {report.new_approval_status}/{report.new_status}")
     print(f"action_taken: {report.action_taken}")
     return 0
+
+
+
+def _load_chief_editor_config(instance: InstanceRoot) -> dict:
+    path = instance.config_dir / "chief-editor.yaml"
+    if not path.exists():
+        return {}
+    import yaml
+
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        raise ValueError("config/chief-editor.yaml must contain a mapping")
+    return data
 
 
 

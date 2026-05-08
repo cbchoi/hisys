@@ -2,7 +2,7 @@
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
 HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021.
+HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021, HISYS-T-025.
 """
 
 from __future__ import annotations
@@ -15,10 +15,54 @@ from hisys.chief_editor import (
     AlertApprovalTransitionRuntime,
     ChiefEditorPolicy,
     ChiefEditorRuntime,
+    create_chief_editor_product,
 )
 from hisys.config import InstanceRoot
 from hisys.editor import MemoReviewReport
 from hisys.schemas import ZettelMemo
+
+
+def test_chief_editor_product_factory_analysis_only_closes_decision_without_alert_target(tmp_path: Path):
+    memo = _memo_for_decision(
+        "MEM-CE-ANALYSIS-001",
+        review_status="flagged_conflict",
+        summary="temperature trend high but monitor only",
+    )
+    report = MemoReviewReport(
+        reviewed_memo_refs=[memo.memo_id],
+        conflict_memo_refs=[memo.memo_id],
+    )
+    product = create_chief_editor_product(
+        product_type="analysis_only",
+        instance=InstanceRoot(tmp_path),
+        policy=ChiefEditorPolicy.fixture_default(),
+        producer_id="chief-editor-analysis-test",
+        conflict_severity="high",
+        target_channel="discord:#ops",
+    )
+
+    decision_report = product.decide_run([memo], memo_review_report=report, yyyymmdd="20260508")
+
+    assert len(decision_report.alert_decision_refs) == 1
+    alert_id = decision_report.alert_decision_refs[0]
+    decision = json.loads((tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.json").read_text(encoding="utf-8"))
+    assert decision["severity"] == "high"
+    assert decision["target_channel"] is None
+    assert decision["approval_status"] == "not_required"
+    assert decision["status"] == "closed"
+    assert decision["action_taken"] == "none"
+    assert "analysis_only" in decision["follow_up"]
+
+    action_plan_report = AlertActionPlanRuntime(
+        instance=InstanceRoot(tmp_path),
+        producer_id="alert-action-plan-test",
+    ).plan_run(yyyymmdd="20260508")
+    assert action_plan_report.action_plan_refs == [alert_id.replace("ALERT-", "PLAN-", 1)]
+    plan = json.loads((tmp_path / "data" / "alert-action-plans" / "20260508" / f"{action_plan_report.action_plan_refs[0]}.json").read_text(encoding="utf-8"))
+    assert plan["would_send"] is False
+    assert plan["blocked_reason"] == "no_target_channel"
+    assert plan["live_delivery_permitted"] is False
+
 
 
 def test_chief_editor_runtime_creates_alert_decision_for_conflict_memo(tmp_path: Path):
