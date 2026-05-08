@@ -5,7 +5,7 @@ HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
 HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019,
 HISYS-T-020, HISYS-T-021, HISYS-T-022, HISYS-T-023, HISYS-T-024,
-HISYS-T-025.
+HISYS-T-025, HISYS-T-026.
 """
 
 from __future__ import annotations
@@ -76,6 +76,64 @@ def _prepare_flagged_conflict_memo(tmp_path: Path, capsys) -> str:
     )
     capsys.readouterr()
     return memo_id
+
+
+def test_investigate_memo_command_researches_topic_and_writes_template_memo(tmp_path: Path, capsys):
+    result = main(
+        [
+            "investigate-memo",
+            "--instance",
+            str(tmp_path),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+            "--topic",
+            "hardware overheating risk",
+            "--goal",
+            "Assess whether fixture sensor evidence requires operations attention.",
+            "--perspective",
+            "PERSP-OPS-001",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "investigation memo run" in captured.out
+    assert "memos: 1" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json"
+    assert report_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    memo_id = report["memo_refs"][0]
+    memo_path = tmp_path / "data" / "investigation-memos" / "20260508" / f"{memo_id}.json"
+    markdown_path = tmp_path / "data" / "investigation-memos" / "20260508" / f"{memo_id}.md"
+    assert memo_path.exists()
+    assert markdown_path.exists()
+    memo = json.loads(memo_path.read_text(encoding="utf-8"))
+    assert memo["title"] == "Investigation Memo: hardware overheating risk"
+    assert memo["summary"] == "Fixture sensor indicates over-threshold temperature condition."
+    assert memo["source_refs"] == ["SRC-HW-MOCK-001"]
+    assert memo["signal_refs"] == report["signal_refs"]
+    assert "template:research-topic-search" in memo["tags"]
+    assert "## Research Question" in memo["body"]
+    assert "hardware overheating risk" in memo["body"]
+    assert "## Query Set" in memo["body"]
+    assert "hardware overheating risk operations evidence" in memo["body"]
+    assert "## Accepted Source Records" in memo["body"]
+    assert "SRC-HW-MOCK-001" in memo["body"]
+    assert "## Investigation Findings" in memo["body"]
+    assert "Fixture sensor indicates over-threshold temperature condition." in memo["body"]
+    assert "## Evidence Trace" in memo["body"]
+    assert report["observation_refs"][0] in memo["body"]
+    assert report["signal_refs"][0] in memo["body"]
+    assert "## Open Questions" in memo["body"]
+    assert "raw payload is not copied" in memo["body"]
+    markdown = markdown_path.read_text(encoding="utf-8")
+    assert "Investigation Memo: hardware overheating risk" in markdown
+    assert "## Investigation Findings" in markdown
+
 
 
 def test_validate_config_accepts_example_instance(capsys):

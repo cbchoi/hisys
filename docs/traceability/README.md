@@ -17,6 +17,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I3 Adapter framework | HISYS-IMP-001 Section 3; HISYS-IDD-001 HISYS-IF-003/HISYS-IF-015; HISYS-FIXTURE-001 | Common DataSource contract, fixture adapters, registry-gated runtime, health report, and failure isolation |
 | I4 Investigator foundation | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-HARNESS-GUIDE-001; HISYS-D-015; HISYS-D-016 | Runtime instance paths, YAML config loader, audit/observation persistence, Hermes boundary writer, Investigator collection skeleton, example instance, and CI smoke gate |
 | I4 CLI glue | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-D-015; HISYS-D-016 | `hisys validate-config`, fixture-backed `hisys collect`, Hermes Markdown boundary record persistence, and JSON/Markdown run summary persistence |
+| I4 Investigator direct memo foundation | HISYS-INST-INV-001; HISYS-FR-INV-001..006; HISYS-FR-MEM-001..005; HISYS-TPL-RESEARCH-SEARCH-001; HISYS-DATA-002 | `hisys investigate-memo` collects from registry-gated fixture sources, applies the research topic search template, writes linked `ExtractedSignal` evidence-interpretation records, and persists runtime-local investigation `ZettelMemo` JSON/Markdown plus report artifacts without copying raw payload into the memo |
 | I5 Extraction foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 5; HISYS-FR-EXT-001..005 | Fixture-backed `RawObservation` -> `ExtractedSignal` extractor, local signal JSON persistence, and `hisys extract` CLI report path |
 | I6 Editorial foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Sections 6-7; HISYS-FR-PER-001..004; HISYS-FR-MEM-001..005 | Fixture-backed active perspective application, `ZettelMemo` draft JSON/Markdown persistence, `hisys draft-memo` CLI report path, and `hisys review-memos` duplicate/conflict flagging report path |
 | I7-A/B/C/D/E/F/G/H Chief Editor alert decision, suppression, approval-gate, dry-run action-plan, approval-transition, send-candidate, disabled-connector, and product-factory foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 8; HISYS-FR-CE-001..006; HISYS-CE-POLICY-001; HISYS-FR-AGT-004 | Fixture-backed Chief Editor policy reads runtime-local memo review outputs, persists `AlertDecisionRecord` JSON/Markdown decisions, records duplicate non-escalation decisions, suppresses same-date repeated `suppression_key` alert candidates, requests approval for high/critical or non-local target candidates, selects `analysis_only` or `alert_delivery_dry_run` products from config/CLI, writes `alert-decision-report.{json,md}`, applies runtime-local approve/reject transitions with `alert-approval-transition-report.{json,md}`, writes dry-run `alert-action-plan-report.{json,md}` with approved pending decisions marked as `would_send=true` candidates while live delivery remains disabled, writes disabled connector execution records/reports with `execution_status=blocked`, and exposes `hisys decide-alerts`/`hisys review-alert-approval`/`hisys plan-alert-actions`/`hisys execute-alert-actions` without live alert sending |
@@ -80,7 +81,7 @@ hardening) are not implemented yet.
 | `hisys.chief_editor.approval` | HISYS-FR-CE-006, HISYS-D-015, HISYS-T-020 | `tests/unit/test_chief_editor_runtime.py` |
 | `hisys.chief_editor.connector` | HISYS-FR-CE-006, HISYS-FR-AGT-004, HISYS-D-015, HISYS-T-022 | `tests/unit/test_alert_connector_runtime.py` |
 | `hisys.agents.dars` | HISYS-FR-AGT-001..005, HISYS-DARS-CONTRACT-001, HISYS-D-015, HISYS-T-023..024 | `tests/unit/test_dars_runtime.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..025 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..026 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
@@ -141,6 +142,13 @@ For each path the tests assert:
   drafts, flags duplicated summaries as `flagged_duplicate`, flags simple
   high-vs-normal source conflicts as `flagged_conflict`, rewrites reviewed memo
   JSON/Markdown records, and persists memo review JSON/Markdown reports.
+- HISYS-T-026: Investigator direct memo foundation runs registry-gated fixture
+  source investigation from a research topic/goal, applies
+  `HISYS-TPL-RESEARCH-SEARCH-001`, persists linked `ExtractedSignal` records and
+  `data/investigation-memos/<YYYYMMDD>/` `ZettelMemo` JSON/Markdown artifacts,
+  writes `investigation-memo-report.{json,md}`, and keeps raw payload content out
+  of the memo body by preserving only observation, signal, source, payload-ref,
+  and payload-hash references.
 - HISYS-T-014..025: Chief Editor foundation reads runtime-local memo review
   reports and reviewed memo drafts, applies the fixture `HISYS-CE-POLICY-001`
   policy through a product factory selected by `config/chief-editor.yaml` or CLI,

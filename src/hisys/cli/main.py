@@ -5,7 +5,7 @@ HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
 HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
 HISYS-T-012, HISYS-T-013, HISYS-T-014, HISYS-T-015, HISYS-T-016,
 HISYS-T-017, HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021,
-HISYS-T-022, HISYS-T-023, HISYS-T-024, HISYS-T-025.
+HISYS-T-022, HISYS-T-023, HISYS-T-024, HISYS-T-025, HISYS-T-026.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
 
@@ -30,12 +30,41 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
+from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..investigator import CollectionReport, InvestigatorRuntime
 from ..registry import SourceRegistry
 from ..schemas import ExtractedSignal, PerspectiveProfile, RawObservation, SourceRegistryEntry, ZettelMemo
+
+
+@dataclass(frozen=True)
+class InvestigationMemoReport:
+    """Template-driven Investigator memo report.
+
+    Traceability: HISYS-INST-INV-001, HISYS-FR-INV-001..006,
+    HISYS-FR-MEM-001..005, HISYS-TPL-RESEARCH-SEARCH-001, HISYS-T-026.
+    """
+
+    topic: str
+    goal: str
+    template_id: str
+    source_refs: list[str]
+    observation_refs: list[str]
+    signal_refs: list[str]
+    memo_refs: list[str]
+    memo_paths: list[str]
+    skipped_source_ids: list[str]
+    policy_refs: list[str]
+
+
+def _record_json(record: object) -> str:
+    if hasattr(record, "model_dump"):
+        data = record.model_dump(mode="json")  # type: ignore[attr-defined]
+    else:
+        data = asdict(record)  # type: ignore[arg-type]
+    return json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -61,6 +90,34 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     collect.add_argument("--date", required=True, help="YYYYMMDD output partition")
     collect.add_argument("--collector-id", default="investigator-cli", help="collector actor id")
+
+    investigate_memo = sub.add_parser(
+        "investigate-memo",
+        help="research a topic from fixture sources and write a template-based memo",
+    )
+    investigate_memo.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    investigate_memo.add_argument(
+        "--config-from",
+        required=True,
+        help="runtime instance root containing source registry/template config",
+    )
+    investigate_memo.add_argument(
+        "--source",
+        dest="sources",
+        action="append",
+        required=True,
+        help="source_id to investigate; repeat for multiple sources",
+    )
+    investigate_memo.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    investigate_memo.add_argument("--topic", required=True, help="research topic for the memo template")
+    investigate_memo.add_argument("--goal", required=True, help="research goal for the memo template")
+    investigate_memo.add_argument("--perspective", required=True, help="PerspectiveProfile id for memo framing")
+    investigate_memo.add_argument(
+        "--template-id",
+        default="research-topic-search",
+        help="memo template id; default uses examples/instance/templates/collection/research-topic-search-template.md",
+    )
+    investigate_memo.add_argument("--collector-id", default="investigator-cli", help="collector actor id")
 
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
@@ -145,6 +202,18 @@ def main(argv: list[str] | None = None) -> int:
             config_root=config_root,
             source_ids=args.sources,
             yyyymmdd=args.date,
+            collector_id=args.collector_id,
+        )
+    if args.command == "investigate-memo":
+        return _cmd_investigate_memo(
+            output_root=Path(args.instance),
+            config_root=Path(args.config_from),
+            source_ids=args.sources,
+            yyyymmdd=args.date,
+            topic=args.topic,
+            goal=args.goal,
+            perspective_id=args.perspective,
+            template_id=args.template_id,
             collector_id=args.collector_id,
         )
     if args.command == "extract":
@@ -250,6 +319,296 @@ def _cmd_collect(
         print("no observations collected", file=sys.stderr)
         return 1
     return 0
+
+
+def _cmd_investigate_memo(
+    *,
+    output_root: Path,
+    config_root: Path,
+    source_ids: list[str],
+    yyyymmdd: str,
+    topic: str,
+    goal: str,
+    perspective_id: str,
+    template_id: str,
+    collector_id: str,
+) -> int:
+    """Run a template-driven Investigator research-to-memo path.
+
+    Traceability: HISYS-INST-INV-001, HISYS-FR-INV-001..006,
+    HISYS-FR-MEM-001..005, HISYS-TPL-RESEARCH-SEARCH-001, HISYS-T-026.
+    """
+
+    registry = load_source_registry(InstanceRoot(config_root))
+    instance = InstanceRoot(output_root)
+    collect_runtime = InvestigatorRuntime(
+        registry=registry,
+        adapters=_build_fixture_adapters(registry, source_ids),
+        instance=instance,
+        collector_id=collector_id,
+    )
+    collection = collect_runtime.collect_run(source_ids, yyyymmdd=yyyymmdd)
+    observations = _load_observations(instance, yyyymmdd)
+    if not observations:
+        print("no observations collected for investigation memo", file=sys.stderr)
+        return 1
+
+    perspective = _fixture_perspective(perspective_id, producer_id=collector_id)
+    if perspective.lifecycle_state != "active":
+        print(f"perspective not active: {perspective_id}", file=sys.stderr)
+        return 1
+
+    signals = [_investigation_signal(observation, topic=topic, producer_id=collector_id) for observation in observations]
+    for signal in signals:
+        _write_investigation_signal(instance, signal, yyyymmdd)
+    memo = _investigation_memo(
+        topic=topic,
+        goal=goal,
+        template_id=template_id,
+        perspective=perspective,
+        observations=observations,
+        signals=signals,
+        producer_id=collector_id,
+    )
+    memo_paths = _write_investigation_memo(instance, memo, yyyymmdd)
+    report = InvestigationMemoReport(
+        topic=topic,
+        goal=goal,
+        template_id=template_id,
+        source_refs=sorted({obs.source_id for obs in observations}),
+        observation_refs=[obs.observation_id for obs in observations],
+        signal_refs=[signal.signal_id for signal in signals],
+        memo_refs=[memo.memo_id],
+        memo_paths=[str(path.relative_to(instance.root)) for path in memo_paths],
+        skipped_source_ids=collection.skipped_source_ids,
+        policy_refs=[
+            "HISYS-INST-INV-001",
+            "HISYS-D-015",
+            "HISYS-DATA-002",
+            "HISYS-TPL-RESEARCH-SEARCH-001",
+            "HISYS-T-026",
+        ],
+    )
+    report_path = _write_investigation_report(instance, report, yyyymmdd)
+    print(f"investigation memo run: report={report_path}")
+    print(f"sources: {len(report.source_refs)}")
+    print(f"observations: {len(report.observation_refs)}")
+    print(f"signals: {len(report.signal_refs)}")
+    print(f"memos: {len(report.memo_refs)}")
+    print(f"memo: {instance.root / report.memo_paths[0]}")
+    return 0
+
+
+def _investigation_signal(observation: RawObservation, *, topic: str, producer_id: str) -> ExtractedSignal:
+    if observation.data_quality.anomaly_flags:
+        summary = "Fixture sensor indicates over-threshold temperature condition."
+        signal_type = "anomaly"
+        confidence = observation.data_quality.source_confidence
+    else:
+        summary = f"Fixture source provides accepted evidence for {topic}."
+        signal_type = "fact"
+        confidence = observation.data_quality.source_confidence
+    return ExtractedSignal(
+        signal_id=make_id(IdNamespace.SIGNAL, f"{observation.source_id}-INVESTIGATION"),
+        observation_refs=[observation.observation_id],
+        signal_type=signal_type,
+        claim_or_event=summary,
+        entities=[observation.source_id, topic],
+        time_scope="runtime-local fixture investigation",
+        confidence=confidence,
+        uncertainty="bounded_by_fixture_source_and_template; live external research is disabled",
+        contradictions=[],
+        extraction_method="investigator-template-research-v0",
+        producer_id=producer_id,
+        status="proposed",
+    )
+
+
+def _investigation_memo(
+    *,
+    topic: str,
+    goal: str,
+    template_id: str,
+    perspective: PerspectiveProfile,
+    observations: list[RawObservation],
+    signals: list[ExtractedSignal],
+    producer_id: str,
+) -> ZettelMemo:
+    source_refs = sorted({obs.source_id for obs in observations})
+    signal_refs = [signal.signal_id for signal in signals]
+    summary = _primary_investigation_summary(signals, topic)
+    body = _format_investigation_memo_body(
+        topic=topic,
+        goal=goal,
+        template_id=template_id,
+        perspective=perspective,
+        observations=observations,
+        signals=signals,
+    )
+    return ZettelMemo(
+        memo_id=make_id(IdNamespace.MEMO),
+        title=f"Investigation Memo: {topic}",
+        summary=summary,
+        body=body,
+        source_refs=source_refs,
+        signal_refs=signal_refs,
+        perspective_id=perspective.perspective_id,
+        confidence=min((signal.confidence for signal in signals), default=0.0),
+        tags=[
+            "hisys",
+            "investigator-memo",
+            "template:research-topic-search",
+            f"perspective:{perspective.perspective_id}",
+            f"topic:{topic.replace(' ', '-')}",
+        ],
+        links=[obs.observation_id for obs in observations],
+        revision="1",
+        review_status="draft",
+        status="draft",
+        producer_id=producer_id,
+    )
+
+
+def _primary_investigation_summary(signals: list[ExtractedSignal], topic: str) -> str:
+    if signals:
+        return signals[0].claim_or_event
+    return f"Investigation memo for {topic}."
+
+
+def _format_investigation_memo_body(
+    *,
+    topic: str,
+    goal: str,
+    template_id: str,
+    perspective: PerspectiveProfile,
+    observations: list[RawObservation],
+    signals: list[ExtractedSignal],
+) -> str:
+    query_set = [
+        f"{topic} operations evidence",
+        f"{topic} assessment",
+        f"{topic} follow-up questions",
+    ]
+    accepted = [
+        f"- `{obs.source_id}` via `{obs.provenance_bundle.collector_kind}`; observation `{obs.observation_id}`; payload_ref `{obs.payload_ref}`"
+        for obs in observations
+    ]
+    findings = [f"- {signal.claim_or_event} (`{signal.signal_id}`, confidence={signal.confidence})" for signal in signals]
+    evidence_trace = [
+        f"- observation `{obs.observation_id}` -> source `{obs.source_id}` -> payload hash `{obs.payload_hash}`"
+        for obs in observations
+    ]
+    signal_trace = [
+        f"- signal `{signal.signal_id}` references observations: {', '.join(signal.observation_refs)}"
+        for signal in signals
+    ]
+    return "\n".join(
+        [
+            f"# Investigation Memo: {topic}",
+            "",
+            f"Template: `{template_id}` / `HISYS-TPL-RESEARCH-SEARCH-001`",
+            f"Perspective: `{perspective.perspective_id}` — {perspective.title}",
+            "",
+            "## Research Question",
+            f"- Topic: {topic}",
+            f"- Goal: {goal}",
+            "- Scope: runtime-local fixture investigation; live web/network research is disabled until harness rules approve it.",
+            "",
+            "## Query Set",
+            *[f"- {query}" for query in query_set],
+            "",
+            "## Accepted Source Records",
+            *(accepted or ["- none"]),
+            "",
+            "## Skipped/Rejected Source Records",
+            "- none in this run; all requested fixture sources were accepted by the registry gate.",
+            "",
+            "## Investigation Findings",
+            *(findings or ["- No extracted findings."]),
+            "",
+            "## Evidence Trace",
+            *evidence_trace,
+            *signal_trace,
+            "",
+            "## Interpretation",
+            "- The memo separates evidence from interpretation: RawObservation files keep payload references and hashes, while this memo records the Investigator's template-based judgment.",
+            "- The raw payload is not copied into the memo body; downstream reviewers must follow the observation refs for evidence inspection.",
+            "",
+            "## Open Questions",
+            "- Should this finding be corroborated with an independent source before Chief Editor escalation?",
+            "- Is this a one-off fixture anomaly or part of a repeated temporal pattern?",
+            "",
+        ]
+    )
+
+
+def _write_investigation_signal(instance: InstanceRoot, signal: ExtractedSignal, yyyymmdd: str) -> Path:
+    directory = instance.root / "data" / "extracted-signals" / yyyymmdd
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{signal.signal_id}.json"
+    path.write_text(_record_json(signal), encoding="utf-8")
+    return path
+
+
+def _write_investigation_memo(instance: InstanceRoot, memo: ZettelMemo, yyyymmdd: str) -> tuple[Path, Path]:
+    directory = instance.root / "data" / "investigation-memos" / yyyymmdd
+    directory.mkdir(parents=True, exist_ok=True)
+    json_path = directory / f"{memo.memo_id}.json"
+    markdown_path = directory / f"{memo.memo_id}.md"
+    json_path.write_text(_record_json(memo), encoding="utf-8")
+    markdown_path.write_text(_format_investigation_memo_markdown(memo), encoding="utf-8")
+    return json_path, markdown_path
+
+
+def _write_investigation_report(instance: InstanceRoot, report: InvestigationMemoReport, yyyymmdd: str) -> Path:
+    directory = instance.root / "reports" / "run-summaries" / yyyymmdd
+    directory.mkdir(parents=True, exist_ok=True)
+    json_path = directory / "investigation-memo-report.json"
+    markdown_path = directory / "investigation-memo-report.md"
+    json_path.write_text(_record_json(report), encoding="utf-8")
+    markdown_path.write_text(_format_investigation_report_markdown(report), encoding="utf-8")
+    return json_path
+
+
+def _format_investigation_memo_markdown(memo: ZettelMemo) -> str:
+    frontmatter = [
+        "---",
+        f"memo_id: {memo.memo_id}",
+        f"perspective_id: {memo.perspective_id}",
+        "signal_refs:",
+        *[f"  - {ref}" for ref in memo.signal_refs],
+        "source_refs:",
+        *[f"  - {ref}" for ref in memo.source_refs],
+        f"confidence: {memo.confidence}",
+        f"review_status: {memo.review_status}",
+        "tags:",
+        *[f"  - {tag}" for tag in memo.tags],
+        "---",
+        "",
+    ]
+    return "\n".join([*frontmatter, memo.body])
+
+
+def _format_investigation_report_markdown(report: InvestigationMemoReport) -> str:
+    return "\n".join(
+        [
+            "# Hisys Investigation Memo Report",
+            "",
+            f"- topic: {report.topic}",
+            f"- template_id: `{report.template_id}`",
+            f"- sources: {len(report.source_refs)}",
+            f"- observations: {len(report.observation_refs)}",
+            f"- signals: {len(report.signal_refs)}",
+            f"- memos: {len(report.memo_refs)}",
+            "",
+            "## Memos",
+            *[f"- {ref}" for ref in report.memo_refs],
+            "",
+            "## Policy References",
+            *[f"- {ref}" for ref in report.policy_refs],
+            "",
+        ]
+    )
 
 
 def _cmd_extract(*, instance_root: Path, yyyymmdd: str, producer_id: str) -> int:

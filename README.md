@@ -27,6 +27,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   source registry and `hisys collect` runs fixture-backed Investigator
   collection into local runtime records, Hermes boundary records, and run
   summaries.
+- Increment **I4 Investigator direct memo foundation** - `hisys investigate-memo`
+  runs registered fixture-source investigation from a research topic/goal,
+  applies `HISYS-TPL-RESEARCH-SEARCH-001`, and writes a runtime-local
+  template-based investigation `ZettelMemo` JSON/Markdown artifact before Chief
+  Editor orchestration.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
@@ -120,6 +125,13 @@ hisys collect --instance /tmp/hisys-run \
   --config-from examples/instance \
   --source SRC-HW-MOCK-001 \
   --date 20260508
+hisys investigate-memo --instance /tmp/hisys-investigation \
+  --config-from examples/instance \
+  --source SRC-HW-MOCK-001 \
+  --date 20260508 \
+  --topic "hardware overheating risk" \
+  --goal "Assess whether fixture sensor evidence requires operations attention." \
+  --perspective PERSP-OPS-001
 hisys extract --instance /tmp/hisys-run --date 20260508
 hisys draft-memo --instance /tmp/hisys-run \
   --date 20260508 \
@@ -146,7 +158,15 @@ hisys request-dars-critique --instance /tmp/hisys-run \
 The `collect` command writes local JSON/JSONL runtime records and, for Hermes
 sources, Markdown boundary records under
 `runtime-boundary/hermes/<YYYYMMDD>/<campaign_id>/`. It does not perform live
-network calls or external side effects. The `extract` command reads only local
+collection beyond configured fixture adapters. The `investigate-memo` command
+runs a registry-gated fixture investigation from a `--topic` and `--goal`,
+applies `HISYS-TPL-RESEARCH-SEARCH-001`, writes linked `ExtractedSignal`
+records, and persists a template-based Investigator memo under
+`data/investigation-memos/<YYYYMMDD>/` plus
+`reports/run-summaries/<YYYYMMDD>/investigation-memo-report.{json,md}`. It keeps
+raw payload content in RawObservation records and copies only source,
+observation, signal, payload-ref, and hash references into the memo. The
+`extract` command
 `data/raw-observations/<YYYYMMDD>/` JSON records, writes
 `data/extracted-signals/<YYYYMMDD>/` JSON records, and stores
 `reports/run-summaries/<YYYYMMDD>/extraction-report.{json,md}`. The
