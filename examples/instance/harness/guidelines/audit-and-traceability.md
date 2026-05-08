@@ -1,7 +1,7 @@
 # Audit and Traceability Harness Guideline
 
-Traceability: HISYS-FR-ADM-002, HISYS-T-008, HISYS-T-021, HISYS-T-023,
-HISYS-T-024.
+Traceability: HISYS-FR-ADM-002, HISYS-FR-ADM-004, HISYS-T-008,
+HISYS-T-021, HISYS-T-023, HISYS-T-024.
 
 ## Procedure
 
@@ -19,6 +19,9 @@ HISYS-T-024.
    files, excluding local-only secrets/tmp/cache/log/backups directories.
 7. Verify restore readiness with a dry-run report before any restore writes are
    allowed.
+8. Check operator health status locally before live operation; health checks must
+   report missing runtime directories and disabled/loopback connector posture
+   without probing external services.
 
 ## Pass Criteria
 
@@ -32,3 +35,6 @@ HISYS-T-024.
   include local-only `secrets/`, `tmp/`, `cache/`, `logs/`, or `backups/` content.
 - Restore dry-run reports verify archive hashes and list what would be restored
   without writing target files.
+- Health status reports show `ok` only when required runtime directories exist;
+  disabled alert delivery and DARS loopback status are reported as safe connector
+  posture rather than live external availability.

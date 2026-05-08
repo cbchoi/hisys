@@ -115,7 +115,7 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `dars_backend=loopback_placeholder`, `external_call_made=false`,
   `allowed_actions=advisory_only`, and `action_taken=none`, so a future DARS
   adapter can replace the loopback without changing downstream records.
-- Increment **I9-A/B product hardening** - `hisys.security.secret_scan` and
+- Increment **I9-A/B/C product hardening** - `hisys.security.secret_scan` and
   `scripts/scan_secrets.py` scan repository/runtime files for assignment-style
   secret-like values, skip runtime caches such as `.git`/`.pytest_cache`/
   `__pycache__`, and report only redacted excerpts so validation output can be
@@ -123,8 +123,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   controlled `config`/`templates`/`harness`/`data`/`runtime-boundary`/`reports`
   files, writes a SHA-256 manifest, excludes local-only `secrets`/`tmp`/`cache`/
   `logs`/`backups`, and verifies archives through restore dry-run reports.
+  `hisys.operations.health` reports required runtime-directory readiness plus
+  disabled/loopback connector status without live external probes.
 - Later increments (real DARS adapter, expanded critique feedback, remaining I9
-  health status and release-readiness traceability hardening)
+  release-readiness traceability hardening)
   are not implemented; controlled vault writer workflows remain pending.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
@@ -150,7 +152,7 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
       chief_editor/ fixture-backed alert decision policy/runtime, approval
                     transition stub, and dry-run alert action planning
       agents/     runtime-local DARS advisory handoff/critique harness
-      operations/ runtime-local backup manifest and restore dry-run helpers
+      operations/ runtime-local backup, restore dry-run, and health status helpers
       security/    secret-like value scanner and redacted scan reports
 
     examples/instance/
