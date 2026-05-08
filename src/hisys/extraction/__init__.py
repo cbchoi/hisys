@@ -1,4 +1,15 @@
-"""Placeholder for the extraction subpackage; not implemented in I0/I1.
+"""I5 extraction pipeline package.
 
-Reserved per HISYS-REPO-001 v0.2.1 (repository-structure baseline).
+Traceability: HISYS-FR-EXT-001..005, HISYS-DATA-002, HISYS-T-009,
+HISYS-T-010.
 """
+
+from .extractor import FixtureSignalExtractor
+from .runtime import ExtractionReport, ExtractionRuntime, SignalExtractor
+
+__all__ = [
+    "ExtractionReport",
+    "ExtractionRuntime",
+    "FixtureSignalExtractor",
+    "SignalExtractor",
+]

@@ -27,8 +27,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   source registry and `hisys collect` runs fixture-backed Investigator
   collection into local runtime records, Hermes boundary records, and run
   summaries.
-- Later increments (I5-I9) are not implemented; I4 still needs expansion from
-  fixture-backed CLI/runtime skeleton to full Investigator workflows.
+- Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
+  converts `RawObservation` evidence into `ExtractedSignal` interpretation
+  records and persists signal JSON under the local runtime instance.
+- Later increments (I6-I9) are not implemented; I5 still needs expansion from
+  fixture rules to richer extraction/versioning workflows.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
 
@@ -47,7 +50,8 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
       audit/       JSONL audit writer with minimal redaction
       integrations/ Hermes Markdown boundary writer
       investigator/ registry-gated collection skeleton
-      extraction/, editor/, chief_editor/, health/, cli/   (placeholders)
+      extraction/  fixture-backed signal extractor and persistence runtime
+      editor/, chief_editor/, health/, cli/   (placeholders / runtime entry points)
 
     examples/instance/
       config/, templates/, harness/guidelines/, harness/scenarios/, data/
