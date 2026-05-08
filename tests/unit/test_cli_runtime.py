@@ -227,7 +227,11 @@ def test_investigate_memo_auto_selects_research_idea_discovery_guideline(tmp_pat
     assert report["guideline_profile_id"] == "research_idea_discovery"
     assert report["agent_ids"] == ["formalism-gap-analysis-agent"]
     assert report["evidence_package_refs"] == ["EPKG-TASK-INV-001-GAP"]
+    assert report["agent_plan_source"] == "config_default"
+    assert "publisher_web_search" in report["disabled_optional_agent_refs"]
+    assert "claude_research_evidence" in report["disabled_optional_agent_refs"]
     assert "HISYS-T-030" in report["policy_refs"]
+    assert "HISYS-T-032" in report["policy_refs"]
 
 
 def test_investigate_memo_auto_selects_investment_decision_guideline(tmp_path):
@@ -267,6 +271,9 @@ def test_investigate_memo_auto_selects_investment_decision_guideline(tmp_path):
     assert report["guideline_profile_id"] == "investment_decision_support"
     assert report["agent_ids"] == ["investment-decision-support-agent"]
     assert report["evidence_package_refs"] == ["EPKG-TASK-INV-001-INVEST"]
+    assert report["agent_plan_source"] == "config_default"
+    assert "market_news_search" in report["disabled_optional_agent_refs"]
+    assert "company_filing_search" in report["disabled_optional_agent_refs"]
 
 
 def test_investigate_memo_preserves_explicit_agent_override_for_general_topic(tmp_path: Path):
@@ -300,6 +307,38 @@ def test_investigate_memo_preserves_explicit_agent_override_for_general_topic(tm
     assert report["guideline_profile_id"] == "general_investigation"
     assert report["agent_ids"] == ["fixture-research-agent", "fixture-contradiction-agent"]
     assert report["evidence_package_refs"] == ["EPKG-TASK-INV-001-FIXTURE", "EPKG-TASK-INV-002-CONTRADICTION"]
+    assert report["agent_plan_source"] == "explicit"
+    assert report["disabled_optional_agent_refs"] == []
+
+
+def test_investigate_memo_blocks_disabled_explicit_external_connector(tmp_path: Path, capsys):
+    result = main(
+        [
+            "investigate-memo",
+            "--instance",
+            str(tmp_path),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+            "--topic",
+            "formalism gap",
+            "--goal",
+            "Find research gaps.",
+            "--perspective",
+            "PERSP-OPS-001",
+            "--agent",
+            "publisher_web_search",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "investigator agent connector blocked" in captured.err
+    assert "publisher_web_search" in captured.err
+    assert not (tmp_path / "data" / "evidence-packages" / "20260508").exists()
 
 
 def test_investigate_memo_dispatches_multiple_fixture_agents(tmp_path: Path, capsys):

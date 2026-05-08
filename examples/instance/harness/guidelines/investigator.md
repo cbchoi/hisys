@@ -44,6 +44,13 @@ EvidencePackage artifacts before the memo is synthesized.
    `formalism_gap_analysis`, investment decision support ->
    `investment_decision_support`, and general investigation -> no extra agent.
    Explicit `--agent` values remain authoritative for manual plans.
+13. Verify `config/investigator-agents.yaml` declares disabled optional
+   connectors only: publisher/search, Claude/Codex read-only evidence extraction,
+   local LLM offline mapping, market/news search, and company filing search must
+   require `EvidencePackage`, disallow external side effects, and remain disabled
+   unless a later approved adapter task enables them.
+14. Verify run reports record `agent_plan_source`, `disabled_optional_agent_refs`,
+   and `blocked_agent_refs` so connector decisions are auditable.
 
 ## Pass Criteria
 
@@ -70,6 +77,8 @@ EvidencePackage artifacts before the memo is synthesized.
 - Auto-planned purpose runs create research task/evidence package refs without
   requiring explicit `--agent` when the purpose is research idea discovery or
   investment decision support.
+- Connector registry runs keep optional web/LLM/search connectors disabled by
+  default and record disabled optional connector refs in the report.
 - Investigation memos reference `source_refs`, `observation_refs`, `signal_refs`,
   `research_task_refs`, and `evidence_package_refs` but do not copy raw payload
   content into the memo body.

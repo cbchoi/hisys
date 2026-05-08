@@ -1,6 +1,42 @@
 # Investigator research-agent configuration.
-# Traceability: HISYS-T-027, HISYS-T-028.
+# Traceability: HISYS-T-027, HISYS-T-028, HISYS-T-030, HISYS-T-031, HISYS-T-032.
 
+# Default mode remains fixture-only. Optional live/search/LLM connectors are
+# declared here as future integration points but are disabled by default.
+default_mode: fixture_only
+
+policy:
+  live_network_enabled: false
+  require_human_approval_for_live_network: true
+  require_evidence_package_schema: true
+  allow_raw_payload_in_memo: false
+  allow_external_side_effects: false
+  max_agent_runtime_seconds: 300
+  max_sources_per_task: 10
+
+purpose_agent_plans:
+  general_investigation:
+    default_agents: []
+    optional_agents:
+      - fixture
+      - fixture_contradiction
+  research_idea_discovery:
+    default_agents:
+      - formalism_gap_analysis
+    optional_agents:
+      - publisher_web_search
+      - claude_research_evidence
+      - codex_research_evidence
+      - local_llm_literature_mapper
+  investment_decision_support:
+    default_agents:
+      - investment_decision_support
+    optional_agents:
+      - market_news_search
+      - company_filing_search
+      - local_llm_risk_summarizer
+
+# Existing disabled browser harness config retained for HISYS-T-028.
 selenium_read_only:
   enabled: false
   read_only: true
@@ -15,6 +51,93 @@ selenium_read_only:
     - purchase
     - credential_use
 
+# Existing disabled delegated LLM contract retained for Task 8/HISYS-T-027.
 delegated_llm:
   enabled: false
   require_evidence_package: true
+
+agents:
+  publisher_web_search:
+    enabled: false
+    kind: web_search
+    mode: dry_run
+    allowed_domains:
+      - arxiv.org
+      - ieeexplore.ieee.org
+      - sciencedirect.com
+      - springer.com
+      - mdpi.com
+      - acm.org
+    disallowed_domains:
+      - social-media
+      - unknown-blogs
+    output_contract: EvidencePackage
+    external_side_effects_allowed: false
+
+  claude_research_evidence:
+    enabled: false
+    kind: claude_code
+    mode: read_only
+    command: claude
+    allowed_tools:
+      - Read
+    disallowed_tools:
+      - Edit
+      - Write
+      - WebSearch
+      - WebFetch
+      - Bash(curl *)
+      - Bash(git push *)
+    max_turns: 5
+    output_contract: EvidencePackage
+    external_side_effects_allowed: false
+
+  codex_research_evidence:
+    enabled: false
+    kind: codex
+    mode: read_only
+    command: codex
+    allowed_tools:
+      - read_files
+      - summarize
+    output_contract: EvidencePackage
+    external_side_effects_allowed: false
+
+  local_llm_literature_mapper:
+    enabled: false
+    kind: local_llm
+    mode: offline_only
+    endpoint: http://localhost:11434/api/generate
+    model: configurable-local-model
+    output_contract: EvidencePackage
+    external_side_effects_allowed: false
+
+  market_news_search:
+    enabled: false
+    kind: web_search
+    mode: dry_run
+    allowed_domains:
+      - sec.gov
+      - nasdaq.com
+      - nyse.com
+      - reuters.com
+    output_contract: EvidencePackage
+    external_side_effects_allowed: false
+
+  company_filing_search:
+    enabled: false
+    kind: filing_search
+    mode: dry_run
+    allowed_domains:
+      - sec.gov
+    output_contract: EvidencePackage
+    external_side_effects_allowed: false
+
+  local_llm_risk_summarizer:
+    enabled: false
+    kind: local_llm
+    mode: offline_only
+    endpoint: http://localhost:11434/api/generate
+    model: configurable-local-model
+    output_contract: EvidencePackage
+    external_side_effects_allowed: false
