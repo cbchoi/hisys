@@ -7,7 +7,15 @@ HISYS-FR-MEM-001..005, HISYS-TPL-RESEARCH-SEARCH-001.
 import pytest
 from pydantic import ValidationError
 
-from hisys.investigator import ClaimRecord, EvidenceItem, EvidencePackage, ResearchTask
+from hisys.investigator import (
+    ClaimRecord,
+    EvidenceItem,
+    EvidencePackage,
+    FixtureContradictionAgent,
+    FixtureResearchAgent,
+    ResearchTask,
+    create_research_agent,
+)
 
 
 def test_research_task_defaults_disallow_live_side_effect_actions():
@@ -65,3 +73,53 @@ def test_research_task_rejects_unknown_agent_type():
             agent_type="unbounded_browser",  # type: ignore[arg-type]
             question="This agent type is not in the governed HISYS-T-027 contract.",
         )
+
+
+
+def test_research_agent_factory_returns_fixture_agents():
+    fixture_agent = create_research_agent("fixture")
+    contradiction_agent = create_research_agent("fixture_contradiction")
+
+    assert isinstance(fixture_agent, FixtureResearchAgent)
+    assert isinstance(contradiction_agent, FixtureContradictionAgent)
+
+
+def test_research_agent_factory_rejects_unknown_agent_type():
+    with pytest.raises(ValueError, match="Unsupported research agent type"):
+        create_research_agent("unbounded_browser")
+
+
+def test_fixture_research_agent_returns_claim_and_evidence_package():
+    task = ResearchTask(
+        task_id="TASK-FIXTURE-001",
+        agent_type="fixture",
+        question="Assess fixture overheating evidence.",
+        query="hardware overheating risk",
+        allowed_source_ids=["SRC-HW-MOCK-001"],
+    )
+
+    package = create_research_agent("fixture").run(task)
+
+    assert package.agent_id == "fixture-research-agent"
+    assert package.agent_type == "fixture"
+    assert package.task_id == task.task_id
+    assert package.external_side_effects is False
+    assert package.claims
+    assert package.evidence
+    assert package.claims[0].evidence_refs == [package.evidence[0].evidence_id]
+    assert package.evidence[0].source_id == "SRC-HW-MOCK-001"
+
+
+def test_fixture_contradiction_agent_returns_limitation_or_open_question():
+    task = ResearchTask(
+        task_id="TASK-CONTRADICTION-001",
+        agent_type="fixture_contradiction",
+        question="Look for contradictory fixture interpretation.",
+    )
+
+    package = create_research_agent("fixture_contradiction").run(task)
+
+    assert package.agent_id == "fixture-contradiction-agent"
+    assert package.agent_type == "fixture_contradiction"
+    assert package.external_side_effects is False
+    assert package.open_questions or package.limitations
