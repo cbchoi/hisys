@@ -38,8 +38,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
   review over runtime-local memo drafts and flags draft status without writing to
   a live Obsidian vault.
-- Later increments (I7-I9) are not implemented; I6 still needs expansion from
-  duplicate/conflict review stubs to controlled vault writer workflows.
+- Increment **I7-A foundation** (Chief Editor alert decisions) - fixture-backed
+  Chief Editor policy reads runtime-local memo review outputs, creates
+  `AlertDecisionRecord` JSON/Markdown records, records duplicate non-escalation
+  decisions, and writes alert decision reports via `hisys decide-alerts` without
+  sending live alerts.
+- Later increments (I7 suppression windows/approval workflow/connectors, I8-I9)
+  are not implemented; controlled vault writer workflows remain pending.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
 
@@ -61,7 +66,8 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
       extraction/  fixture-backed signal extractor and persistence runtime
       editor/      fixture-backed memo drafter, local draft persistence, and
                    duplicate/conflict review runtime
-      chief_editor/, health/, cli/   (placeholders / runtime entry points)
+      chief_editor/ fixture-backed alert decision policy/runtime
+      health/, cli/ runtime entry points / placeholders
 
     examples/instance/
       config/, templates/, harness/guidelines/, harness/scenarios/, data/
@@ -84,7 +90,7 @@ into a project-local virtualenv (do not install globally):
     pip install -e '.[dev]'
     pytest
 
-`hisys --help` exposes the runtime CLI. Fixture-backed I4-I6 commands are:
+`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-A commands are:
 
 ```bash
 hisys validate-config --instance examples/instance
@@ -97,6 +103,7 @@ hisys draft-memo --instance /tmp/hisys-run \
   --date 20260508 \
   --perspective PERSP-OPS-001
 hisys review-memos --instance /tmp/hisys-run --date 20260508
+hisys decide-alerts --instance /tmp/hisys-run --date 20260508
 ```
 
 The `collect` command writes local JSON/JSONL runtime records and, for Hermes
@@ -112,8 +119,13 @@ memos under `data/memo-drafts/<YYYYMMDD>/` plus
 `reports/run-summaries/<YYYYMMDD>/memo-draft-report.{json,md}`. The
 `review-memos` command reads only runtime-local memo draft JSON, flags fixture
 duplicates/conflicts by updating draft status, and writes
-`reports/run-summaries/<YYYYMMDD>/memo-review-report.{json,md}`; neither command
-writes to a live Obsidian vault.
+`reports/run-summaries/<YYYYMMDD>/memo-review-report.{json,md}`. The
+`decide-alerts` command reads runtime-local memo drafts plus the memo review
+report, applies the fixture Chief Editor policy, writes
+`data/alert-decisions/<YYYYMMDD>/` JSON/Markdown decisions and
+`reports/run-summaries/<YYYYMMDD>/alert-decision-report.{json,md}`, and does not
+send live alerts. These commands do not write to a live Obsidian vault or call
+external alert connectors.
 
 ## Quality and security constraints
 

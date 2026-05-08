@@ -1,4 +1,10 @@
-"""Placeholder for the chief_editor subpackage; not implemented in I0/I1.
+"""Chief Editor subpackage.
 
-Reserved per HISYS-REPO-001 v0.2.1 (repository-structure baseline).
+Traceability: HISYS-REPO-001, HISYS-FR-CE-001..006,
+HISYS-CE-POLICY-001, HISYS-T-014, HISYS-T-015, HISYS-T-016.
 """
+
+from .policy import ChiefEditorPolicy
+from .runtime import AlertDecisionRunReport, ChiefEditorRuntime
+
+__all__ = ["AlertDecisionRunReport", "ChiefEditorPolicy", "ChiefEditorRuntime"]

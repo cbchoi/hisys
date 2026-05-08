@@ -3,7 +3,7 @@
 Traceability: HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001,
 HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
 HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
-HISYS-T-012, HISYS-T-013.
+HISYS-T-012, HISYS-T-013, HISYS-T-014, HISYS-T-015, HISYS-T-016.
 """
 
 from __future__ import annotations
@@ -18,8 +18,9 @@ from typing import Iterable
 from .. import __version__
 from ..adapters import AgentSystemMockSource, HardwareMockSource, HermesToolMockSource, WebNewsMockSource
 from ..adapters.hermes_tool_mock import HermesCollectionInputs
+from ..chief_editor import ChiefEditorPolicy, ChiefEditorRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewRuntime
+from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..investigator import CollectionReport, InvestigatorRuntime
@@ -66,6 +67,11 @@ def _build_parser() -> argparse.ArgumentParser:
     review.add_argument("--instance", required=True, help="runtime instance root containing memo drafts")
     review.add_argument("--date", required=True, help="YYYYMMDD memo draft partition")
     review.add_argument("--producer-id", default="memo-review-cli", help="memo review actor id")
+
+    decide = sub.add_parser("decide-alerts", help="run fixture Chief Editor alert decisions")
+    decide.add_argument("--instance", required=True, help="runtime instance root containing memo review outputs")
+    decide.add_argument("--date", required=True, help="YYYYMMDD memo review partition")
+    decide.add_argument("--producer-id", default="chief-editor-cli", help="Chief Editor actor id")
     return parser
 
 
@@ -101,6 +107,12 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.command == "review-memos":
         return _cmd_review_memos(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            producer_id=args.producer_id,
+        )
+    if args.command == "decide-alerts":
+        return _cmd_decide_alerts(
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             producer_id=args.producer_id,
@@ -345,6 +357,49 @@ def _load_memo_drafts(instance: InstanceRoot, yyyymmdd: str) -> list[ZettelMemo]
     for path in sorted(directory.glob("MEM-*.json")):
         memos.append(ZettelMemo.model_validate_json(path.read_text(encoding="utf-8")))
     return memos
+
+
+def _cmd_decide_alerts(*, instance_root: Path, yyyymmdd: str, producer_id: str) -> int:
+    instance = InstanceRoot(instance_root)
+    memos = _load_memo_drafts(instance, yyyymmdd)
+    if not memos:
+        print(f"no memo drafts found for date {yyyymmdd}", file=sys.stderr)
+        return 1
+    memo_review_report = _load_memo_review_report(instance, yyyymmdd)
+    if memo_review_report is None:
+        print(f"no memo review report found for date {yyyymmdd}", file=sys.stderr)
+        return 1
+    runtime = ChiefEditorRuntime(
+        instance=instance,
+        policy=ChiefEditorPolicy.fixture_default(),
+        producer_id=producer_id,
+    )
+    report = runtime.decide_run(memos, memo_review_report=memo_review_report, yyyymmdd=yyyymmdd)
+    report_path = instance.root / "reports" / "run-summaries" / yyyymmdd / "alert-decision-report.json"
+    print(f"alert decision run: report={report_path}")
+    print(f"reviewed: {len(report.reviewed_memo_refs)}")
+    print(f"alert_decisions: {len(report.alert_decision_refs)}")
+    print(f"non_escalation_decisions: {len(report.non_escalation_decision_refs)}")
+    print(f"suppressed_memos: {len(report.suppressed_memo_refs)}")
+    print(f"skipped: {len(report.skipped_memo_refs)}")
+    if not report.alert_decision_refs and not report.non_escalation_decision_refs:
+        print("no alert decisions created", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _load_memo_review_report(instance: InstanceRoot, yyyymmdd: str) -> MemoReviewReport | None:
+    path = instance.root / "reports" / "run-summaries" / yyyymmdd / "memo-review-report.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return MemoReviewReport(
+        reviewed_memo_refs=list(data.get("reviewed_memo_refs", [])),
+        duplicate_memo_refs=list(data.get("duplicate_memo_refs", [])),
+        conflict_memo_refs=list(data.get("conflict_memo_refs", [])),
+        clean_memo_refs=list(data.get("clean_memo_refs", [])),
+        policy_refs=list(data.get("policy_refs", ["HISYS-FR-MEM-004", "HISYS-T-013"])),
+    )
 
 
 def _build_fixture_adapters(
