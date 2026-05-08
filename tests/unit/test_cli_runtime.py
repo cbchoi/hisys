@@ -4,7 +4,7 @@ Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
 HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019,
-HISYS-T-020, HISYS-T-021, HISYS-T-022.
+HISYS-T-020, HISYS-T-021, HISYS-T-022, HISYS-T-023.
 """
 
 from __future__ import annotations
@@ -728,6 +728,49 @@ def test_execute_alert_actions_command_records_disabled_connector_block(tmp_path
     assert execution["execution_status"] == "blocked"
     assert execution["blocked_reason"] == "live_delivery_disabled"
     assert execution["action_taken"] == "none"
+
+
+
+def test_request_dars_critique_command_records_advisory_result(tmp_path: Path, capsys):
+    _prepare_flagged_conflict_memo(tmp_path, capsys)
+    assert main([
+        "decide-alerts", "--instance", str(tmp_path), "--date", "20260508",
+        "--conflict-severity", "high", "--target-channel", "discord:#ops",
+    ]) == 0
+    alert_id = json.loads((tmp_path / "reports" / "run-summaries" / "20260508" / "alert-decision-report.json").read_text(encoding="utf-8"))["alert_decision_refs"][0]
+    assert main([
+        "review-alert-approval", "--instance", str(tmp_path), "--date", "20260508",
+        "--alert-id", alert_id, "--outcome", "approved", "--rationale", "fixture dars test",
+    ]) == 0
+    assert main(["plan-alert-actions", "--instance", str(tmp_path), "--date", "20260508"]) == 0
+    assert main(["execute-alert-actions", "--instance", str(tmp_path), "--date", "20260508"]) == 0
+    exec_report = json.loads((tmp_path / "reports" / "run-summaries" / "20260508" / "alert-connector-execution-report.json").read_text(encoding="utf-8"))
+    execution_id = exec_report["execution_refs"][0]
+    capsys.readouterr()
+
+    result = main([
+        "request-dars-critique", "--instance", str(tmp_path), "--date", "20260508",
+        "--source-execution-id", execution_id,
+        "--critique-text", "Confidence overstated; cite raw payload.",
+    ])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "dars critique" in captured.out
+    assert "handoffs: 1" in captured.out
+    assert "critiques: 1" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "dars-critique-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["handoff_refs"]
+    assert report["critique_refs"]
+    assert report["linked_execution_refs"] == [execution_id]
+    handoff_id = report["handoff_refs"][0]
+    critique_id = report["critique_refs"][0]
+    assert handoff_id.startswith("HANDOFF-")
+    assert critique_id.startswith("CRITIQUE-")
+    critique = json.loads((tmp_path / "data" / "agent-critiques" / "20260508" / f"{critique_id}.json").read_text(encoding="utf-8"))
+    assert critique["handoff_ref"] == handoff_id
+    assert critique["source_execution_ref"] == execution_id
 
 
 

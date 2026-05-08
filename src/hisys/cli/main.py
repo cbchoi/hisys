@@ -5,7 +5,7 @@ HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
 HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
 HISYS-T-012, HISYS-T-013, HISYS-T-014, HISYS-T-015, HISYS-T-016,
 HISYS-T-017, HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021,
-HISYS-T-022.
+HISYS-T-022, HISYS-T-023.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from ..chief_editor import (
     ChiefEditorPolicy,
     ChiefEditorRuntime,
 )
+from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -112,6 +113,15 @@ def _build_parser() -> argparse.ArgumentParser:
     execute.add_argument("--instance", required=True, help="runtime instance root containing action plans")
     execute.add_argument("--date", required=True, help="YYYYMMDD action-plan partition")
     execute.add_argument("--connector-id", default="disabled-fixture-connector", help="disabled fixture connector id")
+    dars = sub.add_parser(
+        "request-dars-critique",
+        help="create runtime-local advisory DARS handoff and ingest fixture critique",
+    )
+    dars.add_argument("--instance", required=True, help="runtime instance root containing connector executions")
+    dars.add_argument("--date", required=True, help="YYYYMMDD connector-execution partition")
+    dars.add_argument("--source-execution-id", required=True, help="connector execution id used as handoff evidence")
+    dars.add_argument("--critique-text", required=True, help="fixture DARS advisory critique text")
+    dars.add_argument("--producer-id", default="dars-fixture-cli", help="DARS fixture producer id")
     return parser
 
 
@@ -179,6 +189,14 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             connector_id=args.connector_id,
+        )
+    if args.command == "request-dars-critique":
+        return _cmd_request_dars_critique(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            source_execution_id=args.source_execution_id,
+            critique_text=args.critique_text,
+            producer_id=args.producer_id,
         )
     parser.error(f"unknown command: {args.command}")
     return 2
@@ -494,6 +512,30 @@ def _cmd_execute_alert_actions(*, instance_root: Path, yyyymmdd: str, connector_
     print(f"blocked: {len(report.blocked_refs)}")
     print(f"skipped_plans: {len(report.skipped_plan_refs)}")
     return 0
+
+
+
+def _cmd_request_dars_critique(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    source_execution_id: str,
+    critique_text: str,
+    producer_id: str,
+) -> int:
+    instance = InstanceRoot(instance_root)
+    report = DarsRuntime(instance=instance).run_fixture_critique(
+        yyyymmdd=yyyymmdd,
+        source_execution_id=source_execution_id,
+        critique_text=critique_text,
+        producer_id=producer_id,
+    )
+    print(f"dars critique: report={instance.root / report.report_ref}")
+    print(f"handoffs: {len(report.handoff_refs)}")
+    print(f"critiques: {len(report.critique_refs)}")
+    print(f"linked_executions: {len(report.linked_execution_refs)}")
+    print(f"skipped_executions: {len(report.skipped_execution_refs)}")
+    return 0 if report.handoff_refs else 1
 
 
 

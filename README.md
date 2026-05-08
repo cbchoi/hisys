@@ -52,7 +52,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   approved pending decisions as `would_send=true` candidates while live delivery
   remains disabled; `hisys execute-alert-actions` writes disabled connector
   execution records/reports and still sends nothing.
-- Later increments (I7 suppression windows/approval workflow/connectors, I8-I9)
+- Increment **I8-A foundation** (DARS advisory handoff loop) - `hisys
+  request-dars-critique` creates runtime-local `AgentHandoffPackage` JSON/Markdown
+  records and fixture DARS critique JSON/Markdown records linked to disabled
+  connector executions; the handoff is `advisory_only`, uses no live DARS service,
+  and keeps `action_taken=none`.
+- Later increments (I8 expanded critique feedback, I9 hardening)
   are not implemented; controlled vault writer workflows remain pending.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
@@ -77,6 +82,7 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
                    duplicate/conflict review runtime
       chief_editor/ fixture-backed alert decision policy/runtime, approval
                     transition stub, and dry-run alert action planning
+      agents/     runtime-local DARS advisory handoff/critique harness
       health/, cli/ runtime entry points / placeholders
 
     examples/instance/
@@ -100,7 +106,7 @@ into a project-local virtualenv (do not install globally):
     pip install -e '.[dev]'
     pytest
 
-`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-G commands are:
+`hisys --help` exposes the runtime CLI. Fixture-backed I4-I8-A commands are:
 
 ```bash
 hisys validate-config --instance examples/instance
@@ -121,6 +127,10 @@ hisys review-alert-approval --instance /tmp/hisys-run \
   --outcome approved \
   --rationale 'fixture approval'
 hisys execute-alert-actions --instance /tmp/hisys-run --date 20260508
+hisys request-dars-critique --instance /tmp/hisys-run \
+  --date 20260508 \
+  --source-execution-id EXEC-... \
+  --critique-text 'Fixture advisory critique.'
 ```
 
 The `collect` command writes local JSON/JSONL runtime records and, for Hermes
@@ -161,8 +171,14 @@ connector execution records under
 `data/alert-connector-executions/<YYYYMMDD>/`, persists
 `reports/run-summaries/<YYYYMMDD>/alert-connector-execution-report.{json,md}`,
 records `execution_status=blocked`, `live_delivery_permitted=false`, and
-`action_taken=none`, and never sends live alerts. These commands do not write to
-a live Obsidian vault or call external alert connectors.
+`action_taken=none`, and never sends live alerts. The `request-dars-critique`
+command creates a runtime-local advisory `AgentHandoffPackage` under
+`data/agent-handoffs/<YYYYMMDD>/`, ingests fixture critique text under
+`data/agent-critiques/<YYYYMMDD>/`, persists
+`reports/run-summaries/<YYYYMMDD>/dars-critique-report.{json,md}`, keeps
+`allowed_actions=advisory_only` and `action_taken=none`, and never calls a live
+DARS service. These commands do not write to a live Obsidian vault or call
+external alert connectors.
 
 ## Quality and security constraints
 
