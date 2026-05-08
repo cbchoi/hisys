@@ -18,6 +18,7 @@ from .. import __version__
 from ..adapters import AgentSystemMockSource, HardwareMockSource, HermesToolMockSource, WebNewsMockSource
 from ..adapters.hermes_tool_mock import HermesCollectionInputs
 from ..config import InstanceRoot, load_source_registry
+from ..integrations import HermesBoundaryWriter
 from ..investigator import CollectionReport, InvestigatorRuntime
 from ..registry import SourceRegistry
 from ..schemas import SourceRegistryEntry
@@ -97,10 +98,17 @@ def _cmd_collect(
         collector_id=collector_id,
     )
     report = runtime.collect_run(source_ids, yyyymmdd=yyyymmdd)
-    report_path = _write_collection_report(InstanceRoot(output_root), report, yyyymmdd)
+    boundary_refs = _write_hermes_boundary_records(
+        instance=InstanceRoot(output_root),
+        report=report,
+        registry=registry,
+        yyyymmdd=yyyymmdd,
+    )
+    report_path = _write_collection_report(InstanceRoot(output_root), report, yyyymmdd, boundary_refs)
     print(f"collection run {report.collection_run_id}: report={report_path}")
     print(f"collected: {len(report.collected_observation_refs)}")
     print(f"skipped: {len(report.skipped_source_ids)}")
+    print(f"boundary_records: {len(boundary_refs)}")
     if not report.collected_observation_refs:
         print("no observations collected", file=sys.stderr)
         return 1
@@ -173,18 +181,55 @@ def _hermes_inputs(entry: SourceRegistryEntry) -> HermesCollectionInputs:
     )
 
 
-def _write_collection_report(instance: InstanceRoot, report: CollectionReport, yyyymmdd: str) -> Path:
+def _write_hermes_boundary_records(
+    *,
+    instance: InstanceRoot,
+    report: CollectionReport,
+    registry: SourceRegistry,
+    yyyymmdd: str,
+) -> list[str]:
+    writer = HermesBoundaryWriter(instance)
+    refs: list[str] = []
+    for source_id in report.requested_source_ids:
+        entry = registry.entries.get(source_id)
+        if entry is None or entry.source_type != "hermes_tool" or source_id in report.skipped_source_ids:
+            continue
+        refs.append(
+            writer.write_record(
+                yyyymmdd=yyyymmdd,
+                campaign_id="CAMP-HERMES-CLI-001",
+                record_kind="tool_output",
+                stable_id="HERMES-CLI-001",
+                title=f"Hermes fixture collection: {source_id}",
+                body=(
+                    f"Source ID: `{source_id}`\n\n"
+                    "Payload summary: Fixture Hermes collection output.\n\n"
+                    f"Collection run: `{report.collection_run_id}`\n\n"
+                    f"Observation refs: {', '.join(report.collected_observation_refs)}\n"
+                ),
+            )
+        )
+    return refs
+
+
+def _write_collection_report(
+    instance: InstanceRoot,
+    report: CollectionReport,
+    yyyymmdd: str,
+    boundary_refs: list[str] | None = None,
+) -> Path:
     directory = instance.root / "reports" / "run-summaries" / yyyymmdd
     directory.mkdir(parents=True, exist_ok=True)
     json_path = directory / "collection-report.json"
     data = asdict(report)
+    data["boundary_record_refs"] = list(boundary_refs or [])
     json_path.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     markdown_path = directory / "collection-report.md"
-    markdown_path.write_text(_format_report_markdown(report), encoding="utf-8")
+    markdown_path.write_text(_format_report_markdown(report, boundary_refs or []), encoding="utf-8")
     return json_path
 
 
-def _format_report_markdown(report: CollectionReport) -> str:
+def _format_report_markdown(report: CollectionReport, boundary_refs: list[str] | None = None) -> str:
     return "\n".join(
         [
             "# Hisys Collection Report",
@@ -193,6 +238,9 @@ def _format_report_markdown(report: CollectionReport) -> str:
             f"- requested_source_ids: {', '.join(report.requested_source_ids)}",
             f"- collected_observations: {len(report.collected_observation_refs)}",
             f"- skipped_sources: {len(report.skipped_source_ids)}",
+            "",
+            "## Boundary Records",
+            *[f"- {ref}" for ref in (boundary_refs or [])],
             "",
             "## Policy References",
             *[f"- {ref}" for ref in report.policy_refs],

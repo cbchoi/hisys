@@ -54,6 +54,47 @@ def test_collect_command_writes_report_summary_and_runtime_records(tmp_path: Pat
     assert (tmp_path / "data" / "audit" / "20260508" / "AUDIT-20260508.jsonl").exists()
 
 
+def test_collect_command_writes_hermes_boundary_markdown_for_hermes_source(
+    tmp_path: Path,
+    capsys,
+):
+    result = main(
+        [
+            "collect",
+            "--instance",
+            str(tmp_path),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--source",
+            "SRC-HERMES-TOOL-001",
+            "--date",
+            "20260508",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "boundary_records: 1" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "collection-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["boundary_record_refs"] == [
+        "hisys/runtime-boundary/hermes/20260508/CAMP-HERMES-CLI-001/tool_output-HERMES-CLI-001.md"
+    ]
+    boundary_path = (
+        tmp_path
+        / "runtime-boundary"
+        / "hermes"
+        / "20260508"
+        / "CAMP-HERMES-CLI-001"
+        / "tool_output-HERMES-CLI-001.md"
+    )
+    assert boundary_path.exists()
+    markdown = boundary_path.read_text(encoding="utf-8")
+    assert "record_kind: tool_output" in markdown
+    assert "SRC-HERMES-TOOL-001" in markdown
+    assert "Fixture Hermes collection output" in markdown
+
+
 def test_collect_command_rejects_unknown_source_without_unhandled_exception(tmp_path: Path, capsys):
     result = main(
         [

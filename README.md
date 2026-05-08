@@ -25,7 +25,8 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   collection skeleton, CI smoke gate, and example runtime instance in place.
 - Increment **I4 CLI glue** - `hisys validate-config` validates an instance
   source registry and `hisys collect` runs fixture-backed Investigator
-  collection into local runtime records and run summaries.
+  collection into local runtime records, Hermes boundary records, and run
+  summaries.
 - Later increments (I5-I9) are not implemented; I4 still needs expansion from
   fixture-backed CLI/runtime skeleton to full Investigator workflows.
 
@@ -79,8 +80,10 @@ hisys collect --instance /tmp/hisys-run \
   --date 20260508
 ```
 
-The `collect` command writes local JSON/JSONL runtime records only; it does not
-perform live network calls or external side effects.
+The `collect` command writes local JSON/JSONL runtime records and, for Hermes
+sources, Markdown boundary records under
+`runtime-boundary/hermes/<YYYYMMDD>/<campaign_id>/`. It does not perform live
+network calls or external side effects.
 
 ## Quality and security constraints
 

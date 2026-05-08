@@ -16,7 +16,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I2 Source governance | HISYS-IMP-001 Section 3; HISYS-SRC-REG-INIT-001; HISYS-CHECK-WEB-001 | Initial in-memory registry, fixture registry, and web compliance gate |
 | I3 Adapter framework | HISYS-IMP-001 Section 3; HISYS-IDD-001 HISYS-IF-003/HISYS-IF-015; HISYS-FIXTURE-001 | Common DataSource contract, fixture adapters, registry-gated runtime, health report, and failure isolation |
 | I4 Investigator foundation | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-HARNESS-GUIDE-001; HISYS-D-015; HISYS-D-016 | Runtime instance paths, YAML config loader, audit/observation persistence, Hermes boundary writer, Investigator collection skeleton, example instance, and CI smoke gate |
-| I4 CLI glue | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-D-015; HISYS-D-016 | `hisys validate-config`, fixture-backed `hisys collect`, and JSON/Markdown run summary persistence |
+| I4 CLI glue | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-D-015; HISYS-D-016 | `hisys validate-config`, fixture-backed `hisys collect`, Hermes Markdown boundary record persistence, and JSON/Markdown run summary persistence |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. Full Investigator workflow coverage remains pending; later
@@ -53,7 +53,7 @@ hardening) are not implemented yet.
 | `hisys.audit.writer` | HISYS-FR-ADM-002, HISYS-D-015, secret redaction guard | `tests/unit/test_runtime_writers.py` |
 | `hisys.integrations.hermes_boundary` | HISYS-FR-DS-006, HISYS-FR-INV-006, HISYS-DATA-005 | `tests/unit/test_runtime_writers.py` |
 | `hisys.investigator.runtime` | HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-007..008 | `tests/unit/test_investigator_runtime.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-007..008 | `tests/unit/test_cli_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..008 | `tests/unit/test_cli_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
@@ -87,8 +87,9 @@ For each step the test asserts:
   source failure isolation.
 - HISYS-T-007..008: Investigator foundation and CLI glue collect from
   registered fixture sources, write RawObservation JSON records, skip
-  unregistered sources, append audit JSONL records, and persist JSON/Markdown
-  run summaries in the local runtime instance.
+  unregistered sources, append audit JSONL records, persist Hermes Markdown
+  boundary records for Hermes sources, and persist JSON/Markdown run summaries
+  in the local runtime instance.
 - HISYS-D-015: I4 persistence baseline is local JSON/JSONL, not a live database
   or external service.
 - HISYS-D-016: Hermes foundation is collection-only and scoped to preapproved
