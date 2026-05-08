@@ -191,6 +191,78 @@ def test_investigate_memo_formalism_domain_agents_write_substantive_domain_memo(
     ]
 
 
+def test_investigate_memo_auto_selects_research_idea_discovery_guideline(tmp_path):
+    instance = tmp_path / "hisys-research-guideline"
+    result = main(
+        [
+            "investigate-memo",
+            "--instance",
+            str(instance),
+            "--config-from",
+            "examples/instance",
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+            "--topic",
+            "formalism gap for self organizing systems",
+            "--goal",
+            "Find new research ideas and gaps between existing formalisms.",
+            "--perspective",
+            "PERSP-OPS-001",
+            "--agent",
+            "formalism_comparison",
+        ]
+    )
+
+    assert result == 0
+    memo_text = next((instance / "data" / "investigation-memos" / "20260508").glob("*.md")).read_text(
+        encoding="utf-8"
+    )
+    assert "Guideline Profile: `research_idea_discovery`" in memo_text
+    assert "Gap statements between competing ideas" in memo_text
+    assert "Novelty candidates and synthesis opportunities" in memo_text
+    assert "Evaluation scenarios for validating the new idea" in memo_text
+    report = json.loads((instance / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json").read_text())
+    assert report["guideline_profile_id"] == "research_idea_discovery"
+    assert "HISYS-T-030" in report["policy_refs"]
+
+
+def test_investigate_memo_auto_selects_investment_decision_guideline(tmp_path):
+    instance = tmp_path / "hisys-investment-guideline"
+    result = main(
+        [
+            "investigate-memo",
+            "--instance",
+            str(instance),
+            "--config-from",
+            "examples/instance",
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+            "--topic",
+            "semiconductor company stock trend",
+            "--goal",
+            "Gather trends and company information to decide whether to buy the stock.",
+            "--perspective",
+            "PERSP-OPS-001",
+        ]
+    )
+
+    assert result == 0
+    memo_text = next((instance / "data" / "investigation-memos" / "20260508").glob("*.md")).read_text(
+        encoding="utf-8"
+    )
+    assert "Guideline Profile: `investment_decision_support`" in memo_text
+    assert "Company fundamentals and financial health" in memo_text
+    assert "Market trend, competitors, valuation, and risk factors" in memo_text
+    assert "Decision framing: buy, hold, avoid, or needs more evidence" in memo_text
+    assert "not financial advice" in memo_text
+    report = json.loads((instance / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json").read_text())
+    assert report["guideline_profile_id"] == "investment_decision_support"
+
+
 def test_investigate_memo_dispatches_multiple_fixture_agents(tmp_path: Path, capsys):
     result = main(
         [

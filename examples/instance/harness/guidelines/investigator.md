@@ -31,8 +31,13 @@ EvidencePackage artifacts before the memo is synthesized.
    under `data/evidence-packages/<YYYYMMDD>/`.
 10. Verify the memo body follows `HISYS-TPL-RESEARCH-SEARCH-001` sections:
    research question, query set, accepted source records, skipped/rejected
-   records, investigation findings, research agent evidence, evidence trace,
-   interpretation, agent limitations, and open questions.
+   records, investigation findings, purpose guideline, research agent evidence,
+   evidence trace, interpretation, agent limitations, and open questions.
+11. For purpose-specific runs, use `--purpose auto` or an explicit purpose
+   profile. Research idea discovery profiles require gap/novelty/evaluation
+   framing; investment decision-support profiles require fundamentals, market
+   trend, competitor, valuation, risk, and buy/hold/avoid/needs-more-evidence
+   framing plus a not-financial-advice safety note.
 
 ## Pass Criteria
 
@@ -49,6 +54,9 @@ EvidencePackage artifacts before the memo is synthesized.
   heuristics, expressiveness/simulation/verification tradeoffs, local interaction
   rules, emergent global structure, structural change as first-class state, and
   follow-up questions about simulation semantics/proof/topology change.
+- Purpose-specific guideline runs persist `guideline_profile_id` in the report
+  and memo tags/body; auto-selected investment decision-support runs include
+  the not-financial-advice safety note and bounded evidence requirements.
 - Investigation memos reference `source_refs`, `observation_refs`, `signal_refs`,
   `research_task_refs`, and `evidence_package_refs` but do not copy raw payload
   content into the memo body.

@@ -5,7 +5,8 @@ HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
 HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
 HISYS-T-012, HISYS-T-013, HISYS-T-014, HISYS-T-015, HISYS-T-016,
 HISYS-T-017, HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021,
-HISYS-T-022, HISYS-T-023, HISYS-T-024, HISYS-T-025, HISYS-T-026.
+HISYS-T-022, HISYS-T-023, HISYS-T-024, HISYS-T-025, HISYS-T-026,
+HISYS-T-030.
 """
 
 from __future__ import annotations
@@ -68,6 +69,22 @@ class InvestigationMemoReport:
     agent_ids: list[str] | None = None
     limitations: list[str] | None = None
     open_questions: list[str] | None = None
+    guideline_profile_id: str = "general_investigation"
+
+
+@dataclass(frozen=True)
+class GuidelineProfile:
+    """Purpose-specific memo guideline selected before synthesis.
+
+    Traceability: HISYS-T-030, HISYS-INST-INV-001, HISYS-FR-MEM-001..005.
+    """
+
+    profile_id: str
+    title: str
+    purpose: str
+    required_sections: list[str]
+    decision_frame: str
+    safety_note: str | None = None
 
 
 def _record_json(record: object) -> str:
@@ -129,6 +146,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="memo template id; default uses examples/instance/templates/collection/research-topic-search-template.md",
     )
     investigate_memo.add_argument("--collector-id", default="investigator-cli", help="collector actor id")
+    investigate_memo.add_argument(
+        "--purpose",
+        choices=["auto", "general_investigation", "research_idea_discovery", "investment_decision_support"],
+        default="auto",
+        help="purpose guideline profile; auto selects from topic and goal",
+    )
     investigate_memo.add_argument(
         "--agent",
         dest="agents",
@@ -233,6 +256,7 @@ def main(argv: list[str] | None = None) -> int:
             perspective_id=args.perspective,
             template_id=args.template_id,
             collector_id=args.collector_id,
+            purpose=args.purpose,
             agent_types=args.agents,
         )
     if args.command == "extract":
@@ -351,6 +375,7 @@ def _cmd_investigate_memo(
     perspective_id: str,
     template_id: str,
     collector_id: str,
+    purpose: str = "auto",
     agent_types: list[str] | None = None,
 ) -> int:
     """Run a template-driven Investigator research-to-memo path.
@@ -374,6 +399,7 @@ def _cmd_investigate_memo(
         return 1
 
     perspective = _fixture_perspective(perspective_id, producer_id=collector_id)
+    guideline = _select_guideline_profile(topic=topic, goal=goal, purpose=purpose)
     if perspective.lifecycle_state != "active":
         print(f"perspective not active: {perspective_id}", file=sys.stderr)
         return 1
@@ -403,6 +429,7 @@ def _cmd_investigate_memo(
         observations=observations,
         signals=signals,
         producer_id=collector_id,
+        guideline=guideline,
         merged_evidence=merged_evidence,
     )
     memo_paths = _write_investigation_memo(instance, memo, yyyymmdd)
@@ -423,12 +450,14 @@ def _cmd_investigate_memo(
             "HISYS-TPL-RESEARCH-SEARCH-001",
             "HISYS-T-026",
             "HISYS-T-027",
+            "HISYS-T-030",
         ],
         research_task_refs=[task.task_id for task in research_tasks],
         evidence_package_refs=[package.package_id for package in evidence_packages],
         agent_ids=merged_evidence.agent_ids if merged_evidence else [],
         limitations=merged_evidence.limitations if merged_evidence else [],
         open_questions=merged_evidence.open_questions if merged_evidence else [],
+        guideline_profile_id=guideline.profile_id,
     )
     report_path = _write_investigation_report(instance, report, yyyymmdd)
     print(f"investigation memo run: report={report_path}")
@@ -475,6 +504,7 @@ def _investigation_memo(
     observations: list[RawObservation],
     signals: list[ExtractedSignal],
     producer_id: str,
+    guideline: GuidelineProfile,
     merged_evidence: object | None = None,
 ) -> ZettelMemo:
     source_refs = sorted({obs.source_id for obs in observations})
@@ -487,6 +517,7 @@ def _investigation_memo(
         perspective=perspective,
         observations=observations,
         signals=signals,
+        guideline=guideline,
         merged_evidence=merged_evidence,
     )
     return ZettelMemo(
@@ -502,6 +533,7 @@ def _investigation_memo(
             "hisys",
             "investigator-memo",
             "template:research-topic-search",
+            f"guideline:{guideline.profile_id}",
             f"perspective:{perspective.perspective_id}",
             f"topic:{topic.replace(' ', '-')}",
         ],
@@ -519,6 +551,74 @@ def _primary_investigation_summary(signals: list[ExtractedSignal], topic: str) -
     return f"Investigation memo for {topic}."
 
 
+def _select_guideline_profile(*, topic: str, goal: str, purpose: str = "auto") -> GuidelineProfile:
+    """Select the memo guideline profile from explicit purpose or topic/goal cues."""
+
+    profiles = _guideline_profiles()
+    if purpose != "auto":
+        return profiles[purpose]
+    text = f"{topic} {goal}".lower()
+    investment_terms = ["stock", "buy", "valuation", "company", "market trend", "investment", "financial"]
+    research_terms = ["research idea", "new idea", "gap", "novelty", "formalism", "paper", "synthesis"]
+    if any(term in text for term in investment_terms):
+        return profiles["investment_decision_support"]
+    if any(term in text for term in research_terms):
+        return profiles["research_idea_discovery"]
+    return profiles["general_investigation"]
+
+
+def _guideline_profiles() -> dict[str, GuidelineProfile]:
+    return {
+        "general_investigation": GuidelineProfile(
+            profile_id="general_investigation",
+            title="General investigation",
+            purpose="Collect bounded evidence and identify follow-up questions.",
+            required_sections=[
+                "Accepted source evidence",
+                "Findings and limitations",
+                "Open questions requiring corroboration",
+            ],
+            decision_frame="Decide whether additional controlled evidence is required before escalation.",
+        ),
+        "research_idea_discovery": GuidelineProfile(
+            profile_id="research_idea_discovery",
+            title="Research idea discovery",
+            purpose="Find gaps, tensions, and possible new research ideas across competing concepts.",
+            required_sections=[
+                "Gap statements between competing ideas",
+                "Novelty candidates and synthesis opportunities",
+                "Evaluation scenarios for validating the new idea",
+            ],
+            decision_frame="Identify promising research questions rather than selecting an operational action.",
+        ),
+        "investment_decision_support": GuidelineProfile(
+            profile_id="investment_decision_support",
+            title="Investment decision support",
+            purpose="Gather trend and company evidence to support a buy/hold/avoid decision frame.",
+            required_sections=[
+                "Company fundamentals and financial health",
+                "Market trend, competitors, valuation, and risk factors",
+                "Decision framing: buy, hold, avoid, or needs more evidence",
+            ],
+            decision_frame="Separate evidence from recommendation; require corroborated financial sources before action.",
+            safety_note="This memo is not financial advice; it is a controlled evidence-gathering aid.",
+        ),
+    }
+
+
+def _format_guideline_profile(guideline: GuidelineProfile) -> list[str]:
+    lines = [
+        f"- Guideline Profile: `{guideline.profile_id}` — {guideline.title}",
+        f"- Purpose: {guideline.purpose}",
+        "- Required evidence focus:",
+        *[f"  - {section}" for section in guideline.required_sections],
+        f"- Decision frame: {guideline.decision_frame}",
+    ]
+    if guideline.safety_note:
+        lines.append(f"- Safety note: {guideline.safety_note}")
+    return lines
+
+
 def _format_investigation_memo_body(
     *,
     topic: str,
@@ -527,6 +627,7 @@ def _format_investigation_memo_body(
     perspective: PerspectiveProfile,
     observations: list[RawObservation],
     signals: list[ExtractedSignal],
+    guideline: GuidelineProfile,
     merged_evidence: object | None = None,
 ) -> str:
     query_set = [
@@ -548,6 +649,7 @@ def _format_investigation_memo_body(
         for signal in signals
     ]
     agent_evidence = []
+    guideline_lines = _format_guideline_profile(guideline)
     agent_limitations = []
     agent_open_questions = []
     if merged_evidence is not None:
@@ -584,6 +686,9 @@ def _format_investigation_memo_body(
             "",
             "## Investigation Findings",
             *(findings or ["- No extracted findings."]),
+            "",
+            "## Purpose Guideline",
+            *guideline_lines,
             "",
             "## Research Agent Evidence",
             *(agent_evidence or ["- No research agent evidence packages were dispatched in this run."]),
