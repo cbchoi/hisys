@@ -32,6 +32,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   applies `HISYS-TPL-RESEARCH-SEARCH-001`, and writes a runtime-local
   template-based investigation `ZettelMemo` JSON/Markdown artifact before Chief
   Editor orchestration.
+- Increment **HISYS-T-027 Investigator multi-agent fixture research** -
+  `hisys investigate-memo --agent fixture --agent fixture_contradiction`
+  creates governed `ResearchTask` records, dispatches deterministic fixture
+  research agents, validates/merges `EvidencePackage` outputs, persists
+  `data/research-tasks/<YYYYMMDD>/` and `data/evidence-packages/<YYYYMMDD>/`
+  artifacts, and builds one template memo from validated evidence while
+  Selenium/browser and delegated LLM agents remain disabled until harnesses pass.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
@@ -131,7 +138,9 @@ hisys investigate-memo --instance /tmp/hisys-investigation \
   --date 20260508 \
   --topic "hardware overheating risk" \
   --goal "Assess whether fixture sensor evidence requires operations attention." \
-  --perspective PERSP-OPS-001
+  --perspective PERSP-OPS-001 \
+  --agent fixture \
+  --agent fixture_contradiction
 hisys extract --instance /tmp/hisys-run --date 20260508
 hisys draft-memo --instance /tmp/hisys-run \
   --date 20260508 \
@@ -163,7 +172,12 @@ runs a registry-gated fixture investigation from a `--topic` and `--goal`,
 applies `HISYS-TPL-RESEARCH-SEARCH-001`, writes linked `ExtractedSignal`
 records, and persists a template-based Investigator memo under
 `data/investigation-memos/<YYYYMMDD>/` plus
-`reports/run-summaries/<YYYYMMDD>/investigation-memo-report.{json,md}`. It keeps
+`reports/run-summaries/<YYYYMMDD>/investigation-memo-report.{json,md}`. When
+`--agent` is supplied, `investigate-memo` additionally writes governed
+`ResearchTask` artifacts under `data/research-tasks/<YYYYMMDD>/`, validates and
+persists each agent `EvidencePackage` under `data/evidence-packages/<YYYYMMDD>/`,
+and merges agent claims, limitations, and open questions into the final template
+memo. It keeps
 raw payload content in RawObservation records and copies only source,
 observation, signal, payload-ref, and hash references into the memo. The
 `extract` command

@@ -1,7 +1,7 @@
 # Investigator Harness Guideline
 
 Traceability: HISYS-INST-INV-001, HISYS-T-006, HISYS-T-007, HISYS-T-008,
-HISYS-T-026, HISYS-TPL-RESEARCH-SEARCH-001.
+HISYS-T-026, HISYS-T-027, HISYS-TPL-RESEARCH-SEARCH-001.
 
 ## Purpose
 
@@ -9,7 +9,8 @@ Validate that the Investigator collects only from registered collectable sources
 normalizes adapter results into RawObservation records, preserves provenance, and
 records audit events. Validate that `investigate-memo` can turn a research
 topic/goal into a template-based Investigator memo artifact before Chief Editor
-orchestration.
+orchestration, and that optional fixture research agents produce validated
+EvidencePackage artifacts before the memo is synthesized.
 
 ## Procedure
 
@@ -21,10 +22,15 @@ orchestration.
 6. Continue collecting registered sources even if one source fails.
 7. For direct memo runs, execute `hisys investigate-memo` with a research topic,
    goal, perspective, and one or more registered sources.
-8. Verify the memo body follows `HISYS-TPL-RESEARCH-SEARCH-001` sections:
+8. Optionally pass `--agent fixture --agent fixture_contradiction` to dispatch
+   deterministic fixture research agents.
+9. Verify each `ResearchTask` is persisted under
+   `data/research-tasks/<YYYYMMDD>/` and each `EvidencePackage` is persisted
+   under `data/evidence-packages/<YYYYMMDD>/`.
+10. Verify the memo body follows `HISYS-TPL-RESEARCH-SEARCH-001` sections:
    research question, query set, accepted source records, skipped/rejected
-   records, investigation findings, evidence trace, interpretation, and open
-   questions.
+   records, investigation findings, research agent evidence, evidence trace,
+   interpretation, agent limitations, and open questions.
 
 ## Pass Criteria
 
@@ -34,5 +40,8 @@ orchestration.
 - No live network or credential access is required.
 - `investigate-memo` writes `data/investigation-memos/<YYYYMMDD>/*.json/.md`
   and `reports/run-summaries/<YYYYMMDD>/investigation-memo-report.{json,md}`.
-- Investigation memos reference `source_refs`, `observation_refs`, and
-  `signal_refs` but do not copy raw payload content into the memo body.
+- Multi-agent fixture runs also write `data/research-tasks/<YYYYMMDD>/*.json`
+  and `data/evidence-packages/<YYYYMMDD>/*.json` before memo synthesis.
+- Investigation memos reference `source_refs`, `observation_refs`, `signal_refs`,
+  `research_task_refs`, and `evidence_package_refs` but do not copy raw payload
+  content into the memo body.
