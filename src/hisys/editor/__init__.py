@@ -1,4 +1,15 @@
-"""Placeholder for the editor subpackage; not implemented in I0/I1.
+"""I6 editor subpackage.
 
-Reserved per HISYS-REPO-001 v0.2.1 (repository-structure baseline).
+Traceability: HISYS-REPO-001, HISYS-FR-PER-001..004,
+HISYS-FR-MEM-001..005, HISYS-T-011, HISYS-T-012.
 """
+
+from .drafter import FixtureMemoDrafter
+from .runtime import EditorialRuntime, MemoDrafter, MemoDraftReport
+
+__all__ = [
+    "EditorialRuntime",
+    "FixtureMemoDrafter",
+    "MemoDrafter",
+    "MemoDraftReport",
+]

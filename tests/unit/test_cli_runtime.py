@@ -2,7 +2,7 @@
 
 Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
-HISYS-T-010.
+HISYS-T-010, HISYS-T-011, HISYS-T-012.
 """
 
 from __future__ import annotations
@@ -131,6 +131,61 @@ def test_extract_command_writes_signal_report_from_collected_observations(tmp_pa
     assert signal["observation_refs"] == report["requested_observation_refs"]
     assert signal["signal_type"] == "anomaly"
     assert "temperature_c" not in signal["claim_or_event"]
+
+
+def test_draft_memo_command_writes_runtime_local_memo_draft(tmp_path: Path, capsys):
+    collect_result = main(
+        [
+            "collect",
+            "--instance",
+            str(tmp_path),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+        ]
+    )
+    assert collect_result == 0
+    extract_result = main(["extract", "--instance", str(tmp_path), "--date", "20260508"])
+    assert extract_result == 0
+    capsys.readouterr()
+
+    result = main(
+        [
+            "draft-memo",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260508",
+            "--perspective",
+            "PERSP-OPS-001",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "memo draft run" in captured.out
+    assert "drafts: 1" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "memo-draft-report.json"
+    assert report_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["perspective_id"] == "PERSP-OPS-001"
+    assert len(report["requested_signal_refs"]) == 1
+    assert len(report["draft_memo_refs"]) == 1
+    memo_id = report["draft_memo_refs"][0]
+    memo_json_path = tmp_path / "data" / "memo-drafts" / "20260508" / f"{memo_id}.json"
+    memo_md_path = tmp_path / "data" / "memo-drafts" / "20260508" / f"{memo_id}.md"
+    assert memo_json_path.exists()
+    assert memo_md_path.exists()
+    memo = json.loads(memo_json_path.read_text(encoding="utf-8"))
+    assert memo["review_status"] == "draft"
+    assert memo["perspective_id"] == "PERSP-OPS-001"
+    assert memo["signal_refs"] == report["requested_signal_refs"]
+    markdown = memo_md_path.read_text(encoding="utf-8")
+    assert "# Operations perspective" in markdown
+    assert "temperature_c" not in markdown
 
 
 def test_extract_command_rejects_missing_observation_partition(tmp_path: Path, capsys):

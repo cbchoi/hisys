@@ -10,6 +10,7 @@ Minimum I4 guideline set:
 
 - `investigator.md`
 - `extraction.md`
+- `editorial.md`
 - `hermes.md`
 - `source-governance.md`
 - `audit-and-traceability.md`

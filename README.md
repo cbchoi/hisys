@@ -32,8 +32,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   records and persists signal JSON under the local runtime instance; `hisys
   extract` connects collected runtime observations to persisted signal records
   and extraction reports.
-- Later increments (I6-I9) are not implemented; I5 still needs expansion from
-  fixture rules to richer extraction/versioning workflows.
+- Increment **I6 foundation** (Editorial pipeline) - fixture-backed Associate
+  Editor applies an active `PerspectiveProfile` to extracted signals and writes
+  runtime-local `ZettelMemo` draft JSON/Markdown plus memo draft reports via
+  `hisys draft-memo`; it does not write to a live Obsidian vault.
+- Later increments (I7-I9) are not implemented; I6 still needs expansion from
+  fixture memo drafting to duplicate/conflict review and controlled vault writer
+  workflows.
 
 See `docs/traceability/README.md` for the document and SRS ID map.
 
@@ -53,7 +58,8 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
       integrations/ Hermes Markdown boundary writer
       investigator/ registry-gated collection skeleton
       extraction/  fixture-backed signal extractor and persistence runtime
-      editor/, chief_editor/, health/, cli/   (placeholders / runtime entry points)
+      editor/      fixture-backed memo drafter and local draft persistence runtime
+      chief_editor/, health/, cli/   (placeholders / runtime entry points)
 
     examples/instance/
       config/, templates/, harness/guidelines/, harness/scenarios/, data/
@@ -76,7 +82,7 @@ into a project-local virtualenv (do not install globally):
     pip install -e '.[dev]'
     pytest
 
-`hisys --help` exposes the runtime CLI. Fixture-backed I4/I5 commands are:
+`hisys --help` exposes the runtime CLI. Fixture-backed I4-I6 commands are:
 
 ```bash
 hisys validate-config --instance examples/instance
@@ -85,6 +91,9 @@ hisys collect --instance /tmp/hisys-run \
   --source SRC-HW-MOCK-001 \
   --date 20260508
 hisys extract --instance /tmp/hisys-run --date 20260508
+hisys draft-memo --instance /tmp/hisys-run \
+  --date 20260508 \
+  --perspective PERSP-OPS-001
 ```
 
 The `collect` command writes local JSON/JSONL runtime records and, for Hermes
@@ -93,7 +102,12 @@ sources, Markdown boundary records under
 network calls or external side effects. The `extract` command reads only local
 `data/raw-observations/<YYYYMMDD>/` JSON records, writes
 `data/extracted-signals/<YYYYMMDD>/` JSON records, and stores
-`reports/run-summaries/<YYYYMMDD>/extraction-report.{json,md}`.
+`reports/run-summaries/<YYYYMMDD>/extraction-report.{json,md}`. The
+`draft-memo` command reads local signal and observation records, applies the
+fixture active perspective `PERSP-OPS-001`, and writes runtime-local draft
+memos under `data/memo-drafts/<YYYYMMDD>/` plus
+`reports/run-summaries/<YYYYMMDD>/memo-draft-report.{json,md}`; it does not
+write to a live Obsidian vault.
 
 ## Quality and security constraints
 

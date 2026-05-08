@@ -2,7 +2,8 @@
 
 Traceability: HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001,
 HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
-HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010.
+HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
+HISYS-T-012.
 """
 
 from __future__ import annotations
@@ -18,11 +19,12 @@ from .. import __version__
 from ..adapters import AgentSystemMockSource, HardwareMockSource, HermesToolMockSource, WebNewsMockSource
 from ..adapters.hermes_tool_mock import HermesCollectionInputs
 from ..config import InstanceRoot, load_source_registry
+from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..investigator import CollectionReport, InvestigatorRuntime
 from ..registry import SourceRegistry
-from ..schemas import RawObservation, SourceRegistryEntry
+from ..schemas import ExtractedSignal, PerspectiveProfile, RawObservation, SourceRegistryEntry
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -53,6 +55,12 @@ def _build_parser() -> argparse.ArgumentParser:
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
     extract.add_argument("--producer-id", default="extractor-cli", help="extraction actor id")
+
+    draft = sub.add_parser("draft-memo", help="draft runtime-local ZettelMemo records from extracted signals")
+    draft.add_argument("--instance", required=True, help="runtime instance root containing extracted signals")
+    draft.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
+    draft.add_argument("--perspective", required=True, help="PerspectiveProfile ID to apply")
+    draft.add_argument("--producer-id", default="associate-editor-cli", help="memo drafting actor id")
     return parser
 
 
@@ -77,6 +85,13 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_extract(
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
+            producer_id=args.producer_id,
+        )
+    if args.command == "draft-memo":
+        return _cmd_draft_memo(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            perspective_id=args.perspective,
             producer_id=args.producer_id,
         )
     parser.error(f"unknown command: {args.command}")
@@ -182,6 +197,110 @@ def _format_extraction_report_markdown(report: ExtractionReport) -> str:
             "",
             "## Extracted Signals",
             *[f"- {ref}" for ref in report.extracted_signal_refs],
+            "",
+            "## Policy References",
+            *[f"- {ref}" for ref in report.policy_refs],
+            "",
+        ]
+    )
+
+
+def _cmd_draft_memo(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    perspective_id: str,
+    producer_id: str,
+) -> int:
+    instance = InstanceRoot(instance_root)
+    signals = _load_signals(instance, yyyymmdd)
+    if not signals:
+        print(f"no extracted signals found for date {yyyymmdd}", file=sys.stderr)
+        return 1
+    observations = _load_observations(instance, yyyymmdd)
+    perspective = _fixture_perspective(perspective_id, producer_id=producer_id)
+    if perspective.lifecycle_state != "active":
+        print(f"perspective not active: {perspective_id}", file=sys.stderr)
+        return 1
+    runtime = EditorialRuntime(
+        instance=instance,
+        drafter=FixtureMemoDrafter(template_id="fixture-zettel-v0"),
+        producer_id=producer_id,
+    )
+    report = runtime.draft_run(
+        signals,
+        observations=observations,
+        perspective=perspective,
+        yyyymmdd=yyyymmdd,
+    )
+    report_path = _write_memo_draft_report(instance, report, yyyymmdd)
+    print(f"memo draft run: report={report_path}")
+    print(f"signals: {len(report.requested_signal_refs)}")
+    print(f"drafts: {len(report.draft_memo_refs)}")
+    print(f"skipped: {len(report.skipped_signal_refs)}")
+    if not report.draft_memo_refs:
+        print("no memo drafts created", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _load_signals(instance: InstanceRoot, yyyymmdd: str) -> list[ExtractedSignal]:
+    directory = instance.root / "data" / "extracted-signals" / yyyymmdd
+    if not directory.exists():
+        return []
+    signals: list[ExtractedSignal] = []
+    for path in sorted(directory.glob("SIG-*.json")):
+        signals.append(ExtractedSignal.model_validate_json(path.read_text(encoding="utf-8")))
+    return signals
+
+
+def _fixture_perspective(perspective_id: str, *, producer_id: str) -> PerspectiveProfile:
+    if perspective_id != "PERSP-OPS-001":
+        return PerspectiveProfile(
+            perspective_id=perspective_id,
+            title="Unknown fixture perspective",
+            owner="hisys-fixture",
+            lifecycle_state="retired",
+            intent="Unknown fixture perspective is inactive.",
+            producer_id=producer_id,
+            status="retired",
+        )
+    return PerspectiveProfile(
+        perspective_id=perspective_id,
+        title="Operations perspective",
+        owner="hisys-fixture",
+        lifecycle_state="active",
+        intent="Surface operational anomalies for review.",
+        focus_areas=["thermal anomalies"],
+        bias_controls=["Keep raw evidence in linked records."],
+        producer_id=producer_id,
+        status="active",
+    )
+
+
+def _write_memo_draft_report(instance: InstanceRoot, report: MemoDraftReport, yyyymmdd: str) -> Path:
+    directory = instance.root / "reports" / "run-summaries" / yyyymmdd
+    directory.mkdir(parents=True, exist_ok=True)
+    json_path = directory / "memo-draft-report.json"
+    json_path.write_text(json.dumps(asdict(report), ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    markdown_path = directory / "memo-draft-report.md"
+    markdown_path.write_text(_format_memo_draft_report_markdown(report), encoding="utf-8")
+    return json_path
+
+
+def _format_memo_draft_report_markdown(report: MemoDraftReport) -> str:
+    return "\n".join(
+        [
+            "# Hisys Memo Draft Report",
+            "",
+            f"- perspective_id: `{report.perspective_id}`",
+            f"- perspective_state: `{report.perspective_state}`",
+            f"- requested_signals: {len(report.requested_signal_refs)}",
+            f"- draft_memos: {len(report.draft_memo_refs)}",
+            f"- skipped_signals: {len(report.skipped_signal_refs)}",
+            "",
+            "## Draft Memos",
+            *[f"- {ref}" for ref in report.draft_memo_refs],
             "",
             "## Policy References",
             *[f"- {ref}" for ref in report.policy_refs],
