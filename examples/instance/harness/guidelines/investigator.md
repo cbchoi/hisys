@@ -45,8 +45,9 @@ EvidencePackage artifacts before the memo is synthesized.
 - Multi-agent fixture runs also write `data/research-tasks/<YYYYMMDD>/*.json`
   and `data/evidence-packages/<YYYYMMDD>/*.json` before memo synthesis.
 - Formalism domain fixture runs include evidence claims for Dynamic Structure
-  DEVS, graph rewriting, agent-based modeling, local interaction rules,
-  emergent global structure, structural change as first-class state, and
+  DEVS, graph rewriting, agent-based modeling, assessment criteria, selection
+  heuristics, expressiveness/simulation/verification tradeoffs, local interaction
+  rules, emergent global structure, structural change as first-class state, and
   follow-up questions about simulation semantics/proof/topology change.
 - Investigation memos reference `source_refs`, `observation_refs`, `signal_refs`,
   `research_task_refs`, and `evidence_package_refs` but do not copy raw payload

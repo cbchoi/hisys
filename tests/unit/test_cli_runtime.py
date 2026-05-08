@@ -174,6 +174,15 @@ def test_investigate_memo_formalism_domain_agents_write_substantive_domain_memo(
     assert "local interaction rules" in memo_text
     assert "emergent global structure" in memo_text
     assert "Does the target formalism need executable simulation semantics?" in memo_text
+    assert "Assessment criteria" in memo_text
+    assert "Expressiveness: high for topology-changing discrete-event systems" in memo_text
+    assert "Simulation semantics: native executable semantics" in memo_text
+    assert "Verification/readability tradeoff" in memo_text
+    assert "Selection heuristic" in memo_text
+    assert "Choose Dynamic Structure DEVS" in memo_text
+    assert "Choose graph rewriting" in memo_text
+    assert "Choose agent-based modeling" in memo_text
+    assert "boundary between component state and network topology" in memo_text
     report = json.loads((instance / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json").read_text())
     assert report["agent_ids"] == ["formalism-comparison-agent", "self-organization-mechanism-agent"]
     assert report["evidence_package_refs"] == [

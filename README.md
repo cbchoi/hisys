@@ -44,7 +44,8 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   self_organization_mechanism` adds controlled domain fixtures for
   self-organizing-system formalism topics. The agents return `EvidencePackage`
   claims for Dynamic Structure DEVS, graph rewriting, agent-based modeling,
-  local interaction rules, emergent global structure, and structural change as
+  assessment criteria, selection heuristics, expressiveness/simulation/verification
+  tradeoffs, local interaction rules, emergent global structure, and structural change as
   first-class state, plus domain-specific open questions about simulation
   semantics, proof/verification, and topology change representation.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor

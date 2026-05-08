@@ -112,19 +112,52 @@ class FormalismComparisonAgent:
             path="fixture://research/formalisms/self-organization-formalisms.json",
             title="Formalism candidates for self-organizing systems",
             quoted_text=(
-                "Dynamic Structure DEVS represents topology-changing discrete-event systems; "
-                "graph rewriting represents structural transformation rules; agent-based modeling "
-                "represents local interactions that can generate emergent global patterns."
+                "Assessment criteria for self-organizing-system formalisms: expressiveness for "
+                "structure/behavior co-evolution, explicit structural-change semantics, executable "
+                "simulation semantics, compositionality, analyzability, and readability. "
+                "Dynamic Structure DEVS: Expressiveness: high for topology-changing discrete-event "
+                "systems; Structural change: first-class model transition; Simulation semantics: "
+                "native executable semantics; Verification/readability tradeoff: precise but can "
+                "be technically heavy. graph rewriting: Expressiveness: high for local network "
+                "rewrites and structural invariants; Structural change: native graph transformation "
+                "rules; Simulation semantics: requires an execution/control strategy; Verification/"
+                "readability tradeoff: strong structural reasoning but weaker built-in temporal "
+                "simulation semantics. agent-based modeling: Expressiveness: high for heterogeneous "
+                "local agents and emergent macro-patterns; Structural change: usually encoded in "
+                "agent/environment rules; Simulation semantics: straightforward simulation but "
+                "verification is weaker. Selection heuristic: Choose Dynamic Structure DEVS when "
+                "topology-changing executable model state is central; Choose graph rewriting when "
+                "local structural transformation rules and invariants are central; Choose agent-based "
+                "modeling when decentralized local behavior and emergence are central."
             ),
             retrieved_at="2026-05-08T00:00:00Z",
-            content_hash="sha256:formalism-self-organization-fixture-v1",
+            content_hash="sha256:formalism-self-organization-fixture-v2",
         )
         claims = [
+            ClaimRecord(
+                claim_id=f"CLAIM-{task.task_id}-ASSESSMENT-001",
+                text=(
+                    "Assessment criteria for this formalism choice should include expressiveness for "
+                    "structure/behavior co-evolution, explicit structural-change semantics, Simulation "
+                    "semantics: native executable semantics or a declared execution strategy, compositionality, "
+                    "analyzability, and Verification/readability tradeoff. Expressiveness: high for "
+                    "topology-changing discrete-event systems is the Dynamic Structure DEVS strength. "
+                    "Selection heuristic: Choose "
+                    "Dynamic Structure DEVS for topology-changing executable model state; Choose graph "
+                    "rewriting for local structural transformation rules and invariants; Choose agent-based "
+                    "modeling for decentralized local behavior and emergence."
+                ),
+                confidence=0.86,
+                evidence_refs=[evidence.evidence_id],
+            ),
             ClaimRecord(
                 claim_id=f"CLAIM-{task.task_id}-DSDEVS-001",
                 text=(
                     "Dynamic Structure DEVS is a strong candidate when the formalism must treat "
-                    "topology-changing system structure as part of executable model state."
+                    "topology-changing system structure as part of executable model state; its "
+                    "assessment strengths are explicit structural-change semantics and native "
+                    "simulation semantics, while its main limitation is readability/verification "
+                    "complexity for non-DEVS specialists."
                 ),
                 confidence=0.82,
                 evidence_refs=[evidence.evidence_id],
@@ -133,7 +166,9 @@ class FormalismComparisonAgent:
                 claim_id=f"CLAIM-{task.task_id}-GRAPH-001",
                 text=(
                     "graph rewriting is a strong candidate when self-organization is expressed as "
-                    "local structural transformation rules over a network or graph."
+                    "local structural transformation rules over a network or graph; its strengths "
+                    "are native topology rewrites and structural invariants, while an execution "
+                    "strategy is needed to obtain simulation semantics comparable to DEVS."
                 ),
                 confidence=0.78,
                 evidence_refs=[evidence.evidence_id],
@@ -142,7 +177,9 @@ class FormalismComparisonAgent:
                 claim_id=f"CLAIM-{task.task_id}-ABM-001",
                 text=(
                     "agent-based modeling is a strong candidate when local agent interaction rules "
-                    "and emergent macro-level behavior are the primary concern."
+                    "and emergent macro-level behavior are the primary concern; it is readable and "
+                    "simulation-oriented, but structural change and verification obligations often "
+                    "need additional discipline or formal constraints."
                 ),
                 confidence=0.76,
                 evidence_refs=[evidence.evidence_id],
@@ -191,8 +228,9 @@ class SelfOrganizationMechanismAgent:
             claim_id=f"CLAIM-{task.task_id}-CRITERIA-001",
             text=(
                 "A useful formalism for self-organizing systems should capture local interaction rules, "
-                "feedback loops, emergent global structure, adaptation over time, and structural change "
-                "as first-class state."
+                "feedback loop representation, emergent global structure, adaptation over time, the "
+                "boundary between component state and network topology, and structural change as "
+                "first-class state."
             ),
             confidence=0.84,
             evidence_refs=[evidence.evidence_id],

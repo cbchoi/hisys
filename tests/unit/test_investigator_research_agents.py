@@ -149,6 +149,14 @@ def test_formalism_domain_agent_returns_self_organization_formalism_candidates()
     assert "graph rewriting" in claim_text
     assert "agent-based" in claim_text
     assert "topology-changing" in evidence_text
+    assert "Assessment criteria" in evidence_text
+    assert "Expressiveness: high for topology-changing discrete-event systems" in evidence_text
+    assert "Simulation semantics: native executable semantics" in evidence_text
+    assert "Verification/readability tradeoff" in evidence_text
+    assert "Selection heuristic" in evidence_text
+    assert "Choose Dynamic Structure DEVS" in evidence_text
+    assert "Choose graph rewriting" in evidence_text
+    assert "Choose agent-based modeling" in evidence_text
     assert all(claim.evidence_refs for claim in package.claims)
 
 
@@ -170,6 +178,8 @@ def test_self_organization_mechanism_agent_returns_modeling_criteria_and_open_qu
     claim_text = "\n".join(claim.text for claim in package.claims)
     assert "local interaction rules" in claim_text
     assert "emergent global structure" in claim_text
+    assert "feedback loop representation" in claim_text
+    assert "boundary between component state and network topology" in claim_text
     assert "structural change as first-class state" in claim_text
     assert "Does the target formalism need executable simulation semantics?" in package.open_questions
     assert "Does it need compositional proof or verification support?" in package.open_questions
