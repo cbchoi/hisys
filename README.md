@@ -39,6 +39,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `data/research-tasks/<YYYYMMDD>/` and `data/evidence-packages/<YYYYMMDD>/`
   artifacts, and builds one template memo from validated evidence while
   Selenium/browser and delegated LLM agents remain disabled until harnesses pass.
+- Increment **HISYS-T-029 Formalism domain fixture research** -
+  `hisys investigate-memo --agent formalism_comparison --agent
+  self_organization_mechanism` adds controlled domain fixtures for
+  self-organizing-system formalism topics. The agents return `EvidencePackage`
+  claims for Dynamic Structure DEVS, graph rewriting, agent-based modeling,
+  local interaction rules, emergent global structure, and structural change as
+  first-class state, plus domain-specific open questions about simulation
+  semantics, proof/verification, and topology change representation.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

@@ -13,6 +13,8 @@ from hisys.investigator import (
     EvidencePackage,
     FixtureContradictionAgent,
     FixtureResearchAgent,
+    FormalismComparisonAgent,
+    SelfOrganizationMechanismAgent,
     ResearchTask,
     create_research_agent,
 )
@@ -123,3 +125,51 @@ def test_fixture_contradiction_agent_returns_limitation_or_open_question():
     assert package.agent_type == "fixture_contradiction"
     assert package.external_side_effects is False
     assert package.open_questions or package.limitations
+
+
+
+def test_formalism_domain_agent_returns_self_organization_formalism_candidates():
+    task = ResearchTask(
+        task_id="TASK-FORMALISM-001",
+        agent_type="formalism_comparison",
+        question="Assess formalisms that can express self-organizing systems.",
+        query="formalism that can express self-organizing systems",
+        allowed_source_ids=["SRC-FORMALISM-FIXTURE-001"],
+    )
+
+    package = create_research_agent("formalism_comparison").run(task)
+
+    assert isinstance(create_research_agent("formalism_comparison"), FormalismComparisonAgent)
+    assert package.agent_id == "formalism-comparison-agent"
+    assert package.agent_type == "formalism_comparison"
+    assert package.external_side_effects is False
+    claim_text = "\n".join(claim.text for claim in package.claims)
+    evidence_text = "\n".join(item.quoted_text or "" for item in package.evidence)
+    assert "Dynamic Structure DEVS" in claim_text
+    assert "graph rewriting" in claim_text
+    assert "agent-based" in claim_text
+    assert "topology-changing" in evidence_text
+    assert all(claim.evidence_refs for claim in package.claims)
+
+
+def test_self_organization_mechanism_agent_returns_modeling_criteria_and_open_questions():
+    task = ResearchTask(
+        task_id="TASK-MECHANISM-001",
+        agent_type="self_organization_mechanism",
+        question="Identify criteria for self-organization formalisms.",
+        query="self-organizing systems formalism criteria",
+        allowed_source_ids=["SRC-SELF-ORG-FIXTURE-001"],
+    )
+
+    package = create_research_agent("self_organization_mechanism").run(task)
+
+    assert isinstance(create_research_agent("self_organization_mechanism"), SelfOrganizationMechanismAgent)
+    assert package.agent_id == "self-organization-mechanism-agent"
+    assert package.agent_type == "self_organization_mechanism"
+    assert package.external_side_effects is False
+    claim_text = "\n".join(claim.text for claim in package.claims)
+    assert "local interaction rules" in claim_text
+    assert "emergent global structure" in claim_text
+    assert "structural change as first-class state" in claim_text
+    assert "Does the target formalism need executable simulation semantics?" in package.open_questions
+    assert "Does it need compositional proof or verification support?" in package.open_questions

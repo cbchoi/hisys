@@ -137,6 +137,51 @@ def test_investigate_memo_command_researches_topic_and_writes_template_memo(tmp_
 
 
 
+
+def test_investigate_memo_formalism_domain_agents_write_substantive_domain_memo(tmp_path):
+    instance = tmp_path / "hisys-formalism"
+    result = main(
+        [
+            "investigate-memo",
+            "--instance",
+            str(instance),
+            "--config-from",
+            "examples/instance",
+            "--source",
+            "SRC-HW-MOCK-001",
+            "--date",
+            "20260508",
+            "--topic",
+            "formalism that can express self-organizing systems",
+            "--goal",
+            "Assess formalism candidates for representing self-organizing systems.",
+            "--perspective",
+            "PERSP-OPS-001",
+            "--agent",
+            "formalism_comparison",
+            "--agent",
+            "self_organization_mechanism",
+        ]
+    )
+
+    assert result == 0
+    memo_files = sorted((instance / "data" / "investigation-memos" / "20260508").glob("*.md"))
+    assert len(memo_files) == 1
+    memo_text = memo_files[0].read_text(encoding="utf-8")
+    assert "Dynamic Structure DEVS" in memo_text
+    assert "graph rewriting" in memo_text
+    assert "agent-based modeling" in memo_text
+    assert "local interaction rules" in memo_text
+    assert "emergent global structure" in memo_text
+    assert "Does the target formalism need executable simulation semantics?" in memo_text
+    report = json.loads((instance / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json").read_text())
+    assert report["agent_ids"] == ["formalism-comparison-agent", "self-organization-mechanism-agent"]
+    assert report["evidence_package_refs"] == [
+        "EPKG-TASK-INV-001-FORMALISM",
+        "EPKG-TASK-INV-002-SELFORG",
+    ]
+
+
 def test_investigate_memo_dispatches_multiple_fixture_agents(tmp_path: Path, capsys):
     result = main(
         [

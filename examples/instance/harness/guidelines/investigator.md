@@ -1,7 +1,7 @@
 # Investigator Harness Guideline
 
 Traceability: HISYS-INST-INV-001, HISYS-T-006, HISYS-T-007, HISYS-T-008,
-HISYS-T-026, HISYS-T-027, HISYS-TPL-RESEARCH-SEARCH-001.
+HISYS-T-026, HISYS-T-027, HISYS-T-029, HISYS-TPL-RESEARCH-SEARCH-001.
 
 ## Purpose
 
@@ -23,7 +23,9 @@ EvidencePackage artifacts before the memo is synthesized.
 7. For direct memo runs, execute `hisys investigate-memo` with a research topic,
    goal, perspective, and one or more registered sources.
 8. Optionally pass `--agent fixture --agent fixture_contradiction` to dispatch
-   deterministic fixture research agents.
+   deterministic fixture research agents; for formalism/self-organizing-system
+   topics, pass `--agent formalism_comparison --agent
+   self_organization_mechanism` to dispatch domain fixture agents.
 9. Verify each `ResearchTask` is persisted under
    `data/research-tasks/<YYYYMMDD>/` and each `EvidencePackage` is persisted
    under `data/evidence-packages/<YYYYMMDD>/`.
@@ -42,6 +44,10 @@ EvidencePackage artifacts before the memo is synthesized.
   and `reports/run-summaries/<YYYYMMDD>/investigation-memo-report.{json,md}`.
 - Multi-agent fixture runs also write `data/research-tasks/<YYYYMMDD>/*.json`
   and `data/evidence-packages/<YYYYMMDD>/*.json` before memo synthesis.
+- Formalism domain fixture runs include evidence claims for Dynamic Structure
+  DEVS, graph rewriting, agent-based modeling, local interaction rules,
+  emergent global structure, structural change as first-class state, and
+  follow-up questions about simulation semantics/proof/topology change.
 - Investigation memos reference `source_refs`, `observation_refs`, `signal_refs`,
   `research_task_refs`, and `evidence_package_refs` but do not copy raw payload
   content into the memo body.
