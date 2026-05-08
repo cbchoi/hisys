@@ -4,6 +4,7 @@ Traceability: HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-027.
 """
 
 from .agents import FixtureContradictionAgent, FixtureResearchAgent, ResearchAgent, create_research_agent
+from .evidence import EvidenceValidationError, MergedEvidence, merge_evidence_packages, validate_evidence_package
 from .research import AgentType, ClaimRecord, EvidenceItem, EvidencePackage, ResearchTask
 from .runtime import CollectionReport, InvestigatorRuntime
 
@@ -13,10 +14,14 @@ __all__ = [
     "CollectionReport",
     "EvidenceItem",
     "EvidencePackage",
+    "EvidenceValidationError",
     "FixtureContradictionAgent",
     "FixtureResearchAgent",
     "InvestigatorRuntime",
+    "MergedEvidence",
     "ResearchAgent",
     "ResearchTask",
     "create_research_agent",
+    "merge_evidence_packages",
+    "validate_evidence_package",
 ]
