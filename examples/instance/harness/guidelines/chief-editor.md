@@ -2,7 +2,7 @@
 
 Traceability: HISYS-HARNESS-GUIDE-001, HISYS-FR-CE-001..006,
 HISYS-CE-POLICY-001, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021.
+HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021, HISYS-T-022.
 
 ## Purpose
 
@@ -62,7 +62,14 @@ raw observation payloads directly.
     `action_taken=none`.
 17. Persist the approval transition summary under
     `reports/run-summaries/<YYYYMMDD>/alert-approval-transition-report.{json,md}`.
-18. Do not send Discord messages, direct messages, software triggers, handoffs,
+18. Read dry-run action plans through the disabled fixture connector harness and
+    persist connector execution records under
+    `data/alert-connector-executions/<YYYYMMDD>/` plus
+    `reports/run-summaries/<YYYYMMDD>/alert-connector-execution-report.{json,md}`.
+19. Connector execution records must keep `execution_status=blocked`,
+    `live_delivery_permitted=false`, and `action_taken=none` even when
+    `would_send=true`.
+20. Do not send Discord messages, direct messages, software triggers, handoffs,
     or other live external actions in this harness stage.
 
 ## Pass Criteria
@@ -88,6 +95,9 @@ raw observation payloads directly.
   reports: approved decisions become `approval_status=approved`, `status=pending`,
   `action_taken=none`; rejected decisions become `approval_status=rejected`,
   `status=closed`, `action_taken=none`.
+- Disabled connector execution records are valid JSON/Markdown artifacts,
+  preserve `would_send` from the action plan, and keep `execution_status=blocked`,
+  `live_delivery_permitted=false`, and `action_taken=none`.
 - JSON and Markdown outputs are deterministic enough for regression tests.
 - The CLI command `hisys decide-alerts --instance <root> --date <YYYYMMDD>`
   succeeds only when memo drafts and a memo review report are present.
@@ -95,6 +105,9 @@ raw observation payloads directly.
   succeeds only when alert decisions are present.
 - The CLI command `hisys review-alert-approval --instance <root> --date <YYYYMMDD>`
   succeeds only for requested approval decisions and never triggers delivery.
+
+- The CLI command `hisys execute-alert-actions --instance <root> --date <YYYYMMDD>`
+  succeeds only as a disabled connector harness and never sends live alerts.
 
 ## Non-goals
 

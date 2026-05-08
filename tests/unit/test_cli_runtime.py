@@ -4,7 +4,7 @@ Traceability: HISYS-INST-INV-001, HISYS-RUNTIME-DIR-001, HISYS-D-015,
 HISYS-D-016, HISYS-T-001, HISYS-T-007, HISYS-T-008, HISYS-T-009,
 HISYS-T-010, HISYS-T-011, HISYS-T-012, HISYS-T-013, HISYS-T-014,
 HISYS-T-015, HISYS-T-016, HISYS-T-017, HISYS-T-018, HISYS-T-019,
-HISYS-T-020, HISYS-T-021.
+HISYS-T-020, HISYS-T-021, HISYS-T-022.
 """
 
 from __future__ import annotations
@@ -694,6 +694,40 @@ def test_plan_alert_actions_command_marks_approved_decision_as_dry_run_send_cand
     assert plan["blocked_reason"] == "live_delivery_disabled"
     assert plan["live_delivery_permitted"] is False
     assert plan["action_taken"] == "none"
+
+
+
+def test_execute_alert_actions_command_records_disabled_connector_block(tmp_path: Path, capsys):
+    _prepare_flagged_conflict_memo(tmp_path, capsys)
+    assert main([
+        "decide-alerts", "--instance", str(tmp_path), "--date", "20260508",
+        "--conflict-severity", "high", "--target-channel", "discord:#ops",
+    ]) == 0
+    alert_id = json.loads((tmp_path / "reports" / "run-summaries" / "20260508" / "alert-decision-report.json").read_text(encoding="utf-8"))["alert_decision_refs"][0]
+    assert main([
+        "review-alert-approval", "--instance", str(tmp_path), "--date", "20260508",
+        "--alert-id", alert_id, "--outcome", "approved", "--rationale", "fixture connector test",
+    ]) == 0
+    assert main(["plan-alert-actions", "--instance", str(tmp_path), "--date", "20260508"]) == 0
+    capsys.readouterr()
+
+    result = main(["execute-alert-actions", "--instance", str(tmp_path), "--date", "20260508"])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "alert connector execution" in captured.out
+    assert "sent: 0" in captured.out
+    assert "blocked: 1" in captured.out
+    report_path = tmp_path / "reports" / "run-summaries" / "20260508" / "alert-connector-execution-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    exec_id = report["execution_refs"][0]
+    execution_path = tmp_path / "data" / "alert-connector-executions" / "20260508" / f"{exec_id}.json"
+    execution = json.loads(execution_path.read_text(encoding="utf-8"))
+    assert execution["would_send"] is True
+    assert execution["live_delivery_permitted"] is False
+    assert execution["execution_status"] == "blocked"
+    assert execution["blocked_reason"] == "live_delivery_disabled"
+    assert execution["action_taken"] == "none"
 
 
 

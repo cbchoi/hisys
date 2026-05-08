@@ -19,7 +19,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | I4 CLI glue | HISYS-INST-INV-001; HISYS-RUNTIME-DIR-001; HISYS-D-015; HISYS-D-016 | `hisys validate-config`, fixture-backed `hisys collect`, Hermes Markdown boundary record persistence, and JSON/Markdown run summary persistence |
 | I5 Extraction foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 5; HISYS-FR-EXT-001..005 | Fixture-backed `RawObservation` -> `ExtractedSignal` extractor, local signal JSON persistence, and `hisys extract` CLI report path |
 | I6 Editorial foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Sections 6-7; HISYS-FR-PER-001..004; HISYS-FR-MEM-001..005 | Fixture-backed active perspective application, `ZettelMemo` draft JSON/Markdown persistence, `hisys draft-memo` CLI report path, and `hisys review-memos` duplicate/conflict flagging report path |
-| I7-A/B/C/D/E/F Chief Editor alert decision, suppression, approval-gate, dry-run action-plan, approval-transition, and send-candidate foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 8; HISYS-FR-CE-001..006; HISYS-CE-POLICY-001 | Fixture-backed Chief Editor policy reads runtime-local memo review outputs, persists `AlertDecisionRecord` JSON/Markdown decisions, records duplicate non-escalation decisions, suppresses same-date repeated `suppression_key` alert candidates, requests approval for high/critical or non-local target candidates, writes `alert-decision-report.{json,md}`, applies runtime-local approve/reject transitions with `alert-approval-transition-report.{json,md}`, writes dry-run `alert-action-plan-report.{json,md}` with approved pending decisions marked as `would_send=true` candidates while live delivery remains disabled, and exposes `hisys decide-alerts`/`hisys review-alert-approval`/`hisys plan-alert-actions` without live alert sending |
+| I7-A/B/C/D/E/F/G Chief Editor alert decision, suppression, approval-gate, dry-run action-plan, approval-transition, send-candidate, and disabled-connector foundation | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 Section 8; HISYS-FR-CE-001..006; HISYS-CE-POLICY-001; HISYS-FR-AGT-004 | Fixture-backed Chief Editor policy reads runtime-local memo review outputs, persists `AlertDecisionRecord` JSON/Markdown decisions, records duplicate non-escalation decisions, suppresses same-date repeated `suppression_key` alert candidates, requests approval for high/critical or non-local target candidates, writes `alert-decision-report.{json,md}`, applies runtime-local approve/reject transitions with `alert-approval-transition-report.{json,md}`, writes dry-run `alert-action-plan-report.{json,md}` with approved pending decisions marked as `would_send=true` candidates while live delivery remains disabled, writes disabled connector execution records/reports with `execution_status=blocked`, and exposes `hisys decide-alerts`/`hisys review-alert-approval`/`hisys plan-alert-actions`/`hisys execute-alert-actions` without live alert sending |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -72,7 +72,8 @@ approval; I8 DARS loop; I9 hardening) are not implemented yet.
 | `hisys.chief_editor.runtime` | HISYS-FR-CE-001..006, HISYS-D-015, HISYS-T-014..018 | `tests/unit/test_chief_editor_runtime.py` |
 | `hisys.chief_editor.action_plan` | HISYS-FR-CE-001..006, HISYS-D-015, HISYS-T-019, HISYS-T-021 | `tests/unit/test_chief_editor_runtime.py` |
 | `hisys.chief_editor.approval` | HISYS-FR-CE-006, HISYS-D-015, HISYS-T-020 | `tests/unit/test_chief_editor_runtime.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..021 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
+| `hisys.chief_editor.connector` | HISYS-FR-CE-006, HISYS-FR-AGT-004, HISYS-D-015, HISYS-T-022 | `tests/unit/test_alert_connector_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..022 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
@@ -133,7 +134,7 @@ For each path the tests assert:
   drafts, flags duplicated summaries as `flagged_duplicate`, flags simple
   high-vs-normal source conflicts as `flagged_conflict`, rewrites reviewed memo
   JSON/Markdown records, and persists memo review JSON/Markdown reports.
-- HISYS-T-014..021: Chief Editor foundation reads runtime-local memo review
+- HISYS-T-014..022: Chief Editor foundation reads runtime-local memo review
   reports and reviewed memo drafts, applies the fixture `HISYS-CE-POLICY-001`
   policy, creates `AlertDecisionRecord` JSON/Markdown records for conflict
   escalation candidates, records duplicate memo non-escalations as suppressed
@@ -145,8 +146,11 @@ For each path the tests assert:
   reports with blocked reasons and approved pending `would_send=true` candidate
   markers while `live_delivery_permitted=false`, applies runtime-local
   approve/reject transitions to requested decisions while keeping
-  `action_taken=none`, persists approval transition JSON/Markdown reports, and
-  performs no live alert sends or external connector actions.
+  `action_taken=none`, persists approval transition JSON/Markdown reports,
+  writes disabled connector execution records/reports with
+  `execution_status=blocked`, `live_delivery_permitted=false`, and
+  `action_taken=none`, and performs no live alert sends or external connector
+  actions.
 - HISYS-D-015: I4 persistence baseline is local JSON/JSONL, not a live database
   or external service.
 - HISYS-D-016: Hermes foundation is collection-only and scoped to preapproved

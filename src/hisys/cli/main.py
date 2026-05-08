@@ -4,7 +4,8 @@ Traceability: HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001,
 HISYS-INST-INV-001, HISYS-D-015, HISYS-D-016, HISYS-T-001,
 HISYS-T-007, HISYS-T-008, HISYS-T-009, HISYS-T-010, HISYS-T-011,
 HISYS-T-012, HISYS-T-013, HISYS-T-014, HISYS-T-015, HISYS-T-016,
-HISYS-T-017, HISYS-T-018, HISYS-T-019, HISYS-T-020.
+HISYS-T-017, HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021,
+HISYS-T-022.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from ..adapters.hermes_tool_mock import HermesCollectionInputs
 from ..chief_editor import (
     AlertActionPlanRuntime,
     AlertApprovalTransitionRuntime,
+    AlertConnectorRuntime,
     ChiefEditorPolicy,
     ChiefEditorRuntime,
 )
@@ -103,6 +105,13 @@ def _build_parser() -> argparse.ArgumentParser:
     review_approval.add_argument("--outcome", choices=["approved", "rejected"], required=True)
     review_approval.add_argument("--rationale", required=True, help="fixture human approval rationale")
     review_approval.add_argument("--reviewer-id", default="chief-editor-approval-cli", help="approval reviewer actor id")
+    execute = sub.add_parser(
+        "execute-alert-actions",
+        help="validate dry-run alert action plans against disabled fixture connector",
+    )
+    execute.add_argument("--instance", required=True, help="runtime instance root containing action plans")
+    execute.add_argument("--date", required=True, help="YYYYMMDD action-plan partition")
+    execute.add_argument("--connector-id", default="disabled-fixture-connector", help="disabled fixture connector id")
     return parser
 
 
@@ -164,6 +173,12 @@ def main(argv: list[str] | None = None) -> int:
             outcome=args.outcome,
             rationale=args.rationale,
             reviewer_id=args.reviewer_id,
+        )
+    if args.command == "execute-alert-actions":
+        return _cmd_execute_alert_actions(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            connector_id=args.connector_id,
         )
     parser.error(f"unknown command: {args.command}")
     return 2
@@ -465,6 +480,19 @@ def _cmd_plan_alert_actions(*, instance_root: Path, yyyymmdd: str, producer_id: 
     if not report.action_plan_refs:
         print("no alert action plans created", file=sys.stderr)
         return 1
+    return 0
+
+
+
+def _cmd_execute_alert_actions(*, instance_root: Path, yyyymmdd: str, connector_id: str) -> int:
+    instance = InstanceRoot(instance_root)
+    report = AlertConnectorRuntime(instance=instance, connector_id=connector_id).execute_run(yyyymmdd=yyyymmdd)
+    print(f"alert connector execution: report={instance.root / report.report_ref}")
+    print(f"action_plans: {len(report.action_plan_refs)}")
+    print(f"executions: {len(report.execution_refs)}")
+    print(f"sent: {len(report.sent_refs)}")
+    print(f"blocked: {len(report.blocked_refs)}")
+    print(f"skipped_plans: {len(report.skipped_plan_refs)}")
     return 0
 
 

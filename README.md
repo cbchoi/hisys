@@ -38,9 +38,9 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys draft-memo`; `hisys review-memos` performs fixture duplicate/conflict
   review over runtime-local memo drafts and flags draft status without writing to
   a live Obsidian vault.
-- Increment **I7-A/B/C/D/E/F foundation** (Chief Editor alert decisions,
+- Increment **I7-A/B/C/D/E/F/G foundation** (Chief Editor alert decisions,
   suppression, approval gate, dry-run action planning, approval transition stub,
-  and approved-decision send-candidate classification) - fixture-backed Chief
+  approved-decision send-candidate classification, and disabled connector harness) - fixture-backed Chief
   Editor policy reads runtime-local memo review outputs, creates
   `AlertDecisionRecord` JSON/Markdown records, records duplicate non-escalation
   decisions, suppresses repeated alert candidates with the same `suppression_key`
@@ -50,7 +50,8 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   review-alert-approval`, and writes dry-run `AlertActionPlanRecord`
   JSON/Markdown plus run reports via `hisys plan-alert-actions`, including
   approved pending decisions as `would_send=true` candidates while live delivery
-  remains disabled.
+  remains disabled; `hisys execute-alert-actions` writes disabled connector
+  execution records/reports and still sends nothing.
 - Later increments (I7 suppression windows/approval workflow/connectors, I8-I9)
   are not implemented; controlled vault writer workflows remain pending.
 
@@ -99,7 +100,7 @@ into a project-local virtualenv (do not install globally):
     pip install -e '.[dev]'
     pytest
 
-`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-F commands are:
+`hisys --help` exposes the runtime CLI. Fixture-backed I4-I7-G commands are:
 
 ```bash
 hisys validate-config --instance examples/instance
@@ -119,6 +120,7 @@ hisys review-alert-approval --instance /tmp/hisys-run \
   --alert-id ALERT-... \
   --outcome approved \
   --rationale 'fixture approval'
+hisys execute-alert-actions --instance /tmp/hisys-run --date 20260508
 ```
 
 The `collect` command writes local JSON/JSONL runtime records and, for Hermes
@@ -153,8 +155,14 @@ sends or triggers external connectors. The `review-alert-approval` command
 applies a runtime-local approve/reject transition to `needs_approval` decisions,
 updates the decision JSON/Markdown, writes
 `reports/run-summaries/<YYYYMMDD>/alert-approval-transition-report.{json,md}`,
-keeps `action_taken=none`, and never sends or triggers external connectors. These
-commands do not write to a live Obsidian vault or call external alert connectors.
+keeps `action_taken=none`, and never sends or triggers external connectors. The
+`execute-alert-actions` command reads dry-run action plans, writes disabled
+connector execution records under
+`data/alert-connector-executions/<YYYYMMDD>/`, persists
+`reports/run-summaries/<YYYYMMDD>/alert-connector-execution-report.{json,md}`,
+records `execution_status=blocked`, `live_delivery_permitted=false`, and
+`action_taken=none`, and never sends live alerts. These commands do not write to
+a live Obsidian vault or call external alert connectors.
 
 ## Quality and security constraints
 
