@@ -76,6 +76,10 @@ raw observation payloads directly.
     `would_send=true`.
 20. Do not send Discord messages, direct messages, software triggers, handoffs,
     or other live external actions in this harness stage.
+21. For explicit live connector requests, write a runtime-boundary decision under
+    `runtime-boundary/live-connectors/<YYYYMMDD>/` and keep the request blocked
+    unless the connector is enabled, the requested action is allow-listed, and an
+    approval reference is present; this baseline still performs no external call.
 
 ## Pass Criteria
 
@@ -108,6 +112,10 @@ raw observation payloads directly.
 - Disabled connector execution records are valid JSON/Markdown artifacts,
   preserve `would_send` from the action plan, and keep `execution_status=blocked`,
   `live_delivery_permitted=false`, and `action_taken=none`.
+- Live connector decisions are valid runtime-boundary Markdown artifacts and keep
+  `execution_status=blocked`, `live_execution_permitted=false`,
+  `external_call_made=false`, and `action_taken=none` unless connector/action/
+  approval gates are explicitly satisfied in a future approved adapter increment.
 - JSON and Markdown outputs are deterministic enough for regression tests.
 - The CLI command `hisys decide-alerts --instance <root> --date <YYYYMMDD>`
   succeeds only when memo drafts and a memo review report are present.

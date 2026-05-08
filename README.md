@@ -109,7 +109,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   JSON/Markdown plus run reports via `hisys plan-alert-actions`, including
   approved pending decisions as `would_send=true` candidates while live delivery
   remains disabled; `hisys execute-alert-actions` writes disabled connector
-  execution records/reports and still sends nothing.
+  execution records/reports and still sends nothing. The live connector control
+  helper `hisys.integrations.live_connectors` evaluates requested live Discord or
+  software-trigger actions as blocked runtime-boundary decisions until a connector
+  is explicitly enabled, the requested action is allow-listed, and approval is
+  present; this baseline still records `external_call_made=false` and
+  `action_taken=none`.
 - Increment **I8-A/B foundation** (DARS advisory handoff loopback contract) -
   DARS itself is intentionally not implemented. `hisys request-dars-critique`
   creates runtime-local `AgentHandoffPackage` JSON/Markdown records linked to
