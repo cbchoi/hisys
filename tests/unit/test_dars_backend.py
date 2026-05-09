@@ -119,3 +119,47 @@ def test_fixture_backend_rejects_request_id_mismatch(tmp_path: Path):
             backend_config=config.spec.backends["fixture_file"],
             dispatch_decision=decision,
         )
+
+    report_path = tmp_path / "runtime-boundary" / "dars" / "20260509" / "dars-validation-DARSREQ-EXPECTED.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["status"] == "rejected"
+    assert report["reason_code"] == "request_id_mismatch"
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False
+
+
+def test_fixture_backend_writes_validation_report_for_unsafe_response(tmp_path: Path):
+    instance = InstanceRoot(tmp_path)
+    fixture_path = tmp_path / "harness" / "fixtures" / "dars" / "critique-response.json"
+    fixture_path.parent.mkdir(parents=True)
+    payload = _valid_response_payload()
+    payload["request_id"] = "DARSREQ-UNSAFE"
+    payload["decision_trace"]["blocks_decision"] = True
+    payload["boundary"]["external_side_effects_requested"] = True
+    fixture_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    config = _fixture_config()
+    decision = DarsDispatchGate(instance=instance).evaluate(
+        yyyymmdd="20260509",
+        request_id="DARSREQ-UNSAFE",
+        config=config,
+        backend_id="fixture_file",
+        approval_ref=None,
+    )
+
+    with pytest.raises(ValueError, match="invalid DARS response"):
+        DarsFixtureBackend(instance=instance).run(
+            yyyymmdd="20260509",
+            request_id="DARSREQ-UNSAFE",
+            backend_config=config.spec.backends["fixture_file"],
+            dispatch_decision=decision,
+        )
+
+    report_path = tmp_path / "runtime-boundary" / "dars" / "20260509" / "dars-validation-DARSREQ-UNSAFE.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["schema_id"] == "hisys.dars.validation"
+    assert report["status"] == "rejected"
+    assert report["reason_code"] == "invalid_response_envelope"
+    assert "blocks_decision" in "\n".join(report["issues"])
+    assert "external_side_effects_requested" in "\n".join(report["issues"])
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False

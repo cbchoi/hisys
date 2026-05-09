@@ -138,7 +138,8 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   backends before any adapter is invoked. `hisys.agents.dars_backend` adds the
   first deterministic local fixture-file backend: it requires an allowed
   dispatch decision, validates fixture JSON as `DarsResponseEnvelope`, checks
-  request alignment, and persists response artifacts under `runtime-boundary/dars/`.
+  request alignment, writes validation reports for accepted/rejected outputs,
+  and persists accepted response artifacts under `runtime-boundary/dars/`.
   The
   DARS configuration contract uses a common Hisys JSON config envelope and validates
   concise role/backend settings before any DARS adapter is selected. The target

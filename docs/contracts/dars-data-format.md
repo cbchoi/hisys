@@ -12,7 +12,7 @@ The canonical protocol envelope models are implemented in `src/hisys/agents/dars
 
 DARS backend dispatch is guarded by `src/hisys/agents/dars_dispatch.py` and verified by `tests/unit/test_dars_dispatch.py`. The dispatch gate records `hisys.dars.dispatch_decision` runtime-boundary JSON/Markdown artifacts under `runtime-boundary/dars/<YYYYMMDD>/`, allows loopback/local read-only backends when enabled, and blocks disabled, unknown, policy-invalid, or unapproved external-call backends without making a backend call.
 
-The first concrete adapter is the deterministic local `DarsFixtureBackend` in `src/hisys/agents/dars_backend.py`, verified by `tests/unit/test_dars_backend.py`. It runs only after an allowed dispatch decision, reads a configured local fixture JSON file, validates it as `DarsResponseEnvelope`, enforces request-ID alignment, and writes response JSON/Markdown artifacts under `runtime-boundary/dars/<YYYYMMDD>/` without external calls or mutation.
+The first concrete adapter is the deterministic local `DarsFixtureBackend` in `src/hisys/agents/dars_backend.py`, verified by `tests/unit/test_dars_backend.py`. It runs only after an allowed dispatch decision, reads a configured local fixture JSON file, validates it as `DarsResponseEnvelope`, enforces request-ID alignment, writes accepted response JSON/Markdown artifacts under `runtime-boundary/dars/<YYYYMMDD>/`, and writes `hisys.dars.validation` reports for accepted, malformed, unsafe, or request-mismatched fixture outputs without external calls or mutation.
 
 The exchange has two canonical artifacts:
 

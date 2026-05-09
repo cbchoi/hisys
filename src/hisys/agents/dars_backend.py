@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 
+from pydantic import ValidationError
+
 from ..config.instance import InstanceRoot
 from .dars_config import DarsBackendConfig
 from .dars_dispatch import DarsDispatchDecision
@@ -44,12 +46,85 @@ class DarsFixtureBackend:
             raise ValueError("fixture backend requires fixture_path")
 
         fixture_path = self.instance.root / backend_config.fixture_path
-        payload = json.loads(fixture_path.read_text(encoding="utf-8"))
-        response = DarsResponseEnvelope.model_validate(payload)
+        try:
+            payload = json.loads(fixture_path.read_text(encoding="utf-8"))
+            response = DarsResponseEnvelope.model_validate(payload)
+        except (json.JSONDecodeError, OSError, ValidationError) as exc:
+            _write_validation_report(
+                self.instance,
+                yyyymmdd,
+                request_id=request_id,
+                status="rejected",
+                reason_code="invalid_response_envelope",
+                issues=[str(exc)],
+            )
+            raise ValueError("invalid DARS response") from exc
         if response.request_id != request_id:
+            _write_validation_report(
+                self.instance,
+                yyyymmdd,
+                request_id=request_id,
+                status="rejected",
+                reason_code="request_id_mismatch",
+                issues=[f"request_id mismatch: expected {request_id}, got {response.request_id}"],
+            )
             raise ValueError(f"request_id mismatch: expected {request_id}, got {response.request_id}")
+        _write_validation_report(
+            self.instance,
+            yyyymmdd,
+            request_id=request_id,
+            status="accepted",
+            reason_code="response_valid",
+            issues=[],
+        )
         _write_response(self.instance, yyyymmdd, response)
         return response
+
+
+def _write_validation_report(
+    instance: InstanceRoot,
+    yyyymmdd: str,
+    *,
+    request_id: str,
+    status: str,
+    reason_code: str,
+    issues: list[str],
+) -> None:
+    output_dir = instance.runtime_boundary_dir / "dars" / yyyymmdd
+    output_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_id": "hisys.dars.validation",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "status": status,
+        "reason_code": reason_code,
+        "issues": issues,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    json_path = output_dir / f"dars-validation-{request_id}.json"
+    md_path = output_dir / f"dars-validation-{request_id}.md"
+    json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    md_path.write_text(_validation_markdown(payload), encoding="utf-8")
+
+
+def _validation_markdown(payload: dict) -> str:
+    issues = payload.get("issues") or []
+    issue_lines = [f"- {issue}" for issue in issues] or ["- none"]
+    return "\n".join(
+        [
+            f"# DARS validation {payload['request_id']}",
+            "",
+            f"- status: {payload['status']}",
+            f"- reason_code: {payload['reason_code']}",
+            f"- external_call_made: {payload['external_call_made']}",
+            f"- mutation_performed: {payload['mutation_performed']}",
+            "",
+            "## Issues",
+            *issue_lines,
+            "",
+        ]
+    )
 
 
 def _write_response(instance: InstanceRoot, yyyymmdd: str, response: DarsResponseEnvelope) -> None:
