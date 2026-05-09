@@ -646,6 +646,82 @@ def write_live_vault_write_gate_report(*, instance_root: Path, yyyymmdd: str, re
     return report_path
 
 
+def build_live_vault_transaction_plan(
+    *,
+    request_id: str,
+    approval_package: dict[str, Any],
+    write_gate_report: dict[str, Any],
+) -> dict[str, Any]:
+    """Build a live-vault transaction manifest without reading or writing the live vault."""
+
+    gate_at_boundary = (
+        write_gate_report.get("status") == "blocked"
+        and write_gate_report.get("reason_code") == "live_writer_not_implemented"
+        and write_gate_report.get("implementation_boundary") == "gate_only_no_writer"
+    )
+    if not gate_at_boundary:
+        return {
+            "schema_id": "hisys.obsidian.live_vault_transaction_plan",
+            "schema_version": _SCHEMA_VERSION,
+            "request_id": request_id,
+            "status": "blocked",
+            "reason_code": "write_gate_not_at_writer_boundary",
+            "source_approval_package_request_id": approval_package.get("request_id"),
+            "source_write_gate_request_id": write_gate_report.get("request_id"),
+            "planned_operation_count": 0,
+            "planned_operations": [],
+            "implementation_boundary": "transaction_manifest_only_no_writer",
+            "requires_followup_writer_implementation": True,
+            "live_write_enabled": False,
+            "real_obsidian_vault_write_performed": False,
+            "external_call_made": False,
+            "mutation_performed": False,
+        }
+
+    planned_writes = approval_package.get("planned_writes", [])
+    refs = [str(item.get("vault_relative_ref", "")) for item in planned_writes]
+    _validate_refs(refs)
+    planned_operations = [
+        {
+            "operation_id": f"live-vault-op-{index:04d}",
+            "operation": item.get("operation", "create_or_update_after_separate_approval"),
+            "vault_relative_ref": ref,
+            "pre_write_hash": "not_read_no_live_write",
+            "post_write_hash": "not_written_no_live_write",
+            "rollback_action": "restore_pre_write_hash_or_delete_created_file_after_separate_writer",
+            "requires_separate_writer_implementation": True,
+        }
+        for index, (item, ref) in enumerate(zip(planned_writes, refs, strict=True), start=1)
+    ]
+    return {
+        "schema_id": "hisys.obsidian.live_vault_transaction_plan",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "planned_not_executable",
+        "implementation_boundary": "transaction_manifest_only_no_writer",
+        "source_approval_package_request_id": approval_package.get("request_id"),
+        "source_write_gate_request_id": write_gate_report.get("request_id"),
+        "vault_root": approval_package.get("vault_root"),
+        "planned_operation_count": len(planned_operations),
+        "planned_operations": planned_operations,
+        "rollback_plan": approval_package.get("rollback_plan", {}),
+        "requires_followup_writer_implementation": True,
+        "live_write_enabled": False,
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def write_live_vault_transaction_plan(*, instance_root: Path, yyyymmdd: str, plan: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"vault-live-transaction-plan-{plan['request_id']}.json"
+    report_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"vault-live-transaction-plan-{plan['request_id']}.md").write_text(_format_live_vault_transaction_plan(plan), encoding="utf-8")
+    return report_path
+
+
 def validate_fixture_vault_roundtrip(
     *,
     plan: dict[str, Any],
@@ -944,6 +1020,26 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_live_vault_transaction_plan(plan: dict[str, Any]) -> str:
+    ops = "\n".join(f"- `{item['vault_relative_ref']}` ({item['operation']})" for item in plan.get("planned_operations", [])) or "- none"
+    return "\n".join(
+        [
+            "# Obsidian Live Vault Transaction Plan",
+            "",
+            f"- Request: `{plan['request_id']}`",
+            f"- Status: {plan['status']}",
+            f"- Boundary: {plan['implementation_boundary']}",
+            f"- Planned operations: {plan['planned_operation_count']}",
+            "- live_write_enabled: false",
+            "- real_obsidian_vault_write_performed: false",
+            "",
+            "## Planned operations",
+            ops,
+            "",
+        ]
+    )
+
+
 def _format_live_vault_write_gate_report(report: dict[str, Any]) -> str:
     return "\n".join(
         [
@@ -1061,6 +1157,7 @@ __all__ = [
     "apply_vault_plan_to_fixture",
     "build_live_vault_approval_package",
     "build_live_vault_preflight_report",
+    "build_live_vault_transaction_plan",
     "build_live_vault_write_gate_report",
     "build_topic_identity_transition_plan",
     "build_vault_plan",
@@ -1070,6 +1167,7 @@ __all__ = [
     "write_live_vault_approval_package",
     "write_vault_apply_report",
     "write_live_vault_preflight_report",
+    "write_live_vault_transaction_plan",
     "write_live_vault_write_gate_report",
     "write_vault_plan_artifacts",
     "write_vault_roundtrip_report",

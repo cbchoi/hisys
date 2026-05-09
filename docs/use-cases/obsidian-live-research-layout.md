@@ -465,6 +465,17 @@ blocked with `reason_code=live_writer_not_implemented`,
 `implementation_boundary=gate_only_no_writer`, `live_write_enabled=false`, and
 `real_obsidian_vault_write_performed=false`.
 
+## Live-Obsidian-Config-L implementation status
+
+`hisys.config.obsidian_live.build_live_vault_transaction_plan` and `hisys
+vault-live-transaction-plan` transform the approval package plus final write gate
+report into a non-executable transaction manifest. The manifest enumerates
+planned vault-relative operations, rollback hints, and placeholder pre/post hashes
+(`not_read_no_live_write` / `not_written_no_live_write`) without reading from or
+writing to the live vault. It records
+`implementation_boundary=transaction_manifest_only_no_writer`,
+`live_write_enabled=false`, and `real_obsidian_vault_write_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

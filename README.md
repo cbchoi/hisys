@@ -345,6 +345,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   approval ref, clean-git status, and explicit live-write enablement, but still
   return blocked with `implementation_boundary=gate_only_no_writer` and
   `real_obsidian_vault_write_performed=false`.
+- Increment **Live-Obsidian-Config-L live vault transaction plan** -
+  `hisys.config.obsidian_live.build_live_vault_transaction_plan` and `hisys
+  vault-live-transaction-plan` convert the approval package plus write-gate
+  report into a non-executable transaction manifest. It enumerates planned
+  operations, rollback hints, and placeholder pre/post hashes without reading or
+  writing the live vault, and records `transaction_manifest_only_no_writer` plus
+  `real_obsidian_vault_write_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

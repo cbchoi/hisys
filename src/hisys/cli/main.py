@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_plan, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -460,6 +460,16 @@ def _build_parser() -> argparse.ArgumentParser:
     live_write_gate.add_argument("--explicit-live-write-enable", action="store_true", help="still blocked until a writer is explicitly implemented")
     live_write_gate.add_argument("--clean-git-status", action="store_true", help="operator/git precondition signal")
 
+    live_transaction = sub.add_parser(
+        "vault-live-transaction-plan",
+        help="plan a non-executable live vault transaction manifest without writing",
+    )
+    live_transaction.add_argument("--instance", required=True, help="runtime instance root for transaction plan artifacts")
+    live_transaction.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    live_transaction.add_argument("--request-id", required=True, help="request id for transaction plan")
+    live_transaction.add_argument("--approval-package", required=True, help="vault-live-approval-package JSON path")
+    live_transaction.add_argument("--write-gate-report", required=True, help="vault-live-write-gate JSON report path")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -729,6 +739,14 @@ def main(argv: list[str] | None = None) -> int:
             explicit_live_write_enable=args.explicit_live_write_enable,
             clean_git_status=args.clean_git_status,
         )
+    if args.command == "vault-live-transaction-plan":
+        return _cmd_vault_live_transaction_plan(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            approval_package_path=Path(args.approval_package),
+            write_gate_report_path=Path(args.write_gate_report),
+        )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
             instance_root=Path(args.instance),
@@ -993,6 +1011,31 @@ def _cmd_vault_live_write_gate(
     print("live_write_enabled: false")
     print("real_obsidian_vault_write_performed: false")
     return 1
+
+
+def _cmd_vault_live_transaction_plan(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    approval_package_path: Path,
+    write_gate_report_path: Path,
+) -> int:
+    """Plan a non-executable live-vault transaction manifest."""
+
+    approval_package = json.loads(approval_package_path.read_text(encoding="utf-8"))
+    write_gate_report = json.loads(write_gate_report_path.read_text(encoding="utf-8"))
+    plan = build_live_vault_transaction_plan(
+        request_id=request_id,
+        approval_package=approval_package,
+        write_gate_report=write_gate_report,
+    )
+    report_path = write_live_vault_transaction_plan(instance_root=instance_root, yyyymmdd=yyyymmdd, plan=plan)
+    print(f"vault live transaction plan: {plan['status']}")
+    print(f"report={report_path}")
+    print("live_write_enabled: false")
+    print("real_obsidian_vault_write_performed: false")
+    return 0 if plan["status"] == "planned_not_executable" else 1
 
 
 def _cmd_vault_topic_transition_plan(
