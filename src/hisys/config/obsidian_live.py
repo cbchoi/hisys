@@ -18,6 +18,10 @@ _TOPIC_UID_RE = re.compile(r"^TOPIC-\d{8}-[A-Z0-9]{6}$")
 _GROUP_UID_RE = re.compile(r"^GROUP-\d{8}-[A-Z0-9]{6}$")
 _INVESTIGATION_ID_RE = re.compile(r"^INV-\d{8}-\d{4}-[A-Z0-9]{4}$")
 _MAX_VAULT_REF_LENGTH = 240
+_ALLOWED_GIT_CREDENTIAL_REF_SCHEMES = frozenset({"env", "keyring", "file", "ssh-agent", "secretstore", "op", "aws-sm"})
+_GIT_CREDENTIAL_REF_RE = re.compile(
+    rf"(?:{'|'.join(re.escape(scheme) for scheme in sorted(_ALLOWED_GIT_CREDENTIAL_REF_SCHEMES, key=len, reverse=True))}):[A-Za-z0-9_./:@+-]+"
+)
 _ALLOWED_LINK_RELATIONS = frozenset(
     {
         "belongs_to_group",
@@ -517,6 +521,7 @@ def build_obsidian_git_initialization_plan(
     default_branch: str,
     credential_ref: str,
     operator_id: str,
+    approval_ref: str | None = None,
 ) -> dict[str, Any]:
     """Plan initialization of an Obsidian vault as a Hisys-managed Git repository.
 
@@ -549,14 +554,22 @@ def build_obsidian_git_initialization_plan(
             vault_root=vault_root,
             credential_ref=credential_ref,
         )
+    if not approval_ref:
+        return _blocked_obsidian_git_plan(
+            schema_id="hisys.obsidian.git_initialization_plan",
+            request_id=request_id,
+            reason_code="approval_ref_required",
+            vault_root=vault_root,
+            credential_ref=credential_ref,
+        )
 
     operations = [
-        {"operation_id": "obsidian-git-init-op-0001", "operation": "verify_or_create_vault_root", "vault_root": str(vault_root)},
-        {"operation_id": "obsidian-git-init-op-0002", "operation": "git_init_if_missing", "default_branch": default_branch},
-        {"operation_id": "obsidian-git-init-op-0003", "operation": "configure_remote_origin", "remote_url": remote_url},
-        {"operation_id": "obsidian-git-init-op-0004", "operation": "install_lightweight_gitignore_policy", "policy": "notes_and_small_governance_json_only"},
-        {"operation_id": "obsidian-git-init-op-0005", "operation": "credential_ref_binding", "credential_ref": credential_ref},
-        {"operation_id": "obsidian-git-init-op-0006", "operation": "initial_commit_and_push", "remote_name": "origin", "branch": default_branch},
+        {"operation_id": "obsidian-git-init-op-0001", "operation": "verify_or_create_vault_root", "vault_root": str(vault_root), "requires_approval": False},
+        {"operation_id": "obsidian-git-init-op-0002", "operation": "git_init_if_missing", "default_branch": default_branch, "requires_approval": False},
+        {"operation_id": "obsidian-git-init-op-0003", "operation": "configure_remote_origin", "remote_url": remote_url, "requires_approval": False},
+        {"operation_id": "obsidian-git-init-op-0004", "operation": "install_lightweight_gitignore_policy", "policy": "notes_and_small_governance_json_only", "requires_approval": False},
+        {"operation_id": "obsidian-git-init-op-0005", "operation": "credential_ref_binding", "credential_ref": credential_ref, "requires_approval": False},
+        {"operation_id": "obsidian-git-init-op-0006", "operation": "initial_commit_and_push", "remote_name": "origin", "branch": default_branch, "approval_ref": approval_ref, "requires_approval": True},
     ]
     return {
         "schema_id": "hisys.obsidian.git_initialization_plan",
@@ -567,6 +580,7 @@ def build_obsidian_git_initialization_plan(
         "remote_url": remote_url,
         "default_branch": default_branch,
         "operator_id": operator_id,
+        "approval_ref": approval_ref,
         "credential_ref": credential_ref,
         "raw_credential_stored": False,
         "gitignore_policy": [
@@ -634,11 +648,11 @@ def build_obsidian_git_sync_plan(
         )
 
     operations = [
-        {"operation_id": "obsidian-git-sync-op-0001", "operation": "pre_sync_git_status", "must_be_clean_except_approved_refs": True},
-        {"operation_id": "obsidian-git-sync-op-0002", "operation": "stage_approved_memo_and_runtime_boundary_refs", "refs": refs},
-        {"operation_id": "obsidian-git-sync-op-0003", "operation": "commit_memo_projection", "commit_message": commit_message},
-        {"operation_id": "obsidian-git-sync-op-0004", "operation": "push_commit_to_remote", "remote_name": remote_name, "branch": branch, "credential_ref": credential_ref},
-        {"operation_id": "obsidian-git-sync-op-0005", "operation": "record_post_push_status", "runtime_boundary_required": True},
+        {"operation_id": "obsidian-git-sync-op-0001", "operation": "pre_sync_git_status", "must_be_clean_except_approved_refs": True, "requires_approval": False},
+        {"operation_id": "obsidian-git-sync-op-0002", "operation": "stage_approved_memo_and_runtime_boundary_refs", "refs": refs, "requires_approval": False},
+        {"operation_id": "obsidian-git-sync-op-0003", "operation": "commit_memo_projection", "commit_message": commit_message, "requires_approval": False},
+        {"operation_id": "obsidian-git-sync-op-0004", "operation": "push_commit_to_remote", "remote_name": remote_name, "branch": branch, "credential_ref": credential_ref, "approval_ref": approval_ref, "requires_approval": True},
+        {"operation_id": "obsidian-git-sync-op-0005", "operation": "record_post_push_status", "runtime_boundary_required": True, "requires_approval": False},
     ]
     return {
         "schema_id": "hisys.obsidian.git_sync_plan",
@@ -673,7 +687,7 @@ def _git_credential_issue(credential_ref: str) -> str | None:
         return "credential_ref_required"
     if re.search(r"\b(?:ghp|github_pat|sk|xox[baprs]|hf)_[A-Za-z0-9][A-Za-z0-9_-]{8,}\b|\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b", stripped):
         return "raw_credential_value_not_allowed"
-    if not re.fullmatch(r"(?:env|keyring|file|ssh-agent|secretstore):[A-Za-z0-9_./:@+-]+", stripped):
+    if not _GIT_CREDENTIAL_REF_RE.fullmatch(stripped):
         return "credential_ref_scheme_not_allowed"
     return None
 

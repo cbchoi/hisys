@@ -23,11 +23,13 @@ def test_obsidian_git_initialization_plan_requires_credential_ref_and_remote() -
         default_branch="main",
         credential_ref="keyring:hisys/obsidian-github-deploy-key",
         operator_id="professor",
+        approval_ref="APPROVAL-20260510-INIT",
     )
 
     assert plan["schema_id"] == "hisys.obsidian.git_initialization_plan"
     assert plan["status"] == "planned_requires_operator_credentials"
     assert plan["credential_ref"] == "keyring:hisys/obsidian-github-deploy-key"
+    assert plan["approval_ref"] == "APPROVAL-20260510-INIT"
     assert plan["raw_credential_stored"] is False
     assert plan["planned_operation_count"] == 6
     assert [op["operation"] for op in plan["planned_operations"]] == [
@@ -39,28 +41,32 @@ def test_obsidian_git_initialization_plan_requires_credential_ref_and_remote() -
         "initial_commit_and_push",
     ]
     assert "attachments_ignored_by_default" in plan["gitignore_policy"]
+    assert [op["requires_approval"] for op in plan["planned_operations"]] == [False, False, False, False, False, True]
+    assert plan["planned_operations"][-1]["approval_ref"] == "APPROVAL-20260510-INIT"
     assert plan["mutation_performed"] is False
     assert plan["external_call_made"] is False
 
 
 @pytest.mark.parametrize(
-    ("credential_ref", "remote_url", "expected"),
+    ("credential_ref", "remote_url", "default_branch", "approval_ref", "expected"),
     [
-        ("", "git@github.com:owner/repo.git", "credential_ref_required"),
-        ("ghp_thisIsARawTokenLikeCredential", "git@github.com:owner/repo.git", "raw_credential_value_not_allowed"),
-        ("env:HISYS_OBSIDIAN_GIT_SSH_KEY", "", "remote_url_required"),
+        ("", "git@github.com:owner/repo.git", "main", "APPROVAL-20260510-INIT", "credential_ref_required"),
+        ("ghp_thisIsARawTokenLikeCredential", "git@github.com:owner/repo.git", "main", "APPROVAL-20260510-INIT", "raw_credential_value_not_allowed"),
+        ("env:HISYS_OBSIDIAN_GIT_SSH_KEY", "", "main", "APPROVAL-20260510-INIT", "remote_url_required"),
+        ("env:HISYS_OBSIDIAN_GIT_SSH_KEY", "git@github.com:owner/repo.git", "main", None, "approval_ref_required"),
     ],
 )
 def test_obsidian_git_initialization_plan_blocks_missing_or_raw_credentials(
-    credential_ref: str, remote_url: str, expected: str
+    credential_ref: str, remote_url: str, default_branch: str, approval_ref: str | None, expected: str
 ) -> None:
     plan = build_obsidian_git_initialization_plan(
         request_id="REQ-GIT-INIT-BLOCKED",
         vault_root=Path("/tmp/example-vault"),
         remote_url=remote_url,
-        default_branch="main",
+        default_branch=default_branch,
         credential_ref=credential_ref,
         operator_id="professor",
+        approval_ref=approval_ref,
     )
 
     assert plan["status"] == "blocked"
@@ -96,6 +102,8 @@ def test_obsidian_git_sync_plan_commits_memo_and_pushes_after_write() -> None:
     assert plan["planned_operations"][1]["refs"] == plan["memo_refs"] + plan["runtime_boundary_refs"]
     assert plan["planned_operations"][3]["remote_name"] == "origin"
     assert plan["planned_operations"][3]["branch"] == "main"
+    assert plan["planned_operations"][3]["requires_approval"] is True
+    assert plan["planned_operations"][3]["approval_ref"] == "APPROVAL-20260510-001"
     assert plan["raw_credential_stored"] is False
     assert plan["mutation_performed"] is False
     assert plan["external_call_made"] is False
@@ -122,6 +130,8 @@ def test_obsidian_git_sync_plan_allows_runtime_boundary_only_governance_update()
     assert plan["memo_refs"] == []
     assert plan["runtime_boundary_refs"] == runtime_refs
     assert plan["planned_operations"][1]["refs"] == runtime_refs
+    assert plan["planned_operations"][3]["requires_approval"] is True
+    assert plan["planned_operations"][3]["approval_ref"] == "APPROVAL-20260510-002"
     assert plan["raw_credential_stored"] is False
     assert plan["mutation_performed"] is False
     assert plan["external_call_made"] is False
@@ -143,6 +153,23 @@ def test_obsidian_git_sync_plan_blocks_when_no_refs() -> None:
     assert plan["status"] == "blocked"
     assert plan["reason_code"] == "refs_required"
     assert plan["planned_operation_count"] == 0
+
+
+def test_obsidian_git_plan_accepts_named_secret_manager_credential_refs() -> None:
+    plan = build_obsidian_git_sync_plan(
+        request_id="REQ-GIT-SYNC-OP-REF",
+        vault_root=Path("/tmp/example-vault"),
+        memo_refs=["91 Hisys/Live Research/topics/TOPIC-20260509-7F3A92__devs/index.md"],
+        runtime_boundary_refs=[],
+        commit_message="docs(obsidian): sync memo",
+        remote_name="origin",
+        branch="main",
+        credential_ref="op:sysailab/obsidian-git/deploy-key",
+        approval_ref="APPROVAL-20260510-004",
+    )
+
+    assert plan["status"] == "planned_after_vault_write"
+    assert plan["credential_ref"] == "op:sysailab/obsidian-git/deploy-key"
 
 
 def test_obsidian_git_sync_plan_blocks_unsafe_refs() -> None:

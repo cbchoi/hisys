@@ -541,9 +541,10 @@ an external afterthought. During initialization, Hisys plans setup of the vault 
 a Git-managed repository: verify/create the vault root, initialize Git if needed,
 configure `origin`, install the lightweight `.gitignore` policy, bind an
 operator-provided `credential_ref`, and perform the initial commit/push only after
-explicit approval. Credentials are provided to Hisys by reference (`env:`,
-`keyring:`, `file:`, `ssh-agent:`, or equivalent secret-store refs), never as raw
-tokens in config, prompts, repository files, or runtime-boundary records.
+an explicit `approval_ref`. Credentials are provided to Hisys by reference
+(`env:`, `keyring:`, `file:`, `ssh-agent:`, `secretstore:`, `op:`, `aws-sm:`, or
+equivalent secret-store refs), never as raw tokens in config, prompts, repository
+files, or runtime-boundary records.
 
 During operation, after an approved vault transaction writes a memo projection,
 runtime-boundary record, or governance-only runtime-boundary update, Hisys should
@@ -555,10 +556,11 @@ records pre/post Git status plus push result under the runtime boundary. The
 current implementation adds plan builders for this lifecycle:
 
 - `build_obsidian_git_initialization_plan`: initialization-phase Git setup plan,
-  with raw credential rejection and lightweight-vault policy.
-- `build_obsidian_git_sync_plan`: operation-phase memo commit/push plan, with
-  approved vault refs, approval ref, credential ref, and no raw credential
-  persistence.
+  with raw credential rejection, approval ref, explicit operation approval markers,
+  and lightweight-vault policy.
+- `build_obsidian_git_sync_plan`: operation-phase memo/runtime-boundary commit/push
+  plan, with approved vault refs, approval ref, credential ref, explicit operation
+  approval markers, and no raw credential persistence.
 
 These builders are still plan-only: they record `mutation_performed=false` and
 `external_call_made=false`. The next increment should turn the plan into a gated
