@@ -69,6 +69,9 @@ connectors:
       - plos.org
     forbidden_actions: *forbidden_live_actions
     output_schema: EvidencePackage
+    manual_smoke_only: true
+    manual_smoke_env_var: HISYS_ALLOW_LIVE_PDF_SMOKE
+    smoke_test_in_ci: false
   arxiv_metadata_search:
     connector_id: arxiv_metadata_search
     connector_type: metadata_search

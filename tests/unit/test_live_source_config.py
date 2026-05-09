@@ -48,6 +48,11 @@ def test_example_source_connector_registry_declares_all_live_connectors_disabled
     assert doi.manual_smoke_env_var == "HISYS_ALLOW_LIVE_SMOKE"
     assert doi.smoke_test_in_ci is False
     assert "api.crossref.org" in doi.allowed_domains
+    oa_pdf = registry.connectors["open_access_pdf_fetch"]
+    assert oa_pdf.manual_smoke_only is True
+    assert oa_pdf.manual_smoke_env_var == "HISYS_ALLOW_LIVE_PDF_SMOKE"
+    assert oa_pdf.smoke_test_in_ci is False
+    assert "mdpi.com" in oa_pdf.allowed_domains
 
 
 def test_live_source_connector_registry_loads_disabled_connectors(tmp_path: Path):
