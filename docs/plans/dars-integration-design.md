@@ -4,7 +4,7 @@
 
 **Goal:** Replace the current DARS loopback placeholder with a controlled, disabled-by-default DARS integration architecture that can ingest structured critique as advisory evidence before any real external DARS call is enabled.
 
-**Architecture:** Hisys remains the system of record. DARS is an external advisory agent behind a narrow adapter boundary: Hisys builds an `AgentHandoffPackage`, dispatches it only through a configured adapter, validates a `DarsCritiqueRecord`, links the critique back to source execution/memo/alert/evidence, and records every boundary crossing. The first executable increments stay fixture/local-only; real DARS dispatch is enabled only after mock contract tests, safety gates, traceability, and human approval controls pass.
+**Architecture:** Hisys remains the system of record. DARS is an external advisory agent behind a narrow adapter boundary: Hisys builds an `AgentHandoffPackage`, wraps it in the canonical `DarsRequestEnvelope`, dispatches it only through a configured adapter, validates a canonical `DarsResponseEnvelope` containing a `DarsCritiqueRecord`, links the critique back to source execution/memo/alert/evidence, and records every boundary crossing. The first executable increments stay fixture/local-only; real DARS dispatch is enabled only after mock contract tests, safety gates, traceability, and human approval controls pass. The boundary data format is defined in `docs/contracts/dars-data-format.md`.
 
 **Tech Stack:** Python 3.11, Pydantic v2 schemas, runtime-local JSON/Markdown artifacts, pytest, existing `InstanceRoot`, `AgentHandoffPackage`, `DarsRuntime`, traceability validator, secret scanner.
 
@@ -414,9 +414,20 @@ spec:
 
 ---
 
-## 3. Data Model Design
+## 3. Data Format Contract
 
-### 3.1 Existing Handoff Package
+Hisys and DARS exchange data through canonical JSON-compatible envelopes documented in `docs/contracts/dars-data-format.md`:
+
+1. `DarsRequestEnvelope` — Hisys → DARS. Wraps the existing `AgentHandoffPackage` with stable schema/version metadata, non-overridable safety contract, selected role profile, sampling metadata, record refs, evidence refs, constraints, and optional user focus.
+2. `DarsResponseEnvelope` — DARS → Hisys. Contains producer provenance plus a structured `DarsCritiqueRecord` and boundary evidence proving the response stayed advisory-only.
+
+The adapter layer may translate those envelopes to backend-specific prompts/API/CLI inputs, but Hisys only accepts normalized envelopes. Response validation must reject mismatched `request_id`/`handoff_id`, invalid enums, malformed JSON, raw secrets, unsupported action types, or any claim that DARS already mutated state or performed an external side effect.
+
+---
+
+## 4. Data Model Design
+
+### 4.1 Existing Handoff Package
 
 Keep `AgentHandoffPackage` as the outbound request object. Strengthen use of existing fields before adding new schema fields:
 
@@ -443,7 +454,7 @@ Potential later additions only if tests prove necessary:
 - `requester`
 - explicit structured `record_refs` object
 
-### 3.2 DARS Critique Record
+### 4.2 DARS Critique Record
 
 Evolve `DarsCritiqueRecord` from plain text into structured advisory evidence.
 
@@ -477,7 +488,7 @@ validation_warnings: list[string]
 policy_refs: list[string]
 ```
 
-### 3.3 DARS Dispatch Decision
+### 4.3 DARS Dispatch Decision
 
 Before any adapter is called, write a runtime-boundary dispatch decision.
 
@@ -499,7 +510,7 @@ This mirrors the live connector safety decision pattern and makes DARS dispatch 
 
 ---
 
-## 4. Runtime Flow
+## 5. Runtime Flow
 
 ### 4.1 Fixture/Mock Flow
 
@@ -531,7 +542,7 @@ Even then, DARS response remains advisory and cannot directly trigger downstream
 
 ---
 
-## 5. Failure and Safety Rules
+## 6. Failure and Safety Rules
 
 1. Missing source execution -> report skipped execution; no handoff dispatch.
 2. Disabled backend -> write blocked dispatch decision; no external call.
@@ -543,7 +554,7 @@ Even then, DARS response remains advisory and cannot directly trigger downstream
 
 ---
 
-## 6. Ralph/TDD Implementation Queue
+## 7. Ralph/TDD Implementation Queue
 
 ### Task DARS-0: Common configuration validator and DARS configuration contract
 
@@ -576,19 +587,21 @@ python3 scripts/scan_secrets.py --json .
 
 ---
 
-### Task DARS-A: Structured critique ingestion schema
+### Task DARS-A: DARS protocol envelope and structured critique ingestion schema
 
-**Objective:** Add structured critique fields while preserving current loopback tests.
+**Objective:** Implement the canonical `DarsRequestEnvelope` and `DarsResponseEnvelope` from `docs/contracts/dars-data-format.md`, then map validated responses into structured advisory critique records while preserving current loopback tests.
 
 **Files:**
 
+- Create: `src/hisys/agents/dars_protocol.py`
+- Create: `tests/unit/test_dars_protocol.py`
 - Modify: `src/hisys/agents/dars.py`
 - Modify: `tests/unit/test_dars_runtime.py`
 - Modify: `docs/traceability/README.md`
 
-**RED:** Add tests asserting `unsupported_claims`, `counterarguments`, `risk_findings`, `recommended_actions`, `requires_human_review`, and `linked_record_refs` are persisted.
+**RED:** Add tests asserting valid request/response envelopes pass, response `request_id`/`handoff_id` mismatches fail, mutation/external-side-effect claims are rejected, enum paths are reported, and `unsupported_claims`, `counterarguments`, `risk_findings`, `recommended_actions`, `requires_human_review`, and `linked_record_refs` are persisted as advisory evidence.
 
-**GREEN:** Extend `DarsCritiqueRecord` with defaults and fixture parser.
+**GREEN:** Add minimal Pydantic protocol models and response validation helpers, extend `DarsCritiqueRecord` with defaults, and keep loopback/fixture behavior local-only.
 
 **Verify:**
 
