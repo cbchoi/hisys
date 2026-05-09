@@ -1,6 +1,7 @@
 """Source connector governance package."""
 
 from .doi_metadata import DoiMetadataConnector, DoiMetadataEvidencePackage
+from .claim_coverage_gate import ClaimCoverageGateBuilder, ClaimCoverageGateRecord, ClaimCoverageGateResult
 from .claim_evidence_ledger import ClaimEvidenceLedgerBuilder, ClaimEvidenceLedgerRecord, ClaimEvidenceLedgerResult
 from .claim_evidence_summary import ClaimEvidenceSummaryBuilder, ClaimEvidenceSummaryRecord, ClaimEvidenceSummaryResult
 from .fixture_publisher import FixturePublisherConnector, FixturePublisherEvidencePackage
@@ -19,6 +20,9 @@ from .live_source_dispatch import SourceConnectorDispatchDecision, SourceConnect
 from .live_source_evidence import SourceAccessRecord, SourceEvidenceItem
 
 __all__ = [
+    "ClaimCoverageGateBuilder",
+    "ClaimCoverageGateRecord",
+    "ClaimCoverageGateResult",
     "ClaimEvidenceLedgerBuilder",
     "ClaimEvidenceLedgerRecord",
     "ClaimEvidenceLedgerResult",
