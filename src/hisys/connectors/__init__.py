@@ -1,6 +1,7 @@
 """Source connector governance package."""
 
 from .doi_metadata import DoiMetadataConnector, DoiMetadataEvidencePackage
+from .claim_evidence_ledger import ClaimEvidenceLedgerBuilder, ClaimEvidenceLedgerRecord, ClaimEvidenceLedgerResult
 from .fixture_publisher import FixturePublisherConnector, FixturePublisherEvidencePackage
 from .open_access_pdf import OpenAccessPdfConnector, OpenAccessPdfEvidencePackage
 from .pdf_candidate_planner import PdfCandidatePlan, PdfCandidatePlanner
@@ -17,6 +18,9 @@ from .live_source_dispatch import SourceConnectorDispatchDecision, SourceConnect
 from .live_source_evidence import SourceAccessRecord, SourceEvidenceItem
 
 __all__ = [
+    "ClaimEvidenceLedgerBuilder",
+    "ClaimEvidenceLedgerRecord",
+    "ClaimEvidenceLedgerResult",
     "DoiMetadataConnector",
     "DoiMetadataEvidencePackage",
     "FixturePublisherConnector",
