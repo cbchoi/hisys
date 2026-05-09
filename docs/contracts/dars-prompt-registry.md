@@ -18,11 +18,12 @@ Commercial motivation:
 
 ## 2. Design Position
 
-Use a **prompt registry abstraction** now, even if storage starts as files.
+Use a **prompt registry abstraction** now, even if storage starts as files. Prompt governance is a specialized part of the broader configuration-governance strategy in `docs/contracts/configuration-governance.md`; keep prompt lifecycle separate because prompts/rubrics are product assets with stricter approval and evaluation needs.
 
 ```text
 Hisys DARS runtime
-  -> PromptRegistry interface
+  -> ConfigRegistry for operational config/policy/backend declarations
+  -> PromptRegistry for system contracts, role profiles, templates, and rubric refs
       -> file-backed registry for fixture/local development
       -> database-backed registry for commercial deployment
   -> PromptBundle snapshot

@@ -129,10 +129,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   DARS design is progressive and GAN-like: generator candidates are challenged
   by conservative logical and domain-specific critics, then converted into
   evidence-linked improvement proposals rather than automatic blocks. Future
-  commercialization should manage DARS system prompts, role profiles, templates,
-  policy bindings, and rubric refs through a prompt registry abstraction that can
-  start file-backed and later move to a tenant-scoped database with immutable
-  versions, approvals, hashes, audit events, and rollback.
+  commercialization should manage operational settings through a `ConfigRegistry`
+  and manage DARS system prompts, role profiles, templates, policy bindings, and
+  rubric refs through a specialized `PromptRegistry`; both can start file-backed
+  and later move to tenant-scoped databases with immutable versions, approvals,
+  hashes, audit events, and rollback.
 - Increment **I9-A/B/C/D product hardening** - `hisys.security.secret_scan` and
   `scripts/scan_secrets.py` scan repository/runtime files for assignment-style
   secret-like values, skip runtime caches such as `.git`/`.pytest_cache`/

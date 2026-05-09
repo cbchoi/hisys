@@ -429,6 +429,8 @@ Implementation approach:
 - Keep the Pydantic model strict: reject unknown top-level/domain fields to preserve concise configuration.
 - Provide clear path-based errors like `spec.roles.default_devil_advocate.strictness`.
 
+Commercialization note: DARS config should later be resolved through the broader `ConfigRegistry` strategy in `docs/contracts/configuration-governance.md`. Keep system prompts and prompt bundles in `PromptRegistry`, but manage non-prompt operational settings such as backend declarations, feature flags, connector policy, max rounds, thresholds, tenant/site scope, and approval policy through `ConfigRegistry`. Both registries should return immutable snapshot refs/hashes that are recorded in runtime-boundary artifacts.
+
 ### 2.9 Minimal Valid DARS Config Example
 
 With the common envelope, the DARS example should look like this:
