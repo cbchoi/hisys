@@ -133,6 +133,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   prompt/request actions, missing approval references, and non-allowlisted
   domains while always recording `external_call_made=false` and
   `mutation_performed=false` at decision time.
+- Increment **Live-A5 live source evidence provenance records** -
+  `hisys.connectors.live_source_evidence` defines `SourceAccessRecord` and
+  `SourceEvidenceItem` for future live-source evidence. Records require URL,
+  access time, connector ID, SHA-256 hash, license/open-access signal, and
+  separation between quoted source text and interpretation; PDF downloads require
+  `license_signal=open_access`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

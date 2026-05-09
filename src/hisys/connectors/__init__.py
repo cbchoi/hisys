@@ -8,13 +8,16 @@ from .live_source_config import (
     load_source_connector_registry,
 )
 from .live_source_dispatch import SourceConnectorDispatchDecision, SourceConnectorDispatchGate
+from .live_source_evidence import SourceAccessRecord, SourceEvidenceItem
 
 __all__ = [
     "LiveSearchPolicy",
     "LiveSourceConnectorSafetyError",
+    "SourceAccessRecord",
     "SourceConnectorConfig",
     "SourceConnectorDispatchDecision",
     "SourceConnectorDispatchGate",
     "SourceConnectorRegistry",
+    "SourceEvidenceItem",
     "load_source_connector_registry",
 ]
