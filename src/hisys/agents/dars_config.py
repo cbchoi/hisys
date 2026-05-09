@@ -6,10 +6,8 @@ HISYS-CON-010, HISYS-CON-011, HISYS-CON-012.
 
 from __future__ import annotations
 
-from pathlib import Path
+import json
 from typing import Any, Literal
-
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ..config.instance import InstanceRoot
@@ -106,9 +104,9 @@ class DarsConfig(BaseModel):
 
 
 def load_dars_config(instance: InstanceRoot) -> DarsConfig:
-    path = instance.config_dir / "dars.yaml"
+    path = instance.config_dir / "dars.json"
     with path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
+        data = json.load(handle)
     report = validate_dars_config_document(data, config_ref=str(path.relative_to(instance.root)))
     if not report.valid:
         messages = "; ".join(f"{issue.path}: {issue.code}" for issue in report.issues if issue.severity == "error")

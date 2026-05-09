@@ -68,108 +68,77 @@ Yes: DARS must be configurable because a site may use different LLM/agent backen
 Recommended config path:
 
 ```text
-<instance-root>/config/dars.yaml
+<instance-root>/config/dars.json
 ```
 
 Recommended non-secret example:
 
-```yaml
-# config/dars.yaml
-# Traceability: HISYS-FR-AGT-001..005, HISYS-T-019, HISYS-T-020,
-# HISYS-CON-010, HISYS-CON-011, HISYS-CON-012.
-default_backend: loopback_placeholder
-
-policy:
-  enabled: false
-  allowed_actions: advisory_only
-  require_human_approval_for_external_call: true
-  require_structured_output_schema: DarsCritiqueRecord
-  allow_external_side_effects: false
-  max_runtime_seconds: 300
-  redact_markdown_outputs: true
-
-roles:
-  default_devil_advocate:
-    kind: devil_advocate
-    profession: systems_safety_reviewer
-    stance: skeptical_but_constructive
-    strictness: high
-    creativity: medium
-    verbosity: concise_structured
-    critique_dimensions: [unsupported_claims, counterarguments, risk_findings, missing_evidence, assumption_checks]
-    prompt:
-      objective: "Challenge unsupported claims, weak evidence, hidden assumptions, and unsafe actions."
-      focus: "Prefer concise, structured critique with evidence-linked objections."
-    sampling:
-      temperature: 0.2
-      top_p: 0.9
-      max_output_tokens: 2000
-    output_contract: DarsCritiqueRecord
-
-backends:
-  loopback_placeholder:
-    kind: loopback
-    enabled: true
-    mode: local_only
-    external_call_allowed: false
-    output_contract: DarsCritiqueRecord
-
-  fixture_file:
-    kind: fixture_file
-    enabled: false
-    mode: local_only
-    fixture_path: harness/fixtures/dars/critique-response.json
-    external_call_allowed: false
-    output_contract: DarsCritiqueRecord
-
-  local_llm_dars:
-    kind: openai_compatible
-    enabled: false
-    mode: local_network_only
-    endpoint: http://localhost:11434/v1/chat/completions
-    model: configurable-local-model
-    credential_ref: null
-    external_call_allowed: false
-    output_contract: DarsCritiqueRecord
-
-  claude_dars:
-    kind: cli_agent
-    enabled: false
-    mode: read_only
-    command: claude
-    args: ["--model", "configured-by-user"]
-    allowed_tools: ["Read"]
-    disallowed_tools: ["Edit", "Write", "WebSearch", "WebFetch", "Bash(curl *)", "Bash(git push *)"]
-    credential_ref: null
-    external_call_allowed: false
-    output_contract: DarsCritiqueRecord
-
-  codex_dars:
-    kind: cli_agent
-    enabled: false
-    mode: read_only
-    command: codex
-    args: []
-    allowed_tools: ["read_files", "summarize"]
-    credential_ref: null
-    external_call_allowed: false
-    output_contract: DarsCritiqueRecord
-
-  openai_compatible_dars:
-    kind: openai_compatible
-    enabled: false
-    mode: external_api
-    endpoint: https://api.example.invalid/v1/chat/completions
-    model: configured-by-user
-    credential_ref: secrets/dars-openai-compatible.env
-    external_call_allowed: false
-    output_contract: DarsCritiqueRecord
+```json
+{
+  "schema_id": "hisys.dars.config",
+  "schema_version": "0.1.0",
+  "config_id": "dars-default",
+  "config_version": "0.1.0",
+  "owner": "sysailab",
+  "status": "draft",
+  "classification": "runtime_config",
+  "traceability": {
+    "requirements": ["HISYS-FR-AGT-001", "HISYS-T-019", "HISYS-T-020"],
+    "constraints": ["HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"]
+  },
+  "spec": {
+    "default_backend": "loopback_placeholder",
+    "policy": {
+      "enabled": false,
+      "allowed_actions": "advisory_only",
+      "require_human_approval_for_external_call": true,
+      "require_structured_output_schema": "DarsCritiqueRecord",
+      "allow_external_side_effects": false,
+      "max_runtime_seconds": 300,
+      "redact_markdown_outputs": true
+    },
+    "roles": {
+      "default_devil_advocate": {
+        "kind": "devil_advocate",
+        "profession": "systems_safety_reviewer",
+        "stance": "skeptical_but_constructive",
+        "strictness": "high",
+        "creativity": "medium",
+        "verbosity": "concise_structured",
+        "critique_dimensions": ["unsupported_claims", "counterarguments", "risk_findings", "missing_evidence"],
+        "prompt": {
+          "objective": "Challenge unsupported claims and hidden assumptions.",
+          "focus": "Prefer evidence-linked objections over generic criticism."
+        },
+        "sampling": {"temperature": 0.2, "top_p": 0.9, "max_output_tokens": 2000},
+        "output_contract": "DarsCritiqueRecord"
+      }
+    },
+    "backends": {
+      "loopback_placeholder": {
+        "kind": "loopback",
+        "enabled": true,
+        "mode": "local_only",
+        "external_call_allowed": false,
+        "output_contract": "DarsCritiqueRecord"
+      },
+      "fixture_file": {
+        "kind": "fixture_file",
+        "enabled": false,
+        "mode": "local_only",
+        "fixture_path": "harness/fixtures/dars/critique-response.json",
+        "external_call_allowed": false,
+        "output_contract": "DarsCritiqueRecord"
+      }
+    }
+  }
+}
 ```
 
 Configuration rules:
 
 1. The checked-in example config must keep every non-loopback backend disabled.
-2. Secrets are never stored in `config/dars.yaml`; use `credential_ref` pointing to local-only `secrets/` or environment-specific secret stores.
+2. Secrets are never stored in `config/dars.json`; use `credential_ref` pointing to local-only `secrets/` or environment-specific secret stores.
 3. A backend can be configured but still blocked by dispatch policy. Configuration alone is not approval.
 4. Every backend must declare `output_contract: DarsCritiqueRecord`; adapter output is rejected unless it validates.
 5. CLI agents such as Claude, Codex, OpenCode, or a local LLM are just adapter kinds. They must return structured critique JSON and may not write files, execute triggers, or alter Hisys state.
@@ -266,25 +235,30 @@ Yes: define a common configuration envelope. DARS can have its own domain schema
 
 Recommended common envelope:
 
-```yaml
-schema_id: hisys.dars.config
-schema_version: 0.1.0
-config_id: dars-default
-config_version: 0.1.0
-owner: sysailab
-status: draft
-classification: runtime_config
-traceability:
-  requirements: [HISYS-FR-AGT-001, HISYS-T-019, HISYS-T-020]
-  constraints: [HISYS-CON-010, HISYS-CON-011, HISYS-CON-012]
-metadata:
-  description: "DARS backend and role configuration."
-  updated: 2026-05-09
-spec:
-  default_backend: loopback_placeholder
-  policy: {...}
-  roles: {...}
-  backends: {...}
+```json
+{
+  "schema_id": "hisys.dars.config",
+  "schema_version": "0.1.0",
+  "config_id": "dars-default",
+  "config_version": "0.1.0",
+  "owner": "sysailab",
+  "status": "draft",
+  "classification": "runtime_config",
+  "traceability": {
+    "requirements": ["HISYS-FR-AGT-001", "HISYS-T-019", "HISYS-T-020"],
+    "constraints": ["HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"]
+  },
+  "metadata": {
+    "description": "DARS backend and role configuration.",
+    "updated": "2026-05-09"
+  },
+  "spec": {
+    "default_backend": "loopback_placeholder",
+    "policy": {},
+    "roles": {},
+    "backends": {}
+  }
+}
 ```
 
 Common fields:
@@ -344,7 +318,7 @@ Suggested CLI:
 
 ```bash
 hisys validate-config --instance examples/instance
-hisys validate-config --path examples/instance/config/dars.yaml --schema hisys.dars.config
+hisys validate-config --path examples/instance/config/dars.json --schema hisys.dars.config
 ```
 
 Suggested output files when running full validation:
@@ -365,51 +339,58 @@ Implementation approach:
 
 With the common envelope, the DARS example should look like this:
 
-```yaml
-schema_id: hisys.dars.config
-schema_version: 0.1.0
-config_id: dars-default
-config_version: 0.1.0
-owner: sysailab
-status: draft
-classification: runtime_config
-traceability:
-  requirements: [HISYS-FR-AGT-001, HISYS-T-019, HISYS-T-020]
-  constraints: [HISYS-CON-010, HISYS-CON-011, HISYS-CON-012]
-spec:
-  default_backend: loopback_placeholder
-  policy:
-    enabled: false
-    allowed_actions: advisory_only
-    require_human_approval_for_external_call: true
-    require_structured_output_schema: DarsCritiqueRecord
-    allow_external_side_effects: false
-    max_runtime_seconds: 300
-    redact_markdown_outputs: true
-  roles:
-    default_devil_advocate:
-      kind: devil_advocate
-      profession: systems_safety_reviewer
-      stance: skeptical_but_constructive
-      strictness: high
-      creativity: medium
-      verbosity: concise_structured
-      critique_dimensions: [unsupported_claims, counterarguments, risk_findings, missing_evidence]
-      prompt:
-        objective: "Challenge unsupported claims and hidden assumptions."
-        focus: "Prefer evidence-linked objections over generic criticism."
-      sampling:
-        temperature: 0.2
-        top_p: 0.9
-        max_output_tokens: 2000
-      output_contract: DarsCritiqueRecord
-  backends:
-    loopback_placeholder:
-      kind: loopback
-      enabled: true
-      mode: local_only
-      external_call_allowed: false
-      output_contract: DarsCritiqueRecord
+```json
+{
+  "schema_id": "hisys.dars.config",
+  "schema_version": "0.1.0",
+  "config_id": "dars-default",
+  "config_version": "0.1.0",
+  "owner": "sysailab",
+  "status": "draft",
+  "classification": "runtime_config",
+  "traceability": {
+    "requirements": ["HISYS-FR-AGT-001", "HISYS-T-019", "HISYS-T-020"],
+    "constraints": ["HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"]
+  },
+  "spec": {
+    "default_backend": "loopback_placeholder",
+    "policy": {
+      "enabled": false,
+      "allowed_actions": "advisory_only",
+      "require_human_approval_for_external_call": true,
+      "require_structured_output_schema": "DarsCritiqueRecord",
+      "allow_external_side_effects": false,
+      "max_runtime_seconds": 300,
+      "redact_markdown_outputs": true
+    },
+    "roles": {
+      "default_devil_advocate": {
+        "kind": "devil_advocate",
+        "profession": "systems_safety_reviewer",
+        "stance": "skeptical_but_constructive",
+        "strictness": "high",
+        "creativity": "medium",
+        "verbosity": "concise_structured",
+        "critique_dimensions": ["unsupported_claims", "counterarguments", "risk_findings", "missing_evidence"],
+        "prompt": {
+          "objective": "Challenge unsupported claims and hidden assumptions.",
+          "focus": "Prefer evidence-linked objections over generic criticism."
+        },
+        "sampling": {"temperature": 0.2, "top_p": 0.9, "max_output_tokens": 2000},
+        "output_contract": "DarsCritiqueRecord"
+      }
+    },
+    "backends": {
+      "loopback_placeholder": {
+        "kind": "loopback",
+        "enabled": true,
+        "mode": "local_only",
+        "external_call_allowed": false,
+        "output_contract": "DarsCritiqueRecord"
+      }
+    }
+  }
+}
 ```
 
 ---
@@ -558,12 +539,12 @@ Even then, DARS response remains advisory and cannot directly trigger downstream
 
 ### Task DARS-0: Common configuration validator and DARS configuration contract
 
-**Objective:** Add a common configuration envelope plus disabled-by-default `config/dars.yaml` schema/loading behavior so users can choose different DARS LLM/agent backends without changing product code.
+**Objective:** Add a common configuration envelope plus disabled-by-default `config/dars.json` schema/loading behavior so users can choose different DARS LLM/agent backends without changing product code.
 
 **Files:**
 
 - Create: `src/hisys/config/validation.py`
-- Create: `examples/instance/config/dars.yaml`
+- Create: `examples/instance/config/dars.json`
 - Create or modify: `src/hisys/agents/dars_config.py`
 - Modify: `src/hisys/config/loader.py` only if shared loader support is useful
 - Test: `tests/unit/test_config_validation.py`
@@ -572,7 +553,7 @@ Even then, DARS response remains advisory and cannot directly trigger downstream
 
 **RED:** Add tests asserting the common envelope is required, unknown schema IDs fail, path-based validation issues are reported, multiple backend kinds and concise role profiles can be declared, deterministic role fields are enum-like key/value pairs, interpretive fields are contained under `prompt:`, non-loopback backends remain disabled by default, secrets are referenced only by `credential_ref`, model knobs are bounded, and invalid backend/output contract values are rejected.
 
-**GREEN:** Implement minimal Pydantic config envelope, validation report/issue objects, DARS config model, and YAML loader. Do not dispatch any backend yet.
+**GREEN:** Implement minimal Pydantic config envelope, validation report/issue objects, DARS config model, and JSON loader. Do not dispatch any backend yet.
 
 **Verify:**
 

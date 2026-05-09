@@ -124,7 +124,7 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `dars_backend=loopback_placeholder`, `external_call_made=false`,
   `allowed_actions=advisory_only`, and `action_taken=none`, so a future DARS
   adapter can replace the loopback without changing downstream records. The
-  DARS configuration contract uses a common Hisys config envelope and validates
+  DARS configuration contract uses a common Hisys JSON config envelope and validates
   concise role/backend settings before any DARS adapter is selected.
 - Increment **I9-A/B/C/D product hardening** - `hisys.security.secret_scan` and
   `scripts/scan_secrets.py` scan repository/runtime files for assignment-style
@@ -155,8 +155,8 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
                    hermes_trace)
       registry/    source registry and web compliance collection gate
       adapters/    base + hardware/web/agent/Hermes mocks and runtime manager
-      config/      runtime instance root, YAML config/source-registry loader,
-                   common config validation, and DARS role/backend config
+      config/      runtime instance root, YAML source-registry loader,
+                   common config validation, and JSON DARS role/backend config
       audit/       JSONL audit writer with minimal redaction
       integrations/ Hermes Markdown boundary writer
       investigator/ registry-gated collection skeleton
