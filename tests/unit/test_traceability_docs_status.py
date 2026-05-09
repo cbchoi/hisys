@@ -96,6 +96,20 @@ def test_live_e_pdf_candidate_planning_boundary_is_documented():
     assert "candidate_plan_only" in text
 
 
+def test_live_f_manual_oa_pdf_smoke_boundary_is_documented():
+    """Manual OA PDF smoke may fetch bytes only through approved, injectable boundary."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-F approved manual OA PDF fetch smoke boundary" in text
+    assert "injectable transport" in text
+    assert "manual live smoke only" in text
+    assert "approval ref" in text
+    assert "HISYS_ALLOW_LIVE_PDF_SMOKE" in text
+    assert "CI must still use fake transport only" in text
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 

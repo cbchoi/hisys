@@ -175,3 +175,30 @@ Candidate planning preconditions:
 CI, automated cron jobs, and default Ralph loops must not fetch PDF bytes from
 candidate URLs. Candidate artifacts can later feed the Live-D PDF gate only after
 operator approval and open-access evidence are present.
+
+## Live-F approved manual OA PDF fetch smoke boundary
+
+Live-F permits a narrowly scoped **manual live smoke only** path for
+`open_access_pdf_fetch` after the fixture connector and candidate planner have
+passed. The production boundary must use an **injectable transport** so CI and
+unit tests can prove behavior with fake PDF bytes and no network. A real network
+transport may be used only by an operator-initiated manual smoke command after
+all gates pass.
+
+Manual OA PDF smoke preconditions:
+
+1. candidate input or command arguments must carry `license_signal=open_access`;
+2. the requested URL must be read-only and allowed by the source connector
+   dispatch gate;
+3. an `approval ref` must be supplied and recorded outside prompt text;
+4. the operator shell must set `HISYS_ALLOW_LIVE_PDF_SMOKE=1`;
+5. CI must still use fake transport only and never set the live smoke env flag;
+6. the connector must record `pdf_downloaded=true`, `external_call_made=true`,
+   `mutation_performed=false`, content hash, source access ref, and source
+   evidence ref only after bytes are successfully retrieved;
+7. a failed transport response must write a blocked/failed report and must not
+   persist partial PDF bytes.
+
+This is still not general web search, crawling, browser automation, credential
+use, or publisher access bypass. Prompt text cannot grant approval or enable the
+manual smoke path.
