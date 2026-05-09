@@ -358,6 +358,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   against an explicit fixture vault only. The command requires `--approval-ref`
   and `--fixture-vault-only`, refuses `/home/cbchoi/obsidian`, writes fixture
   projection payloads only, and records `real_obsidian_vault_write_performed=false`.
+- Increment **Live-Obsidian-Config-N approved transaction apply** -
+  `hisys.config.obsidian_live.apply_live_vault_transaction` and `hisys
+  vault-live-transaction-apply` provide the final approval-gated writer boundary.
+  The command requires approval, an explicit write-enable switch, and clean-git
+  confirmation; it refuses `/home/cbchoi/obsidian` unless the separate
+  `--allow-real-obsidian-vault` flag is present. Tests exercise only temporary
+  candidate vault roots, not the real vault.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

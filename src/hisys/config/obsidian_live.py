@@ -6,6 +6,7 @@ HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -722,6 +723,77 @@ def write_live_vault_transaction_plan(*, instance_root: Path, yyyymmdd: str, pla
     return report_path
 
 
+def apply_live_vault_transaction(
+    *,
+    transaction_plan: dict[str, Any],
+    vault_root: Path,
+    approval_ref: str | None,
+    explicit_live_write_enable: bool,
+    allow_real_obsidian_vault: bool,
+    clean_git_status: bool,
+) -> dict[str, Any]:
+    """Apply a transaction to an approved vault root with explicit live-write gates."""
+
+    real_vault = _is_real_obsidian_vault(vault_root)
+    base = {
+        "schema_id": "hisys.obsidian.live_vault_transaction_apply",
+        "schema_version": _SCHEMA_VERSION,
+        "source_transaction_request_id": transaction_plan.get("request_id"),
+        "vault_root": str(vault_root),
+        "approval_ref": approval_ref,
+        "explicit_live_write_enable": explicit_live_write_enable,
+        "allow_real_obsidian_vault": allow_real_obsidian_vault,
+        "clean_git_status": clean_git_status,
+        "external_call_made": False,
+        "real_obsidian_vault_write_performed": False,
+    }
+    if real_vault and not allow_real_obsidian_vault:
+        return {**base, "status": "blocked", "reason_code": "real_obsidian_vault_requires_explicit_flag", "operation_count": 0, "mutation_performed": False}
+    if not approval_ref or not explicit_live_write_enable or not clean_git_status or transaction_plan.get("status") != "planned_not_executable":
+        return {**base, "status": "blocked", "reason_code": "live_apply_gate_not_satisfied", "operation_count": 0, "mutation_performed": False}
+
+    operations = transaction_plan.get("planned_operations", [])
+    refs = [str(operation.get("vault_relative_ref", "")) for operation in operations]
+    _validate_refs(refs)
+    applied: list[dict[str, str]] = []
+    for operation, ref in zip(operations, refs, strict=True):
+        target = vault_root / ref
+        pre_hash = hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else "missing"
+        payload = {
+            "live_transaction_projection": True,
+            "source_transaction_request_id": transaction_plan.get("request_id"),
+            "source_operation_id": operation.get("operation_id"),
+            "vault_relative_ref": ref,
+            "approval_ref": approval_ref,
+            "real_obsidian_vault_write_performed": real_vault,
+            "external_call_made": False,
+        }
+        data = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(data, encoding="utf-8")
+        post_hash = hashlib.sha256(data.encode("utf-8")).hexdigest()
+        applied.append({"operation_id": str(operation.get("operation_id")), "vault_relative_ref": ref, "pre_write_hash": pre_hash, "post_write_hash": post_hash})
+
+    return {
+        **base,
+        "status": "applied",
+        "operation_count": len(applied),
+        "applied_operations": applied,
+        "mutation_performed": True,
+        "real_obsidian_vault_write_performed": real_vault,
+    }
+
+
+def write_live_vault_transaction_apply_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    request_id = report.get("source_transaction_request_id", report.get("request_id", "unknown"))
+    report_path = report_dir / f"vault-live-transaction-apply-{request_id}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"vault-live-transaction-apply-{request_id}.md").write_text(_format_live_vault_transaction_apply(report), encoding="utf-8")
+    return report_path
+
+
 def rehearse_live_vault_transaction_in_fixture(
     *,
     transaction_plan: dict[str, Any],
@@ -1103,6 +1175,25 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_live_vault_transaction_apply(report: dict[str, Any]) -> str:
+    ops = "\n".join(f"- `{item['vault_relative_ref']}` pre=`{item['pre_write_hash']}` post=`{item['post_write_hash']}`" for item in report.get("applied_operations", [])) or "- none"
+    return "\n".join(
+        [
+            "# Obsidian Live Transaction Apply Report",
+            "",
+            f"- Source transaction: `{report.get('source_transaction_request_id')}`",
+            f"- Status: {report['status']}",
+            f"- Operation count: {report['operation_count']}",
+            f"- Mutation performed: {str(report.get('mutation_performed')).lower()}",
+            f"- Real Obsidian vault write performed: {str(report.get('real_obsidian_vault_write_performed')).lower()}",
+            "",
+            "## Operations",
+            ops,
+            "",
+        ]
+    )
+
+
 def _format_live_vault_transaction_rehearsal(report: dict[str, Any]) -> str:
     refs = "\n".join(f"- `{item['vault_relative_ref']}`" for item in report.get("written_fixture_refs", [])) or "- none"
     return "\n".join(
@@ -1256,6 +1347,7 @@ def _format_vault_apply_report(report: dict[str, Any]) -> str:
 
 
 __all__ = [
+    "apply_live_vault_transaction",
     "apply_vault_plan_to_fixture",
     "build_live_vault_approval_package",
     "build_live_vault_preflight_report",
@@ -1270,6 +1362,7 @@ __all__ = [
     "write_live_vault_approval_package",
     "write_vault_apply_report",
     "write_live_vault_preflight_report",
+    "write_live_vault_transaction_apply_report",
     "write_live_vault_transaction_plan",
     "write_live_vault_transaction_rehearsal_report",
     "write_live_vault_write_gate_report",

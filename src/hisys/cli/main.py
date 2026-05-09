@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -481,6 +481,19 @@ def _build_parser() -> argparse.ArgumentParser:
     live_rehearsal.add_argument("--approval-ref", help="required rehearsal approval ref")
     live_rehearsal.add_argument("--fixture-vault-only", action="store_true", help="required; refuses real Obsidian vault")
 
+    live_apply = sub.add_parser(
+        "vault-live-transaction-apply",
+        help="apply an approved transaction to a vault root with explicit live-write gates",
+    )
+    live_apply.add_argument("--instance", required=True, help="runtime instance root for apply reports")
+    live_apply.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    live_apply.add_argument("--transaction-plan", required=True, help="vault-live-transaction-plan JSON path")
+    live_apply.add_argument("--vault-root", required=True, help="approved vault root to mutate")
+    live_apply.add_argument("--approval-ref", help="required live-apply approval ref")
+    live_apply.add_argument("--explicit-live-write-enable", action="store_true", help="required explicit write enable switch")
+    live_apply.add_argument("--allow-real-obsidian-vault", action="store_true", help="required only for /home/cbchoi/obsidian")
+    live_apply.add_argument("--clean-git-status", action="store_true", help="operator-confirmed clean git status signal")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -766,6 +779,17 @@ def main(argv: list[str] | None = None) -> int:
             fixture_vault_root=Path(args.fixture_vault_root),
             approval_ref=args.approval_ref,
             fixture_vault_only=args.fixture_vault_only,
+        )
+    if args.command == "vault-live-transaction-apply":
+        return _cmd_vault_live_transaction_apply(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            transaction_plan_path=Path(args.transaction_plan),
+            vault_root=Path(args.vault_root),
+            approval_ref=args.approval_ref,
+            explicit_live_write_enable=args.explicit_live_write_enable,
+            allow_real_obsidian_vault=args.allow_real_obsidian_vault,
+            clean_git_status=args.clean_git_status,
         )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
@@ -1081,6 +1105,35 @@ def _cmd_vault_live_transaction_rehearse(
     print(f"report={report_path}")
     print("real_obsidian_vault_write_performed: false")
     return 0 if report["status"] == "rehearsed_fixture_only" else 1
+
+
+def _cmd_vault_live_transaction_apply(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    transaction_plan_path: Path,
+    vault_root: Path,
+    approval_ref: str | None,
+    explicit_live_write_enable: bool,
+    allow_real_obsidian_vault: bool,
+    clean_git_status: bool,
+) -> int:
+    """Apply an approved live-vault transaction to a configured vault root."""
+
+    transaction_plan = json.loads(transaction_plan_path.read_text(encoding="utf-8"))
+    report = apply_live_vault_transaction(
+        transaction_plan=transaction_plan,
+        vault_root=vault_root,
+        approval_ref=approval_ref,
+        explicit_live_write_enable=explicit_live_write_enable,
+        allow_real_obsidian_vault=allow_real_obsidian_vault,
+        clean_git_status=clean_git_status,
+    )
+    report_path = write_live_vault_transaction_apply_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
+    print(f"vault live transaction apply: {report['status']}")
+    print(f"report={report_path}")
+    print(f"real_obsidian_vault_write_performed: {str(report['real_obsidian_vault_write_performed']).lower()}")
+    return 0 if report["status"] == "applied" else 1
 
 
 def _cmd_vault_topic_transition_plan(

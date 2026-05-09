@@ -486,6 +486,16 @@ fixture projection payloads containing source transaction/operation metadata, an
 records `fixture_projection_only=true` and
 `real_obsidian_vault_write_performed=false`.
 
+## Live-Obsidian-Config-N implementation status
+
+`hisys.config.obsidian_live.apply_live_vault_transaction` and `hisys
+vault-live-transaction-apply` implement the final approval-gated transaction
+writer boundary. The command requires an approval ref, an explicit write-enable
+switch, and operator-confirmed clean Git status. It refuses `/home/cbchoi/obsidian`
+unless `--allow-real-obsidian-vault` is supplied. Unit tests exercise temporary
+candidate vault roots only; this Ralph run did not execute the command against the
+real Obsidian vault.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,
