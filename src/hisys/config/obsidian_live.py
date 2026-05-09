@@ -509,6 +509,219 @@ def write_live_vault_preflight_report(*, instance_root: Path, yyyymmdd: str, rep
     return report_path
 
 
+def build_obsidian_git_initialization_plan(
+    *,
+    request_id: str,
+    vault_root: Path,
+    remote_url: str,
+    default_branch: str,
+    credential_ref: str,
+    operator_id: str,
+) -> dict[str, Any]:
+    """Plan initialization of an Obsidian vault as a Hisys-managed Git repository.
+
+    This is a controlled plan, not an executor: it records that the operator must
+    provide credentials by reference. Raw credential material is never persisted.
+    """
+
+    credential_issue = _git_credential_issue(credential_ref)
+    if credential_issue:
+        return _blocked_obsidian_git_plan(
+            schema_id="hisys.obsidian.git_initialization_plan",
+            request_id=request_id,
+            reason_code=credential_issue,
+            vault_root=vault_root,
+            credential_ref=credential_ref,
+        )
+    if not remote_url.strip():
+        return _blocked_obsidian_git_plan(
+            schema_id="hisys.obsidian.git_initialization_plan",
+            request_id=request_id,
+            reason_code="remote_url_required",
+            vault_root=vault_root,
+            credential_ref=credential_ref,
+        )
+    if not default_branch.strip():
+        return _blocked_obsidian_git_plan(
+            schema_id="hisys.obsidian.git_initialization_plan",
+            request_id=request_id,
+            reason_code="default_branch_required",
+            vault_root=vault_root,
+            credential_ref=credential_ref,
+        )
+
+    operations = [
+        {"operation_id": "obsidian-git-init-op-0001", "operation": "verify_or_create_vault_root", "vault_root": str(vault_root)},
+        {"operation_id": "obsidian-git-init-op-0002", "operation": "git_init_if_missing", "default_branch": default_branch},
+        {"operation_id": "obsidian-git-init-op-0003", "operation": "configure_remote_origin", "remote_url": remote_url},
+        {"operation_id": "obsidian-git-init-op-0004", "operation": "install_lightweight_gitignore_policy", "policy": "notes_and_small_governance_json_only"},
+        {"operation_id": "obsidian-git-init-op-0005", "operation": "credential_ref_binding", "credential_ref": credential_ref},
+        {"operation_id": "obsidian-git-init-op-0006", "operation": "initial_commit_and_push", "remote_name": "origin", "branch": default_branch},
+    ]
+    return {
+        "schema_id": "hisys.obsidian.git_initialization_plan",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "planned_requires_operator_credentials",
+        "vault_root": str(vault_root),
+        "remote_url": remote_url,
+        "default_branch": default_branch,
+        "operator_id": operator_id,
+        "credential_ref": credential_ref,
+        "raw_credential_stored": False,
+        "gitignore_policy": [
+            "track_markdown_notes",
+            "track_small_governance_json",
+            "attachments_ignored_by_default",
+            "secrets_ignored_always",
+            "runtime_cache_logs_tmp_ignored",
+        ],
+        "required_gates": [
+            "credential_ref_resolves_outside_repository",
+            "remote_write_access_verified_by_operator",
+            "no_raw_secret_in_config_or_runtime_boundary",
+            "initial_push_requires_explicit_approval",
+        ],
+        "planned_operation_count": len(operations),
+        "planned_operations": operations,
+        "mutation_performed": False,
+        "external_call_made": False,
+    }
+
+
+def build_obsidian_git_sync_plan(
+    *,
+    request_id: str,
+    vault_root: Path,
+    memo_refs: list[str],
+    runtime_boundary_refs: list[str],
+    commit_message: str,
+    remote_name: str,
+    branch: str,
+    credential_ref: str,
+    approval_ref: str | None,
+) -> dict[str, Any]:
+    """Plan the operational memo Git sync after an approved vault write."""
+
+    refs = [*memo_refs, *runtime_boundary_refs]
+    try:
+        _validate_refs(refs)
+    except ValueError:
+        return _blocked_obsidian_git_plan(
+            schema_id="hisys.obsidian.git_sync_plan",
+            request_id=request_id,
+            reason_code="unsafe_vault_ref",
+            vault_root=vault_root,
+            credential_ref=credential_ref,
+        )
+    credential_issue = _git_credential_issue(credential_ref)
+    if credential_issue:
+        return _blocked_obsidian_git_plan(
+            schema_id="hisys.obsidian.git_sync_plan",
+            request_id=request_id,
+            reason_code=credential_issue,
+            vault_root=vault_root,
+            credential_ref=credential_ref,
+        )
+    missing = _missing_git_sync_field(memo_refs, commit_message, remote_name, branch, approval_ref)
+    if missing:
+        return _blocked_obsidian_git_plan(
+            schema_id="hisys.obsidian.git_sync_plan",
+            request_id=request_id,
+            reason_code=missing,
+            vault_root=vault_root,
+            credential_ref=credential_ref,
+        )
+
+    operations = [
+        {"operation_id": "obsidian-git-sync-op-0001", "operation": "pre_sync_git_status", "must_be_clean_except_approved_refs": True},
+        {"operation_id": "obsidian-git-sync-op-0002", "operation": "stage_approved_memo_and_runtime_boundary_refs", "refs": refs},
+        {"operation_id": "obsidian-git-sync-op-0003", "operation": "commit_memo_projection", "commit_message": commit_message},
+        {"operation_id": "obsidian-git-sync-op-0004", "operation": "push_commit_to_remote", "remote_name": remote_name, "branch": branch, "credential_ref": credential_ref},
+        {"operation_id": "obsidian-git-sync-op-0005", "operation": "record_post_push_status", "runtime_boundary_required": True},
+    ]
+    return {
+        "schema_id": "hisys.obsidian.git_sync_plan",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "planned_after_vault_write",
+        "vault_root": str(vault_root),
+        "memo_refs": memo_refs,
+        "runtime_boundary_refs": runtime_boundary_refs,
+        "commit_message": commit_message,
+        "remote_name": remote_name,
+        "branch": branch,
+        "credential_ref": credential_ref,
+        "approval_ref": approval_ref,
+        "raw_credential_stored": False,
+        "required_gates": [
+            "approved_vault_write_report_exists",
+            "git_status_scoped_to_approved_refs",
+            "credential_ref_resolves_outside_repository",
+            "push_result_recorded_in_runtime_boundary",
+        ],
+        "planned_operation_count": len(operations),
+        "planned_operations": operations,
+        "mutation_performed": False,
+        "external_call_made": False,
+    }
+
+
+def _git_credential_issue(credential_ref: str) -> str | None:
+    stripped = credential_ref.strip()
+    if not stripped:
+        return "credential_ref_required"
+    if re.search(r"\b(?:ghp|github_pat|sk|xox[baprs]|hf)_[A-Za-z0-9][A-Za-z0-9_-]{8,}\b|\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b", stripped):
+        return "raw_credential_value_not_allowed"
+    if not re.fullmatch(r"(?:env|keyring|file|ssh-agent|secretstore):[A-Za-z0-9_./:@+-]+", stripped):
+        return "credential_ref_scheme_not_allowed"
+    return None
+
+
+def _missing_git_sync_field(
+    memo_refs: list[str],
+    commit_message: str,
+    remote_name: str,
+    branch: str,
+    approval_ref: str | None,
+) -> str | None:
+    if not memo_refs:
+        return "memo_refs_required"
+    if not commit_message.strip():
+        return "commit_message_required"
+    if not remote_name.strip():
+        return "remote_name_required"
+    if not branch.strip():
+        return "branch_required"
+    if not approval_ref:
+        return "approval_ref_required"
+    return None
+
+
+def _blocked_obsidian_git_plan(
+    *,
+    schema_id: str,
+    request_id: str,
+    reason_code: str,
+    vault_root: Path,
+    credential_ref: str,
+) -> dict[str, Any]:
+    return {
+        "schema_id": schema_id,
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "blocked",
+        "reason_code": reason_code,
+        "vault_root": str(vault_root),
+        "credential_ref": credential_ref if reason_code != "raw_credential_value_not_allowed" else "redacted_raw_credential_ref_rejected",
+        "raw_credential_stored": False,
+        "planned_operation_count": 0,
+        "planned_operations": [],
+        "mutation_performed": False,
+        "external_call_made": False,
+    }
+
+
 def build_live_vault_approval_package(
     *,
     request_id: str,
@@ -1718,6 +1931,8 @@ __all__ = [
     "build_live_vault_preflight_report",
     "build_live_vault_transaction_plan",
     "build_live_vault_write_gate_report",
+    "build_obsidian_git_initialization_plan",
+    "build_obsidian_git_sync_plan",
     "build_obsidian_evidence_promotion_plan",
     "build_obsidian_milestone_status_report",
     "build_topic_gatekeeper_approval_package",
