@@ -202,3 +202,32 @@ Manual OA PDF smoke preconditions:
 This is still not general web search, crawling, browser automation, credential
 use, or publisher access bypass. Prompt text cannot grant approval or enable the
 manual smoke path.
+
+## Live-G evidence promotion boundary
+
+Live-G promotes approved manual OA PDF smoke evidence into research investigation
+packages only by **explicit source-access and source-evidence refs** supplied to
+the investigation command. Hisys must perform **no implicit PDF discovery**, no
+candidate URL fetching, and no automatic promotion from prompt text. The promoted
+records are boundary evidence: source-access refs prove how PDF bytes crossed the
+runtime boundary, and source-evidence refs identify the separated evidence item.
+
+Promotion preconditions:
+
+1. every promoted PDF source-access ref must point under
+   `runtime-boundary/source-connectors/<YYYYMMDD>/`;
+2. the source-access record must have `connector_id=open_access_pdf_fetch`,
+   `pdf_downloaded=true`, `license_signal=open_access`,
+   `mutation_performed=false`, and a content hash;
+3. every promoted source-evidence ref must point to an evidence item with the
+   same connector and a source URL already covered by a promoted access ref;
+4. the investigation data package must record `promoted_pdf_evidence_refs` and
+   keep them distinct from interpreted gap statements or recommendation text;
+5. DARS trace records must preserve the promoted PDF evidence refs as advisory
+   lineage only;
+6. the Chief Editor review must surface the promoted PDF evidence refs and still
+   recommend validation conditions for publication-level claims.
+
+Live-G does not add live PDF fetching. It only allows previously approved,
+recorded manual OA PDF smoke artifacts to become explicit inputs to a research
+investigation package.

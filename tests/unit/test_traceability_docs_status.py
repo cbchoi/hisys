@@ -110,6 +110,20 @@ def test_live_f_manual_oa_pdf_smoke_boundary_is_documented():
     assert "CI must still use fake transport only" in text
 
 
+def test_live_g_manual_pdf_evidence_promotion_boundary_is_documented():
+    """Manual PDF evidence can be promoted only by explicit refs and preserved boundary records."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-G evidence promotion boundary" in text
+    assert "explicit source-access and source-evidence refs" in text
+    assert "promoted_pdf_evidence_refs" in text
+    assert "no implicit PDF discovery" in text
+    assert "DARS trace" in text
+    assert "Chief Editor" in text
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 
