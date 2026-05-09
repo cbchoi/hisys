@@ -1,6 +1,6 @@
 # Hisys Configuration Governance and Registry Strategy
 
-**Status:** future-design-baseline  
+**Status:** adopted-architecture-baseline  
 **Version:** 0.1.0  
 **Traceability:** HISYS-FR-AGT-001..005; HISYS-FR-ADM-001..004; HISYS-T-019; HISYS-T-020; HISYS-T-021; HISYS-T-024; HISYS-CON-010; HISYS-CON-011; HISYS-CON-012; HISYS-CON-022; HISYS-CON-023
 

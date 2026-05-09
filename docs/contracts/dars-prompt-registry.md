@@ -1,6 +1,6 @@
 # DARS Prompt Registry and Commercial Prompt Governance
 
-**Status:** future-design-baseline  
+**Status:** adopted-architecture-baseline  
 **Version:** 0.1.0  
 **Traceability:** HISYS-DARS-CONTRACT-001; HISYS-FR-AGT-001..005; HISYS-T-019; HISYS-T-020; HISYS-T-024; HISYS-CON-010; HISYS-CON-011; HISYS-CON-012
 

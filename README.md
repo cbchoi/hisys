@@ -133,7 +133,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   and manage DARS system prompts, role profiles, templates, policy bindings, and
   rubric refs through a specialized `PromptRegistry`; both can start file-backed
   and later move to tenant-scoped databases with immutable versions, approvals,
-  hashes, audit events, and rollback.
+  hashes, audit events, and rollback. `docs/use-cases/codebase-analysis-design-candidates.md`
+  defines an adopted use case where Hisys analyzes repositories read-only,
+  produces `CodebaseEvidencePackage` and `DesignCandidateRecord` artifacts,
+  then uses DARS progressive critique to recommend better product, architecture,
+  and automation uses without modifying code by default.
 - Increment **I9-A/B/C/D product hardening** - `hisys.security.secret_scan` and
   `scripts/scan_secrets.py` scan repository/runtime files for assignment-style
   secret-like values, skip runtime caches such as `.git`/`.pytest_cache`/
