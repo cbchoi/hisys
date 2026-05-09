@@ -221,6 +221,16 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   in CI. `hisys investigate-domain --source-quote-ref` preserves quote refs in
   `InvestigationDataPackage`, DARS trace, and Chief Editor review while keeping
   novelty/publication claims conditional.
+- Increment **Live-I quote-to-claim evidence ledger** -
+  `ClaimEvidenceLedgerBuilder` maps explicit `source_quote_refs` to
+  support/contradict/needs-evidence claim ledger records while preserving that
+  quote text remains source evidence and claim mapping remains interpretation.
+  `hisys build-claim-evidence-ledger` writes `claim-evidence-ledger-*.json`
+  artifacts without network calls or source mutation. `hisys investigate-domain
+  --claim-evidence-ledger-ref` preserves `claim_evidence_ledger_refs` in
+  `InvestigationDataPackage`, DARS trace, and Chief Editor review with
+  `claim_evidence_ledger_present` status while keeping novelty claims
+  conditional.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

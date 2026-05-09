@@ -222,3 +222,28 @@ def test_live_h_pdf_quote_extraction_status_and_traceability_are_documented():
     assert "| Live-H PDF quote extraction from promoted OA evidence |" in trace
     assert "`hisys.connectors.pdf_quote_extractor`" in trace
     assert "tests/unit/test_pdf_quote_extractor.py" in trace
+
+
+def test_live_i_claim_evidence_ledger_status_and_traceability_are_documented():
+    """README and traceability docs must mention implemented Live-I claim ledger path."""
+
+    readme = README.read_text(encoding="utf-8")
+    trace = TRACEABILITY_DOC.read_text(encoding="utf-8")
+
+    assert "Live-I quote-to-claim evidence ledger" in readme
+    assert "ClaimEvidenceLedgerBuilder" in readme
+    assert "build-claim-evidence-ledger" in readme
+    assert "--claim-evidence-ledger-ref" in readme
+    assert "claim_evidence_ledger_refs" in readme
+    assert "claim_evidence_ledger_present" in readme
+    assert "support/contradict/needs-evidence" in readme
+    assert "quote text remains source evidence" in readme
+    assert "claim mapping remains interpretation" in readme
+
+    assert "Live-I Quote-to-claim evidence ledger" in trace
+    assert "hisys.connectors.claim_evidence_ledger" in trace
+    assert "tests/unit/test_claim_evidence_ledger.py" in trace
+    assert "tests/unit/test_claim_evidence_ledger_cli.py" in trace
+    assert "tests/unit/test_domain_cli.py" in trace
+    assert "claim_evidence_ledger_refs" in trace
+    assert "claim_evidence_ledger_present" in trace

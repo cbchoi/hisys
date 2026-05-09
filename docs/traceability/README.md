@@ -40,6 +40,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | Live-F Approved manual OA PDF fetch smoke | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.open_access_pdf.collect_manual_smoke` supports injectable PDF transport, `hisys smoke-source-connector --transport-fixture-pdf` verifies the approved manual path without CI network, and completed smoke reports record `manual_pdf_smoke_completed`, `pdf_downloaded=true`, source-access refs, and source-evidence refs. Checked-in config remains disabled. |
 | Live-G Manual OA PDF evidence promotion | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.pdf_evidence_promotion` validates explicit OA PDF source refs, `hisys investigate-domain --promote-pdf-source-access-ref --promote-pdf-source-evidence-ref` records `promoted_pdf_evidence_refs` in `InvestigationDataPackage`, and DARS/Chief Editor traces preserve promoted refs without implicit PDF discovery or live fetch. |
 | Live-H PDF quote extraction from promoted OA evidence | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.pdf_quote_extractor` creates quote-only `source_quote_refs` from explicit promoted OA PDF evidence refs, `hisys extract-pdf-quotes` writes source-quote artifacts/reports without OCR, parsing, or network calls, and `hisys investigate-domain --source-quote-ref` preserves quote refs in investigation data, DARS trace, and Chief Editor review while keeping novelty claims conditional. |
+| Live-I Quote-to-claim evidence ledger | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.claim_evidence_ledger` maps explicit source quotes to support/contradict/needs-evidence interpretation records, `hisys build-claim-evidence-ledger` writes claim ledger artifacts/reports without network calls or quote mutation, and `hisys investigate-domain --claim-evidence-ledger-ref` preserves `claim_evidence_ledger_refs` with Chief Editor `claim_evidence_ledger_present` status while keeping claims conditional. |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -88,7 +89,11 @@ and Chief Editor review with `promoted_pdf_evidence_refs` and no implicit PDF
 discovery or live fetch. Live-H derives quote-only `source_quote_refs` from
 explicit promoted OA PDF evidence, links them into `InvestigationDataPackage`,
 DARS trace, and Chief Editor review, and keeps novelty claims conditional while
-performing no OCR/PDF parsing/network calls.
+performing no OCR/PDF parsing/network calls. Live-I maps explicit source quotes
+to `claim_evidence_ledger_refs` using support/contradict/needs-evidence
+relations, links the ledger into `InvestigationDataPackage`, DARS trace, and
+Chief Editor review with `claim_evidence_ledger_present` status, and preserves
+the quote/interpretation boundary without strengthening publication claims.
 I9-A adds a redacted secret-like value scanner for HISYS-T-021
 quality gates, I9-B adds backup manifest plus restore dry-run verification for
 HISYS-T-023, I9-C adds local operator health status for required runtime
@@ -140,6 +145,7 @@ implemented yet.
 | `hisys.connectors.pdf_candidate_planner` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_pdf_candidate_planner.py` |
 | `hisys.connectors.pdf_evidence_promotion` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_pdf_evidence_promotion.py`, `tests/unit/test_domain_cli.py` |
 | `hisys.connectors.pdf_quote_extractor` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_pdf_quote_extractor.py`, `tests/unit/test_pdf_quote_cli.py`, `tests/unit/test_domain_cli.py` |
+| `hisys.connectors.claim_evidence_ledger` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_claim_evidence_ledger.py`, `tests/unit/test_claim_evidence_ledger_cli.py`, `tests/unit/test_domain_cli.py` |
 | `hisys.investigator.runtime` | HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-007..008 | `tests/unit/test_investigator_runtime.py` |
 | `hisys.extraction.extractor` | HISYS-FR-EXT-001..005, HISYS-DATA-002, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
 | `hisys.extraction.runtime` | HISYS-FR-EXT-001..005, HISYS-D-015, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
