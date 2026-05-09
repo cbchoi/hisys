@@ -5,6 +5,7 @@ from .fixture_publisher import FixturePublisherConnector, FixturePublisherEviden
 from .open_access_pdf import OpenAccessPdfConnector, OpenAccessPdfEvidencePackage
 from .pdf_candidate_planner import PdfCandidatePlan, PdfCandidatePlanner
 from .pdf_evidence_promotion import PdfEvidencePromotionLoader, PromotedPdfEvidence
+from .pdf_quote_extractor import PdfQuoteExtractionResult, PdfQuoteExtractor, SourceQuoteRecord
 from .live_source_config import (
     LiveSearchPolicy,
     LiveSourceConnectorSafetyError,
@@ -25,6 +26,8 @@ __all__ = [
     "PdfCandidatePlan",
     "PdfCandidatePlanner",
     "PdfEvidencePromotionLoader",
+    "PdfQuoteExtractionResult",
+    "PdfQuoteExtractor",
     "PromotedPdfEvidence",
     "LiveSearchPolicy",
     "LiveSourceConnectorSafetyError",
@@ -32,6 +35,7 @@ __all__ = [
     "SourceConnectorConfig",
     "SourceConnectorDispatchDecision",
     "SourceConnectorDispatchGate",
+    "SourceQuoteRecord",
     "SourceConnectorRegistry",
     "SourceEvidenceItem",
     "load_source_connector_registry",
