@@ -503,6 +503,92 @@ def write_live_vault_preflight_report(*, instance_root: Path, yyyymmdd: str, rep
     return report_path
 
 
+def build_live_vault_approval_package(
+    *,
+    request_id: str,
+    preflight_report: dict[str, Any],
+    vault_plan: dict[str, Any],
+    operator_id: str,
+    rationale: str,
+) -> dict[str, Any]:
+    """Build a human approval package for a future live vault write without enabling it."""
+
+    if not preflight_report.get("valid") or preflight_report.get("status") != "ready_for_approval_package":
+        return {
+            "schema_id": "hisys.obsidian.live_vault_approval_package",
+            "schema_version": _SCHEMA_VERSION,
+            "request_id": request_id,
+            "status": "blocked",
+            "reason_code": "preflight_not_ready",
+            "approval_required": True,
+            "required_approvals": [],
+            "planned_write_count": 0,
+            "planned_writes": [],
+            "operator_id": operator_id,
+            "rationale": rationale,
+            "preflight_request_id": preflight_report.get("request_id"),
+            "plan_request_id": vault_plan.get("request_id"),
+            "rollback_plan": {},
+            "final_gate_before_live_write": [],
+            "live_write_enabled": False,
+            "real_obsidian_vault_write_performed": False,
+            "external_call_made": False,
+            "mutation_performed": False,
+        }
+
+    planned_refs = [str(ref) for ref in vault_plan.get("planned_files", [])]
+    _validate_refs(planned_refs)
+    planned_writes = [
+        {
+            "vault_relative_ref": ref,
+            "operation": "create_or_update_after_separate_approval",
+            "source_plan_request_id": vault_plan.get("request_id"),
+            "requires_human_review": True,
+        }
+        for ref in planned_refs
+    ]
+    return {
+        "schema_id": "hisys.obsidian.live_vault_approval_package",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "approval_required",
+        "approval_required": True,
+        "required_approvals": [
+            "human_live_vault_write_approval",
+            "clean_git_status_confirmation",
+            "rollback_plan_acknowledgement",
+        ],
+        "operator_id": operator_id,
+        "rationale": rationale,
+        "preflight_request_id": preflight_report.get("request_id"),
+        "plan_request_id": vault_plan.get("request_id"),
+        "vault_root": preflight_report.get("vault_root"),
+        "topic_uid": vault_plan.get("topic_uid"),
+        "investigation_id": vault_plan.get("investigation_id"),
+        "planned_write_count": len(planned_writes),
+        "planned_writes": planned_writes,
+        "rollback_plan": {
+            "strategy": "git_revert_or_delete_new_files_after_review",
+            "requires_clean_git_before_write": True,
+            "preserve_runtime_boundary_reports": True,
+        },
+        "final_gate_before_live_write": ["vault-live-preflight", "vault-roundtrip-validate", "git status --short"],
+        "live_write_enabled": False,
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def write_live_vault_approval_package(*, instance_root: Path, yyyymmdd: str, package: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"vault-live-approval-package-{package['request_id']}.json"
+    report_path.write_text(json.dumps(package, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"vault-live-approval-package-{package['request_id']}.md").write_text(_format_live_vault_approval_package(package), encoding="utf-8")
+    return report_path
+
+
 def validate_fixture_vault_roundtrip(
     *,
     plan: dict[str, Any],
@@ -801,6 +887,28 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_live_vault_approval_package(package: dict[str, Any]) -> str:
+    planned = "\n".join(f"- `{item['vault_relative_ref']}`" for item in package.get("planned_writes", [])) or "- none"
+    approvals = "\n".join(f"- {approval}" for approval in package.get("required_approvals", [])) or "- none"
+    return "\n".join(
+        [
+            "# Obsidian Live Vault Approval Package",
+            "",
+            f"- Request: `{package['request_id']}`",
+            f"- Status: {package['status']}",
+            "- live_write_enabled: false",
+            "- real_obsidian_vault_write_performed: false",
+            "",
+            "## Required approvals",
+            approvals,
+            "",
+            "## Planned writes",
+            planned,
+            "",
+        ]
+    )
+
+
 def _format_live_vault_preflight_report(report: dict[str, Any]) -> str:
     return "\n".join(
         [
@@ -876,12 +984,14 @@ def _format_vault_apply_report(report: dict[str, Any]) -> str:
 
 __all__ = [
     "apply_vault_plan_to_fixture",
+    "build_live_vault_approval_package",
     "build_live_vault_preflight_report",
     "build_topic_identity_transition_plan",
     "build_vault_plan",
     "build_vault_template_plan",
     "validate_fixture_vault_roundtrip",
     "validate_vault_manifests",
+    "write_live_vault_approval_package",
     "write_vault_apply_report",
     "write_live_vault_preflight_report",
     "write_vault_plan_artifacts",

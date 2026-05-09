@@ -445,6 +445,16 @@ and the heavy-attachment ignore policy. It records `write_probe_performed=false`
 `live_write_enabled=false`, and `real_obsidian_vault_write_performed=false`; a
 passing preflight only means the next approval-package gate can be prepared.
 
+## Live-Obsidian-Config-J implementation status
+
+`hisys.config.obsidian_live.build_live_vault_approval_package` and `hisys
+vault-live-approval-package` generate a human approval package for a future live
+vault write without enabling one. The package enumerates planned vault-relative
+writes, required human/clean-git/rollback approvals, rollback strategy, and final
+gates (`vault-live-preflight`, `vault-roundtrip-validate`, and `git status
+--short`) while recording `live_write_enabled=false` and
+`real_obsidian_vault_write_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

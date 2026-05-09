@@ -332,6 +332,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   The preflight checks for the vault root, `.obsidian`, a Git repository marker,
   and an attachment ignore policy, records `write_probe_performed=false` and
   `live_write_enabled=false`, and only prepares the next approval-package gate.
+- Increment **Live-Obsidian-Config-J live vault approval package** -
+  `hisys.config.obsidian_live.build_live_vault_approval_package` and `hisys
+  vault-live-approval-package` generate a human approval package for a future
+  live vault write without enabling one. The package lists planned vault-relative
+  writes, required approvals, rollback strategy, and final gates while recording
+  `live_write_enabled=false` and `real_obsidian_vault_write_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

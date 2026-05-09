@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_preflight_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_preflight_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -436,6 +436,18 @@ def _build_parser() -> argparse.ArgumentParser:
     live_preflight.add_argument("--request-id", required=True, help="request id for preflight")
     live_preflight.add_argument("--vault-root", required=True, help="candidate Obsidian vault root")
 
+    live_approval = sub.add_parser(
+        "vault-live-approval-package",
+        help="prepare a human approval package for a future live vault write without enabling it",
+    )
+    live_approval.add_argument("--instance", required=True, help="runtime instance root for approval package artifacts")
+    live_approval.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    live_approval.add_argument("--request-id", required=True, help="request id for approval package")
+    live_approval.add_argument("--preflight-report", required=True, help="vault-live-preflight JSON report path")
+    live_approval.add_argument("--plan", required=True, help="vault-plan JSON path")
+    live_approval.add_argument("--operator-id", required=True, help="operator requesting approval package")
+    live_approval.add_argument("--rationale", required=True, help="human-readable rationale")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -685,6 +697,16 @@ def main(argv: list[str] | None = None) -> int:
             request_id=args.request_id,
             vault_root=Path(args.vault_root),
         )
+    if args.command == "vault-live-approval-package":
+        return _cmd_vault_live_approval_package(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            preflight_report_path=Path(args.preflight_report),
+            plan_path=Path(args.plan),
+            operator_id=args.operator_id,
+            rationale=args.rationale,
+        )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
             instance_root=Path(args.instance),
@@ -891,6 +913,35 @@ def _cmd_vault_live_preflight(*, instance_root: Path, yyyymmdd: str, request_id:
     print("write_probe_performed: false")
     print("live_write_enabled: false")
     return 0 if report["valid"] else 1
+
+
+def _cmd_vault_live_approval_package(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    preflight_report_path: Path,
+    plan_path: Path,
+    operator_id: str,
+    rationale: str,
+) -> int:
+    """Prepare a human approval package for a future live vault write."""
+
+    preflight_report = json.loads(preflight_report_path.read_text(encoding="utf-8"))
+    vault_plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    package = build_live_vault_approval_package(
+        request_id=request_id,
+        preflight_report=preflight_report,
+        vault_plan=vault_plan,
+        operator_id=operator_id,
+        rationale=rationale,
+    )
+    package_path = write_live_vault_approval_package(instance_root=instance_root, yyyymmdd=yyyymmdd, package=package)
+    print(f"vault live approval package: {package['status']}")
+    print(f"package={package_path}")
+    print("live_write_enabled: false")
+    print("real_obsidian_vault_write_performed: false")
+    return 0 if package["status"] == "approval_required" else 1
 
 
 def _cmd_vault_topic_transition_plan(
