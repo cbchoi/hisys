@@ -525,6 +525,15 @@ plus a promotion manifest, but records `promotion_plan_only=true` and performs n
 real vault mutation. Fixture rehearsal writes projection-only payloads to an
 explicit fixture root and still records `real_obsidian_vault_write_performed=false`.
 
+## Obsidian milestone status
+
+`hisys.config.obsidian_live.build_obsidian_milestone_status_report` and `hisys
+vault-obsidian-milestone-status` record the Obsidian milestone complete across
+Live-Obsidian-Config, Topic-Gatekeeper, and Obsidian Evidence Promotion. The
+status artifact records `open_milestone_count=0`, `obsidian_milestone_complete=true`,
+`external_call_made=false`, `mutation_performed=false`, and
+`real_obsidian_vault_write_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

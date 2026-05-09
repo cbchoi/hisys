@@ -381,6 +381,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   claim, and decision refs into topic-level canonical indexes. Fixture rehearsal
   writes only projection payloads to explicit fixture roots and records no real
   Obsidian vault writes.
+- Increment **Obsidian Milestone Status** -
+  `hisys.config.obsidian_live.build_obsidian_milestone_status_report` and `hisys
+  vault-obsidian-milestone-status` record the Obsidian milestone complete across
+  Live-Obsidian-Config, Topic-Gatekeeper, and Obsidian Evidence Promotion with
+  zero open milestones and no real Obsidian vault write.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

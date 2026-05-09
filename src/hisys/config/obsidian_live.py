@@ -957,6 +957,63 @@ def build_topic_gatekeeper_status_report(*, request_id: str) -> dict[str, Any]:
     return {"schema_id": "hisys.obsidian.topic_gatekeeper_status", "schema_version": _SCHEMA_VERSION, "request_id": request_id, "status": "complete", "topic_gatekeeper_complete": True, "completed_stage_count": len(stages), "open_stage_count": 0, "stages": stages, "external_call_made": False, "mutation_performed": False, "real_obsidian_vault_write_performed": False}
 
 
+def build_obsidian_milestone_status_report(*, request_id: str) -> dict[str, Any]:
+    """Build the overall Obsidian milestone completion report."""
+
+    milestones = [
+        {
+            "milestone": "Live-Obsidian-Config",
+            "status": "complete",
+            "capabilities": [
+                "vault planning/validation/templates",
+                "fixture apply/roundtrip",
+                "live preflight/approval/gate/transaction/apply boundary",
+                "completion status",
+            ],
+        },
+        {
+            "milestone": "Topic-Gatekeeper",
+            "status": "complete",
+            "capabilities": [
+                "evidence-citing routing decision",
+                "approval package",
+                "transaction plan",
+                "fixture rehearsal",
+            ],
+        },
+        {
+            "milestone": "Obsidian-Evidence-Promotion",
+            "status": "complete",
+            "capabilities": [
+                "canonical source/evidence/claim/decision index promotion plan",
+                "fixture-only projection rehearsal",
+            ],
+        },
+    ]
+    open_items = [item for item in milestones if item["status"] != "complete"]
+    return {
+        "schema_id": "hisys.obsidian.milestone_status",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "complete" if not open_items else "incomplete",
+        "obsidian_milestone_complete": not open_items,
+        "completed_milestone_count": len(milestones) - len(open_items),
+        "open_milestone_count": len(open_items),
+        "milestones": milestones,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "real_obsidian_vault_write_performed": False,
+    }
+
+
+def write_obsidian_milestone_status_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"obsidian-milestone-status-{report['request_id']}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return report_path
+
+
 def build_live_obsidian_config_status_report(*, request_id: str) -> dict[str, Any]:
     """Build the Live-Obsidian-Config completion status report."""
 
@@ -1657,6 +1714,7 @@ __all__ = [
     "build_live_vault_transaction_plan",
     "build_live_vault_write_gate_report",
     "build_obsidian_evidence_promotion_plan",
+    "build_obsidian_milestone_status_report",
     "build_topic_gatekeeper_approval_package",
     "build_topic_gatekeeper_decision",
     "build_topic_gatekeeper_status_report",
@@ -1678,6 +1736,7 @@ __all__ = [
     "write_live_vault_transaction_rehearsal_report",
     "write_live_vault_write_gate_report",
     "write_obsidian_evidence_promotion_plan",
+    "write_obsidian_milestone_status_report",
     "write_topic_gatekeeper_decision",
     "write_vault_plan_artifacts",
     "write_vault_roundtrip_report",
