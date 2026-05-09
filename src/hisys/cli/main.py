@@ -33,7 +33,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -347,6 +347,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="explicit claim evidence summary ref; repeat for multiple refs",
     )
 
+    recommendation_registry = sub.add_parser(
+        "build-recommendation-claim-registry",
+        help="register controlled required recommendation claims for Live-K coverage gates",
+    )
+    recommendation_registry.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    recommendation_registry.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    recommendation_registry.add_argument("--request-id", required=True, help="request id for recommendation claim registry")
+    recommendation_registry.add_argument("--recommendation-text", required=True, help="explicit recommendation text being registered")
+    recommendation_registry.add_argument(
+        "--claim-text",
+        action="append",
+        required=True,
+        help="required recommendation claim text; repeat for multiple claims",
+    )
+    recommendation_registry.add_argument(
+        "--source-recommendation-ref",
+        help="optional runtime-boundary recommendation artifact ref",
+    )
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -521,6 +540,15 @@ def main(argv: list[str] | None = None) -> int:
             request_id=args.request_id,
             required_claim_ids=args.required_claim_id,
             claim_evidence_summary_refs=args.claim_evidence_summary_ref,
+        )
+    if args.command == "build-recommendation-claim-registry":
+        return _cmd_build_recommendation_claim_registry(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            recommendation_text=args.recommendation_text,
+            claim_texts=args.claim_text,
+            source_recommendation_ref=args.source_recommendation_ref,
         )
     if args.command == "extract":
         return _cmd_extract(
@@ -1148,6 +1176,67 @@ def _cmd_build_claim_coverage_gate(
         encoding="utf-8",
     )
     print(f"claim coverage gate: report={report_artifact}")
+    print("external_call_made: false")
+    return 0
+
+
+def _cmd_build_recommendation_claim_registry(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    recommendation_text: str,
+    claim_texts: list[str],
+    source_recommendation_ref: str | None = None,
+) -> int:
+    instance = InstanceRoot(instance_root)
+    result = RecommendationClaimRegistryBuilder(root=instance.root).build(
+        request_id=request_id,
+        recommendation_text=recommendation_text,
+        claim_texts=claim_texts,
+        yyyymmdd=yyyymmdd,
+        source_recommendation_ref=source_recommendation_ref,
+    )
+    report = {
+        "schema_id": "hisys.recommendation_claim_registry.report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "status": "completed",
+        "recommendation_claim_registry_refs": result.recommendation_claim_registry_refs,
+        "required_claim_ids": result.required_claim_ids,
+        "feeds_live_k_coverage_gates": True,
+        "conditional_manuscript_language_only": True,
+        "external_call_made": result.external_call_made,
+        "mutation_performed": result.mutation_performed,
+    }
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_artifact = report_dir / "recommendation-claim-registry-report.json"
+    report_artifact.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "recommendation-claim-registry-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                f"# Recommendation claim registry report {request_id}",
+                "",
+                "- status: `completed`",
+                "- feeds_live_k_coverage_gates: true",
+                "- conditional_manuscript_language_only: true",
+                "- does_not_approve_publication_ready_claims: true",
+                "- external_call_made: false",
+                "- mutation_performed: false",
+                "",
+                "## Recommendation claim registry refs",
+                *[f"- {ref}" for ref in result.recommendation_claim_registry_refs],
+                "",
+                "## Required claim ids for Live-K",
+                *[f"- {claim_id}" for claim_id in result.required_claim_ids],
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    print(f"recommendation claim registry: report={report_artifact}")
     print("external_call_made: false")
     return 0
 
