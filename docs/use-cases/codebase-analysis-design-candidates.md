@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-This use case applies Hisys to software repositories and related project evidence so it can analyze the **current codebase**, relevant **open-source references**, and **previous project results**, then identify design candidates, critique alternatives with DARS, and recommend better uses or better architecture paths.
+This use case specializes the domain-general Hermes-facing Hisys tool model in `docs/use-cases/hermes-hisys-domain-tool.md` for software repositories. It applies Hisys to software repositories and related project evidence so it can analyze the **current codebase**, relevant **open-source references**, and **previous project results**, then identify design candidates, critique alternatives with DARS, and recommend better uses or better architecture paths.
 
 The target output is not an automatic code change. The target output is a controlled advisory package:
 
@@ -38,7 +38,7 @@ Commercial customers often need to answer questions such as:
 - Which agent/LLM workflows can safely assist this repository?
 - Which productization paths are most feasible?
 
-Hisys can become an advisory system that converts multi-source investigation evidence into design candidates, DARS critique, possible alternatives, and progressive decision support.
+Hisys can become an advisory tool that Hermes calls to convert multi-source investigation evidence into design candidates, DARS critique, possible alternatives, and progressive decision support. The same pattern should apply beyond codebases; this document defines the `domain="codebase"` adapter specialization.
 
 ## 3. Scope
 
@@ -74,6 +74,8 @@ Not allowed by default:
 | Actor | Role |
 |---|---|
 | User / product owner | asks what the codebase can become or how it should improve |
+| Hermes | conversational/task orchestrator that may call Hisys with `domain="codebase"` and return the advisory result to the user |
+| Hisys domain tool boundary | validates the request, applies config/prompt registry snapshots, persists runtime-boundary records, and prevents unapproved external calls or mutation |
 | Investigator | plans source scope, gathers current-codebase/open-source/previous-result evidence, and builds `InvestigationDataPackage` |
 | Source Governance Gate | validates source type, license/sensitivity, connector permissions, and external-call policy before evidence collection |
 | Candidate Generator | proposes possible design/use candidates and alternative decision paths |
@@ -84,8 +86,9 @@ Not allowed by default:
 ## 5. Progressive Decision Flow
 
 ```text
-1. Investigation planning
-   -> identify current repo path/branch, approved open-source references, previous project-result sources, source-governance limits, and allowed analysis depth
+1. Hermes/Hisys investigation planning
+   -> Hermes passes a controlled `hisys_investigate(domain="codebase")` request
+   -> Hisys identifies current repo path/branch, approved open-source references, previous project-result sources, source-governance limits, and allowed analysis depth
 
 2. Evidence extraction
    -> current-codebase language/LOC metrics
@@ -118,8 +121,12 @@ Not allowed by default:
    -> compare alternatives by value, feasibility, risk, evidence support, implementation cost, and legal/source constraints
    -> produce better-use recommendations and next controlled increments
 
-6. Human decision
-   -> choose an alternative, request more evidence, or start a Ralph implementation loop
+6. Human decision boundary
+   -> user/Hermes may choose an alternative, request more evidence, or approve a Ralph implementation loop
+
+7. Hisys tool result
+   -> persist runtime-boundary artifacts and return compact structured result to Hermes
+   -> Hermes reports the advisory recommendation and asks for approval before any implementation or live action
 ```
 
 ## 6. Investigation Data Model
@@ -371,3 +378,13 @@ A future implementation should verify:
 8. Config snapshot refs and prompt bundle refs are recorded.
 9. Secret-like values are redacted from reports.
 10. Human approval is required before live external collection, code modification, or a code-modifying Ralph loop starts.
+
+## 12. Relationship to Domain-General Hisys Tool
+
+This codebase use case must remain compatible with `docs/use-cases/hermes-hisys-domain-tool.md`:
+
+- `domain="codebase"` selects the codebase adapter.
+- Hermes receives compact tool results; full evidence stays in Hisys runtime-boundary artifacts.
+- Domain-specific schemas may refine generic `InvestigationDataPackage`, `AlternativeDecisionSet`, and recommendation memo shapes.
+- The same Hermes-facing tool can later support research, business, investment, ISO/process, and other domains by changing domain adapter, rubric binding, and prompt bundle.
+- Any domain adapter remains read-only by default and advisory unless a later human-approved workflow explicitly enables mutation.

@@ -133,9 +133,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   and manage DARS system prompts, role profiles, templates, policy bindings, and
   rubric refs through a specialized `PromptRegistry`; both can start file-backed
   and later move to tenant-scoped databases with immutable versions, approvals,
-  hashes, audit events, and rollback. `docs/use-cases/codebase-analysis-design-candidates.md`
-  defines an adopted use case where Hisys analyzes repositories, approved
-  open-source references, and previous project results read-only, produces
+  hashes, audit events, and rollback. `docs/use-cases/hermes-hisys-domain-tool.md`
+  defines Hisys as a Hermes-callable, domain-general investigation and
+  decision-support tool: Hermes passes a controlled request, Hisys builds
+  evidence and alternatives, DARS critiques them, and Hisys returns compact
+  advisory results while preserving runtime-boundary records. `docs/use-cases/codebase-analysis-design-candidates.md`
+  specializes that model for `domain="codebase"`, where Hisys analyzes repositories,
+  approved open-source references, and previous project results read-only, produces
   `InvestigationDataPackage`, `CodebaseEvidencePackage`, `DesignCandidateRecord`,
   and `AlternativeDecisionSet` artifacts, then uses DARS progressive critique to
   recommend better product, architecture, and automation uses without modifying
