@@ -108,3 +108,17 @@ def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     assert "| Live-D Legal open-access PDF collector boundary |" in trace
     assert "`hisys.connectors.open_access_pdf`" in trace
     assert "tests/unit/test_open_access_pdf_connector.py" in trace
+
+
+def test_live_e_pdf_candidate_planning_status_and_traceability_are_documented():
+    """README and traceability docs must mention the implemented Live-E planner."""
+
+    readme = README.read_text(encoding="utf-8")
+    trace = TRACEABILITY_DOC.read_text(encoding="utf-8")
+
+    assert "Increment **Live-E DOI metadata to OA PDF candidate planning**" in readme
+    assert "hisys.connectors.pdf_candidate_planner" in readme
+    assert "hisys plan-pdf-candidates" in readme
+    assert "| Live-E DOI metadata to OA PDF candidate planning |" in trace
+    assert "`hisys.connectors.pdf_candidate_planner`" in trace
+    assert "tests/unit/test_pdf_candidate_planner.py" in trace

@@ -187,6 +187,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys smoke-source-connector` now dry-runs/blocks PDF smoke attempts unless
   open-access license evidence, approval, allowlist, and the operator env flag
   are present; manual live PDF fetching remains blocked/not implemented.
+- Increment **Live-E DOI metadata to OA PDF candidate planning** -
+  `hisys.connectors.pdf_candidate_planner` derives `pdf_candidate` plan
+  artifacts from DOI metadata OA hints without fetching PDF bytes. `hisys plan-pdf-candidates` writes `pdf-candidate-plan-<request_id>.json` and a run
+  report with `candidate_plan_only=true`, `pdf_downloaded=false`,
+  `external_call_made=false`, and `mutation_performed=false`. Source connector
+  planning now records a `doi_metadata_search -> open_access_pdf_fetch` planned
+  handoff of type `pdf_candidate_plan_only`, so DOI metadata and OA PDF gates are
+  linked without making live PDF calls.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

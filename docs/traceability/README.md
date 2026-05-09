@@ -36,6 +36,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | Live-B Fixture-backed source connector planning and evidence integration | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys plan-source-connectors` writes dry-run connector plan artifacts without external calls, `hisys.connectors.fixture_publisher` extracts local publisher-shaped fixture evidence/provenance, `investigate-domain` links fixture source evidence into investigation data, DARS trace lineage, and Chief Editor source-validation review conditions. No live adapter execution is enabled. |
 | Live-C Manual DOI metadata smoke boundary | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `doi_metadata_search` has explicit manual-smoke policy fields, the read-only DOI metadata connector uses injectable transport for tests, and `hisys smoke-source-connector` writes dry-run/blocked smoke reports unless an operator supplies approval plus `HISYS_ALLOW_LIVE_SMOKE=1`. CI performs no live network call. |
 | Live-D Legal open-access PDF collector boundary | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `open_access_pdf_fetch` has explicit manual-smoke policy fields, `hisys.connectors.open_access_pdf` fixture-collects OA PDF bytes only after `license_signal=open_access`, and `hisys smoke-source-connector` dry-runs/blocks PDF smoke when license/approval/env gates are missing. CI performs no live PDF fetch. |
+| Live-E DOI metadata to OA PDF candidate planning | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.pdf_candidate_planner` derives `candidate_plan_only` PDF candidates from DOI metadata OA hints, `hisys plan-pdf-candidates` writes dry-run candidate plan/report artifacts, and source connector planning records the `doi_metadata_search -> open_access_pdf_fetch` planned handoff. CI performs no live PDF fetch. |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -73,7 +74,9 @@ injectable-transport tests, dry-run/blocked CLI evidence, and an opt-in operator
 environment flag for manual live metadata smoke only; CI still performs no live
 network call. Live-D adds a fixture-first OA PDF collector with license-signal
 gating, manual PDF smoke env gating, and dry-run/blocked CLI evidence; CI still
-performs no live PDF fetch.
+performs no live PDF fetch. Live-E adds DOI metadata to OA PDF candidate planning
+with `candidate_plan_only` artifacts and planned connector handoffs while still
+fetching no PDF bytes.
 I9-A adds a redacted secret-like value scanner for HISYS-T-021
 quality gates, I9-B adds backup manifest plus restore dry-run verification for
 HISYS-T-023, I9-C adds local operator health status for required runtime
@@ -122,6 +125,7 @@ implemented yet.
 | `hisys.connectors.fixture_publisher` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_fixture_publisher_connector.py` |
 | `hisys.connectors.doi_metadata` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_doi_metadata_connector.py` |
 | `hisys.connectors.open_access_pdf` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_open_access_pdf_connector.py` |
+| `hisys.connectors.pdf_candidate_planner` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_pdf_candidate_planner.py` |
 | `hisys.investigator.runtime` | HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-007..008 | `tests/unit/test_investigator_runtime.py` |
 | `hisys.extraction.extractor` | HISYS-FR-EXT-001..005, HISYS-DATA-002, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
 | `hisys.extraction.runtime` | HISYS-FR-EXT-001..005, HISYS-D-015, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
