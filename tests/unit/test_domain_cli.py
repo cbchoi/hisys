@@ -125,6 +125,8 @@ def test_investigate_domain_research_gap_fixture_generates_alternatives(tmp_path
 
     assert data["evidence_packages"][0]["evidence_type"] == "research_gap_matrix"
     assert "Dynamic Structure DEVS" in data["evidence_packages"][0]["summary"]
+    assert any("source-access-ACCESS-HISYS-REQ-RESEARCH-GAP-001-fixture_publisher_page_reader.json" in ref for ref in data["evidence_packages"][0]["evidence_refs"])
+    assert any("source-evidence-EVID-HISYS-REQ-RESEARCH-GAP-001-fixture_publisher_page_reader.json" in ref for ref in data["evidence_packages"][0]["evidence_refs"])
     assert alternatives["recommended_candidate_id"] == "CAND-HISYS-REQ-RESEARCH-GAP-001-SOS-DSDEVS"
     assert alternatives["candidates"][0]["candidate_type"] == "research_direction"
     assert "Self-organizing Dynamic Structure DEVS" in alternatives["candidates"][0]["claim"]

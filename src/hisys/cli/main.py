@@ -31,7 +31,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import load_source_connector_registry
+from ..connectors import FixturePublisherConnector, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -579,6 +579,13 @@ def _build_research_domain_result(
             return None
 
     source_refs = [source.source_id for source in request.sources]
+    connector_package = FixturePublisherConnector().collect(
+        request_id=request.request_id,
+        fixture_path=Path("examples/instance/harness/fixtures/web/publisher-formalism-page.html"),
+        output_root=instance.root,
+        yyyymmdd=yyyymmdd,
+    )
+    connector_refs = [connector_package.access_ref, connector_package.evidence_ref]
     evidence = DomainEvidencePackage(
         package_id=f"DEPKG-{request.request_id}-FORMALISM-GAP",
         domain="research",
@@ -590,7 +597,7 @@ def _build_research_domain_result(
             "self-organizing structure that jointly models local interaction, feedback, topology/behavior "
             "co-evolution, executable semantics, and analyzable structural constraints."
         ),
-        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison"],
+        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs],
         source_refs=source_refs,
         claims=[
             "DSDEVS, graph rewriting, and ABM cover complementary but separated formalism capabilities.",
@@ -608,7 +615,10 @@ def _build_research_domain_result(
         domain="research",
         objective=request.objective,
         evidence_packages=[evidence],
-        source_governance_refs=[str((boundary_dir / f"hisys-tool-request-{request.request_id}.json").relative_to(instance.root))],
+        source_governance_refs=[
+            str((boundary_dir / f"hisys-tool-request-{request.request_id}.json").relative_to(instance.root)),
+            *connector_refs,
+        ],
     )
     candidate_id = f"CAND-{request.request_id}-SOS-DSDEVS"
     candidate = CandidateRecord(

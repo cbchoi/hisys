@@ -151,6 +151,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `SourceEvidenceItem` artifacts with SHA-256 provenance under
   `runtime-boundary/source-connectors/<YYYYMMDD>/`, and records
   `external_call_made=false` and `mutation_performed=false`.
+- Increment **Live-B3 fixture connector evidence in domain investigation** -
+  The research-gap `investigate-domain` fixture path invokes the local fixture
+  publisher connector, writes source-access/source-evidence records, and links
+  those refs into `DomainEvidencePackage.evidence_refs` and
+  `InvestigationDataPackage.source_governance_refs` while preserving
+  `external_call_made=false` and `mutation_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
