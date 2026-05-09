@@ -61,6 +61,119 @@ DARS output is **advisory evidence**, not an approved decision. It may create re
 | `real_dars_disabled` | Configured real backend but blocked | false | required before live |
 | `real_dars_enabled` | Actual DARS backend | true | future explicit approval only |
 
+### 2.4 Configuration Model
+
+Yes: DARS must be configurable because a site may use different LLM/agent backends. The product should not hard-code “DARS = one service”. Treat DARS as a **role/contract** and select a backend adapter through runtime instance config.
+
+Recommended config path:
+
+```text
+<instance-root>/config/dars.yaml
+```
+
+Recommended non-secret example:
+
+```yaml
+# config/dars.yaml
+# Traceability: HISYS-FR-AGT-001..005, HISYS-T-019, HISYS-T-020,
+# HISYS-CON-010, HISYS-CON-011, HISYS-CON-012.
+default_backend: loopback_placeholder
+
+policy:
+  enabled: false
+  allowed_actions: advisory_only
+  require_human_approval_for_external_call: true
+  require_structured_output_schema: DarsCritiqueRecord
+  allow_external_side_effects: false
+  max_runtime_seconds: 300
+  redact_markdown_outputs: true
+
+backends:
+  loopback_placeholder:
+    kind: loopback
+    enabled: true
+    mode: local_only
+    external_call_allowed: false
+    output_contract: DarsCritiqueRecord
+
+  fixture_file:
+    kind: fixture_file
+    enabled: false
+    mode: local_only
+    fixture_path: harness/fixtures/dars/critique-response.json
+    external_call_allowed: false
+    output_contract: DarsCritiqueRecord
+
+  local_llm_dars:
+    kind: openai_compatible
+    enabled: false
+    mode: local_network_only
+    endpoint: http://localhost:11434/v1/chat/completions
+    model: configurable-local-model
+    credential_ref: null
+    external_call_allowed: false
+    output_contract: DarsCritiqueRecord
+
+  claude_dars:
+    kind: cli_agent
+    enabled: false
+    mode: read_only
+    command: claude
+    args: ["--model", "configured-by-user"]
+    allowed_tools: ["Read"]
+    disallowed_tools: ["Edit", "Write", "WebSearch", "WebFetch", "Bash(curl *)", "Bash(git push *)"]
+    credential_ref: null
+    external_call_allowed: false
+    output_contract: DarsCritiqueRecord
+
+  codex_dars:
+    kind: cli_agent
+    enabled: false
+    mode: read_only
+    command: codex
+    args: []
+    allowed_tools: ["read_files", "summarize"]
+    credential_ref: null
+    external_call_allowed: false
+    output_contract: DarsCritiqueRecord
+
+  openai_compatible_dars:
+    kind: openai_compatible
+    enabled: false
+    mode: external_api
+    endpoint: https://api.example.invalid/v1/chat/completions
+    model: configured-by-user
+    credential_ref: secrets/dars-openai-compatible.env
+    external_call_allowed: false
+    output_contract: DarsCritiqueRecord
+```
+
+Configuration rules:
+
+1. The checked-in example config must keep every non-loopback backend disabled.
+2. Secrets are never stored in `config/dars.yaml`; use `credential_ref` pointing to local-only `secrets/` or environment-specific secret stores.
+3. A backend can be configured but still blocked by dispatch policy. Configuration alone is not approval.
+4. Every backend must declare `output_contract: DarsCritiqueRecord`; adapter output is rejected unless it validates.
+5. CLI agents such as Claude, Codex, OpenCode, or a local LLM are just adapter kinds. They must return structured critique JSON and may not write files, execute triggers, or alter Hisys state.
+6. A runtime-boundary dispatch decision must record the selected backend, enabled state, approval ref, blocked reasons, and whether any external call was made.
+
+This mirrors the existing `investigator-agents.yaml` pattern: optional LLM/search/agent integrations are declared as future integration points, disabled by default, and bounded by output contracts and side-effect policy.
+
+### 2.5 Adapter Kind Contract
+
+Use an adapter registry rather than one DARS implementation:
+
+| `kind` | Intended backend | Initial status |
+|---|---|---|
+| `loopback` | current placeholder | enabled local-only |
+| `fixture_file` | deterministic test fixture | implement first |
+| `mock_http` | local mock endpoint | later |
+| `openai_compatible` | local Ollama/vLLM/OpenAI-compatible endpoint | disabled |
+| `cli_agent` | Claude/Codex/OpenCode/custom command | disabled |
+| `hermes_delegate` | Hermes delegated task as DARS role | disabled |
+
+All adapter kinds must normalize to the same `DarsCritiqueRecord`; downstream Hisys code should not care which LLM/agent produced the critique.
+
 ---
 
 ## 3. Data Model Design
@@ -194,6 +307,35 @@ Even then, DARS response remains advisory and cannot directly trigger downstream
 
 ## 6. Ralph/TDD Implementation Queue
 
+### Task DARS-0: Runtime DARS configuration contract
+
+**Objective:** Add disabled-by-default `config/dars.yaml` schema/loading behavior so users can choose different DARS LLM/agent backends without changing product code.
+
+**Files:**
+
+- Create: `examples/instance/config/dars.yaml`
+- Create or modify: `src/hisys/agents/dars_config.py`
+- Modify: `src/hisys/config/loader.py` only if shared loader support is useful
+- Test: `tests/unit/test_dars_config.py`
+- Modify: `docs/traceability/README.md`
+
+**RED:** Add tests asserting multiple backend kinds can be declared, non-loopback backends remain disabled by default, secrets are referenced only by `credential_ref`, and invalid backend/output contract values are rejected.
+
+**GREEN:** Implement minimal Pydantic config objects and YAML loader. Do not dispatch any backend yet.
+
+**Verify:**
+
+```bash
+python3 -m pytest tests/unit/test_dars_config.py -q
+python3 -m pytest
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py --json .
+```
+
+**Commit:** `feat: add dars backend configuration contract`
+
+---
+
 ### Task DARS-A: Structured critique ingestion schema
 
 **Objective:** Add structured critique fields while preserving current loopback tests.
@@ -325,10 +467,11 @@ The design is ready for implementation when:
 
 ## 8. Recommended Next Ralph Start
 
-Start with **Task DARS-A: Structured critique ingestion schema**.
+Start with **Task DARS-0: Runtime DARS configuration contract**, then **Task DARS-A: Structured critique ingestion schema**.
 
 Reason:
 
-- It closes the biggest gap in `HISYS-T-019` without network or live DARS.
-- It preserves current loopback behavior.
-- It creates the stable input/output shape required before adapter design becomes meaningful.
+- Users may choose different DARS agent backends such as Claude, Codex, OpenCode, Hermes delegation, a local LLM, or an OpenAI-compatible service.
+- The backend selection must be declarative and disabled-by-default before any adapter execution is implemented.
+- Configuration gives DARS-A/DARS-B stable inputs for backend mode, enabled state, output contract, timeout, approval, and secret-reference rules.
+- DARS-A remains local and testable after the config contract exists.
