@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_plan, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -470,6 +470,17 @@ def _build_parser() -> argparse.ArgumentParser:
     live_transaction.add_argument("--approval-package", required=True, help="vault-live-approval-package JSON path")
     live_transaction.add_argument("--write-gate-report", required=True, help="vault-live-write-gate JSON report path")
 
+    live_rehearsal = sub.add_parser(
+        "vault-live-transaction-rehearse",
+        help="rehearse a live transaction manifest against a fixture vault only",
+    )
+    live_rehearsal.add_argument("--instance", required=True, help="runtime instance root for rehearsal reports")
+    live_rehearsal.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    live_rehearsal.add_argument("--transaction-plan", required=True, help="vault-live-transaction-plan JSON path")
+    live_rehearsal.add_argument("--fixture-vault-root", required=True, help="fixture vault root to write")
+    live_rehearsal.add_argument("--approval-ref", help="required rehearsal approval ref")
+    live_rehearsal.add_argument("--fixture-vault-only", action="store_true", help="required; refuses real Obsidian vault")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -746,6 +757,15 @@ def main(argv: list[str] | None = None) -> int:
             request_id=args.request_id,
             approval_package_path=Path(args.approval_package),
             write_gate_report_path=Path(args.write_gate_report),
+        )
+    if args.command == "vault-live-transaction-rehearse":
+        return _cmd_vault_live_transaction_rehearse(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            transaction_plan_path=Path(args.transaction_plan),
+            fixture_vault_root=Path(args.fixture_vault_root),
+            approval_ref=args.approval_ref,
+            fixture_vault_only=args.fixture_vault_only,
         )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
@@ -1036,6 +1056,31 @@ def _cmd_vault_live_transaction_plan(
     print("live_write_enabled: false")
     print("real_obsidian_vault_write_performed: false")
     return 0 if plan["status"] == "planned_not_executable" else 1
+
+
+def _cmd_vault_live_transaction_rehearse(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    transaction_plan_path: Path,
+    fixture_vault_root: Path,
+    approval_ref: str | None,
+    fixture_vault_only: bool,
+) -> int:
+    """Rehearse a live-vault transaction manifest against a fixture vault only."""
+
+    transaction_plan = json.loads(transaction_plan_path.read_text(encoding="utf-8"))
+    report = rehearse_live_vault_transaction_in_fixture(
+        transaction_plan=transaction_plan,
+        fixture_vault_root=fixture_vault_root,
+        approval_ref=approval_ref,
+        fixture_vault_only=fixture_vault_only,
+    )
+    report_path = write_live_vault_transaction_rehearsal_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
+    print(f"vault live transaction rehearsal: {report['status']}")
+    print(f"report={report_path}")
+    print("real_obsidian_vault_write_performed: false")
+    return 0 if report["status"] == "rehearsed_fixture_only" else 1
 
 
 def _cmd_vault_topic_transition_plan(

@@ -352,6 +352,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   operations, rollback hints, and placeholder pre/post hashes without reading or
   writing the live vault, and records `transaction_manifest_only_no_writer` plus
   `real_obsidian_vault_write_performed=false`.
+- Increment **Live-Obsidian-Config-M fixture transaction rehearsal** -
+  `hisys.config.obsidian_live.rehearse_live_vault_transaction_in_fixture` and
+  `hisys vault-live-transaction-rehearse` exercise the transaction manifest
+  against an explicit fixture vault only. The command requires `--approval-ref`
+  and `--fixture-vault-only`, refuses `/home/cbchoi/obsidian`, writes fixture
+  projection payloads only, and records `real_obsidian_vault_write_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

@@ -722,6 +722,89 @@ def write_live_vault_transaction_plan(*, instance_root: Path, yyyymmdd: str, pla
     return report_path
 
 
+def rehearse_live_vault_transaction_in_fixture(
+    *,
+    transaction_plan: dict[str, Any],
+    fixture_vault_root: Path,
+    approval_ref: str | None,
+    fixture_vault_only: bool,
+) -> dict[str, Any]:
+    """Rehearse a live-vault transaction manifest against a fixture root only."""
+
+    if _is_real_obsidian_vault(fixture_vault_root):
+        return {
+            "schema_id": "hisys.obsidian.live_vault_transaction_rehearsal",
+            "schema_version": _SCHEMA_VERSION,
+            "status": "blocked",
+            "reason_code": "real_obsidian_vault_blocked",
+            "source_transaction_request_id": transaction_plan.get("request_id"),
+            "fixture_vault_root": str(fixture_vault_root),
+            "fixture_vault_only": fixture_vault_only,
+            "operation_count": 0,
+            "real_obsidian_vault_write_performed": False,
+            "external_call_made": False,
+            "mutation_performed": False,
+        }
+    if not approval_ref or not fixture_vault_only or transaction_plan.get("status") != "planned_not_executable":
+        return {
+            "schema_id": "hisys.obsidian.live_vault_transaction_rehearsal",
+            "schema_version": _SCHEMA_VERSION,
+            "status": "blocked",
+            "reason_code": "fixture_rehearsal_gate_not_satisfied",
+            "source_transaction_request_id": transaction_plan.get("request_id"),
+            "fixture_vault_root": str(fixture_vault_root),
+            "fixture_vault_only": fixture_vault_only,
+            "operation_count": 0,
+            "real_obsidian_vault_write_performed": False,
+            "external_call_made": False,
+            "mutation_performed": False,
+        }
+
+    operations = transaction_plan.get("planned_operations", [])
+    refs = [str(operation.get("vault_relative_ref", "")) for operation in operations]
+    _validate_refs(refs)
+    written: list[dict[str, str]] = []
+    for operation, ref in zip(operations, refs, strict=True):
+        target = fixture_vault_root / ref
+        target.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "fixture_projection_only": True,
+            "source_transaction_request_id": transaction_plan.get("request_id"),
+            "source_operation_id": operation.get("operation_id"),
+            "vault_relative_ref": ref,
+            "approval_ref": approval_ref,
+            "real_obsidian_vault_write_performed": False,
+        }
+        target.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        written.append({"operation_id": str(operation.get("operation_id")), "vault_relative_ref": ref})
+
+    return {
+        "schema_id": "hisys.obsidian.live_vault_transaction_rehearsal",
+        "schema_version": _SCHEMA_VERSION,
+        "status": "rehearsed_fixture_only",
+        "source_transaction_request_id": transaction_plan.get("request_id"),
+        "fixture_vault_root": str(fixture_vault_root),
+        "fixture_vault_only": True,
+        "approval_ref": approval_ref,
+        "operation_count": len(written),
+        "written_fixture_refs": written,
+        "live_write_enabled": False,
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def write_live_vault_transaction_rehearsal_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    request_id = report.get("source_transaction_request_id", report.get("request_id", "unknown"))
+    report_path = report_dir / f"vault-live-transaction-rehearsal-{request_id}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"vault-live-transaction-rehearsal-{request_id}.md").write_text(_format_live_vault_transaction_rehearsal(report), encoding="utf-8")
+    return report_path
+
+
 def validate_fixture_vault_roundtrip(
     *,
     plan: dict[str, Any],
@@ -1020,6 +1103,25 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_live_vault_transaction_rehearsal(report: dict[str, Any]) -> str:
+    refs = "\n".join(f"- `{item['vault_relative_ref']}`" for item in report.get("written_fixture_refs", [])) or "- none"
+    return "\n".join(
+        [
+            "# Obsidian Live Transaction Fixture Rehearsal",
+            "",
+            f"- Source transaction: `{report.get('source_transaction_request_id')}`",
+            f"- Status: {report['status']}",
+            f"- Operation count: {report['operation_count']}",
+            "- fixture_vault_only: true",
+            "- real_obsidian_vault_write_performed: false",
+            "",
+            "## Written fixture refs",
+            refs,
+            "",
+        ]
+    )
+
+
 def _format_live_vault_transaction_plan(plan: dict[str, Any]) -> str:
     ops = "\n".join(f"- `{item['vault_relative_ref']}` ({item['operation']})" for item in plan.get("planned_operations", [])) or "- none"
     return "\n".join(
@@ -1162,12 +1264,14 @@ __all__ = [
     "build_topic_identity_transition_plan",
     "build_vault_plan",
     "build_vault_template_plan",
+    "rehearse_live_vault_transaction_in_fixture",
     "validate_fixture_vault_roundtrip",
     "validate_vault_manifests",
     "write_live_vault_approval_package",
     "write_vault_apply_report",
     "write_live_vault_preflight_report",
     "write_live_vault_transaction_plan",
+    "write_live_vault_transaction_rehearsal_report",
     "write_live_vault_write_gate_report",
     "write_vault_plan_artifacts",
     "write_vault_roundtrip_report",

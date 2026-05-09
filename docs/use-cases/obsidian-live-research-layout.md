@@ -476,6 +476,16 @@ writing to the live vault. It records
 `implementation_boundary=transaction_manifest_only_no_writer`,
 `live_write_enabled=false`, and `real_obsidian_vault_write_performed=false`.
 
+## Live-Obsidian-Config-M implementation status
+
+`hisys.config.obsidian_live.rehearse_live_vault_transaction_in_fixture` and
+`hisys vault-live-transaction-rehearse` rehearse the non-executable transaction
+manifest against an explicit fixture vault only. The rehearsal requires an
+approval ref and `--fixture-vault-only`, refuses `/home/cbchoi/obsidian`, writes
+fixture projection payloads containing source transaction/operation metadata, and
+records `fixture_projection_only=true` and
+`real_obsidian_vault_write_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,
