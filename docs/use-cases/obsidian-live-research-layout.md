@@ -436,6 +436,15 @@ fixture files, invalid projection metadata, and apply-report/fixture drift while
 recording `real_obsidian_vault_write_performed=false` and making no external
 calls.
 
+## Live-Obsidian-Config-I implementation status
+
+`hisys.config.obsidian_live.build_live_vault_preflight_report` and `hisys
+vault-live-preflight` inspect a candidate live Obsidian vault without writing to
+it. The preflight checks the vault root, `.obsidian`, a Git repository marker,
+and the heavy-attachment ignore policy. It records `write_probe_performed=false`,
+`live_write_enabled=false`, and `real_obsidian_vault_write_performed=false`; a
+passing preflight only means the next approval-package gate can be prepared.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

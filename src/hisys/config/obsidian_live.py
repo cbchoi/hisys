@@ -450,6 +450,59 @@ def _fixture_vault_file_content(*, ref: str, plan: dict[str, Any], approval_ref:
     )
 
 
+def build_live_vault_preflight_report(*, vault_root: Path, request_id: str) -> dict[str, Any]:
+    """Inspect a candidate live Obsidian vault without writing to it."""
+
+    expanded = vault_root.expanduser()
+    issues: list[dict[str, str]] = []
+    vault_exists = expanded.exists() and expanded.is_dir()
+    obsidian_config_detected = (expanded / ".obsidian").is_dir()
+    git_repo_detected = (expanded / ".git").exists()
+    gitignore_path = expanded / ".gitignore"
+    gitignore_text = gitignore_path.read_text(encoding="utf-8") if gitignore_path.exists() else ""
+    ignored_attachment_policy_detected = "attachments/pdf" in gitignore_text or "attachments/" in gitignore_text
+
+    if not vault_exists:
+        issues.append({"code": "vault_root_missing", "path": str(expanded), "message": "vault root does not exist"})
+    if not obsidian_config_detected:
+        issues.append({"code": "obsidian_config_missing", "path": str(expanded / ".obsidian"), "message": "Obsidian config directory is missing"})
+    if not git_repo_detected:
+        issues.append({"code": "git_repo_missing", "path": str(expanded / ".git"), "message": "git repository marker is missing"})
+    if not ignored_attachment_policy_detected:
+        issues.append({"code": "attachment_ignore_policy_missing", "path": str(gitignore_path), "message": "heavy attachment ignore policy was not detected"})
+
+    status = "ready_for_approval_package" if not issues else "blocked"
+    return {
+        "schema_id": "hisys.obsidian.live_vault_preflight_report",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": status,
+        "valid": not issues,
+        "issue_count": len(issues),
+        "issues": issues,
+        "vault_root": str(expanded),
+        "vault_exists": vault_exists,
+        "obsidian_config_detected": obsidian_config_detected,
+        "git_repo_detected": git_repo_detected,
+        "ignored_attachment_policy_detected": ignored_attachment_policy_detected,
+        "write_probe_performed": False,
+        "write_permission_detected_without_write": bool(vault_exists),
+        "live_write_enabled": False,
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def write_live_vault_preflight_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"vault-live-preflight-{report['request_id']}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"vault-live-preflight-{report['request_id']}.md").write_text(_format_live_vault_preflight_report(report), encoding="utf-8")
+    return report_path
+
+
 def validate_fixture_vault_roundtrip(
     *,
     plan: dict[str, Any],
@@ -748,6 +801,24 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_live_vault_preflight_report(report: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Obsidian Live Vault Preflight Report",
+            "",
+            f"- Request: `{report['request_id']}`",
+            f"- Status: {report['status']}",
+            f"- Vault exists: {str(report['vault_exists']).lower()}",
+            f"- Obsidian config detected: {str(report['obsidian_config_detected']).lower()}",
+            f"- Git repo detected: {str(report['git_repo_detected']).lower()}",
+            f"- Attachment ignore policy detected: {str(report['ignored_attachment_policy_detected']).lower()}",
+            "- write_probe_performed: false",
+            "- live_write_enabled: false",
+            "",
+        ]
+    )
+
+
 def _format_vault_roundtrip_report(report: dict[str, Any]) -> str:
     return "\n".join(
         [
@@ -805,12 +876,14 @@ def _format_vault_apply_report(report: dict[str, Any]) -> str:
 
 __all__ = [
     "apply_vault_plan_to_fixture",
+    "build_live_vault_preflight_report",
     "build_topic_identity_transition_plan",
     "build_vault_plan",
     "build_vault_template_plan",
     "validate_fixture_vault_roundtrip",
     "validate_vault_manifests",
     "write_vault_apply_report",
+    "write_live_vault_preflight_report",
     "write_vault_plan_artifacts",
     "write_vault_roundtrip_report",
     "write_vault_template_plan_artifacts",

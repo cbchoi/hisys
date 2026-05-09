@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_preflight_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_preflight_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -427,6 +427,15 @@ def _build_parser() -> argparse.ArgumentParser:
     vault_roundtrip.add_argument("--fixture-vault-root", required=True, help="fixture vault root to validate")
     vault_roundtrip.add_argument("--apply-report", required=True, help="vault-apply report JSON path")
 
+    live_preflight = sub.add_parser(
+        "vault-live-preflight",
+        help="inspect a candidate live Obsidian vault without writing to it",
+    )
+    live_preflight.add_argument("--instance", required=True, help="runtime instance root for preflight reports")
+    live_preflight.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    live_preflight.add_argument("--request-id", required=True, help="request id for preflight")
+    live_preflight.add_argument("--vault-root", required=True, help="candidate Obsidian vault root")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -669,6 +678,13 @@ def main(argv: list[str] | None = None) -> int:
             fixture_vault_root=Path(args.fixture_vault_root),
             apply_report_path=Path(args.apply_report),
         )
+    if args.command == "vault-live-preflight":
+        return _cmd_vault_live_preflight(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            vault_root=Path(args.vault_root),
+        )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
             instance_root=Path(args.instance),
@@ -862,6 +878,18 @@ def _cmd_vault_roundtrip_validate(
     print(f"vault roundtrip validation: {report['status']}")
     print(f"report={report_path}")
     print("real_obsidian_vault_write_performed: false")
+    return 0 if report["valid"] else 1
+
+
+def _cmd_vault_live_preflight(*, instance_root: Path, yyyymmdd: str, request_id: str, vault_root: Path) -> int:
+    """Inspect a candidate live vault without writing to it."""
+
+    report = build_live_vault_preflight_report(vault_root=vault_root, request_id=request_id)
+    report_path = write_live_vault_preflight_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
+    print(f"vault live preflight: {report['status']}")
+    print(f"report={report_path}")
+    print("write_probe_performed: false")
+    print("live_write_enabled: false")
     return 0 if report["valid"] else 1
 
 

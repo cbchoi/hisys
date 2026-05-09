@@ -326,6 +326,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   fixture vault projection. The report detects missing or unexpected fixture
   files, validates projection metadata, compares the apply report with actual
   fixture files, and records no real Obsidian vault writes.
+- Increment **Live-Obsidian-Config-I live vault preflight** -
+  `hisys.config.obsidian_live.build_live_vault_preflight_report` and `hisys
+  vault-live-preflight` inspect a candidate Obsidian vault without writing to it.
+  The preflight checks for the vault root, `.obsidian`, a Git repository marker,
+  and an attachment ignore policy, records `write_probe_performed=false` and
+  `live_write_enabled=false`, and only prepares the next approval-package gate.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
