@@ -2,7 +2,7 @@
 
 from .instance import InstanceRoot
 from .loader import load_source_registry
-from .obsidian_live import build_vault_plan, build_vault_template_plan, validate_vault_manifests, write_vault_plan_artifacts, write_vault_template_plan_artifacts, write_vault_validation_report
+from .obsidian_live import apply_vault_plan_to_fixture, build_vault_plan, build_vault_template_plan, validate_vault_manifests, write_vault_apply_report, write_vault_plan_artifacts, write_vault_template_plan_artifacts, write_vault_validation_report
 from .validation import ConfigEnvelope, ConfigValidationIssue, ConfigValidationReport, validate_config_document
 
 __all__ = [
@@ -10,11 +10,13 @@ __all__ = [
     "ConfigValidationIssue",
     "ConfigValidationReport",
     "InstanceRoot",
+    "apply_vault_plan_to_fixture",
     "build_vault_plan",
     "build_vault_template_plan",
     "load_source_registry",
     "validate_config_document",
     "validate_vault_manifests",
+    "write_vault_apply_report",
     "write_vault_plan_artifacts",
     "write_vault_template_plan_artifacts",
     "write_vault_validation_report",

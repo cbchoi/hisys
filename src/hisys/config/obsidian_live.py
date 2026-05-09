@@ -279,6 +279,116 @@ def write_vault_template_plan_artifacts(*, instance_root: Path, yyyymmdd: str, p
     return plan_path, report_path
 
 
+def apply_vault_plan_to_fixture(
+    *,
+    plan: dict[str, Any],
+    target_vault_root: Path,
+    approval_ref: str | None,
+    fixture_vault_only: bool,
+) -> dict[str, Any]:
+    """Apply a vault plan to an explicit fixture vault root only.
+
+    This is a controlled local writer for harness/fixture targets. It is not a
+    real `/home/cbchoi/obsidian` writer and refuses to run without approval.
+    """
+
+    request_id = str(plan.get("request_id", "unknown"))
+    base_report = {
+        "schema_id": "hisys.obsidian.vault_apply_report",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "approval_ref": approval_ref,
+        "fixture_vault_only": fixture_vault_only,
+        "target_vault_root": str(target_vault_root),
+        "vault_write_attempted": False,
+        "target_vault_write_performed": False,
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "written_file_count": 0,
+        "written_files": [],
+    }
+    if not approval_ref:
+        return {**base_report, "status": "blocked", "reason_code": "approval_ref_required"}
+    if not fixture_vault_only:
+        return {**base_report, "status": "blocked", "reason_code": "fixture_vault_only_required"}
+    if _is_real_obsidian_vault(target_vault_root):
+        return {**base_report, "status": "blocked", "reason_code": "real_obsidian_vault_blocked"}
+
+    planned_files = [str(ref) for ref in plan.get("planned_files", [])]
+    _validate_refs(planned_files)
+    written_files: list[str] = []
+    for ref in planned_files:
+        path = target_vault_root / ref
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_fixture_vault_file_content(ref=ref, plan=plan, approval_ref=approval_ref), encoding="utf-8")
+        written_files.append(ref)
+
+    return {
+        **base_report,
+        "status": "applied",
+        "reason_code": None,
+        "vault_write_attempted": True,
+        "target_vault_write_performed": True,
+        "mutation_performed": True,
+        "written_file_count": len(written_files),
+        "written_files": written_files,
+    }
+
+
+def write_vault_apply_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"vault-apply-report-{report['request_id']}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"vault-apply-report-{report['request_id']}.md").write_text(_format_vault_apply_report(report), encoding="utf-8")
+    return report_path
+
+
+def _is_real_obsidian_vault(path: Path) -> bool:
+    try:
+        return path.expanduser().resolve() == Path("/home/cbchoi/obsidian").resolve()
+    except OSError:
+        return str(path.expanduser()) == "/home/cbchoi/obsidian"
+
+
+def _fixture_vault_file_content(*, ref: str, plan: dict[str, Any], approval_ref: str) -> str:
+    if ref.endswith(".json"):
+        payload = {
+            "schema_id": "hisys.obsidian.fixture_registry_projection" if ref == "registry.json" else "hisys.obsidian.fixture_vault_projection",
+            "schema_version": _SCHEMA_VERSION,
+            "source_plan_request_id": plan.get("request_id"),
+            "topic_uid": plan.get("topic_uid"),
+            "investigation_id": plan.get("investigation_id"),
+            "vault_relative_ref": ref,
+            "approval_ref": approval_ref,
+            "fixture_projection_only": True,
+            "real_obsidian_vault_write_performed": False,
+            "external_call_made": False,
+        }
+        return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    return "\n".join(
+        [
+            "---",
+            "type: hisys/fixture-vault-projection",
+            f"schema_version: \"{_SCHEMA_VERSION}\"",
+            f"source_plan_request_id: {plan.get('request_id')}",
+            f"topic_uid: {plan.get('topic_uid')}",
+            f"investigation_id: {plan.get('investigation_id')}",
+            f"approval_ref: {approval_ref}",
+            "fixture_projection_only: true",
+            "real_obsidian_vault_write_performed: false",
+            "external_call_made: false",
+            "---",
+            "",
+            f"# {ref}",
+            "",
+            "Fixture vault projection generated from a controlled Hisys vault plan.",
+            "",
+        ]
+    )
+
+
 def validate_vault_manifests(
     *,
     registry_path: Path,
@@ -497,10 +607,30 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_vault_apply_report(report: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Obsidian Vault Apply Report",
+            "",
+            f"- Request: `{report['request_id']}`",
+            f"- Status: {report['status']}",
+            f"- Reason: {report.get('reason_code')}",
+            f"- Written files: {report['written_file_count']}",
+            f"- fixture_vault_only: {str(report['fixture_vault_only']).lower()}",
+            f"- target_vault_write_performed: {str(report['target_vault_write_performed']).lower()}",
+            f"- real_obsidian_vault_write_performed: {str(report['real_obsidian_vault_write_performed']).lower()}",
+            f"- external_call_made: {str(report['external_call_made']).lower()}",
+            "",
+        ]
+    )
+
+
 __all__ = [
+    "apply_vault_plan_to_fixture",
     "build_vault_plan",
     "build_vault_template_plan",
     "validate_vault_manifests",
+    "write_vault_apply_report",
     "write_vault_plan_artifacts",
     "write_vault_template_plan_artifacts",
     "write_vault_validation_report",

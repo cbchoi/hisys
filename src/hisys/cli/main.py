@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, build_vault_plan, build_vault_template_plan, load_source_registry, validate_vault_manifests, write_vault_plan_artifacts, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_vault_plan, build_vault_template_plan, load_source_registry, validate_vault_manifests, write_vault_apply_report, write_vault_plan_artifacts, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -406,6 +406,17 @@ def _build_parser() -> argparse.ArgumentParser:
     vault_template_plan.add_argument("--date", required=True, help="YYYYMMDD report partition")
     vault_template_plan.add_argument("--request-id", required=True, help="request id for template planning")
 
+    vault_apply = sub.add_parser(
+        "vault-apply",
+        help="apply an Obsidian vault plan to an explicit fixture vault root only",
+    )
+    vault_apply.add_argument("--instance", required=True, help="runtime instance root for apply reports")
+    vault_apply.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    vault_apply.add_argument("--plan", required=True, help="vault-plan JSON path")
+    vault_apply.add_argument("--target-vault-root", required=True, help="explicit fixture vault root to write")
+    vault_apply.add_argument("--approval-ref", help="required human approval ref for fixture writes")
+    vault_apply.add_argument("--fixture-vault-only", action="store_true", help="required; refuses real Obsidian vault writes")
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -618,6 +629,15 @@ def main(argv: list[str] | None = None) -> int:
             yyyymmdd=args.date,
             request_id=args.request_id,
         )
+    if args.command == "vault-apply":
+        return _cmd_vault_apply(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            plan_path=Path(args.plan),
+            target_vault_root=Path(args.target_vault_root),
+            approval_ref=args.approval_ref,
+            fixture_vault_only=args.fixture_vault_only,
+        )
     if args.command == "extract":
         return _cmd_extract(
             instance_root=Path(args.instance),
@@ -756,6 +776,31 @@ def _cmd_vault_template_plan(*, instance_root: Path, yyyymmdd: str, request_id: 
     print(f"template_plan_ref: {plan_path.relative_to(instance_root)}")
     print("vault_write_attempted: false")
     return 0
+
+
+def _cmd_vault_apply(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    plan_path: Path,
+    target_vault_root: Path,
+    approval_ref: str | None,
+    fixture_vault_only: bool,
+) -> int:
+    """Apply a vault plan to an explicit fixture vault root only."""
+
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    report = apply_vault_plan_to_fixture(
+        plan=plan,
+        target_vault_root=target_vault_root,
+        approval_ref=approval_ref,
+        fixture_vault_only=fixture_vault_only,
+    )
+    report_path = write_vault_apply_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
+    print(f"vault apply: {report['status']}")
+    print(f"report={report_path}")
+    print(f"real_obsidian_vault_write_performed: {str(report['real_obsidian_vault_write_performed']).lower()}")
+    return 0 if report["status"] == "applied" else 2
 
 
 def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_path: Path, yyyymmdd: str) -> int:

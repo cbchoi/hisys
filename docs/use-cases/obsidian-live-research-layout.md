@@ -406,6 +406,16 @@ and gatekeeper decision fixtures while still writing only validation reports and
 keeping `vault_write_attempted=false`, `external_call_made=false`, and
 `mutation_performed=false`.
 
+## Live-Obsidian-Config-F implementation status
+
+`hisys.config.obsidian_live.apply_vault_plan_to_fixture` and `hisys
+vault-apply` add a controlled local writer for explicit fixture vault roots. The
+command materializes vault-plan projections only when an approval ref is supplied
+and `--fixture-vault-only` is set. It blocks the real `/home/cbchoi/obsidian`
+vault path, writes apply reports under the Hisys runtime boundary, records
+`real_obsidian_vault_write_performed=false`, and makes no external calls. This is
+a harness writer, not approval to mutate the user's live Obsidian vault.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

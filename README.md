@@ -306,6 +306,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   bounded, relation-controlled, and safe for future vault-write planning while
   preserving `vault_write_attempted=false`, `external_call_made=false`, and
   `mutation_performed=false`.
+- Increment **Live-Obsidian-Config-F fixture vault apply** -
+  `hisys.config.obsidian_live.apply_vault_plan_to_fixture` and `hisys
+  vault-apply` add the first controlled local vault writer for fixture targets
+  only. The command requires an explicit `--approval-ref`, requires
+  `--fixture-vault-only`, blocks `/home/cbchoi/obsidian`, writes only the
+  provided target fixture vault root, and records runtime-boundary apply reports
+  with `real_obsidian_vault_write_performed=false` and `external_call_made=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
