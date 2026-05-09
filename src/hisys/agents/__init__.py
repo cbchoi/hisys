@@ -5,5 +5,12 @@ HISYS-T-023.
 """
 
 from .dars import DarsCritiqueRecord, DarsCritiqueReport, DarsRuntime
+from .dars_protocol import DarsRequestEnvelope, DarsResponseEnvelope
 
-__all__ = ["DarsCritiqueRecord", "DarsCritiqueReport", "DarsRuntime"]
+__all__ = [
+    "DarsCritiqueRecord",
+    "DarsCritiqueReport",
+    "DarsRuntime",
+    "DarsRequestEnvelope",
+    "DarsResponseEnvelope",
+]

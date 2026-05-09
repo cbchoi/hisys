@@ -1,12 +1,14 @@
 # Hisys ↔ DARS Data Format Contract
 
-**Status:** design-baseline  
+**Status:** implementation-baseline  
 **Version:** 0.1.0  
 **Traceability:** HISYS-DARS-CONTRACT-001; HISYS-FR-AGT-001..005; HISYS-T-019; HISYS-T-020; HISYS-T-024; HISYS-CON-010; HISYS-CON-011; HISYS-CON-012
 
 ## 1. Purpose
 
 This document defines the data exchanged between Hisys and DARS. DARS is an advisory critique role behind a controlled adapter boundary. Hisys remains the system of record.
+
+The canonical protocol envelope models are implemented in `src/hisys/agents/dars_protocol.py` and verified by `tests/unit/test_dars_protocol.py`. The implementation baseline validates advisory-only request contracts, structured response critiques, progressive decision traces, rubric scores, and boundary evidence that rejects mutation, execution, side effects, and blocking behavior.
 
 The exchange has two canonical artifacts:
 

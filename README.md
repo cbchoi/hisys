@@ -129,6 +129,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `dars_backend=loopback_placeholder`, `external_call_made=false`,
   `allowed_actions=advisory_only`, and `action_taken=none`, so a future DARS
   adapter can replace the loopback without changing downstream records. The
+  DARS protocol contract is now represented by `hisys.agents.dars_protocol`,
+  which validates canonical `DarsRequestEnvelope` and `DarsResponseEnvelope`
+  JSON objects and rejects mutation, execution, external side effects, and
+  blocking behavior at the envelope boundary. The
   DARS configuration contract uses a common Hisys JSON config envelope and validates
   concise role/backend settings before any DARS adapter is selected. The target
   DARS design is progressive and GAN-like: generator candidates are challenged
