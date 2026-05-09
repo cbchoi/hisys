@@ -41,6 +41,8 @@ def test_build_vault_plan_routes_existing_topic_without_vault_write(tmp_path: Pa
     assert plan["mutation_performed"] is False
     assert plan["dry_run"] is True
     assert plan["planned_files"]
+    assert plan["vault_relative_root"] == "91 Hisys/Live Research"
+    assert all(ref.startswith("91 Hisys/Live Research/") for ref in plan["planned_files"])
     assert all(not Path(ref).is_absolute() for ref in plan["planned_files"])
     assert all(".." not in Path(ref).parts for ref in plan["planned_files"])
     assert plan["decision"]["scores"]["semantic_similarity"]["evidence_refs"]

@@ -69,6 +69,10 @@ def build_vault_plan(
         raise ValueError("hhmm must match HHMM")
 
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    vault_relative_root = str(registry.get("vault_relative_root", "91 Hisys/Live Research")).strip("/")
+    if not vault_relative_root:
+        raise ValueError("vault_relative_root is required")
+    _validate_refs([vault_relative_root])
     existing = _find_existing_topic(registry, submitted_title, domain)
     date = f"{yyyymmdd[0:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}"
 
@@ -95,20 +99,20 @@ def build_vault_plan(
     investigation_path = f"{topic_path}/investigations/{date}/{investigation_id}"
 
     planned_files = [
-        "registry.json",
-        "topics/INDEX.json",
-        f"{topic_path}/index.md",
-        f"{topic_path}/topic-config.yaml",
-        f"{topic_path}/topic-manifest.json",
-        f"{topic_path}/investigations/INDEX.json",
-        f"{investigation_path}/index.md",
-        f"{investigation_path}/investigation-config.yaml",
-        f"{investigation_path}/investigation-manifest.json",
-        f"{investigation_path}/input/request.md",
-        f"{investigation_path}/input/request.json",
-        f"{investigation_path}/runtime-boundary/runtime-index.json",
-        f"{investigation_path}/attachments/attachment-index.json",
-        f"{investigation_path}/reports/report-index.json",
+        f"{vault_relative_root}/registry.json",
+        f"{vault_relative_root}/topics/INDEX.json",
+        f"{vault_relative_root}/{topic_path}/index.md",
+        f"{vault_relative_root}/{topic_path}/topic-config.yaml",
+        f"{vault_relative_root}/{topic_path}/topic-manifest.json",
+        f"{vault_relative_root}/{topic_path}/investigations/INDEX.json",
+        f"{vault_relative_root}/{investigation_path}/index.md",
+        f"{vault_relative_root}/{investigation_path}/investigation-config.yaml",
+        f"{vault_relative_root}/{investigation_path}/investigation-manifest.json",
+        f"{vault_relative_root}/{investigation_path}/input/request.md",
+        f"{vault_relative_root}/{investigation_path}/input/request.json",
+        f"{vault_relative_root}/{investigation_path}/runtime-boundary/runtime-index.json",
+        f"{vault_relative_root}/{investigation_path}/attachments/attachment-index.json",
+        f"{vault_relative_root}/{investigation_path}/reports/report-index.json",
     ]
     _validate_refs(planned_files)
 
@@ -123,6 +127,7 @@ def build_vault_plan(
         },
         "topic_uid": topic_uid,
         "topic_slug": topic_slug,
+        "vault_relative_root": vault_relative_root,
         "topic_path": topic_path,
         "investigation_id": investigation_id,
         "investigation_path": investigation_path,
