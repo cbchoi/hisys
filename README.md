@@ -145,6 +145,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `runtime-boundary/source-connectors/<YYYYMMDD>/`, and writes
   `source-connector-plan-report.{json,md}` without executing adapters, making
   external calls, or performing mutations.
+- Increment **Live-B2 fixture publisher evidence connector** -
+  `hisys.connectors.fixture_publisher` reads local static publisher-shaped HTML
+  fixtures only, extracts title/quoted evidence, writes `SourceAccessRecord` and
+  `SourceEvidenceItem` artifacts with SHA-256 provenance under
+  `runtime-boundary/source-connectors/<YYYYMMDD>/`, and records
+  `external_call_made=false` and `mutation_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

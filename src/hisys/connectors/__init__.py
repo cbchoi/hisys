@@ -1,5 +1,6 @@
 """Source connector governance package."""
 
+from .fixture_publisher import FixturePublisherConnector, FixturePublisherEvidencePackage
 from .live_source_config import (
     LiveSearchPolicy,
     LiveSourceConnectorSafetyError,
@@ -11,6 +12,8 @@ from .live_source_dispatch import SourceConnectorDispatchDecision, SourceConnect
 from .live_source_evidence import SourceAccessRecord, SourceEvidenceItem
 
 __all__ = [
+    "FixturePublisherConnector",
+    "FixturePublisherEvidencePackage",
     "LiveSearchPolicy",
     "LiveSourceConnectorSafetyError",
     "SourceAccessRecord",
