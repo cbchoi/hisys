@@ -88,6 +88,35 @@ policy:
   max_runtime_seconds: 300
   redact_markdown_outputs: true
 
+roles:
+  default_devil_advocate:
+    role_id: default_devil_advocate
+    title: "DARS Devil's Advocate"
+    objective: "Challenge unsupported claims, weak evidence, hidden assumptions, and unsafe actions."
+    stance: skeptical_but_constructive
+    profession_profile: systems_safety_reviewer
+    domain_expertise:
+      - requirements_engineering
+      - evidence_quality
+      - risk_management
+      - security_privacy
+      - research_methodology
+    critique_dimensions:
+      - unsupported_claims
+      - counterarguments
+      - risk_findings
+      - missing_evidence
+      - assumption_checks
+      - compliance_or_policy_gaps
+    strictness: high
+    creativity: medium
+    verbosity: concise_structured
+    temperature: 0.2
+    top_p: 0.9
+    max_output_tokens: 2000
+    prompt_template_ref: harness/prompts/dars/devil-advocate.md
+    output_contract: DarsCritiqueRecord
+
 backends:
   loopback_placeholder:
     kind: loopback
@@ -156,6 +185,9 @@ Configuration rules:
 4. Every backend must declare `output_contract: DarsCritiqueRecord`; adapter output is rejected unless it validates.
 5. CLI agents such as Claude, Codex, OpenCode, or a local LLM are just adapter kinds. They must return structured critique JSON and may not write files, execute triggers, or alter Hisys state.
 6. A runtime-boundary dispatch decision must record the selected backend, enabled state, approval ref, blocked reasons, and whether any external call was made.
+7. Role/persona settings are controlled configuration, not free-form runtime prompt injection. A runtime prompt is assembled from: approved role profile + handoff context + evidence refs + output schema + safety constraints.
+8. Model sampling knobs such as `temperature`, `top_p`, and `max_output_tokens` belong in role/backend config and must be recorded in boundary metadata for reproducibility.
+9. User-provided prompt text may request a critique type or focus area, but it must not override safety constraints, output contract, allowed actions, tool restrictions, or approval gates.
 
 This mirrors the existing `investigator-agents.yaml` pattern: optional LLM/search/agent integrations are declared as future integration points, disabled by default, and bounded by output contracts and side-effect policy.
 
@@ -173,6 +205,45 @@ Use an adapter registry rather than one DARS implementation:
 | `hermes_delegate` | Hermes delegated task as DARS role | disabled |
 
 All adapter kinds must normalize to the same `DarsCritiqueRecord`; downstream Hisys code should not care which LLM/agent produced the critique.
+
+### 2.6 Prompt and Role Assembly
+
+DARS should include configurable "devil" characteristics, but they should be encoded as **approved role profiles** and prompt templates, not as arbitrary prompt text that can bypass the product boundary.
+
+Separate the design into four layers:
+
+1. **Stable system contract** — non-overridable safety rules, output schema, allowed actions, traceability requirements.
+2. **Role profile** — devil's advocate characteristics, profession, domain expertise, strictness, creativity, verbosity, and sampling defaults.
+3. **Task/handoff context** — concrete memo/alert/source/requirement evidence to critique.
+4. **User focus request** — optional emphasis such as "challenge financial assumptions" or "review as a safety engineer".
+
+The final prompt should be assembled deterministically:
+
+```text
+system_contract + role_profile + handoff_context + evidence_refs + output_schema + user_focus
+```
+
+User focus is last-mile guidance only. It may narrow the critique lens, but cannot change safety policy, schema, tools, or approval gates.
+
+Recommended role profile fields:
+
+| Field | Purpose | Example |
+|---|---|---|
+| `role_id` | stable identifier | `default_devil_advocate` |
+| `title` | human-readable role name | `DARS Devil's Advocate` |
+| `objective` | what the agent is trying to do | challenge weak evidence |
+| `stance` | critique posture | `skeptical_but_constructive` |
+| `profession_profile` | professional lens | `systems_safety_reviewer`, `security_reviewer`, `domain_scientist`, `investment_risk_reviewer` |
+| `domain_expertise` | knowledge areas to apply | requirements, evidence quality, risk, privacy |
+| `critique_dimensions` | required critique axes | unsupported claims, counterarguments, risks |
+| `strictness` | threshold for flagging issues | low/medium/high |
+| `creativity` | how much to search for non-obvious objections | low/medium/high |
+| `verbosity` | output style | concise_structured |
+| `temperature` | model sampling | usually `0.1` to `0.3` for reproducible critique |
+| `prompt_template_ref` | controlled template path | `harness/prompts/dars/devil-advocate.md` |
+| `output_contract` | required schema | `DarsCritiqueRecord` |
+
+Suggested default: `temperature=0.2`, `strictness=high`, `creativity=medium`, `verbosity=concise_structured`. Increase creativity only for ideation/assumption discovery; keep low temperature for compliance, release, and evidence review.
 
 ---
 
@@ -319,7 +390,7 @@ Even then, DARS response remains advisory and cannot directly trigger downstream
 - Test: `tests/unit/test_dars_config.py`
 - Modify: `docs/traceability/README.md`
 
-**RED:** Add tests asserting multiple backend kinds can be declared, non-loopback backends remain disabled by default, secrets are referenced only by `credential_ref`, and invalid backend/output contract values are rejected.
+**RED:** Add tests asserting multiple backend kinds and role profiles can be declared, non-loopback backends remain disabled by default, secrets are referenced only by `credential_ref`, role prompt templates are referenced by path, model knobs are bounded, and invalid backend/output contract values are rejected.
 
 **GREEN:** Implement minimal Pydantic config objects and YAML loader. Do not dispatch any backend yet.
 
