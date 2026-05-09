@@ -150,3 +150,28 @@ CI, automated cron jobs, and default Ralph loops must not fetch live PDF bytes.
 Without open-access license evidence, operator approval, and the environment
 flag, the connector must write a blocked/dry-run artifact and perform no network
 call.
+
+## Live-E DOI metadata to OA PDF candidate planning boundary
+
+Live-E connects DOI metadata OA hints to PDF candidate planning without fetching
+PDF bytes. The output is a **candidate_plan_only** artifact: it may name a
+`pdf_candidate` URL, DOI, source connector, and `license_signal`, but it must not
+persist or download PDF content. DOI metadata OA hints are treated as planning
+signals, not publication-ready source evidence.
+
+Candidate planning preconditions:
+
+1. input metadata must come from fixture/fake transport artifacts or an approved
+   manual DOI metadata smoke artifact;
+2. a candidate requires `license_signal=open_access` and a URL-like metadata
+   location from an allowlisted public domain;
+3. the planner must preserve DOI, metadata evidence refs, license/open-access
+   signal, candidate URL, and reason codes;
+4. the planner must write runtime-boundary candidate artifacts before any future
+   PDF collector runs;
+5. the planner must record `candidate_plan_only=true`, `pdf_downloaded=false`,
+   `external_call_made=false`, and `mutation_performed=false`.
+
+CI, automated cron jobs, and default Ralph loops must not fetch PDF bytes from
+candidate URLs. Candidate artifacts can later feed the Live-D PDF gate only after
+operator approval and open-access evidence are present.

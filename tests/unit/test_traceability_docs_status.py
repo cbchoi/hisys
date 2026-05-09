@@ -83,6 +83,19 @@ def test_live_d_open_access_pdf_boundary_is_documented():
     assert "not part of CI" in text
 
 
+def test_live_e_pdf_candidate_planning_boundary_is_documented():
+    """DOI metadata OA hints may plan candidates but must not fetch PDF bytes."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-E DOI metadata to OA PDF candidate planning boundary" in text
+    assert "pdf_candidate" in text
+    assert "DOI metadata OA hints" in text
+    assert "must not fetch PDF bytes" in text
+    assert "candidate_plan_only" in text
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 
