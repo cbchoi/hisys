@@ -24,6 +24,8 @@ Adapters may translate these envelopes into backend-specific prompts, CLI input,
 5. **Advisory only.** DARS may recommend actions, but cannot approve, execute, mutate, or trigger actions.
 6. **Version every boundary format.** Envelopes include `schema_id` and `schema_version`.
 7. **Record runtime boundary metadata.** Hisys records backend, role, sampling, approval, and external-call decisions separately from the critique itself.
+8. **Progressive, not blocking.** DARS critique should improve the candidate decision through evidence-linked recommendations; it must not block, approve, execute, or mutate by itself.
+9. **Multiple critics are first-class.** A request may contain a panel of critic roles with different profession/persona/knowledge scopes. Hisys records each critic's contribution and a synthesis trace.
 
 ## 3. Request Envelope: Hisys → DARS
 
@@ -45,22 +47,42 @@ contract:
   requires_structured_output: true
 
 role:
-  role_id: default_devil_advocate
+  role_id: logical_conservative_devil
   kind: devil_advocate
-  profession: systems_safety_reviewer
+  profession: logic_reviewer
+  persona: conservative_critic
+  knowledge_scope: [formal_logic, causal_reasoning, evidence_quality]
   stance: skeptical_but_constructive
   strictness: high
-  creativity: medium
+  creativity: low
   verbosity: concise_structured
-  critique_dimensions: [unsupported_claims, counterarguments, risk_findings, missing_evidence]
+  critique_dimensions: [logical_validity, unsupported_claims, contradictions, missing_premises]
   prompt:
-    objective: "Challenge unsupported claims and hidden assumptions."
-    focus: "Prefer evidence-linked objections over generic criticism."
+    objective: "Find logical gaps, invalid inference, contradictions, and unsupported claims."
+    focus: "Improve the decision by proposing evidence-linked corrections rather than blocking it."
 
 sampling:
   temperature: 0.2
   top_p: 0.9
   max_output_tokens: 2000
+
+decision_process:
+  mode: progressive_adversarial
+  objective: improve_solution
+  blocking_policy: advisory_only
+  round_index: 1
+  max_rounds: 3
+  stop_condition: no_high_severity_unresolved_findings
+
+critic_panel:
+  - role_id: logical_conservative_devil
+    profession: logic_reviewer
+    persona: conservative_critic
+    knowledge_scope: [formal_logic, causal_reasoning, evidence_quality]
+  - role_id: domain_expert_devil
+    profession: domain_scientist
+    persona: technical_reviewer
+    knowledge_scope: [domain_assumptions, mechanism_validity, experimental_design]
 
 handoff:
   handoff_type: critique
@@ -111,6 +133,8 @@ user_focus:
 | `contract` | yes | object | Non-overridable safety/output contract. |
 | `role` | yes | object | Concise role profile selected from validated DARS config. |
 | `sampling` | yes | object | Effective model sampling settings, copied from validated config. |
+| `decision_process` | yes | object | Progressive adversarial process metadata: round, max rounds, objective, blocking policy, and stop condition. |
+| `critic_panel` | optional | list | Additional critic roles participating in the same progressive review round. |
 | `handoff` | yes | object | Task-level bounded context. |
 | `record_refs` | yes | object | Stable Hisys record references; no large raw payloads. |
 | `evidence` | yes | object | Evidence artifact refs, hashes, summaries, and limitations. |
@@ -179,6 +203,17 @@ critique:
     alerts: [ALERT-...]
     handoffs: [HANDOFF-...]
 
+decision_trace:
+  process_mode: progressive_adversarial
+  round_index: 1
+  critic_role_id: logical_conservative_devil
+  critic_profession: logic_reviewer
+  critic_persona: conservative_critic
+  improvement_direction: revise_candidate
+  blocks_decision: false
+  unresolved_high_severity_findings: 0
+  synthesis_summary: "Revise confidence statement and add evidence requirement."
+
 validation:
   schema_valid: true
   warnings: []
@@ -203,6 +238,7 @@ boundary:
 | `handoff_id` | yes | ID | Must match handoff package. |
 | `producer` | yes | object | Backend/role provenance; used for audit. |
 | `critique` | yes | object | Structured `DarsCritiqueRecord`. |
+| `decision_trace` | yes | object | Progressive decision metadata showing critic role, round, improvement direction, and whether the critique is advisory/non-blocking. |
 | `validation` | yes | object | DARS-side or adapter-side validation notes. |
 | `boundary` | yes | object | Evidence that DARS remained advisory-only. |
 
@@ -274,6 +310,27 @@ escalate_to_human
 ```
 
 DARS may recommend these actions, but `allowed_to_execute` must be `false` unless a later approved workflow explicitly changes the downstream action policy. For the current design, it is always `false`.
+
+### 5.7 Decision Process Modes
+
+```yaml
+progressive_adversarial
+single_pass_critique
+human_review_assist
+```
+
+### 5.8 Improvement Directions
+
+```yaml
+accept_candidate
+revise_candidate
+request_more_evidence
+lower_confidence
+split_decision
+escalate_to_human
+```
+
+`escalate_to_human` creates a review recommendation only; it is not an automatic block or approval.
 
 ## 6. Adapter Translation Rules
 

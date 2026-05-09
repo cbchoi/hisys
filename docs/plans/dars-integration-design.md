@@ -4,7 +4,7 @@
 
 **Goal:** Replace the current DARS loopback placeholder with a controlled, disabled-by-default DARS integration architecture that can ingest structured critique as advisory evidence before any real external DARS call is enabled.
 
-**Architecture:** Hisys remains the system of record. DARS is an external advisory agent behind a narrow adapter boundary: Hisys builds an `AgentHandoffPackage`, wraps it in the canonical `DarsRequestEnvelope`, dispatches it only through a configured adapter, validates a canonical `DarsResponseEnvelope` containing a `DarsCritiqueRecord`, links the critique back to source execution/memo/alert/evidence, and records every boundary crossing. The first executable increments stay fixture/local-only; real DARS dispatch is enabled only after mock contract tests, safety gates, traceability, and human approval controls pass. The boundary data format is defined in `docs/contracts/dars-data-format.md`.
+**Architecture:** Hisys remains the system of record. DARS is an external advisory agent behind a narrow adapter boundary: Hisys builds an `AgentHandoffPackage`, wraps it in the canonical `DarsRequestEnvelope`, dispatches it only through a configured adapter, validates a canonical `DarsResponseEnvelope` containing a `DarsCritiqueRecord`, links the critique back to source execution/memo/alert/evidence, and records every boundary crossing. The decision process is progressive and GAN-like: one or more generator agents propose a candidate decision or memo, several specialized conservative critic agents challenge it from different professional/persona/knowledge lenses, and Hisys records improvement proposals without blocking the decision unless an existing safety or approval gate requires review. The first executable increments stay fixture/local-only; real DARS dispatch is enabled only after mock contract tests, safety gates, traceability, and human approval controls pass. The boundary data format is defined in `docs/contracts/dars-data-format.md`.
 
 **Tech Stack:** Python 3.11, Pydantic v2 schemas, runtime-local JSON/Markdown artifacts, pytest, existing `InstanceRoot`, `AgentHandoffPackage`, `DarsRuntime`, traceability validator, secret scanner.
 
@@ -51,7 +51,36 @@ Controlled anchors:
 
 DARS output is **advisory evidence**, not an approved decision. It may create review items or recommendation records, but must not mutate alerts, memos, connectors, requirements, or software triggers without explicit downstream approval.
 
-### 2.3 Backend Modes
+### 2.3 Progressive GAN-like Decision Model
+
+DARS should support a **progressive adversarial decision loop** rather than a single blocking reviewer. The analogy is GAN-like, but the objective is not to defeat the generator; it is to improve the decision artifact until it is safer, better supported, and more logically coherent.
+
+Core roles:
+
+| Role | Function | Output |
+|---|---|---|
+| `generator` | Produces the candidate memo, alert, decision, hypothesis, or solution proposal | candidate artifact ref |
+| `critic` / `devil_advocate` | Conservatively challenges the candidate using logical analysis and evidence gaps | structured critique |
+| `synthesizer` | Converts critiques into an improvement plan or revised candidate | improvement proposal |
+| `arbiter` / human | Decides whether to accept, revise, escalate, or defer | controlled decision record |
+
+The default devil should be **conservative, logically strict, and constructive**:
+
+- conservative: prefer lower confidence when evidence is weak;
+- logical: identify invalid inference, missing premises, contradictions, and unsupported causal claims;
+- critic: actively search for counterexamples and alternative explanations;
+- constructive: recommend a better solution, not only reject the current one;
+- advisory: cannot block or mutate decisions by itself.
+
+Progression states:
+
+```text
+candidate_prepared -> critique_requested -> critique_received -> improvement_proposed -> candidate_revised -> review_closed
+```
+
+A DARS critique may mark `requires_human_review=true`, but it does **not** block execution by itself. Blocking remains the responsibility of existing Hisys approval/safety gates such as live connector approval, high/critical alert approval, secret-scan failure, traceability failure, or explicit human hold.
+
+### 2.4 Backend Modes
 
 | Mode | Purpose | External call | Default |
 |---|---|---:|---:|
@@ -61,7 +90,7 @@ DARS output is **advisory evidence**, not an approved decision. It may create re
 | `real_dars_disabled` | Configured real backend but blocked | false | required before live |
 | `real_dars_enabled` | Actual DARS backend | true | future explicit approval only |
 
-### 2.4 Configuration Model
+### 2.5 Configuration Model
 
 Yes: DARS must be configurable because a site may use different LLM/agent backends. The product should not hard-code “DARS = one service”. Treat DARS as a **role/contract** and select a backend adapter through runtime instance config.
 
@@ -149,10 +178,69 @@ Configuration rules:
 10. Keep configuration concise for LLM interpretation: deterministic choices are key/value enum fields; only semantically open guidance goes under a small `prompt:` block.
 11. All configuration files must pass schema validation and cross-field policy validation before runtime use.
 12. Hisys should use a common configuration envelope so validators can produce consistent diagnostics across DARS, Investigator, live connectors, and future agent configs.
+13. The conservative logical devil is the default critic role. Additional critics should differ by `profession`, `persona`, `knowledge_scope`, and `critique_dimensions`, not by weakening safety or output contracts.
+14. Progressive decision settings should describe how critiques improve a candidate artifact across rounds; they must not grant DARS blocking authority or execution authority.
+
+Target schema extension for multi-agent progressive critique:
+
+```json
+{
+  "spec": {
+    "decision_process": {
+      "mode": "progressive_adversarial",
+      "objective": "improve_solution",
+      "blocking_policy": "advisory_only",
+      "max_rounds": 3,
+      "stop_condition": "no_high_severity_unresolved_findings",
+      "synthesis_strategy": "revise_candidate_with_evidence_linked_improvements"
+    },
+    "roles": {
+      "logical_conservative_devil": {
+        "kind": "devil_advocate",
+        "profession": "logic_reviewer",
+        "persona": "conservative_critic",
+        "knowledge_scope": ["formal_logic", "causal_reasoning", "evidence_quality"],
+        "stance": "skeptical_but_constructive",
+        "strictness": "high",
+        "creativity": "low",
+        "verbosity": "concise_structured",
+        "critique_dimensions": ["logical_validity", "unsupported_claims", "contradictions", "missing_premises"],
+        "prompt": {
+          "objective": "Find logical gaps, invalid inference, contradictions, and unsupported claims.",
+          "focus": "Improve the decision by proposing evidence-linked corrections rather than blocking it."
+        },
+        "output_contract": "DarsCritiqueRecord"
+      },
+      "domain_expert_devil": {
+        "kind": "devil_advocate",
+        "profession": "domain_scientist",
+        "persona": "technical_reviewer",
+        "knowledge_scope": ["domain_assumptions", "mechanism_validity", "experimental_design"],
+        "stance": "skeptical_but_constructive",
+        "strictness": "medium",
+        "creativity": "medium",
+        "verbosity": "concise_structured",
+        "critique_dimensions": ["missing_evidence", "mechanism_gaps", "alternative_explanations"],
+        "prompt": {
+          "objective": "Challenge weak domain assumptions and propose stronger technical evidence.",
+          "focus": "Prefer constructive alternatives and better validation paths."
+        },
+        "output_contract": "DarsCritiqueRecord"
+      }
+    },
+    "agent_panel": [
+      {"role_ref": "logical_conservative_devil", "backend_ref": "loopback_placeholder", "round": 1},
+      {"role_ref": "domain_expert_devil", "backend_ref": "fixture_file", "round": 1}
+    ]
+  }
+}
+```
+
+This is a target extension for the next schema increment. The currently executable checked-in `config/dars.json` remains minimal until validator models are extended by TDD.
 
 This mirrors the existing `investigator-agents.yaml` pattern: optional LLM/search/agent integrations are declared as future integration points, disabled by default, and bounded by output contracts and side-effect policy.
 
-### 2.5 Adapter Kind Contract
+### 2.6 Adapter Kind Contract
 
 Use an adapter registry rather than one DARS implementation:
 
@@ -167,7 +255,7 @@ Use an adapter registry rather than one DARS implementation:
 
 All adapter kinds must normalize to the same `DarsCritiqueRecord`; downstream Hisys code should not care which LLM/agent produced the critique.
 
-### 2.6 Prompt and Role Assembly
+### 2.7 Prompt and Role Assembly
 
 DARS should include configurable "devil" characteristics, but they should be encoded as **approved role profiles** and prompt templates, not as arbitrary prompt text that can bypass the product boundary.
 
@@ -216,20 +304,22 @@ Recommended role profile fields:
 | Field | Type | Purpose | Example |
 |---|---|---|---|
 | `kind` | enum key/value | stable role kind | `devil_advocate` |
-| `profession` | enum key/value | professional lens | `systems_safety_reviewer`, `security_reviewer`, `domain_scientist`, `investment_risk_reviewer` |
+| `profession` | enum key/value | professional lens | `logic_reviewer`, `systems_safety_reviewer`, `security_reviewer`, `domain_scientist`, `investment_risk_reviewer` |
+| `persona` | enum key/value | behavior style | `conservative_critic`, `technical_reviewer`, `safety_reviewer` |
+| `knowledge_scope` | enum list | knowledge lens assigned to this critic | formal_logic, causal_reasoning, evidence_quality |
 | `stance` | enum key/value | critique posture | `skeptical_but_constructive` |
 | `strictness` | enum key/value | threshold for flagging issues | low/medium/high |
 | `creativity` | enum key/value | how much to search for non-obvious objections | low/medium/high |
 | `verbosity` | enum key/value | output style | concise_structured |
-| `critique_dimensions` | enum list | required critique axes | unsupported_claims, counterarguments, risks |
+| `critique_dimensions` | enum list | required critique axes | logical_validity, unsupported_claims, counterarguments, risks |
 | `sampling.temperature` | numeric key/value | model sampling | usually `0.1` to `0.3` for reproducible critique |
 | `prompt.objective` | prompt text | concise interpretive goal | challenge weak evidence |
 | `prompt.focus` | prompt text | optional emphasis | prefer evidence-linked objections |
 | `output_contract` | enum key/value | required schema | `DarsCritiqueRecord` |
 
-Suggested default: `temperature=0.2`, `strictness=high`, `creativity=medium`, `verbosity=concise_structured`. Increase creativity only for ideation/assumption discovery; keep low temperature for compliance, release, and evidence review.
+Suggested default: `persona=conservative_critic`, `profession=logic_reviewer`, `temperature=0.2`, `strictness=high`, `creativity=low`, `verbosity=concise_structured`. Increase creativity only for ideation/assumption discovery; keep low temperature for compliance, release, and evidence review.
 
-### 2.7 Common Configuration Format and Validator
+### 2.8 Common Configuration Format and Validator
 
 Yes: define a common configuration envelope. DARS can have its own domain schema, but every Hisys runtime configuration file should share a small top-level format so validation, reports, and errors are consistent.
 
@@ -335,7 +425,7 @@ Implementation approach:
 - Keep the Pydantic model strict: reject unknown top-level/domain fields to preserve concise configuration.
 - Provide clear path-based errors like `spec.roles.default_devil_advocate.strictness`.
 
-### 2.8 Minimal Valid DARS Config Example
+### 2.9 Minimal Valid DARS Config Example
 
 With the common envelope, the DARS example should look like this:
 
@@ -580,9 +670,9 @@ python3 scripts/scan_secrets.py --json .
 - Modify: `tests/unit/test_dars_runtime.py`
 - Modify: `docs/traceability/README.md`
 
-**RED:** Add tests asserting valid request/response envelopes pass, response `request_id`/`handoff_id` mismatches fail, mutation/external-side-effect claims are rejected, enum paths are reported, and `unsupported_claims`, `counterarguments`, `risk_findings`, `recommended_actions`, `requires_human_review`, and `linked_record_refs` are persisted as advisory evidence.
+**RED:** Add tests asserting valid request/response envelopes pass, response `request_id`/`handoff_id` mismatches fail, mutation/external-side-effect claims are rejected, enum paths are reported, `decision_process`, `critic_panel`, and `decision_trace` preserve progressive adversarial metadata, `blocks_decision=false` is enforced for DARS critique, and `unsupported_claims`, `counterarguments`, `risk_findings`, `recommended_actions`, `requires_human_review`, and `linked_record_refs` are persisted as advisory evidence.
 
-**GREEN:** Add minimal Pydantic protocol models and response validation helpers, extend `DarsCritiqueRecord` with defaults, and keep loopback/fixture behavior local-only.
+**GREEN:** Add minimal Pydantic protocol models and response validation helpers, extend `DarsCritiqueRecord` with defaults plus progressive decision trace metadata, and keep loopback/fixture behavior local-only.
 
 **Verify:**
 
@@ -695,17 +785,20 @@ The design is ready for implementation when:
 - Real DARS calls are explicitly deferred behind disabled-by-default config and approval.
 - DARS output cannot directly mutate records or trigger connectors.
 - Structured critique fields satisfy `HISYS-DARS-CONTRACT-001` expected output.
+- The progressive adversarial loop improves candidate decisions through conservative logical critique and synthesis rather than automatic blocking.
 - The queue supports Ralph/TDD execution in small commits.
 
 ---
 
 ## 8. Recommended Next Ralph Start
 
-Start with **Task DARS-0: Runtime DARS configuration contract**, then **Task DARS-A: Structured critique ingestion schema**.
+Start with **Task DARS-A: DARS protocol envelope and structured critique ingestion schema**.
+
+DARS-0 is already implemented as the JSON configuration validator baseline. DARS-A should now include the progressive adversarial fields (`decision_process`, `critic_panel`, `decision_trace`) so the conservative logical devil and future multi-profession critics can be represented before any real backend is enabled.
 
 Reason:
 
 - Users may choose different DARS agent backends such as Claude, Codex, OpenCode, Hermes delegation, a local LLM, or an OpenAI-compatible service.
 - The backend selection must be declarative and disabled-by-default before any adapter execution is implemented.
-- Configuration gives DARS-A/DARS-B stable inputs for backend mode, enabled state, output contract, timeout, approval, and secret-reference rules.
+- The DARS request/response envelopes now define progressive adversarial process metadata, so DARS-A has stable inputs for critic role, critic panel, round index, non-blocking policy, and improvement direction.
 - DARS-A remains local and testable after the config contract exists.

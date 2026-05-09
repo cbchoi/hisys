@@ -125,7 +125,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `allowed_actions=advisory_only`, and `action_taken=none`, so a future DARS
   adapter can replace the loopback without changing downstream records. The
   DARS configuration contract uses a common Hisys JSON config envelope and validates
-  concise role/backend settings before any DARS adapter is selected.
+  concise role/backend settings before any DARS adapter is selected. The target
+  DARS design is progressive and GAN-like: generator candidates are challenged
+  by conservative logical and domain-specific critics, then converted into
+  evidence-linked improvement proposals rather than automatic blocks.
 - Increment **I9-A/B/C/D product hardening** - `hisys.security.secret_scan` and
   `scripts/scan_secrets.py` scan repository/runtime files for assignment-style
   secret-like values, skip runtime caches such as `.git`/`.pytest_cache`/
