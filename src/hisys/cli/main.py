@@ -49,8 +49,13 @@ from ..investigator.agent_config import (
 )
 from ..registry import SourceRegistry
 from ..schemas import (
+    AlternativeDecisionSet,
+    CandidateRecord,
+    DomainEvidencePackage,
     DomainInvestigationRequest,
+    DomainInvestigationResult,
     HisysToolResult,
+    InvestigationDataPackage,
     ExtractedSignal,
     PerspectiveProfile,
     RawObservation,
@@ -374,26 +379,46 @@ def _cmd_investigate_domain(instance_root: Path, request_path: Path, yyyymmdd: s
     request_markdown = boundary_dir / f"hisys-tool-request-{request.request_id}.md"
     request_markdown.write_text(_format_domain_request_markdown(request), encoding="utf-8")
 
-    result_ref = str((boundary_dir / f"hisys-tool-result-{request.request_id}.json").relative_to(instance.root))
-    tool_result = HisysToolResult(
-        status="needs_more_evidence",
-        domain=request.domain,
-        summary=(
-            "Domain investigation request accepted and preserved; domain adapter execution "
-            "is pending in the next MVP increment."
-        ),
-        recommended_alternative_id=None,
-        requires_human_review=True,
-        external_call_made=False,
-        mutation_performed=False,
-        runtime_boundary_refs=[
-            str(request_artifact.relative_to(instance.root)),
-            str(request_markdown.relative_to(instance.root)),
-            result_ref,
-        ],
-        quality_gate="needs_more_evidence",
-    )
+    domain_result = _build_research_domain_result(request, instance, boundary_dir, yyyymmdd)
+    if domain_result is not None:
+        data_artifact = boundary_dir / f"investigation-data-{domain_result.investigation_data.investigation_id}.json"
+        data_artifact.write_text(_record_json(domain_result.investigation_data), encoding="utf-8")
+        alternatives_artifact = boundary_dir / f"alternative-decision-set-{domain_result.alternative_decision_set.alternative_set_id}.json"
+        alternatives_artifact.write_text(_record_json(domain_result.alternative_decision_set), encoding="utf-8")
+        domain_result_artifact = boundary_dir / f"domain-investigation-result-{domain_result.result_id}.json"
+        domain_result.runtime_boundary_refs.extend(
+            [
+                str(data_artifact.relative_to(instance.root)),
+                str(alternatives_artifact.relative_to(instance.root)),
+                str(domain_result_artifact.relative_to(instance.root)),
+            ]
+        )
+        domain_result_artifact.write_text(_record_json(domain_result), encoding="utf-8")
+        tool_result = HisysToolResult.from_domain_result(domain_result)
+    else:
+        result_ref = str((boundary_dir / f"hisys-tool-result-{request.request_id}.json").relative_to(instance.root))
+        tool_result = HisysToolResult(
+            status="needs_more_evidence",
+            domain=request.domain,
+            summary=(
+                "Domain investigation request accepted and preserved; domain adapter execution "
+                "is pending in the next MVP increment."
+            ),
+            recommended_alternative_id=None,
+            requires_human_review=True,
+            external_call_made=False,
+            mutation_performed=False,
+            runtime_boundary_refs=[
+                str(request_artifact.relative_to(instance.root)),
+                str(request_markdown.relative_to(instance.root)),
+                result_ref,
+            ],
+            quality_gate="needs_more_evidence",
+        )
     result_artifact = boundary_dir / f"hisys-tool-result-{request.request_id}.json"
+    result_ref = str(result_artifact.relative_to(instance.root))
+    if result_ref not in tool_result.runtime_boundary_refs:
+        tool_result.runtime_boundary_refs.append(result_ref)
     result_artifact.write_text(_record_json(tool_result), encoding="utf-8")
     result_markdown = boundary_dir / f"hisys-tool-result-{request.request_id}.md"
     result_markdown.write_text(_format_domain_tool_result_markdown(request, tool_result), encoding="utf-8")
@@ -410,6 +435,92 @@ def _cmd_investigate_domain(instance_root: Path, request_path: Path, yyyymmdd: s
     print(f"status: {tool_result.status}")
     print(f"tool_result: {result_artifact}")
     return 0
+
+
+def _build_research_domain_result(
+    request: DomainInvestigationRequest,
+    instance: InstanceRoot,
+    boundary_dir: Path,
+    yyyymmdd: str,
+) -> DomainInvestigationResult | None:
+    """Build the MVP deterministic research adapter result for research-gap requests."""
+
+    objective = request.objective.lower()
+    if request.domain != "research" or not {"gap", "formalism"}.issubset(set(objective.split()) | {"formalism"}):
+        if request.domain == "research" and "formalism" in objective and "gap" in objective:
+            pass
+        else:
+            return None
+
+    source_refs = [source.source_id for source in request.sources]
+    evidence = DomainEvidencePackage(
+        package_id=f"DEPKG-{request.request_id}-FORMALISM-GAP",
+        domain="research",
+        evidence_type="research_gap_matrix",
+        summary=(
+            "Dynamic Structure DEVS provides executable topology-changing simulation semantics; "
+            "graph rewriting provides local structural transformation rules; agent-based modeling "
+            "provides decentralized interaction and emergence. The gap is a unified formalism for "
+            "self-organizing structure that jointly models local interaction, feedback, topology/behavior "
+            "co-evolution, executable semantics, and analyzable structural constraints."
+        ),
+        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison"],
+        source_refs=source_refs,
+        claims=[
+            "DSDEVS, graph rewriting, and ABM cover complementary but separated formalism capabilities.",
+            "Self-organizing structure needs topology change as first-class model state plus local rewrite/adaptation rules.",
+        ],
+        limitations=["MVP uses fixture-local evidence only; publisher-source validation remains required."],
+        open_questions=[
+            "Which structural rewrite constraints preserve DEVS execution semantics?",
+            "Which evaluation scenario best demonstrates topology/behavior co-evolution?",
+        ],
+    )
+    data_package = InvestigationDataPackage(
+        investigation_id=f"INV-{request.request_id}",
+        request_id=request.request_id,
+        domain="research",
+        objective=request.objective,
+        evidence_packages=[evidence],
+        source_governance_refs=[str((boundary_dir / f"hisys-tool-request-{request.request_id}.json").relative_to(instance.root))],
+    )
+    candidate_id = f"CAND-{request.request_id}-SOS-DSDEVS"
+    candidate = CandidateRecord(
+        candidate_id=candidate_id,
+        candidate_type="research_direction",
+        claim="Self-organizing Dynamic Structure DEVS with graph-rewrite structural transitions.",
+        evidence_refs=[evidence.package_id],
+        value="Unifies executable topology change with local structure rewrite and emergence-oriented adaptation semantics.",
+        costs=["Requires formal semantics and scenario validation work."],
+        risks=["Risk of overclaiming novelty before publisher-source comparison."],
+        uncertainties=["Proof obligations and readability tradeoffs remain open."],
+        next_increment="Validate against DSDEVS, graph transformation, and ABM literature sources.",
+    )
+    alternatives = AlternativeDecisionSet(
+        alternative_set_id=f"ALTSET-{request.request_id}",
+        request_id=request.request_id,
+        candidates=[candidate],
+        baseline_option="request_more_publisher_evidence",
+        recommended_candidate_id=candidate_id,
+    )
+    return DomainInvestigationResult(
+        result_id=f"DRESULT-{request.request_id}",
+        request_id=request.request_id,
+        domain="research",
+        investigation_data=data_package,
+        alternative_decision_set=alternatives,
+        recommendation_summary=(
+            "Recommend developing Self-organizing Dynamic Structure DEVS with graph-rewrite "
+            "structural transitions as a research direction, conditioned on publisher-source validation."
+        ),
+        runtime_boundary_refs=[
+            str((boundary_dir / f"hisys-tool-request-{request.request_id}.json").relative_to(instance.root)),
+        ],
+        quality_gate="passed",
+        requires_human_review=True,
+        external_call_made=False,
+        mutation_performed=False,
+    )
 
 
 def _format_domain_request_markdown(request: DomainInvestigationRequest) -> str:

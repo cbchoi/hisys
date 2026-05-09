@@ -73,11 +73,11 @@ def test_investigate_domain_writes_request_and_tool_result_boundary(tmp_path: Pa
         "max_rounds": 3,
         "mutation_allowed": False,
     }
-    assert tool_result["status"] == "needs_more_evidence"
+    assert tool_result["status"] == "completed"
     assert tool_result["domain"] == "research"
     assert tool_result["external_call_made"] is False
     assert tool_result["mutation_performed"] is False
-    assert tool_result["quality_gate"] == "needs_more_evidence"
+    assert tool_result["quality_gate"] == "passed"
     assert str(result_artifact.relative_to(tmp_path)) in tool_result["runtime_boundary_refs"]
 
     report = json.loads(
@@ -88,3 +88,49 @@ def test_investigate_domain_writes_request_and_tool_result_boundary(tmp_path: Pa
     assert report["request_id"] == "HISYS-REQ-RESEARCH-GAP-001"
     assert report["domain"] == "research"
     assert report["tool_result_ref"] == str(result_artifact.relative_to(tmp_path))
+
+
+def test_investigate_domain_research_gap_fixture_generates_alternatives(tmp_path: Path, capsys) -> None:
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+
+    result = main(
+        [
+            "investigate-domain",
+            "--instance",
+            str(tmp_path),
+            "--request",
+            str(request_path),
+            "--date",
+            "20260509",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "status: completed" in captured.out
+    boundary_dir = tmp_path / "runtime-boundary" / "domain-investigation" / "research" / "20260509"
+    data_artifact = boundary_dir / "investigation-data-INV-HISYS-REQ-RESEARCH-GAP-001.json"
+    alternatives_artifact = boundary_dir / "alternative-decision-set-ALTSET-HISYS-REQ-RESEARCH-GAP-001.json"
+    domain_result_artifact = boundary_dir / "domain-investigation-result-DRESULT-HISYS-REQ-RESEARCH-GAP-001.json"
+    tool_result_artifact = boundary_dir / "hisys-tool-result-HISYS-REQ-RESEARCH-GAP-001.json"
+    assert data_artifact.exists()
+    assert alternatives_artifact.exists()
+    assert domain_result_artifact.exists()
+
+    data = json.loads(data_artifact.read_text(encoding="utf-8"))
+    alternatives = json.loads(alternatives_artifact.read_text(encoding="utf-8"))
+    domain_result = json.loads(domain_result_artifact.read_text(encoding="utf-8"))
+    tool_result = json.loads(tool_result_artifact.read_text(encoding="utf-8"))
+
+    assert data["evidence_packages"][0]["evidence_type"] == "research_gap_matrix"
+    assert "Dynamic Structure DEVS" in data["evidence_packages"][0]["summary"]
+    assert alternatives["recommended_candidate_id"] == "CAND-HISYS-REQ-RESEARCH-GAP-001-SOS-DSDEVS"
+    assert alternatives["candidates"][0]["candidate_type"] == "research_direction"
+    assert "Self-organizing Dynamic Structure DEVS" in alternatives["candidates"][0]["claim"]
+    assert domain_result["quality_gate"] == "passed"
+    assert domain_result["recommended_alternative_id"] == "CAND-HISYS-REQ-RESEARCH-GAP-001-SOS-DSDEVS"
+    assert tool_result["status"] == "completed"
+    assert tool_result["recommended_alternative_id"] == "CAND-HISYS-REQ-RESEARCH-GAP-001-SOS-DSDEVS"
+    assert tool_result["external_call_made"] is False
+    assert tool_result["mutation_performed"] is False

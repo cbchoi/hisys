@@ -92,6 +92,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `runtime-boundary/domain-investigation/<domain>/<YYYYMMDD>/`, and writes a
   `domain-investigation-report` while returning `needs_more_evidence` until a
   concrete domain adapter executes in the next increment.
+- Increment **Hisys MVP A3 research domain adapter fixture** -
+  `hisys investigate-domain` now recognizes research-gap/formalism requests and
+  writes deterministic local `InvestigationDataPackage`, `AlternativeDecisionSet`,
+  `DomainInvestigationResult`, and compact `HisysToolResult` artifacts. The
+  fixture recommendation is Self-organizing Dynamic Structure DEVS with
+  graph-rewrite structural transitions, marked human-review-required and
+  publisher-source-validation-needed, with `external_call_made=false` and
+  `mutation_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

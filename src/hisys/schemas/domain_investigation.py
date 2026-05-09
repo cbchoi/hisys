@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from .base import BaseRecord
 
@@ -186,6 +186,7 @@ class DomainInvestigationResult(BaseModel):
     external_call_made: bool = False
     mutation_performed: bool = False
 
+    @computed_field  # type: ignore[misc]
     @property
     def recommended_alternative_id(self) -> str | None:
         return self.alternative_decision_set.recommended_candidate_id
