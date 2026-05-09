@@ -145,3 +145,68 @@ def test_smoke_source_connector_requires_env_for_manual_live(tmp_path: Path, mon
     assert report["status"] == "blocked"
     assert report["reason_code"] == "manual_smoke_env_missing"
     assert report["external_call_made"] is False
+
+
+def test_smoke_source_connector_pdf_dry_run_requires_open_access_license_without_network(tmp_path: Path) -> None:
+    result = main(
+        [
+            "smoke-source-connector",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            "examples/instance/config/source-connectors.yaml",
+            "--date",
+            "20260509",
+            "--request-id",
+            "HISYS-REQ-LIVE-D-001",
+            "--connector-id",
+            "open_access_pdf_fetch",
+            "--source-url",
+            "https://www.mdpi.com/fixture/open-access.pdf",
+            "--license-signal",
+            "unknown",
+            "--dry-run",
+        ]
+    )
+
+    assert result == 0
+    report_artifact = tmp_path / "reports" / "run-summaries" / "20260509" / "source-connector-smoke-report.json"
+    report = json.loads(report_artifact.read_text(encoding="utf-8"))
+    assert report["connector_id"] == "open_access_pdf_fetch"
+    assert report["status"] == "blocked"
+    assert report["reason_code"] == "pdf_license_not_open_access"
+    assert report["external_call_made"] is False
+    assert report["source_evidence_refs"] == []
+
+
+def test_smoke_source_connector_pdf_manual_live_requires_env_without_network(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("HISYS_ALLOW_LIVE_PDF_SMOKE", raising=False)
+
+    result = main(
+        [
+            "smoke-source-connector",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            "examples/instance/config/source-connectors.yaml",
+            "--date",
+            "20260509",
+            "--request-id",
+            "HISYS-REQ-LIVE-D-002",
+            "--connector-id",
+            "open_access_pdf_fetch",
+            "--source-url",
+            "https://www.mdpi.com/fixture/open-access.pdf",
+            "--license-signal",
+            "open_access",
+            "--approval-ref",
+            "APPROVAL-PDF-SMOKE-001",
+        ]
+    )
+
+    assert result == 2
+    report_artifact = tmp_path / "reports" / "run-summaries" / "20260509" / "source-connector-smoke-report.json"
+    report = json.loads(report_artifact.read_text(encoding="utf-8"))
+    assert report["connector_id"] == "open_access_pdf_fetch"
+    assert report["reason_code"] == "manual_smoke_env_missing"
+    assert report["external_call_made"] is False

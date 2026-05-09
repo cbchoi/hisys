@@ -18,6 +18,7 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import urlparse
 
 from .. import __version__
 from ..adapters import AgentSystemMockSource, HardwareMockSource, HermesToolMockSource, WebNewsMockSource
@@ -209,7 +210,14 @@ def _build_parser() -> argparse.ArgumentParser:
     smoke_source.add_argument("--date", required=True, help="YYYYMMDD output partition")
     smoke_source.add_argument("--request-id", required=True, help="request id for runtime-boundary evidence")
     smoke_source.add_argument("--connector-id", required=True, help="source connector id to smoke")
-    smoke_source.add_argument("--doi", required=True, help="DOI to retrieve for DOI metadata smoke")
+    smoke_source.add_argument("--doi", help="DOI to retrieve for DOI metadata smoke")
+    smoke_source.add_argument("--source-url", help="source URL for PDF smoke gating")
+    smoke_source.add_argument(
+        "--license-signal",
+        choices=["open_access", "closed", "unknown", "not_applicable"],
+        default="unknown",
+        help="license/open-access signal required for PDF smoke gating",
+    )
     smoke_source.add_argument("--approval-ref", help="manual approval ref required for live smoke")
     smoke_source.add_argument("--dry-run", action="store_true", help="write blocked/dry-run evidence only; no external call")
 
@@ -333,6 +341,8 @@ def main(argv: list[str] | None = None) -> int:
             request_id=args.request_id,
             connector_id=args.connector_id,
             doi=args.doi,
+            source_url=args.source_url,
+            license_signal=args.license_signal,
             approval_ref=args.approval_ref,
             dry_run=args.dry_run,
         )
@@ -474,7 +484,9 @@ def _cmd_smoke_source_connector(
     yyyymmdd: str,
     request_id: str,
     connector_id: str,
-    doi: str,
+    doi: str | None,
+    source_url: str | None,
+    license_signal: str,
     approval_ref: str | None,
     dry_run: bool,
 ) -> int:
@@ -485,8 +497,22 @@ def _cmd_smoke_source_connector(
     gate = SourceConnectorDispatchGate(instance=instance)
     connector = registry.connectors[connector_id]
     env_name = connector.manual_smoke_env_var or "HISYS_ALLOW_LIVE_SMOKE"
-    requested_domain = "api.crossref.org" if connector_id == "doi_metadata_search" else "unknown"
+    requested_domain = _source_connector_requested_domain(connector_id=connector_id, source_url=source_url)
     dispatch_ref = f"runtime-boundary/source-connectors/{yyyymmdd}/connector-dispatch-{request_id}-{connector_id}.json"
+    if connector_id == "open_access_pdf_fetch" and license_signal != "open_access":
+        report = _source_connector_smoke_report(
+            request_id=request_id,
+            connector_id=connector_id,
+            mode="dry_run" if dry_run else "manual_live",
+            status="blocked",
+            reason_code="pdf_license_not_open_access",
+            dispatch_ref=None,
+            source_evidence_refs=[],
+            external_call_made=False,
+        )
+        _write_source_connector_smoke_report(instance, yyyymmdd, report)
+        print("source connector smoke: status=blocked reason=pdf_license_not_open_access")
+        return 0 if dry_run else 2
     if dry_run:
         decision = gate.evaluate(
             yyyymmdd=yyyymmdd,
@@ -546,8 +572,24 @@ def _cmd_smoke_source_connector(
         )
         _write_source_connector_smoke_report(instance, yyyymmdd, report)
         return 2
+    if connector_id == "open_access_pdf_fetch":
+        report = _source_connector_smoke_report(
+            request_id=request_id,
+            connector_id=connector_id,
+            mode="manual_live",
+            status="blocked",
+            reason_code="manual_pdf_smoke_not_implemented",
+            dispatch_ref=dispatch_ref,
+            source_evidence_refs=[],
+            external_call_made=False,
+        )
+        _write_source_connector_smoke_report(instance, yyyymmdd, report)
+        print("source connector smoke: status=blocked reason=manual_pdf_smoke_not_implemented")
+        return 2
     if connector_id != "doi_metadata_search":
-        raise ValueError("Live-C supports only doi_metadata_search")
+        raise ValueError("Live-C/D supports only doi_metadata_search and open_access_pdf_fetch")
+    if not doi:
+        raise ValueError("doi is required for doi_metadata_search")
     package = DoiMetadataConnector().collect(request_id=request_id, doi=doi, output_root=instance.root, yyyymmdd=yyyymmdd)
     report = _source_connector_smoke_report(
         request_id=request_id,
@@ -562,6 +604,14 @@ def _cmd_smoke_source_connector(
     _write_source_connector_smoke_report(instance, yyyymmdd, report)
     print(f"source connector smoke: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'source-connector-smoke-report.json'}")
     return 0
+
+
+def _source_connector_requested_domain(*, connector_id: str, source_url: str | None) -> str:
+    if connector_id == "doi_metadata_search":
+        return "api.crossref.org"
+    if source_url:
+        return urlparse(source_url).netloc or "unknown"
+    return "unknown"
 
 
 def _source_connector_smoke_report(
