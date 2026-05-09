@@ -383,6 +383,17 @@ merge/split decisions without required approval refs. Validation writes only
 run-summary reports and preserves `vault_write_attempted=false`,
 `external_call_made=false`, and `mutation_performed=false`.
 
+## Live-Obsidian-Config-D implementation status
+
+`hisys.config.obsidian_live.build_vault_template_plan` and `hisys
+vault-template-plan` produce runtime-local template planning artifacts for the
+memo ontology. The plan lists controlled note `type` values, required
+frontmatter fields, allowed relation vocabulary, and required index files. It
+keeps `phase` as structured metadata, treats structured links as the governance
+record, and treats Obsidian wikilinks as human-navigation projections only. The
+command writes no real vault templates and records `vault_write_attempted=false`,
+`external_call_made=false`, and `mutation_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

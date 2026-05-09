@@ -171,6 +171,108 @@ def _validate_refs(refs: list[str]) -> None:
             raise ValueError(f"unsafe vault-relative ref: {ref}")
 
 
+def build_vault_template_plan(*, request_id: str) -> dict[str, Any]:
+    """Build the controlled memo ontology/template plan without writing the vault."""
+
+    frontmatter_fields = ["type", "schema_version", "uid", "topic_uid", "investigation_id", "phase", "governance", "links", "tags"]
+    entity_types = [
+        "hisys/topic-group",
+        "hisys/topic",
+        "hisys/investigation",
+        "hisys/source",
+        "hisys/attachment",
+        "hisys/evidence",
+        "hisys/quote",
+        "hisys/claim",
+        "hisys/recommendation-claim-registry",
+        "hisys/claim-evidence-ledger",
+        "hisys/claim-evidence-summary",
+        "hisys/claim-coverage-gate",
+        "hisys/synthesis",
+        "hisys/decision",
+        "hisys/gatekeeper-decision",
+        "hisys/report",
+    ]
+    templates = [
+        {
+            "template_id": entity_type.replace("hisys/", "template-"),
+            "type": entity_type,
+            "phase_policy": "phase is structured metadata, not a tag",
+            "frontmatter_fields": frontmatter_fields,
+            "default_tags": ["hisys/live-research"],
+            "link_policy": "structured_links_primary_wikilinks_projection_only",
+            "planned_ref": f"_shared/templates/{entity_type.replace('hisys/', '')}.md",
+        }
+        for entity_type in entity_types
+    ]
+    return {
+        "schema_id": "hisys.obsidian.vault_template_plan",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "templates": templates,
+        "allowed_relations": [
+            "belongs_to_group",
+            "belongs_to_topic",
+            "part_of_investigation",
+            "derived_from_source",
+            "has_attachment",
+            "quotes_source",
+            "supports_claim",
+            "contradicts_claim",
+            "needs_evidence_for_claim",
+            "summarizes_ledgers",
+            "gates_claims",
+            "feeds_live_k_coverage_gate",
+            "reviewed_by_dars",
+            "reviewed_by_chief_editor",
+            "decided_by_gatekeeper",
+            "merged_into",
+            "merged_from",
+            "split_into",
+            "split_from",
+            "related_topics",
+            "promoted_from_investigation",
+            "tombstoned_by",
+        ],
+        "required_indexes": [
+            "registry.json",
+            "topics/INDEX.json",
+            "groups/INDEX.json",
+            "investigations/INDEX.json",
+            "runtime-boundary/runtime-index.json",
+            "attachments/attachment-index.json",
+            "reports/report-index.json",
+        ],
+        "vault_write_attempted": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def write_vault_template_plan_artifacts(*, instance_root: Path, yyyymmdd: str, plan: dict[str, Any]) -> tuple[Path, Path]:
+    plan_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    plan_dir.mkdir(parents=True, exist_ok=True)
+    plan_path = plan_dir / f"vault-template-plan-{plan['request_id']}.json"
+    plan_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_dir = instance_root / "reports" / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report = {
+        "schema_id": "hisys.obsidian.vault_template_plan_report",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": plan["request_id"],
+        "template_plan_ref": str(plan_path.relative_to(instance_root)),
+        "template_count": len(plan["templates"]),
+        "relation_count": len(plan["allowed_relations"]),
+        "vault_write_attempted": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    report_path = report_dir / "vault-template-plan-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / "vault-template-plan-report.md").write_text(_format_vault_template_plan_report(report), encoding="utf-8")
+    return plan_path, report_path
+
+
 def validate_vault_manifests(
     *,
     registry_path: Path,
@@ -322,9 +424,28 @@ def _format_vault_validation_report(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Obsidian Vault Template Plan Report",
+            "",
+            f"- Request: `{report['request_id']}`",
+            f"- Template plan ref: `{report['template_plan_ref']}`",
+            f"- Template count: {report['template_count']}",
+            f"- Relation count: {report['relation_count']}",
+            "- vault_write_attempted: false",
+            "- external_call_made: false",
+            "- mutation_performed: false",
+            "",
+        ]
+    )
+
+
 __all__ = [
     "build_vault_plan",
+    "build_vault_template_plan",
     "validate_vault_manifests",
     "write_vault_plan_artifacts",
+    "write_vault_template_plan_artifacts",
     "write_vault_validation_report",
 ]

@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, build_vault_plan, load_source_registry, validate_vault_manifests, write_vault_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, build_vault_plan, build_vault_template_plan, load_source_registry, validate_vault_manifests, write_vault_plan_artifacts, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -398,6 +398,14 @@ def _build_parser() -> argparse.ArgumentParser:
     vault_validate.add_argument("--investigation-manifest", required=True, help="investigation-manifest.json path")
     vault_validate.add_argument("--gatekeeper-decision", required=True, help="gatekeeper decision JSON path")
 
+    vault_template_plan = sub.add_parser(
+        "vault-template-plan",
+        help="plan Obsidian memo ontology templates and indexes without writing the vault",
+    )
+    vault_template_plan.add_argument("--instance", required=True, help="runtime instance root for template plan reports")
+    vault_template_plan.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    vault_template_plan.add_argument("--request-id", required=True, help="request id for template planning")
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -604,6 +612,12 @@ def main(argv: list[str] | None = None) -> int:
             investigation_manifest_path=Path(args.investigation_manifest),
             gatekeeper_decision_path=Path(args.gatekeeper_decision),
         )
+    if args.command == "vault-template-plan":
+        return _cmd_vault_template_plan(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+        )
     if args.command == "extract":
         return _cmd_extract(
             instance_root=Path(args.instance),
@@ -731,6 +745,17 @@ def _cmd_vault_validate(
     print(f"report={report_path}")
     print("vault_write_attempted: false")
     return 0 if report["valid"] else 1
+
+
+def _cmd_vault_template_plan(*, instance_root: Path, yyyymmdd: str, request_id: str) -> int:
+    """Plan Obsidian memo ontology templates without writing the vault."""
+
+    plan = build_vault_template_plan(request_id=request_id)
+    plan_path, report_path = write_vault_template_plan_artifacts(instance_root=instance_root, yyyymmdd=yyyymmdd, plan=plan)
+    print(f"vault template plan: report={report_path}")
+    print(f"template_plan_ref: {plan_path.relative_to(instance_root)}")
+    print("vault_write_attempted: false")
+    return 0
 
 
 def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_path: Path, yyyymmdd: str) -> int:

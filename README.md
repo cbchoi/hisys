@@ -289,6 +289,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   missing required human approval refs, then writes validation reports with
   `vault_write_attempted=false`, `external_call_made=false`, and
   `mutation_performed=false`.
+- Increment **Live-Obsidian-Config-D memo ontology template planner** -
+  `hisys.config.obsidian_live.build_vault_template_plan` and `hisys
+  vault-template-plan` produce fixture-only memo ontology/template/index planning
+  artifacts. The plan enumerates controlled `type` values, requires `phase` as
+  structured metadata rather than a tag, uses structured links as the governance
+  record, treats Obsidian wikilinks as projections, lists allowed relation
+  vocabulary and required index files, and writes only runtime-boundary/report
+  artifacts with no vault mutation.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
