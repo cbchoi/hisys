@@ -61,3 +61,49 @@ def test_open_access_pdf_connector_rejects_non_open_access_license_before_writin
         )
 
     assert not list((tmp_path / "runtime-boundary").glob("**/*.json"))
+
+
+def test_open_access_pdf_connector_collects_manual_smoke_with_injected_transport(tmp_path: Path):
+    calls: list[str] = []
+
+    def fake_transport(url: str):
+        calls.append(url)
+        return {
+            "status_code": 200,
+            "content_type": "application/pdf",
+            "content": b"%PDF-1.7\nManual OA smoke PDF bytes.\n%%EOF\n",
+        }
+
+    package = OpenAccessPdfConnector(transport=fake_transport).collect_manual_smoke(
+        request_id="HISYS-REQ-LIVE-F-001",
+        source_url="https://www.mdpi.com/fixture/live-open-access.pdf",
+        license_signal="open_access",
+        output_root=tmp_path,
+        yyyymmdd="20260509",
+    )
+
+    assert calls == ["https://www.mdpi.com/fixture/live-open-access.pdf"]
+    assert package.access_record.http_status == 200
+    assert package.access_record.pdf_downloaded is True
+    assert package.access_record.external_call_made is True
+    assert package.access_record.mutation_performed is False
+    assert package.evidence_items[0].quoted_text.startswith("PDF bytes collected from approved manual OA smoke")
+    access = json.loads((tmp_path / package.access_ref).read_text(encoding="utf-8"))
+    assert access["external_call_made"] is True
+    assert access["pdf_downloaded"] is True
+
+
+def test_open_access_pdf_connector_rejects_failed_manual_transport_before_writing(tmp_path: Path):
+    def fake_transport(_url: str):
+        return {"status_code": 404, "content_type": "text/html", "content": b"not found"}
+
+    with pytest.raises(ValueError, match="manual PDF smoke transport failed"):
+        OpenAccessPdfConnector(transport=fake_transport).collect_manual_smoke(
+            request_id="HISYS-REQ-LIVE-F-002",
+            source_url="https://www.mdpi.com/fixture/missing.pdf",
+            license_signal="open_access",
+            output_root=tmp_path,
+            yyyymmdd="20260509",
+        )
+
+    assert not list((tmp_path / "runtime-boundary").glob("**/*.json"))
