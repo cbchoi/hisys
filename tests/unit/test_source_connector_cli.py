@@ -76,6 +76,17 @@ def test_plan_source_connectors_writes_dry_run_plan_without_external_call(tmp_pa
     assert plan["mutation_performed"] is False
     assert report["plan_ref"] == str(plan_artifact.relative_to(tmp_path))
     assert report["external_call_made"] is False
+    assert plan["planned_handoffs"] == [
+        {
+            "from_connector_id": "doi_metadata_search",
+            "to_connector_id": "open_access_pdf_fetch",
+            "handoff_type": "pdf_candidate_plan_only",
+            "artifact_kind": "pdf-candidate-plan",
+            "pdf_downloaded": False,
+            "external_call_made": False,
+        }
+    ]
+    assert report["planned_handoff_count"] == 1
 
 
 def test_smoke_source_connector_dry_run_blocks_without_external_call(tmp_path: Path, capsys) -> None:

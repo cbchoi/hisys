@@ -450,6 +450,7 @@ def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_
     request = DomainInvestigationRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
     registry = load_source_connector_registry(config_path)
     planned = _select_source_connectors_for_request(request, registry.connectors.keys())
+    planned_handoffs = _source_connector_planned_handoffs(planned)
     disabled = [connector_id for connector_id in planned if not registry.connectors[connector_id].enabled]
     blocked = [
         {
@@ -466,6 +467,7 @@ def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_
         "domain": request.domain,
         "objective": request.objective,
         "planned_connectors": planned,
+        "planned_handoffs": planned_handoffs,
         "disabled_connectors": disabled,
         "blocked_connectors": blocked,
         "external_call_made": False,
@@ -486,6 +488,7 @@ def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_
         "domain": request.domain,
         "plan_ref": str(plan_artifact.relative_to(instance.root)),
         "planned_connector_count": len(planned),
+        "planned_handoff_count": len(planned_handoffs),
         "disabled_connector_count": len(disabled),
         "external_call_made": False,
         "mutation_performed": False,
@@ -753,6 +756,21 @@ def _select_source_connectors_for_request(request: DomainInvestigationRequest, c
     return [connector_id for connector_id in ["local_pdf_reader"] if connector_id in ids]
 
 
+def _source_connector_planned_handoffs(planned_connectors: list[str]) -> list[dict[str, object]]:
+    if "doi_metadata_search" not in planned_connectors or "open_access_pdf_fetch" not in planned_connectors:
+        return []
+    return [
+        {
+            "from_connector_id": "doi_metadata_search",
+            "to_connector_id": "open_access_pdf_fetch",
+            "handoff_type": "pdf_candidate_plan_only",
+            "artifact_kind": "pdf-candidate-plan",
+            "pdf_downloaded": False,
+            "external_call_made": False,
+        }
+    ]
+
+
 def _format_source_connector_plan_markdown(plan: dict) -> str:
     return "\n".join(
         [
@@ -765,6 +783,9 @@ def _format_source_connector_plan_markdown(plan: dict) -> str:
             "## Planned connectors",
             *[f"- {connector_id}" for connector_id in plan["planned_connectors"]],
             "",
+            "## Planned handoffs",
+            *[f"- {handoff['from_connector_id']} -> {handoff['to_connector_id']} ({handoff['handoff_type']})" for handoff in plan.get("planned_handoffs", [])],
+            "",
         ]
     )
 
@@ -776,6 +797,7 @@ def _format_source_connector_plan_report_markdown(report: dict) -> str:
             "",
             f"- plan_ref: `{report['plan_ref']}`",
             f"- planned_connector_count: {report['planned_connector_count']}",
+            f"- planned_handoff_count: {report.get('planned_handoff_count', 0)}",
             f"- external_call_made: {str(report['external_call_made']).lower()}",
             "",
         ]
