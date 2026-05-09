@@ -375,6 +375,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   registry. The completion sequence also covers approval package, transaction
   plan, fixture rehearsal, and status reporting helpers; all default artifacts
   record no external calls and no real Obsidian vault writes.
+- Increment **Obsidian Evidence Promotion-A** -
+  `hisys.config.obsidian_live.build_obsidian_evidence_promotion_plan` and `hisys
+  vault-evidence-promotion-plan` plan promotion of explicit source, evidence,
+  claim, and decision refs into topic-level canonical indexes. Fixture rehearsal
+  writes only projection payloads to explicit fixture roots and records no real
+  Obsidian vault writes.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

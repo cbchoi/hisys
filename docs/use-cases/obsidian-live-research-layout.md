@@ -514,6 +514,17 @@ status helpers. It preserves the no-live-default boundary:
 `external_call_made=false`, `mutation_performed=false` for decision/planning, and
 `real_obsidian_vault_write_performed=false` for all tests and default artifacts.
 
+## Obsidian Evidence Promotion-A implementation status
+
+`hisys.config.obsidian_live.build_obsidian_evidence_promotion_plan` and `hisys
+vault-evidence-promotion-plan` plan promotion of explicit source, evidence,
+claim, and decision refs into topic-level canonical indexes. The plan targets
+`canonical/sources/source-index.json`, `canonical/evidence/evidence-index.json`,
+`canonical/claims/claim-index.json`, and `canonical/decisions/decision-index.json`
+plus a promotion manifest, but records `promotion_plan_only=true` and performs no
+real vault mutation. Fixture rehearsal writes projection-only payloads to an
+explicit fixture root and still records `real_obsidian_vault_write_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

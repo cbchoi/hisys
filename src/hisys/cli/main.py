@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -512,6 +512,14 @@ def _build_parser() -> argparse.ArgumentParser:
     topic_gatekeeper.add_argument("--registry", required=True, help="topic registry JSON path")
     topic_gatekeeper.add_argument("--proposed-topic", required=True, help="proposed topic JSON path")
 
+    evidence_promotion = sub.add_parser(
+        "vault-evidence-promotion-plan",
+        help="plan promotion of evidence refs into topic canonical indexes without writing the vault",
+    )
+    evidence_promotion.add_argument("--instance", required=True, help="runtime instance root for promotion plan")
+    evidence_promotion.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    evidence_promotion.add_argument("--request", required=True, help="evidence promotion request JSON path")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -822,6 +830,12 @@ def main(argv: list[str] | None = None) -> int:
             request_id=args.request_id,
             registry_path=Path(args.registry),
             proposed_topic_path=Path(args.proposed_topic),
+        )
+    if args.command == "vault-evidence-promotion-plan":
+        return _cmd_vault_evidence_promotion_plan(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_path=Path(args.request),
         )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
@@ -1189,6 +1203,19 @@ def _cmd_vault_topic_gatekeeper(*, instance_root: Path, yyyymmdd: str, request_i
     report_path = write_topic_gatekeeper_decision(instance_root=instance_root, yyyymmdd=yyyymmdd, decision=decision)
     action = decision["decision"]["action"]
     print(f"topic gatekeeper: {action}")
+    print(f"report={report_path}")
+    print("real_obsidian_vault_write_performed: false")
+    return 0
+
+
+def _cmd_vault_evidence_promotion_plan(*, instance_root: Path, yyyymmdd: str, request_path: Path) -> int:
+    """Write a no-vault-write evidence promotion plan."""
+
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    plan = build_obsidian_evidence_promotion_plan(request=request)
+    report_path = write_obsidian_evidence_promotion_plan(instance_root=instance_root, yyyymmdd=yyyymmdd, plan=plan)
+    print(f"obsidian evidence promotion plan: {plan['status']}")
+    print(f"planned_operation_count: {plan['planned_operation_count']}")
     print(f"report={report_path}")
     print("real_obsidian_vault_write_performed: false")
     return 0

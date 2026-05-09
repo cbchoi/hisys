@@ -723,6 +723,79 @@ def write_live_vault_transaction_plan(*, instance_root: Path, yyyymmdd: str, pla
     return report_path
 
 
+def build_obsidian_evidence_promotion_plan(*, request: dict[str, Any]) -> dict[str, Any]:
+    """Plan promotion of investigation evidence refs into topic canonical indexes."""
+
+    request_id = str(request["request_id"])
+    topic_uid = str(request["topic_uid"])
+    topic_slug = str(request["topic_slug"])
+    approval_ref = request.get("approval_ref")
+    topic_root = f"91 Hisys/Live Research/topics/{topic_uid}__{topic_slug}"
+    promotion_refs = {
+        "source_refs": list(request.get("source_refs", [])),
+        "evidence_refs": list(request.get("evidence_refs", [])),
+        "claim_refs": list(request.get("claim_refs", [])),
+        "decision_refs": list(request.get("decision_refs", [])),
+    }
+    _validate_refs([ref for refs in promotion_refs.values() for ref in refs])
+    operations = [
+        {"operation_id": "evidence-promotion-op-0001", "operation": "update_source_index", "vault_relative_ref": f"{topic_root}/canonical/sources/source-index.json", "source_refs": promotion_refs["source_refs"]},
+        {"operation_id": "evidence-promotion-op-0002", "operation": "update_evidence_index", "vault_relative_ref": f"{topic_root}/canonical/evidence/evidence-index.json", "evidence_refs": promotion_refs["evidence_refs"]},
+        {"operation_id": "evidence-promotion-op-0003", "operation": "update_claim_index", "vault_relative_ref": f"{topic_root}/canonical/claims/claim-index.json", "claim_refs": promotion_refs["claim_refs"]},
+        {"operation_id": "evidence-promotion-op-0004", "operation": "update_decision_index", "vault_relative_ref": f"{topic_root}/canonical/decisions/decision-index.json", "decision_refs": promotion_refs["decision_refs"]},
+        {"operation_id": "evidence-promotion-op-0005", "operation": "write_promotion_manifest", "vault_relative_ref": f"{topic_root}/canonical/evidence/evidence-promotion-{request_id}.json", "promotion_request_id": request_id},
+    ]
+    return {
+        "schema_id": "hisys.obsidian.evidence_promotion_plan",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "planned_not_executed",
+        "topic_uid": topic_uid,
+        "topic_slug": topic_slug,
+        "investigation_id": request.get("investigation_id"),
+        "approval_ref": approval_ref,
+        "promotion_refs": promotion_refs,
+        "promotion_plan_only": True,
+        "planned_operation_count": len(operations),
+        "planned_operations": operations,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "real_obsidian_vault_write_performed": False,
+    }
+
+
+def write_obsidian_evidence_promotion_plan(*, instance_root: Path, yyyymmdd: str, plan: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"evidence-promotion-plan-{plan['request_id']}.json"
+    report_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return report_path
+
+
+def rehearse_obsidian_evidence_promotion_in_fixture(*, promotion_plan: dict[str, Any], fixture_vault_root: Path, approval_ref: str | None, fixture_vault_only: bool) -> dict[str, Any]:
+    if _is_real_obsidian_vault(fixture_vault_root) or not approval_ref or not fixture_vault_only:
+        return {"schema_id": "hisys.obsidian.evidence_promotion_rehearsal", "schema_version": _SCHEMA_VERSION, "status": "blocked", "reason_code": "fixture_rehearsal_gate_not_satisfied", "operation_count": 0, "external_call_made": False, "mutation_performed": False, "real_obsidian_vault_write_performed": False}
+    refs = [str(op.get("vault_relative_ref", "")) for op in promotion_plan.get("planned_operations", [])]
+    _validate_refs(refs)
+    written = []
+    for op, ref in zip(promotion_plan.get("planned_operations", []), refs, strict=True):
+        target = fixture_vault_root / ref
+        target.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "obsidian_evidence_promotion_projection_only": True,
+            "source_promotion_request_id": promotion_plan.get("request_id"),
+            "source_operation_id": op.get("operation_id"),
+            "operation": op.get("operation"),
+            "vault_relative_ref": ref,
+            "promotion_refs": promotion_plan.get("promotion_refs", {}),
+            "approval_ref": approval_ref,
+            "real_obsidian_vault_write_performed": False,
+        }
+        target.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        written.append({"operation_id": str(op.get("operation_id")), "vault_relative_ref": ref})
+    return {"schema_id": "hisys.obsidian.evidence_promotion_rehearsal", "schema_version": _SCHEMA_VERSION, "status": "rehearsed_fixture_only", "source_promotion_request_id": promotion_plan.get("request_id"), "operation_count": len(written), "written_fixture_refs": written, "external_call_made": False, "mutation_performed": True, "real_obsidian_vault_write_performed": False}
+
+
 def _topic_tokens(value: str) -> set[str]:
     return {token for token in re.split(r"[^a-z0-9]+", value.lower()) if token}
 
@@ -1583,6 +1656,7 @@ __all__ = [
     "build_live_vault_preflight_report",
     "build_live_vault_transaction_plan",
     "build_live_vault_write_gate_report",
+    "build_obsidian_evidence_promotion_plan",
     "build_topic_gatekeeper_approval_package",
     "build_topic_gatekeeper_decision",
     "build_topic_gatekeeper_status_report",
@@ -1591,6 +1665,7 @@ __all__ = [
     "build_vault_plan",
     "build_vault_template_plan",
     "rehearse_live_vault_transaction_in_fixture",
+    "rehearse_obsidian_evidence_promotion_in_fixture",
     "rehearse_topic_gatekeeper_transaction_in_fixture",
     "validate_fixture_vault_roundtrip",
     "validate_vault_manifests",
@@ -1602,6 +1677,7 @@ __all__ = [
     "write_live_vault_transaction_plan",
     "write_live_vault_transaction_rehearsal_report",
     "write_live_vault_write_gate_report",
+    "write_obsidian_evidence_promotion_plan",
     "write_topic_gatekeeper_decision",
     "write_vault_plan_artifacts",
     "write_vault_roundtrip_report",
