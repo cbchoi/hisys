@@ -307,3 +307,26 @@ Boundary rules:
 6. DARS and Chief Editor may reference summaries as advisory evidence balance
    only; Chief Editor confidence remains conditional and publication/novelty
    claims require further validation.
+
+## Live-K claim summary coverage gate boundary
+
+Live-K checks whether required recommendation claims have explicit
+`claim_evidence_summary_refs` before any manuscript-facing language can move
+beyond controlled conditional wording. The gate consumes declared required
+recommendation claims and explicit summary refs; it does not search, infer
+coverage from prompt text, or approve publication-ready claims.
+
+Boundary rules:
+
+1. coverage gating requires explicit `claim_evidence_summary_refs` and explicit
+   required recommendation claims;
+2. gate artifacts are persisted as `claim_coverage_gate_refs` under
+   `runtime-boundary/source-connectors/<YYYYMMDD>/`;
+3. uncovered claims are recorded as `coverage_status=needs_more_claim_evidence`;
+4. even complete coverage permits conditional manuscript language only until
+   human/editorial validation and source-policy gates approve stronger wording;
+5. the gate does not approve publication-ready claims, prove novelty, or waive
+   DARS/Chief Editor source-validation conditions;
+6. gate construction performs no live calls, no PDF parsing/OCR, and no source,
+   quote, ledger, or summary mutation;
+7. DARS may critique coverage as advisory lineage only; Chief Editor manuscript-language gate remains conditional.

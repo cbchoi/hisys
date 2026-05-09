@@ -168,6 +168,21 @@ def test_live_j_claim_evidence_summary_boundary_is_documented():
     assert "Chief Editor confidence remains conditional" in text
 
 
+def test_live_k_claim_coverage_gate_boundary_is_documented():
+    """Claim coverage gate must require summaries for major claims without allowing strong manuscript language."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-K claim summary coverage gate boundary" in text
+    assert "claim_coverage_gate_refs" in text
+    assert "claim_evidence_summary_refs" in text
+    assert "required recommendation claims" in text
+    assert "conditional manuscript language only" in text
+    assert "does not approve publication-ready claims" in text
+    assert "Chief Editor manuscript-language gate remains conditional" in text
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 
