@@ -5,12 +5,15 @@ HISYS-T-023.
 """
 
 from .dars import DarsCritiqueRecord, DarsCritiqueReport, DarsRuntime
+from .dars_dispatch import DarsDispatchDecision, DarsDispatchGate
 from .dars_protocol import DarsRequestEnvelope, DarsResponseEnvelope
 
 __all__ = [
     "DarsCritiqueRecord",
     "DarsCritiqueReport",
     "DarsRuntime",
+    "DarsDispatchDecision",
+    "DarsDispatchGate",
     "DarsRequestEnvelope",
     "DarsResponseEnvelope",
 ]

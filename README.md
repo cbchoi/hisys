@@ -132,7 +132,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   DARS protocol contract is now represented by `hisys.agents.dars_protocol`,
   which validates canonical `DarsRequestEnvelope` and `DarsResponseEnvelope`
   JSON objects and rejects mutation, execution, external side effects, and
-  blocking behavior at the envelope boundary. The
+  blocking behavior at the envelope boundary. `hisys.agents.dars_dispatch`
+  adds a runtime-boundary dispatch gate that records allow/block decisions for
+  loopback, local fixture, disabled, unknown, and unapproved external-call
+  backends before any adapter is invoked. The
   DARS configuration contract uses a common Hisys JSON config envelope and validates
   concise role/backend settings before any DARS adapter is selected. The target
   DARS design is progressive and GAN-like: generator candidates are challenged

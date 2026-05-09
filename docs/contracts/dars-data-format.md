@@ -10,6 +10,8 @@ This document defines the data exchanged between Hisys and DARS. DARS is an advi
 
 The canonical protocol envelope models are implemented in `src/hisys/agents/dars_protocol.py` and verified by `tests/unit/test_dars_protocol.py`. The implementation baseline validates advisory-only request contracts, structured response critiques, progressive decision traces, rubric scores, and boundary evidence that rejects mutation, execution, side effects, and blocking behavior.
 
+DARS backend dispatch is guarded by `src/hisys/agents/dars_dispatch.py` and verified by `tests/unit/test_dars_dispatch.py`. The dispatch gate records `hisys.dars.dispatch_decision` runtime-boundary JSON/Markdown artifacts under `runtime-boundary/dars/<YYYYMMDD>/`, allows loopback/local read-only backends when enabled, and blocks disabled, unknown, policy-invalid, or unapproved external-call backends without making a backend call.
+
 The exchange has two canonical artifacts:
 
 1. `DarsRequestEnvelope` — Hisys → DARS.
