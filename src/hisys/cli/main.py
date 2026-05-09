@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_vault_plan, build_vault_template_plan, load_source_registry, validate_vault_manifests, write_vault_apply_report, write_vault_plan_artifacts, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_vault_manifests, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -417,6 +417,19 @@ def _build_parser() -> argparse.ArgumentParser:
     vault_apply.add_argument("--approval-ref", help="required human approval ref for fixture writes")
     vault_apply.add_argument("--fixture-vault-only", action="store_true", help="required; refuses real Obsidian vault writes")
 
+    topic_transition = sub.add_parser(
+        "vault-topic-transition-plan",
+        help="plan non-destructive topic merge/split transitions without writing the vault",
+    )
+    topic_transition.add_argument("--instance", required=True, help="runtime instance root for transition plan artifacts")
+    topic_transition.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    topic_transition.add_argument("--request-id", required=True, help="request id for transition planning")
+    topic_transition.add_argument("--action", required=True, choices=["merge_with_existing_topic", "split_topic_recommended"], help="topic identity transition action")
+    topic_transition.add_argument("--source-topic-uid", required=True, help="source topic uid")
+    topic_transition.add_argument("--target-topic-uid", required=True, help="target topic uid")
+    topic_transition.add_argument("--approval-ref", help="required human approval ref")
+    topic_transition.add_argument("--rationale", required=True, help="transition rationale")
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -638,6 +651,17 @@ def main(argv: list[str] | None = None) -> int:
             approval_ref=args.approval_ref,
             fixture_vault_only=args.fixture_vault_only,
         )
+    if args.command == "vault-topic-transition-plan":
+        return _cmd_vault_topic_transition_plan(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            action=args.action,
+            source_topic_uid=args.source_topic_uid,
+            target_topic_uid=args.target_topic_uid,
+            approval_ref=args.approval_ref,
+            rationale=args.rationale,
+        )
     if args.command == "extract":
         return _cmd_extract(
             instance_root=Path(args.instance),
@@ -801,6 +825,34 @@ def _cmd_vault_apply(
     print(f"report={report_path}")
     print(f"real_obsidian_vault_write_performed: {str(report['real_obsidian_vault_write_performed']).lower()}")
     return 0 if report["status"] == "applied" else 2
+
+
+def _cmd_vault_topic_transition_plan(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    action: str,
+    source_topic_uid: str,
+    target_topic_uid: str,
+    approval_ref: str | None,
+    rationale: str,
+) -> int:
+    """Plan non-destructive Obsidian topic identity transitions."""
+
+    plan = build_topic_identity_transition_plan(
+        request_id=request_id,
+        action=action,
+        source_topic_uid=source_topic_uid,
+        target_topic_uid=target_topic_uid,
+        approval_ref=approval_ref,
+        rationale=rationale,
+    )
+    plan_path = write_topic_identity_transition_plan(instance_root=instance_root, yyyymmdd=yyyymmdd, plan=plan)
+    print(f"topic transition plan: {plan['status']}")
+    print(f"plan_ref: {plan_path.relative_to(instance_root)}")
+    print("real_obsidian_vault_write_performed: false")
+    return 0 if plan["status"] == "planned" else 2
 
 
 def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_path: Path, yyyymmdd: str) -> int:

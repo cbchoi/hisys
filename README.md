@@ -313,6 +313,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `--fixture-vault-only`, blocks `/home/cbchoi/obsidian`, writes only the
   provided target fixture vault root, and records runtime-boundary apply reports
   with `real_obsidian_vault_write_performed=false` and `external_call_made=false`.
+- Increment **Live-Obsidian-Config-G topic transition plan** -
+  `hisys.config.obsidian_live.build_topic_identity_transition_plan` and `hisys
+  vault-topic-transition-plan` plan non-destructive canonical topic merge/split
+  transitions. Merge and split actions require approval refs, never delete old
+  topic folders, produce tombstone refs such as `MERGED_INTO.md` or
+  `SPLIT_INTO.md`, plan manifest updates, and write only runtime-boundary plan
+  artifacts with `real_obsidian_vault_write_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

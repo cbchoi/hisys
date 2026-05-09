@@ -416,6 +416,16 @@ vault path, writes apply reports under the Hisys runtime boundary, records
 `real_obsidian_vault_write_performed=false`, and makes no external calls. This is
 a harness writer, not approval to mutate the user's live Obsidian vault.
 
+## Live-Obsidian-Config-G implementation status
+
+`hisys.config.obsidian_live.build_topic_identity_transition_plan` and `hisys
+vault-topic-transition-plan` plan non-destructive canonical topic identity
+transitions. `merge_with_existing_topic` and `split_topic_recommended` require
+approval refs, never delete source topic folders, produce tombstone refs such as
+`MERGED_INTO.md` or `SPLIT_INTO.md`, and preview topic-manifest updates. The
+command writes only runtime-boundary plan artifacts and records
+`real_obsidian_vault_write_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

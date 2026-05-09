@@ -279,6 +279,67 @@ def write_vault_template_plan_artifacts(*, instance_root: Path, yyyymmdd: str, p
     return plan_path, report_path
 
 
+def build_topic_identity_transition_plan(
+    *,
+    request_id: str,
+    action: str,
+    source_topic_uid: str,
+    target_topic_uid: str,
+    approval_ref: str | None,
+    rationale: str,
+) -> dict[str, Any]:
+    """Plan non-destructive topic merge/split identity transitions."""
+
+    if not _TOPIC_UID_RE.fullmatch(source_topic_uid) or not _TOPIC_UID_RE.fullmatch(target_topic_uid):
+        raise ValueError("invalid topic uid")
+    if action not in {"merge_with_existing_topic", "split_topic_recommended"}:
+        raise ValueError("unsupported topic transition action")
+    base = {
+        "schema_id": "hisys.obsidian.topic_identity_transition_plan",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "action": action,
+        "source_topic_uid": source_topic_uid,
+        "target_topic_uid": target_topic_uid,
+        "approval_required": True,
+        "approval_ref": approval_ref,
+        "rationale": rationale,
+        "non_destructive": True,
+        "delete_old_topic_folder": False,
+        "vault_write_attempted": False,
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    if not approval_ref:
+        return {**base, "status": "blocked", "reason_code": "approval_ref_required", "planned_file_writes": [], "planned_manifest_updates": []}
+
+    if action == "merge_with_existing_topic":
+        tombstone_ref = f"topics/{source_topic_uid}/MERGED_INTO.md"
+        manifest_update = {"topic_uid": source_topic_uid, "status": "merged", "merged_into": target_topic_uid}
+    else:
+        tombstone_ref = f"topics/{source_topic_uid}/SPLIT_INTO.md"
+        manifest_update = {"topic_uid": source_topic_uid, "status": "active", "split_into": [target_topic_uid]}
+
+    return {
+        **base,
+        "status": "planned",
+        "reason_code": None,
+        "planned_tombstone_ref": tombstone_ref,
+        "planned_file_writes": [tombstone_ref, f"topics/{source_topic_uid}/topic-manifest.json"],
+        "planned_manifest_updates": [manifest_update],
+    }
+
+
+def write_topic_identity_transition_plan(*, instance_root: Path, yyyymmdd: str, plan: dict[str, Any]) -> Path:
+    plan_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    plan_dir.mkdir(parents=True, exist_ok=True)
+    plan_path = plan_dir / f"topic-transition-plan-{plan['request_id']}.json"
+    plan_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (plan_dir / f"topic-transition-plan-{plan['request_id']}.md").write_text(_format_topic_identity_transition_plan(plan), encoding="utf-8")
+    return plan_path
+
+
 def apply_vault_plan_to_fixture(
     *,
     plan: dict[str, Any],
@@ -607,6 +668,25 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_topic_identity_transition_plan(plan: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Obsidian Topic Identity Transition Plan",
+            "",
+            f"- Request: `{plan['request_id']}`",
+            f"- Status: {plan['status']}",
+            f"- Action: `{plan['action']}`",
+            f"- Source topic: `{plan['source_topic_uid']}`",
+            f"- Target topic: `{plan['target_topic_uid']}`",
+            f"- Approval required: {str(plan['approval_required']).lower()}",
+            f"- Non-destructive: {str(plan['non_destructive']).lower()}",
+            f"- Delete old topic folder: {str(plan['delete_old_topic_folder']).lower()}",
+            f"- Real vault write performed: {str(plan['real_obsidian_vault_write_performed']).lower()}",
+            "",
+        ]
+    )
+
+
 def _format_vault_apply_report(report: dict[str, Any]) -> str:
     return "\n".join(
         [
@@ -627,6 +707,7 @@ def _format_vault_apply_report(report: dict[str, Any]) -> str:
 
 __all__ = [
     "apply_vault_plan_to_fixture",
+    "build_topic_identity_transition_plan",
     "build_vault_plan",
     "build_vault_template_plan",
     "validate_vault_manifests",
@@ -634,4 +715,5 @@ __all__ = [
     "write_vault_plan_artifacts",
     "write_vault_template_plan_artifacts",
     "write_vault_validation_report",
+    "write_topic_identity_transition_plan",
 ]
