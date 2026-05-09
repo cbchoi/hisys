@@ -6,17 +6,23 @@
 
 ## 1. Purpose
 
-This use case applies Hisys to software repositories so it can analyze a codebase, extract evidence, identify design candidates, critique those candidates with DARS, and recommend better uses or better architecture paths.
+This use case applies Hisys to software repositories and related project evidence so it can analyze the **current codebase**, relevant **open-source references**, and **previous project results**, then identify design candidates, critique alternatives with DARS, and recommend better uses or better architecture paths.
 
 The target output is not an automatic code change. The target output is a controlled advisory package:
 
 ```text
-CodebaseEvidencePackage
+InvestigationDataPackage
+  -> CodebaseEvidencePackage[]
+  -> ComparativeReferencePackage[]
+  -> PreviousResultPackage[]
   -> DesignCandidateRecord[]
+  -> AlternativeDecisionSet
   -> DarsRequestEnvelope
   -> DarsResponseEnvelope / rubric scores
   -> DesignRecommendationMemo
 ```
+
+The Investigator owns evidence collection and normalization. DARS receives only the curated investigation package and evaluates alternatives; it does not independently mutate repositories, fetch unapproved sources, or decide final implementation.
 
 ## 2. Business Motivation
 
@@ -24,26 +30,31 @@ Commercial customers often need to answer questions such as:
 
 - What is this codebase good for?
 - Which product/service use cases fit the existing architecture?
+- Which open-source projects solve similar problems, and what design patterns can be borrowed legally and safely?
+- Which previous internal project results, memos, experiments, or release reports should inform the new decision?
 - Which modules are reusable as commercial assets?
 - Where are design bottlenecks, hidden coupling, or missing abstractions?
 - Which refactoring candidates produce the highest value with acceptable risk?
 - Which agent/LLM workflows can safely assist this repository?
 - Which productization paths are most feasible?
 
-Hisys can become an advisory system that converts repository evidence into design candidates and progressive decision support.
+Hisys can become an advisory system that converts multi-source investigation evidence into design candidates, DARS critique, possible alternatives, and progressive decision support.
 
 ## 3. Scope
 
-Initial scope is **read-only codebase analysis**.
+Initial scope is **read-only multi-source software investigation**.
 
 Allowed:
 
-- read repository files;
+- read the current repository files;
+- read approved local previous project results such as controlled docs, memos, runtime-boundary reports, release-readiness evidence, and experiment summaries;
+- inspect approved open-source repositories or downloaded snapshots when licensing/source policy allows it;
 - compute structure/LOC/language metrics;
 - inspect dependency manifests;
 - identify modules, packages, CLIs, tests, docs, and runtime boundaries;
 - produce evidence packages and memos;
-- request DARS critique of design candidates;
+- generate possible alternatives from current-codebase evidence, open-source comparison, and previous-result lessons;
+- request DARS critique of design candidates and alternative sets;
 - produce advisory recommendations.
 
 Not allowed by default:
@@ -51,8 +62,10 @@ Not allowed by default:
 - modifying code;
 - opening PRs;
 - running live deployments;
-- sending data to external LLMs unless approved;
+- cloning/fetching external repositories unless the connector/source policy allows it;
+- sending proprietary or third-party code to external LLMs unless approved;
 - exfiltrating proprietary code;
+- copying third-party code into the product without license review;
 - storing secrets in config or prompts;
 - executing untrusted project scripts without approval.
 
@@ -61,31 +74,37 @@ Not allowed by default:
 | Actor | Role |
 |---|---|
 | User / product owner | asks what the codebase can become or how it should improve |
-| Investigator | reads repository evidence and builds `CodebaseEvidencePackage` |
-| Candidate Generator | proposes possible design/use candidates |
-| DARS critic panel | critiques candidates using logical, security, architecture, domain, and business rubrics |
-| Synthesizer | merges evidence and critique into ranked recommendations |
-| Human reviewer | approves any next implementation or external action |
+| Investigator | plans source scope, gathers current-codebase/open-source/previous-result evidence, and builds `InvestigationDataPackage` |
+| Source Governance Gate | validates source type, license/sensitivity, connector permissions, and external-call policy before evidence collection |
+| Candidate Generator | proposes possible design/use candidates and alternative decision paths |
+| DARS critic panel | critiques candidates and alternatives using logical, security, architecture, domain, business, and legal/source-governance rubrics |
+| Synthesizer | merges investigation evidence and critique into ranked alternatives and recommendations |
+| Human reviewer | selects an alternative, requests more evidence, or approves the next implementation action |
 
 ## 5. Progressive Decision Flow
 
 ```text
-1. Repository intake
-   -> identify repo path, branch, scope, allowed analysis depth
+1. Investigation planning
+   -> identify current repo path/branch, approved open-source references, previous project-result sources, source-governance limits, and allowed analysis depth
 
 2. Evidence extraction
-   -> language/LOC metrics
-   -> package/module graph
+   -> current-codebase language/LOC metrics
+   -> current package/module graph
    -> dependency and CLI/API inventory
    -> test and quality-gate inventory
    -> README/docs intent signals
    -> runtime-boundary / integration signals
+   -> previous project lessons, release reports, failed attempts, accepted decisions
+   -> open-source architecture/design comparisons with license/source-governance notes
 
-3. Candidate generation
+3. Candidate and alternative generation
    -> commercial use candidates
    -> architecture refactoring candidates
    -> automation/agent workflow candidates
    -> risk-reduction candidates
+   -> reuse/adaptation candidates based on open-source references
+   -> continuation/revival candidates based on previous project results
+   -> explicit alternative set, including do-nothing / incremental / redesign / reuse / commercialize options
 
 4. DARS progressive critique
    -> logical conservative devil checks reasoning and evidence
@@ -93,16 +112,50 @@ Not allowed by default:
    -> security/privacy devil checks data and secret risks
    -> product/business devil checks customer value and feasibility
    -> domain expert devil checks domain fit
+   -> source-governance devil checks open-source licensing, provenance, and previous-result applicability
 
 5. Synthesis
-   -> rank candidates by value, feasibility, risk, evidence support, and implementation cost
+   -> compare alternatives by value, feasibility, risk, evidence support, implementation cost, and legal/source constraints
    -> produce better-use recommendations and next controlled increments
 
 6. Human decision
-   -> accept recommendation, request more evidence, or start a Ralph implementation loop
+   -> choose an alternative, request more evidence, or start a Ralph implementation loop
 ```
 
-## 6. Evidence Model
+## 6. Investigation Data Model
+
+A future `InvestigationDataPackage` should normalize multiple evidence sources before DARS evaluation:
+
+```json
+{
+  "schema_id": "hisys.investigation.data",
+  "schema_version": "0.1.0",
+  "investigation_id": "INV-...",
+  "objective": "Find better design/use alternatives for the target codebase.",
+  "sources": [
+    {
+      "source_id": "SRC-CURRENT-001",
+      "source_type": "current_codebase",
+      "governance_status": "approved_local_read_only"
+    },
+    {
+      "source_id": "SRC-OSS-001",
+      "source_type": "open_source_reference",
+      "license_status": "review_required|compatible|incompatible|unknown"
+    },
+    {
+      "source_id": "SRC-PREV-001",
+      "source_type": "previous_project_result",
+      "result_type": "memo|release_report|experiment|decision_log|runtime_boundary"
+    }
+  ],
+  "evidence_packages": [],
+  "design_candidates": [],
+  "alternative_decision_set": {}
+}
+```
+
+### 6.1 Codebase Evidence Model
 
 A future `CodebaseEvidencePackage` should include:
 
@@ -111,10 +164,13 @@ A future `CodebaseEvidencePackage` should include:
   "schema_id": "hisys.codebase.evidence",
   "schema_version": "0.1.0",
   "repo_ref": {
+    "source_id": "SRC-CURRENT-001",
+    "source_role": "current_codebase|open_source_reference",
     "path": "...",
     "vcs": "git",
     "branch": "main",
-    "commit": "hex"
+    "commit": "hex",
+    "license_ref": "MIT|Apache-2.0|proprietary|unknown"
   },
   "analysis_scope": {
     "mode": "read_only",
@@ -150,7 +206,7 @@ Evidence references should include file path, line range when applicable, hash, 
 }
 ```
 
-## 7. Design Candidate Model
+## 7. Design Candidate and Alternative Decision Model
 
 A future `DesignCandidateRecord` should include:
 
@@ -160,7 +216,8 @@ A future `DesignCandidateRecord` should include:
   "candidate_type": "commercial_use|architecture_refactor|agent_workflow|risk_reduction|productization_path",
   "title": "Expose repository analysis as a governed advisory workflow",
   "claim": "The existing Investigator/DARS boundary can support read-only codebase assessment.",
-  "supporting_evidence_refs": ["CODE-EVID-001", "CODE-EVID-002"],
+  "supporting_evidence_refs": ["CODE-EVID-001", "OSS-EVID-001", "PREV-EVID-001"],
+  "source_basis": ["current_codebase", "open_source_reference", "previous_project_result"],
   "expected_value": "high",
   "implementation_cost": "medium",
   "risk_level": "medium",
@@ -168,6 +225,46 @@ A future `DesignCandidateRecord` should include:
   "next_increment": "Implement file-backed codebase evidence extractor."
 }
 ```
+
+A future `AlternativeDecisionSet` should group candidates into explicit decision alternatives before DARS critique:
+
+```json
+{
+  "schema_id": "hisys.design.alternatives",
+  "schema_version": "0.1.0",
+  "decision_id": "ALTDEC-...",
+  "objective": "Select the best next design/use path for the analyzed system.",
+  "alternatives": [
+    {
+      "alternative_id": "ALT-001",
+      "title": "Continue current architecture with incremental hardening",
+      "candidate_refs": ["DESIGN-CAND-001"],
+      "evidence_refs": ["CODE-EVID-001", "PREV-EVID-001"],
+      "expected_benefit": "medium",
+      "implementation_cost": "low",
+      "risk_level": "low",
+      "source_constraints": []
+    },
+    {
+      "alternative_id": "ALT-002",
+      "title": "Adopt open-source-inspired plugin architecture",
+      "candidate_refs": ["DESIGN-CAND-002"],
+      "evidence_refs": ["CODE-EVID-002", "OSS-EVID-001"],
+      "expected_benefit": "high",
+      "implementation_cost": "medium",
+      "risk_level": "medium",
+      "source_constraints": ["license_review_required"]
+    }
+  ],
+  "decision_policy": {
+    "selection_mode": "human_review_after_dars",
+    "dars_role": "advisory_only",
+    "include_do_nothing_baseline": true
+  }
+}
+```
+
+DARS should evaluate the alternative set and return critique/rubric scores. Hisys then records the recommended alternative, unresolved risks, and next Ralph-loop increment, but the final selection remains a human/system-of-record decision.
 
 ## 8. Codebase Rubric Axes
 
@@ -184,6 +281,9 @@ The codebase-analysis DARS rubric should extend the progressive decision matrix 
 | `security_privacy_risk` | Could code/data/secrets be exposed? |
 | `implementation_incrementality` | Can it be delivered through Ralph/TDD increments? |
 | `evidence_support` | Is the recommendation supported by concrete repository evidence? |
+| `cross_source_consistency` | Do current codebase, open-source references, and previous results support or contradict one another? |
+| `source_governance_fit` | Are open-source license/provenance and previous-result reuse constraints acceptable? |
+| `alternative_quality` | Are alternatives explicit, comparable, and not prematurely narrowed to one path? |
 
 ## 9. Registry and Configuration Implications
 
@@ -208,8 +308,10 @@ Example future configs:
 | Config ID | Purpose |
 |---|---|
 | `codebase-analysis-policy` | read-only vs execution permissions, excluded directories, file-size caps |
-| `codebase-analyzer-registry` | enabled analyzers such as metrics, dependency, test, architecture, docs |
+| `investigation-source-policy` | allowed current-codebase, open-source, and previous-result sources plus connector/source-governance requirements |
+| `codebase-analyzer-registry` | enabled analyzers such as metrics, dependency, test, architecture, docs, open-source comparison, and previous-result mining |
 | `codebase-rubric-binding` | selected rubric refs and aggregation policy |
+| `alternative-decision-policy` | alternative-set construction, do-nothing baseline, ranking dimensions, DARS rounds, and human-review requirements |
 | `codebase-output-policy` | memo format, redaction, retention, customer-visible fields |
 
 Example future prompt bundles:
@@ -219,28 +321,37 @@ Example future prompt bundles:
 | `pb-codebase-architecture-devil` | critiques architecture/coupling/boundaries |
 | `pb-codebase-security-devil` | critiques secret/privacy/supply-chain risk |
 | `pb-codebase-productization-devil` | critiques commercial fit and customer value |
+| `pb-codebase-source-governance-devil` | critiques open-source provenance, license constraints, and previous-result applicability |
+| `pb-codebase-alternative-synthesizer` | synthesizes possible alternatives and ranked decision recommendations |
 | `pb-codebase-synthesizer` | synthesizes ranked better-use candidates |
 
 ## 10. Suggested MVP Increment
 
 Start with a local read-only MVP:
 
-1. Add a codebase-analysis fixture repository or analyze the Hisys repo itself.
-2. Implement `CodebaseEvidencePackage` schema.
-3. Implement read-only extractors for:
+1. Analyze Hisys repo itself plus one local previous-result package.
+2. Add approved open-source reference support only through a local fixture/snapshot first; no live cloning by default.
+3. Implement `InvestigationDataPackage`, `CodebaseEvidencePackage`, and `AlternativeDecisionSet` schemas.
+4. Implement read-only extractors for:
    - file inventory;
    - language/LOC summary;
    - dependency manifest summary;
    - test inventory;
-   - docs/README intent signals.
-4. Generate 3-5 `DesignCandidateRecord` entries.
-5. Use loopback/fixture DARS critique only.
-6. Persist runtime-boundary reports:
+   - docs/README intent signals;
+   - previous-result memo/report summaries;
+   - open-source reference comparison from fixture snapshots.
+5. Generate 3-5 `DesignCandidateRecord` entries and 2-4 explicit alternatives.
+6. Use loopback/fixture DARS only.
+7. Persist runtime-boundary reports:
 
 ```text
 runtime-boundary/codebase-analysis/<YYYYMMDD>/
+  investigation-data-<analysis_id>.json
   codebase-evidence-<analysis_id>.json
+  comparative-references-<analysis_id>.json
+  previous-results-<analysis_id>.json
   design-candidates-<analysis_id>.json
+  alternative-decision-set-<analysis_id>.json
   dars-request-<request_id>.json
   dars-response-<response_id>.json
   design-recommendation-memo-<analysis_id>.md
@@ -252,9 +363,11 @@ A future implementation should verify:
 
 1. Codebase analysis is read-only by default.
 2. Excluded directories such as `.git`, `node_modules`, `.venv`, caches, and build outputs are skipped.
-3. The evidence package records repo path, branch, commit, and analysis scope.
-4. Candidate recommendations cite concrete evidence refs.
-5. DARS critique remains advisory and cannot modify code.
-6. Config snapshot refs and prompt bundle refs are recorded.
-7. Secret-like values are redacted from reports.
-8. Human approval is required before any code-modifying Ralph loop starts.
+3. Investigation data records source roles for current codebase, open-source references, and previous project results.
+4. The evidence package records repo path, branch, commit, license/provenance status where applicable, and analysis scope.
+5. Candidate recommendations cite concrete evidence refs across all used source types.
+6. Alternative decision sets include at least one baseline/do-nothing or incremental option when applicable.
+7. DARS critique remains advisory and cannot modify code or select the final alternative by itself.
+8. Config snapshot refs and prompt bundle refs are recorded.
+9. Secret-like values are redacted from reports.
+10. Human approval is required before live external collection, code modification, or a code-modifying Ralph loop starts.
