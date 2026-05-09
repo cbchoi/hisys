@@ -89,6 +89,7 @@ implemented yet.
 | `hisys.schemas.handoff` | HISYS-FR-AGT-001..005, HISYS-SCHEMA-001 Section 9, HISYS-DARS-CONTRACT-001 | `tests/unit/test_schemas.py` |
 | `hisys.schemas.hermes_trace` | HISYS-FR-DS-006, HISYS-FR-INV-006, HISYS-FR-AGT-005, HISYS-DATA-005, HISYS-SCHEMA-001 Section 10 | `tests/unit/test_schemas.py` |
 | `hisys.schemas.audit` | HISYS-FR-ADM-002, HISYS-SCHEMA-001 Section 11 | `tests/unit/test_schemas.py` |
+| `hisys.schemas.domain_investigation` | HISYS-FR-INV-001..006, HISYS-DARS-CONTRACT-001, HISYS-T-024, HISYS-CON-010..012 | `tests/unit/test_domain_investigation.py` |
 | `hisys.adapters.hardware_mock` | HISYS-FIXTURE-001 hardware-mock-temperature, HISYS-T-003 | `tests/unit/test_adapters.py` |
 | `hisys.adapters.web_news_mock` | HISYS-FIXTURE-001 web-news-rss-permitted, HISYS-T-004 | `tests/unit/test_adapters.py` |
 | `hisys.adapters.agent_system_mock` | HISYS-FIXTURE-001 agent-dars-critique, HISYS-T-005 | `tests/unit/test_adapters.py` |

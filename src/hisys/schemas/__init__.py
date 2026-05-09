@@ -16,6 +16,18 @@ from .alert import AlertDecisionRecord
 from .handoff import AgentHandoffPackage
 from .hermes_trace import HermesCollectionTrace
 from .audit import AuditEvent
+from .domain_investigation import (
+    AlternativeDecisionSet,
+    CandidateRecord,
+    DomainEvidencePackage,
+    DomainInvestigationConstraints,
+    DomainInvestigationRequest,
+    DomainInvestigationResult,
+    DomainOutputContract,
+    DomainSourceRef,
+    HisysToolResult,
+    InvestigationDataPackage,
+)
 
 __all__ = [
     "BaseRecord",
@@ -32,4 +44,14 @@ __all__ = [
     "AgentHandoffPackage",
     "HermesCollectionTrace",
     "AuditEvent",
+    "AlternativeDecisionSet",
+    "CandidateRecord",
+    "DomainEvidencePackage",
+    "DomainInvestigationConstraints",
+    "DomainInvestigationRequest",
+    "DomainInvestigationResult",
+    "DomainOutputContract",
+    "DomainSourceRef",
+    "HisysToolResult",
+    "InvestigationDataPackage",
 ]

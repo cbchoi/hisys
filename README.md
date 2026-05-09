@@ -79,6 +79,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   default agents from this config, records `agent_plan_source`,
   `disabled_optional_agent_refs`, and `blocked_agent_refs` in the run report,
   and still rejects disabled explicit external connectors before execution.
+- Increment **Hisys MVP A1 domain-general schema boundary** -
+  `hisys.schemas.domain_investigation` defines the local/Hermes-facing
+  `DomainInvestigationRequest`, read-only source refs, safety constraints,
+  `InvestigationDataPackage`, `DomainEvidencePackage`, `CandidateRecord`,
+  `AlternativeDecisionSet`, full `DomainInvestigationResult`, and compact
+  `HisysToolResult` projection. These schemas keep the MVP read-only by default
+  and provide the contract for the future `investigate-domain` CLI/runtime flow.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
