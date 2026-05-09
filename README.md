@@ -135,7 +135,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   blocking behavior at the envelope boundary. `hisys.agents.dars_dispatch`
   adds a runtime-boundary dispatch gate that records allow/block decisions for
   loopback, local fixture, disabled, unknown, and unapproved external-call
-  backends before any adapter is invoked. The
+  backends before any adapter is invoked. `hisys.agents.dars_backend` adds the
+  first deterministic local fixture-file backend: it requires an allowed
+  dispatch decision, validates fixture JSON as `DarsResponseEnvelope`, checks
+  request alignment, and persists response artifacts under `runtime-boundary/dars/`.
+  The
   DARS configuration contract uses a common Hisys JSON config envelope and validates
   concise role/backend settings before any DARS adapter is selected. The target
   DARS design is progressive and GAN-like: generator candidates are challenged
