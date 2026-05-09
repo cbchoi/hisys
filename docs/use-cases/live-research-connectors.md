@@ -98,3 +98,25 @@ Evidence packages must distinguish:
 This boundary does not enable live web search, PDF download, external LLM calls,
 credential use, or browser automation. It defines the policy and evidence shape
 that later fixture and live connector increments must satisfy.
+
+## Live-C manual metadata smoke boundary
+
+Live-C introduces only a manually invoked, read-only public metadata smoke
+boundary for the `doi_metadata_search` connector. It is **manual_smoke_only**,
+disabled by default, and **not part of CI**. The purpose is to validate the
+approval/dispatch/provenance path for one low-risk metadata endpoint after the
+fixture harness passes; it is not general live search.
+
+Manual smoke preconditions:
+
+1. create a dry-run artifact first with `hisys smoke-source-connector --dry-run`;
+2. provide an `approval_ref` recorded outside prompt text;
+3. set `HISYS_ALLOW_LIVE_SMOKE=1` in the operator shell;
+4. request only read-only DOI metadata retrieval from the allowlisted endpoint;
+5. preserve dispatch, source-access, source-evidence, and report artifacts under
+   `runtime-boundary/source-connectors/<YYYYMMDD>/`;
+6. record `external_call_made` truthfully and keep `mutation_performed=false`.
+
+CI, automated cron jobs, and default Ralph loops must not run the live smoke
+path. Without the environment flag and approval reference, the connector must
+write a blocked/dry-run artifact and perform no network call.

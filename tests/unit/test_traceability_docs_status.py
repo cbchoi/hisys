@@ -53,3 +53,17 @@ def test_live_research_connector_boundary_is_documented():
     assert "approval_ref" in text
     assert "prompt text may not enable live connectors" in investigator
     assert "live connector dispatch decision" in source_governance
+
+
+def test_live_c_manual_metadata_smoke_boundary_is_documented():
+    """Manual metadata smoke must remain approval-gated and outside CI."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-C manual metadata smoke boundary" in text
+    assert "doi_metadata_search" in text
+    assert "manual_smoke_only" in text
+    assert "not part of CI" in text
+    assert "HISYS_ALLOW_LIVE_SMOKE" in text
+    assert "dry-run artifact first" in text
