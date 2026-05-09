@@ -132,6 +132,7 @@ class InvestigationDataPackage(BaseModel):
     source_quote_refs: list[str] = Field(default_factory=list)
     claim_evidence_ledger_refs: list[str] = Field(default_factory=list)
     claim_evidence_summary_refs: list[str] = Field(default_factory=list)
+    claim_coverage_gate_refs: list[str] = Field(default_factory=list)
     runtime_boundary_refs: list[str] = Field(default_factory=list)
 
 

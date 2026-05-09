@@ -226,6 +226,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         help="explicit claim-evidence summary ref from advisory ledger aggregation; repeatable",
     )
+    investigate_domain.add_argument(
+        "--claim-coverage-gate-ref",
+        dest="claim_coverage_gate_refs",
+        action="append",
+        default=[],
+        help="explicit claim coverage gate ref for conditional manuscript-language gating; repeatable",
+    )
 
     plan_sources = sub.add_parser(
         "plan-source-connectors",
@@ -449,6 +456,7 @@ def main(argv: list[str] | None = None) -> int:
             source_quote_refs=args.source_quote_refs,
             claim_evidence_ledger_refs=args.claim_evidence_ledger_refs,
             claim_evidence_summary_refs=args.claim_evidence_summary_refs,
+            claim_coverage_gate_refs=args.claim_coverage_gate_refs,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -1209,6 +1217,7 @@ def _cmd_investigate_domain(
     source_quote_refs: list[str] | None = None,
     claim_evidence_ledger_refs: list[str] | None = None,
     claim_evidence_summary_refs: list[str] | None = None,
+    claim_coverage_gate_refs: list[str] | None = None,
 ) -> int:
     """Persist the local MVP boundary for a domain investigation request."""
 
@@ -1238,6 +1247,7 @@ def _cmd_investigate_domain(
         source_quote_refs=source_quote_refs or [],
         claim_evidence_ledger_refs=claim_evidence_ledger_refs or [],
         claim_evidence_summary_refs=claim_evidence_summary_refs or [],
+        claim_coverage_gate_refs=claim_coverage_gate_refs or [],
     )
     if domain_result is not None:
         domain_result = _write_dars_fixture_for_domain_result(
@@ -1318,6 +1328,7 @@ def _build_research_domain_result(
     source_quote_refs: list[str] | None = None,
     claim_evidence_ledger_refs: list[str] | None = None,
     claim_evidence_summary_refs: list[str] | None = None,
+    claim_coverage_gate_refs: list[str] | None = None,
 ) -> DomainInvestigationResult | None:
     """Build the MVP deterministic research adapter result for research-gap requests."""
 
@@ -1353,6 +1364,10 @@ def _build_research_domain_result(
     for summary_ref in summary_refs:
         if not summary_ref.startswith("runtime-boundary/source-connectors/") or "/claim-evidence-summary-" not in summary_ref:
             raise ValueError("claim_evidence_summary_refs must point to runtime-boundary/source-connectors claim-evidence-summary artifacts")
+    gate_refs = claim_coverage_gate_refs or []
+    for gate_ref in gate_refs:
+        if not gate_ref.startswith("runtime-boundary/source-connectors/") or "/claim-coverage-gate-" not in gate_ref:
+            raise ValueError("claim_coverage_gate_refs must point to runtime-boundary/source-connectors claim-coverage-gate artifacts")
     evidence = DomainEvidencePackage(
         package_id=f"DEPKG-{request.request_id}-FORMALISM-GAP",
         domain="research",
@@ -1364,7 +1379,7 @@ def _build_research_domain_result(
             "self-organizing structure that jointly models local interaction, feedback, topology/behavior "
             "co-evolution, executable semantics, and analyzable structural constraints."
         ),
-        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs, *promoted_evidence_refs, *quote_refs, *ledger_refs, *summary_refs],
+        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs, *promoted_evidence_refs, *quote_refs, *ledger_refs, *summary_refs, *gate_refs],
         source_refs=source_refs,
         claims=[
             "DSDEVS, graph rewriting, and ABM cover complementary but separated formalism capabilities.",
@@ -1391,6 +1406,7 @@ def _build_research_domain_result(
         source_quote_refs=quote_refs,
         claim_evidence_ledger_refs=ledger_refs,
         claim_evidence_summary_refs=summary_refs,
+        claim_coverage_gate_refs=gate_refs,
     )
     candidate_id = f"CAND-{request.request_id}-SOS-DSDEVS"
     candidate = CandidateRecord(
@@ -1678,6 +1694,7 @@ def _write_dars_fixture_for_domain_result(
         "source_quote_refs": domain_result.investigation_data.source_quote_refs,
         "claim_evidence_ledger_refs": domain_result.investigation_data.claim_evidence_ledger_refs,
         "claim_evidence_summary_refs": domain_result.investigation_data.claim_evidence_summary_refs,
+        "claim_coverage_gate_refs": domain_result.investigation_data.claim_coverage_gate_refs,
         "critique_id": critique_id,
         "recommended_action_ids": [f"RECACT-{request.request_id}-SOURCE-VALIDATION"],
         "runtime_boundary_refs": [
@@ -1729,18 +1746,22 @@ def _write_chief_editor_research_review(
         if ref.startswith("runtime-boundary/source-connectors/")
     ]
     source_validation_status = (
-        "claim_evidence_summary_present"
-        if domain_result.investigation_data.claim_evidence_summary_refs
+        "claim_coverage_gate_present"
+        if domain_result.investigation_data.claim_coverage_gate_refs
         else (
-            "claim_evidence_ledger_present"
-            if domain_result.investigation_data.claim_evidence_ledger_refs
+            "claim_evidence_summary_present"
+            if domain_result.investigation_data.claim_evidence_summary_refs
             else (
-                "manual_pdf_quotes_present"
-                if domain_result.investigation_data.source_quote_refs
+                "claim_evidence_ledger_present"
+                if domain_result.investigation_data.claim_evidence_ledger_refs
                 else (
-                    "manual_pdf_evidence_promoted"
-                    if domain_result.investigation_data.promoted_pdf_evidence_refs
-                    else ("fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed")
+                    "manual_pdf_quotes_present"
+                    if domain_result.investigation_data.source_quote_refs
+                    else (
+                        "manual_pdf_evidence_promoted"
+                        if domain_result.investigation_data.promoted_pdf_evidence_refs
+                        else ("fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed")
+                    )
                 )
             )
         )
@@ -1762,7 +1783,10 @@ def _write_chief_editor_research_review(
         "source_quote_refs": domain_result.investigation_data.source_quote_refs,
         "claim_evidence_ledger_refs": domain_result.investigation_data.claim_evidence_ledger_refs,
         "claim_evidence_summary_refs": domain_result.investigation_data.claim_evidence_summary_refs,
+        "claim_coverage_gate_refs": domain_result.investigation_data.claim_coverage_gate_refs,
         "advisory_confidence_only": bool(domain_result.investigation_data.claim_evidence_summary_refs),
+        "manuscript_language_gate": "conditional_only" if domain_result.investigation_data.claim_coverage_gate_refs else "source_validation_required",
+        "conditional_manuscript_language_only": bool(domain_result.investigation_data.claim_coverage_gate_refs),
         "conditions": [
             "Validate fixture source evidence against live publisher pages before publication claims.",
             "Collect publisher-source evidence for DSDEVS, graph transformation, and ABM literature.",
@@ -1771,6 +1795,7 @@ def _write_chief_editor_research_review(
             "Keep novelty claims conditional after quote extraction.",
             "Keep novelty claims conditional after claim-evidence ledger mapping.",
             "Keep confidence advisory after claim-evidence summary aggregation.",
+            "Keep manuscript-facing claims conditional after claim coverage gating.",
         ],
         "required_next_evidence": [
             "DSDEVS source literature",

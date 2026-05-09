@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 from hisys.cli.main import main
+from hisys.connectors.claim_coverage_gate import ClaimCoverageGateBuilder
 from hisys.connectors.claim_evidence_ledger import ClaimEvidenceLedgerBuilder
 from hisys.connectors.claim_evidence_summary import ClaimEvidenceSummaryBuilder
 from hisys.connectors.open_access_pdf import OpenAccessPdfConnector
@@ -480,3 +481,104 @@ def test_investigate_domain_preserves_claim_evidence_summary_refs_as_advisory_co
     assert chief_decision["advisory_confidence_only"] is True
     assert chief_decision["status"] == "recommend_with_conditions"
     assert "Keep confidence advisory after claim-evidence summary aggregation." in chief_decision["conditions"]
+
+
+def test_investigate_domain_preserves_claim_coverage_gate_refs_as_conditional_manuscript_gate(
+    tmp_path: Path, capsys
+) -> None:
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    fixture = tmp_path / "manual-coverage.pdf"
+    fixture.write_bytes(b"%PDF-1.7\nApproved manual coverage bytes.\n%%EOF\n")
+    package = OpenAccessPdfConnector().collect_fixture(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        fixture_path=fixture,
+        source_url="https://mdpi.com/fixture/manual-coverage.pdf",
+        license_signal="open_access",
+        output_root=tmp_path,
+        yyyymmdd="20260509",
+    )
+    promoted = PdfEvidencePromotionLoader(root=tmp_path).promote(
+        source_access_refs=[package.access_ref],
+        source_evidence_refs=[package.evidence_ref],
+    )
+    quote_result = PdfQuoteExtractor(root=tmp_path).extract(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        promoted_pdf_evidence_refs=promoted.promoted_pdf_evidence_refs,
+        yyyymmdd="20260509",
+    )
+    claim_id = "CLAIM-HISYS-REQ-RESEARCH-GAP-001-DSDEVS"
+    ledger_result = ClaimEvidenceLedgerBuilder(root=tmp_path).build(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        claim_id=claim_id,
+        claim_text="Dynamic Structure DEVS is relevant to topology-changing simulation.",
+        relation="support",
+        rationale="The quote supports relevance, not novelty proof.",
+        source_quote_refs=quote_result.source_quote_refs,
+        yyyymmdd="20260509",
+    )
+    summary_result = ClaimEvidenceSummaryBuilder(root=tmp_path).build(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        claim_id=claim_id,
+        claim_evidence_ledger_refs=ledger_result.claim_evidence_ledger_refs,
+        yyyymmdd="20260509",
+    )
+    gate_result = ClaimCoverageGateBuilder(root=tmp_path).build(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        required_claim_ids=[claim_id, "CLAIM-HISYS-REQ-RESEARCH-GAP-001-TOPOLOGY-BEHAVIOR"],
+        claim_evidence_summary_refs=summary_result.claim_evidence_summary_refs,
+        yyyymmdd="20260509",
+    )
+
+    result = main(
+        [
+            "investigate-domain",
+            "--instance",
+            str(tmp_path),
+            "--request",
+            str(request_path),
+            "--date",
+            "20260509",
+            "--promote-pdf-source-access-ref",
+            package.access_ref,
+            "--promote-pdf-source-evidence-ref",
+            package.evidence_ref,
+            "--source-quote-ref",
+            quote_result.source_quote_refs[0],
+            "--claim-evidence-ledger-ref",
+            ledger_result.claim_evidence_ledger_refs[0],
+            "--claim-evidence-summary-ref",
+            summary_result.claim_evidence_summary_refs[0],
+            "--claim-coverage-gate-ref",
+            gate_result.claim_coverage_gate_refs[0],
+        ]
+    )
+
+    capsys.readouterr()
+    assert result == 0
+    boundary_dir = tmp_path / "runtime-boundary" / "domain-investigation" / "research" / "20260509"
+    data = json.loads((boundary_dir / "investigation-data-INV-HISYS-REQ-RESEARCH-GAP-001.json").read_text(encoding="utf-8"))
+    assert data["claim_coverage_gate_refs"] == gate_result.claim_coverage_gate_refs
+    assert gate_result.claim_coverage_gate_refs[0] in data["evidence_packages"][0]["evidence_refs"]
+    dars_trace = json.loads(
+        (tmp_path / "runtime-boundary" / "dars" / "20260509" / "dars-trace-DARSTRACE-DARSREQ-HISYS-REQ-RESEARCH-GAP-001.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert gate_result.claim_coverage_gate_refs[0] in dars_trace["claim_coverage_gate_refs"]
+    chief_decision = json.loads(
+        (
+            tmp_path
+            / "runtime-boundary"
+            / "chief-editor"
+            / "research"
+            / "20260509"
+            / "research-recommendation-review-CEDEC-HISYS-REQ-RESEARCH-GAP-001.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert chief_decision["claim_coverage_gate_refs"] == gate_result.claim_coverage_gate_refs
+    assert chief_decision["source_validation_status"] == "claim_coverage_gate_present"
+    assert chief_decision["manuscript_language_gate"] == "conditional_only"
+    assert chief_decision["conditional_manuscript_language_only"] is True
+    assert chief_decision["status"] == "recommend_with_conditions"
+    assert "Keep manuscript-facing claims conditional after claim coverage gating." in chief_decision["conditions"]
