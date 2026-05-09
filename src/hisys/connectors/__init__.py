@@ -1,5 +1,6 @@
 """Source connector governance package."""
 
+from .doi_metadata import DoiMetadataConnector, DoiMetadataEvidencePackage
 from .fixture_publisher import FixturePublisherConnector, FixturePublisherEvidencePackage
 from .live_source_config import (
     LiveSearchPolicy,
@@ -12,6 +13,8 @@ from .live_source_dispatch import SourceConnectorDispatchDecision, SourceConnect
 from .live_source_evidence import SourceAccessRecord, SourceEvidenceItem
 
 __all__ = [
+    "DoiMetadataConnector",
+    "DoiMetadataEvidencePackage",
     "FixturePublisherConnector",
     "FixturePublisherEvidencePackage",
     "LiveSearchPolicy",
