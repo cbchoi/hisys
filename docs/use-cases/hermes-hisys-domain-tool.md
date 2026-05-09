@@ -192,6 +192,9 @@ ConfigRegistry
   -> DARS round/threshold policies
   -> output/retention/redaction policies
 
+OntologyManager (future extension)
+  -> configuration suitability mappings across domains, objectives, evidence types, rubrics, prompts, connectors, tenant policy, and approval context
+
 PromptRegistry
   -> domain investigator prompts
   -> DARS critic role bundles
@@ -211,6 +214,7 @@ Suggested config IDs:
 |---|---|
 | `hisys-domain-adapter-registry` | Available domain adapters and enabled status |
 | `hisys-tool-policy` | Hermes-facing Hisys tool permissions and external-call/mutation defaults |
+| `configuration-suitability-ontology` | future ontology mapping that recommends suitable domain adapters, configs, prompt bundles, rubrics, and connector policies for a request context |
 | `domain-source-policy-<domain>` | Allowed source types and governance rules by domain |
 | `domain-rubric-binding-<domain>` | Rubrics and DARS critic panel by domain |
 | `domain-output-policy-<domain>` | Report/memo format, redaction, and retention |
@@ -260,6 +264,7 @@ runtime-boundary/domain-investigation/business/<YYYYMMDD>/...
 7. Secrets are never included in Hisys tool requests, prompt bundles, or config bodies.
 8. Domain adapters must declare what evidence they inspect and what they refuse to inspect.
 9. Commercial deployments should enforce tenant scope, RBAC, approval, audit, retention, and rollback through `ConfigRegistry`/`PromptRegistry`.
+10. Future ontology management may recommend which approved configuration is suitable for a Hermes request, but it cannot activate configurations, bypass validation, or override approval gates.
 
 ## 9. Relationship to Codebase Analysis
 

@@ -164,7 +164,25 @@ runtime evidence/object store
 RBAC, tenant scope, approval, rollback
 ```
 
-### 3.8 Harness Before Live Action
+### 3.8 Ontology-Guided Configuration Suitability — Future Extension
+
+As Hisys becomes domain-general, it should eventually include an ontology management tool that helps determine **which configuration is suitable for which domain, objective, evidence source, critic role, rubric, connector, tenant, and approval context**.
+
+This should be treated as a future extension, not an immediate implementation dependency. The ontology layer should describe relationships such as:
+
+```text
+domain -> suitable evidence schemas
+domain/objective -> suitable investigator adapter
+evidence/source type -> required source-governance policy
+objective/risk level -> suitable DARS critic panel
+critic role -> suitable prompt bundle and rubric refs
+tenant/site policy -> allowed connectors and backend classes
+approval context -> allowed actions and runtime constraints
+```
+
+The ontology management tool should not replace `ConfigRegistry` or `PromptRegistry`. It should help select, explain, and validate suitable registry entries. Config and prompt registries remain the authoritative source of approved snapshots.
+
+### 3.9 Harness Before Live Action
 
 Hisys should prove behavior through fixtures, dry-runs, local loopback adapters, and runtime-boundary evidence before enabling live connectors, live browsing, external LLM calls, vault writes, deployments, or code mutation.
 
@@ -180,7 +198,7 @@ action_taken = none
 
 Live action requires explicit policy, approval, evidence, and validation.
 
-### 3.9 Hermes Tool Boundary
+### 3.10 Hermes Tool Boundary
 
 Hisys should be exposed to Hermes as a governed tool boundary.
 
@@ -207,7 +225,7 @@ quality-gate status
 
 Full evidence stays in Hisys runtime-boundary artifacts. This keeps Hermes useful and responsive while preserving Hisys as the auditable system of record.
 
-### 3.10 Human/System-of-Record Authority
+### 3.11 Human/System-of-Record Authority
 
 Hisys and DARS support decisions. They do not replace authority for consequential actions.
 
@@ -240,6 +258,7 @@ Hisys should evolve as a reusable governed decision-support engine with these pr
 | Runtime-boundary writer | Persist auditable artifacts and compact reports |
 | Registry resolver | Resolve config/prompt/rubric snapshots |
 | Approval gate | Prevent unapproved live or destructive actions |
+| Ontology management tool | Future extension that maps domains, objectives, evidence types, policies, prompts, rubrics, connectors, and approvals to suitable configuration candidates |
 
 ## 5. Canonical Pattern
 
@@ -312,5 +331,6 @@ Future increments should be accepted only when they preserve these principles:
 6. Config, prompts, secrets, and runtime evidence stay separated.
 7. Local fixture/dry-run behavior exists before live behavior.
 8. Runtime-boundary records capture tool/user/agent/system crossings.
-9. Commercial migration path remains file-first but database-ready.
-10. Hermes receives compact results while Hisys preserves full audit evidence.
+9. Configuration suitability is explainable; future ontology support may recommend suitable registry entries, but approved registries remain authoritative.
+10. Commercial migration path remains file-first but database-ready.
+11. Hermes receives compact results while Hisys preserves full audit evidence.

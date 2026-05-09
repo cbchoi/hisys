@@ -32,6 +32,9 @@ Use two complementary registry abstractions:
 PromptRegistry
   owns system prompts, role profiles, prompt templates, rubric refs, prompt bundles
 
+OntologyManager (future extension)
+  recommends suitable ConfigRegistry/PromptRegistry entries by reasoning over domain, objective, evidence type, source policy, critic roles, rubrics, connector classes, tenant scope, and approval context
+
 ConfigRegistry
   owns non-prompt operational configuration, policy, backend declarations, thresholds, and feature flags
 ```
@@ -71,6 +74,7 @@ For commercialization, these should eventually move into a DB-backed `ConfigRegi
 | Data-retention policies | retention windows, export/redaction settings | customer contracts/compliance |
 | Notification routing | Discord/email/webhook route configs | tenant operations |
 | Evaluation configs | rubric refs, scoring aggregation policy | progressive decision quality |
+| Ontology mappings | domain/objective/evidence-to-config suitability rules | explainable configuration selection |
 | Release gates | required checks, traceability gates, scan policies | commercial quality control |
 
 These should **not** be DB-managed as ordinary config:
@@ -128,6 +132,7 @@ config_approvals
 config_audit_events
 config_resolution_events
 config_schema_registry
+config_ontology_mappings
 config_experiments
 ```
 
@@ -153,7 +158,25 @@ config_experiments
 | `content_hash` | deterministic hash of canonical JSON |
 | `created_by`, `created_at` | audit fields |
 
-### 6.3 `config_audit_events`
+### 6.4 `config_ontology_mappings` — future extension
+
+A later ontology management tool may maintain suitability mappings that explain which configuration, prompt bundle, rubric, adapter, connector, or approval policy should be considered for a given domain context.
+
+| Column | Purpose |
+|---|---|
+| `mapping_id` | stable ontology mapping ID |
+| `domain` | codebase, research, business, investment, iso_process, general |
+| `objective_tags` | normalized task/objective classes |
+| `evidence_type` | source/evidence class the mapping applies to |
+| `candidate_config_refs` | suitable ConfigRegistry entries |
+| `candidate_prompt_refs` | suitable PromptRegistry entries |
+| `suitability_rationale` | human-readable reason for recommendation |
+| `constraints` | tenant, approval, source-governance, or connector constraints |
+| `status` | draft/review/active/deprecated |
+
+Ontology mappings should only recommend or explain suitability. They must not activate configs, bypass approval, store secrets, or override registry validation.
+
+### 6.5 `config_audit_events`
 
 Events should include:
 
@@ -179,6 +202,7 @@ config_rejected_by_policy
 6. **Prompt governance remains separate.** Prompt lifecycle uses `PromptRegistry`; operational config uses `ConfigRegistry`.
 7. **Runtime user input is not configuration.** User focus/request text may select approved configs but cannot create active config by itself.
 8. **Safety defaults are disabled.** Live connectors and external LLM backends remain disabled until approved.
+9. **Ontology advice is not approval.** Future ontology tooling may recommend suitable configs/prompts/rubrics, but active runtime use still requires registry validation, policy checks, and approval gates.
 
 ## 8. Runtime Boundary Requirement
 
@@ -213,6 +237,7 @@ This gives commercial customers reproducibility without copying every config bod
 | `notification-routing` | Discord/email/webhook routing |
 | `release-gates` | Required checks before release |
 | `data-retention-policy` | retention/export/redaction policy |
+| `configuration-suitability-ontology` | future ontology mappings for domain/objective/evidence-to-config suitability |
 
 ## 10. Acceptance Criteria for Future Implementation
 
@@ -226,3 +251,4 @@ A future implementation increment should verify:
 6. DB-backed and file-backed registries return equivalent canonical snapshots.
 7. Tenant mismatch is rejected.
 8. Config resolution emits an audit event.
+9. Future ontology mapping recommendations explain configuration suitability without bypassing registry validation or approvals.

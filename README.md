@@ -138,7 +138,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   and manage DARS system prompts, role profiles, templates, policy bindings, and
   rubric refs through a specialized `PromptRegistry`; both can start file-backed
   and later move to tenant-scoped databases with immutable versions, approvals,
-  hashes, audit events, and rollback. `docs/use-cases/hermes-hisys-domain-tool.md`
+  hashes, audit events, and rollback. A future ontology management tool should
+  help decide which domain adapter, configuration, prompt bundle, rubric, and
+  connector policy are suitable for a given domain/objective/evidence context,
+  while remaining advisory to the approved registries and approval gates. `docs/use-cases/hermes-hisys-domain-tool.md`
   defines Hisys as a Hermes-callable, domain-general investigation and
   decision-support tool: Hermes passes a controlled request, Hisys builds
   evidence and alternatives, DARS critiques them, and Hisys returns compact
