@@ -388,6 +388,12 @@ def _cmd_investigate_domain(instance_root: Path, request_path: Path, yyyymmdd: s
             boundary_dir=boundary_dir,
             yyyymmdd=yyyymmdd,
         )
+        domain_result = _write_chief_editor_research_review(
+            instance=instance,
+            request=request,
+            domain_result=domain_result,
+            yyyymmdd=yyyymmdd,
+        )
         data_artifact = boundary_dir / f"investigation-data-{domain_result.investigation_data.investigation_id}.json"
         data_artifact.write_text(_record_json(domain_result.investigation_data), encoding="utf-8")
         alternatives_artifact = boundary_dir / f"alternative-decision-set-{domain_result.alternative_decision_set.alternative_set_id}.json"
@@ -794,6 +800,78 @@ def _write_dars_fixture_for_domain_result(
         [str(request_path.relative_to(instance.root)), str(response_path.relative_to(instance.root)), trace_ref]
     )
     domain_result.runtime_boundary_refs.extend([str(request_path.relative_to(instance.root)), str(response_path.relative_to(instance.root)), trace_ref])
+    return domain_result
+
+
+def _write_chief_editor_research_review(
+    *,
+    instance: InstanceRoot,
+    request: DomainInvestigationRequest,
+    domain_result: DomainInvestigationResult,
+    yyyymmdd: str,
+) -> DomainInvestigationResult:
+    """Write the Chief Editor research recommendation review product."""
+
+    decision_id = f"CEDEC-{request.request_id}"
+    decision_dir = instance.runtime_boundary_dir / "chief-editor" / "research" / yyyymmdd
+    decision_dir.mkdir(parents=True, exist_ok=True)
+    recommended_id = domain_result.alternative_decision_set.recommended_candidate_id
+    dars_trace_refs = [ref for ref in domain_result.dars_refs if "/dars-trace-" in ref]
+    decision = {
+        "schema_id": "hisys.chief_editor.research_recommendation_review",
+        "schema_version": "0.1.0",
+        "decision_id": decision_id,
+        "request_id": request.request_id,
+        "decision_type": "research_recommendation_review",
+        "status": "recommend_with_conditions",
+        "domain": request.domain,
+        "objective": request.objective,
+        "recommended_candidate_id": recommended_id,
+        "recommended_direction": domain_result.recommendation_summary,
+        "conditions": [
+            "Collect publisher-source evidence for DSDEVS, graph transformation, and ABM literature.",
+            "Define evaluation scenarios for topology/behavior co-evolution.",
+            "Keep novelty claims conditional until DARS source-validation actions are resolved.",
+        ],
+        "required_next_evidence": [
+            "DSDEVS source literature",
+            "graph transformation/self-organization formalism sources",
+            "agent-based modeling emergence/verification sources",
+            "evaluation scenarios for topology/behavior co-evolution",
+        ],
+        "dars_trace_refs": dars_trace_refs,
+        "human_approval_required": True,
+        "approval_status": "not_requested",
+        "action_taken": "none",
+        "external_call_made": False,
+        "mutation_performed": False,
+        "policy_refs": ["HISYS-T-024", "HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"],
+    }
+    decision_path = decision_dir / f"research-recommendation-review-{decision_id}.json"
+    decision_path.write_text(json.dumps(decision, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    md_path = decision_dir / f"research-recommendation-review-{decision_id}.md"
+    md_path.write_text(
+        "\n".join(
+            [
+                "# Chief Editor Research Recommendation Review",
+                "",
+                f"- decision_id: `{decision_id}`",
+                f"- request_id: `{request.request_id}`",
+                "- decision_type: `research_recommendation_review`",
+                "- status: `recommend_with_conditions`",
+                f"- recommended_candidate_id: `{recommended_id}`",
+                "- action_taken: `none`",
+                "- human_approval_required: `true`",
+                "",
+                "## Conditions",
+                *[f"- {condition}" for condition in decision["conditions"]],
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    ref = str(decision_path.relative_to(instance.root))
+    domain_result.runtime_boundary_refs.append(ref)
     return domain_result
 
 

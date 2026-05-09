@@ -151,3 +151,15 @@ def test_investigate_domain_research_gap_fixture_generates_alternatives(tmp_path
     assert response["boundary"]["mutation_performed"] is False
     assert response["critique"]["recommended_actions"][0]["allowed_to_execute"] is False
     assert response["decision_trace"]["blocks_decision"] is False
+
+    chief_dir = tmp_path / "runtime-boundary" / "chief-editor" / "research" / "20260509"
+    chief_decision = chief_dir / "research-recommendation-review-CEDEC-HISYS-REQ-RESEARCH-GAP-001.json"
+    assert chief_decision.exists()
+    decision = json.loads(chief_decision.read_text(encoding="utf-8"))
+    assert decision["decision_type"] == "research_recommendation_review"
+    assert decision["status"] == "recommend_with_conditions"
+    assert decision["recommended_candidate_id"] == "CAND-HISYS-REQ-RESEARCH-GAP-001-SOS-DSDEVS"
+    assert decision["action_taken"] == "none"
+    assert decision["human_approval_required"] is True
+    assert decision["external_call_made"] is False
+    assert decision["mutation_performed"] is False

@@ -106,6 +106,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   loopback critique flags novelty/proof-obligation risks, recommends publisher
   source validation, never blocks the decision, and records `action_taken=none`,
   `external_call_made=false`, and `mutation_performed=false`.
+- Increment **Hisys MVP A5 Chief Editor research review** -
+  The domain investigation flow writes a Chief Editor
+  `research_recommendation_review` product under
+  `runtime-boundary/chief-editor/research/<YYYYMMDD>/`. For the research-gap
+  fixture, the decision is `recommend_with_conditions`, requires human review,
+  requests publisher-source/evaluation-scenario evidence, and takes no external
+  action or mutation.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
