@@ -14,6 +14,35 @@ from typing import Any
 _SCHEMA_VERSION = "0.1.0"
 _SAFE_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$")
 _TOPIC_UID_RE = re.compile(r"^TOPIC-\d{8}-[A-Z0-9]{6}$")
+_GROUP_UID_RE = re.compile(r"^GROUP-\d{8}-[A-Z0-9]{6}$")
+_INVESTIGATION_ID_RE = re.compile(r"^INV-\d{8}-\d{4}-[A-Z0-9]{4}$")
+_MAX_VAULT_REF_LENGTH = 240
+_ALLOWED_LINK_RELATIONS = frozenset(
+    {
+        "belongs_to_group",
+        "belongs_to_topic",
+        "part_of_investigation",
+        "derived_from_source",
+        "has_attachment",
+        "quotes_source",
+        "supports_claim",
+        "contradicts_claim",
+        "needs_evidence_for_claim",
+        "summarizes_ledgers",
+        "gates_claims",
+        "feeds_live_k_coverage_gate",
+        "reviewed_by_dars",
+        "reviewed_by_chief_editor",
+        "decided_by_gatekeeper",
+        "merged_into",
+        "merged_from",
+        "split_into",
+        "split_from",
+        "related_topics",
+        "promoted_from_investigation",
+        "tombstoned_by",
+    }
+)
 
 
 def build_vault_plan(
@@ -210,30 +239,7 @@ def build_vault_template_plan(*, request_id: str) -> dict[str, Any]:
         "schema_version": _SCHEMA_VERSION,
         "request_id": request_id,
         "templates": templates,
-        "allowed_relations": [
-            "belongs_to_group",
-            "belongs_to_topic",
-            "part_of_investigation",
-            "derived_from_source",
-            "has_attachment",
-            "quotes_source",
-            "supports_claim",
-            "contradicts_claim",
-            "needs_evidence_for_claim",
-            "summarizes_ledgers",
-            "gates_claims",
-            "feeds_live_k_coverage_gate",
-            "reviewed_by_dars",
-            "reviewed_by_chief_editor",
-            "decided_by_gatekeeper",
-            "merged_into",
-            "merged_from",
-            "split_into",
-            "split_from",
-            "related_topics",
-            "promoted_from_investigation",
-            "tombstoned_by",
-        ],
+        "allowed_relations": sorted(_ALLOWED_LINK_RELATIONS),
         "required_indexes": [
             "registry.json",
             "topics/INDEX.json",
@@ -298,19 +304,40 @@ def validate_vault_manifests(
         _check_slug(topic.get("topic_slug"), "registry.topic_slug", issues)
         _check_ref(topic.get("path"), "registry.topic.path", issues)
         _check_ref(topic.get("manifest"), "registry.topic.manifest", issues)
+        for group_uid in topic.get("group_uids", []):
+            _check_group_uid(group_uid, "registry.topic.group_uids", issues)
+    for group in registry.get("groups", []):
+        _check_group_uid(group.get("group_uid"), "registry.group_uid", issues)
+        _check_slug(group.get("group_slug"), "registry.group_slug", issues)
+        _check_ref(group.get("path"), "registry.group.path", issues)
+        for topic_uid in group.get("topic_uids", []):
+            _check_topic_uid(topic_uid, "registry.group.topic_uids", issues)
 
     _check_topic_uid(topic_manifest.get("topic_uid"), "topic_manifest.topic_uid", issues)
     _check_ref(topic_manifest.get("path"), "topic_manifest.path", issues)
     for ref in _flatten_refs(topic_manifest.get("canonical_indexes", {})):
         _check_ref(ref, "topic_manifest.canonical_indexes", issues)
     _check_ref(topic_manifest.get("investigations_index"), "topic_manifest.investigations_index", issues)
+    for ref in topic_manifest.get("group_refs", []):
+        _check_ref(ref, "topic_manifest.group_refs", issues)
+    for ref in topic_manifest.get("gatekeeper_decision_refs", []):
+        _check_ref(ref, "topic_manifest.gatekeeper_decision_refs", issues)
+    _check_structured_links(topic_manifest.get("links", []), "topic_manifest.links", issues)
 
+    _check_topic_uid(investigation_manifest.get("topic_uid"), "investigation_manifest.topic_uid", issues)
+    _check_slug(investigation_manifest.get("topic_slug"), "investigation_manifest.topic_slug", issues)
+    _check_investigation_id(investigation_manifest.get("investigation_id"), "investigation_manifest.investigation_id", issues)
+    _check_investigation_id(investigation_manifest.get("run_id"), "investigation_manifest.run_id", issues)
     paths = investigation_manifest.get("paths", {})
     for ref in _flatten_refs(paths):
         _check_ref(ref, "investigation_manifest.paths", issues)
     for ref in _flatten_refs(investigation_manifest.get("indexes", {})):
         _check_ref(ref, "investigation_manifest.indexes", issues)
+    _check_structured_links(investigation_manifest.get("links", []), "investigation_manifest.links", issues)
+    for ref in _flatten_refs(investigation_manifest.get("artifacts", {})):
+        _check_ref(ref, "investigation_manifest.artifacts", issues)
 
+    _check_structured_links(gatekeeper.get("links", []), "gatekeeper.links", issues)
     for score_name, score in gatekeeper.get("scores", {}).items():
         if score.get("value") is None:
             issues.append({"code": "gatekeeper_score_missing_value", "path": score_name, "message": "score requires value"})
@@ -358,6 +385,8 @@ def _check_ref(ref: object, path: str, issues: list[dict[str, str]]) -> None:
         issues.append({"code": "missing_ref", "path": path, "message": "ref is required"})
         return
     ref_path = Path(ref)
+    if len(ref) > _MAX_VAULT_REF_LENGTH:
+        issues.append({"code": "overlong_vault_relative_ref", "path": path, "message": ref})
     if ref_path.is_absolute() or ".." in ref_path.parts:
         issues.append({"code": "unsafe_vault_relative_ref", "path": path, "message": ref})
 
@@ -365,6 +394,33 @@ def _check_ref(ref: object, path: str, issues: list[dict[str, str]]) -> None:
 def _check_topic_uid(uid: object, path: str, issues: list[dict[str, str]]) -> None:
     if not isinstance(uid, str) or not _TOPIC_UID_RE.fullmatch(uid):
         issues.append({"code": "invalid_topic_uid", "path": path, "message": str(uid)})
+
+
+def _check_group_uid(uid: object, path: str, issues: list[dict[str, str]]) -> None:
+    if not isinstance(uid, str) or not _GROUP_UID_RE.fullmatch(uid):
+        issues.append({"code": "invalid_group_uid", "path": path, "message": str(uid)})
+
+
+def _check_investigation_id(investigation_id: object, path: str, issues: list[dict[str, str]]) -> None:
+    if not isinstance(investigation_id, str) or not _INVESTIGATION_ID_RE.fullmatch(investigation_id):
+        issues.append({"code": "invalid_investigation_id", "path": path, "message": str(investigation_id)})
+
+
+def _check_structured_links(links: object, path: str, issues: list[dict[str, str]]) -> None:
+    if links is None:
+        return
+    if not isinstance(links, list):
+        issues.append({"code": "invalid_links", "path": path, "message": "links must be a list"})
+        return
+    for index, link in enumerate(links):
+        link_path = f"{path}[{index}]"
+        if not isinstance(link, dict):
+            issues.append({"code": "invalid_link", "path": link_path, "message": "link must be an object"})
+            continue
+        relation = link.get("relation")
+        if relation not in _ALLOWED_LINK_RELATIONS:
+            issues.append({"code": "unknown_link_relation", "path": f"{link_path}.relation", "message": str(relation)})
+        _check_ref(link.get("ref"), f"{link_path}.ref", issues)
 
 
 def _check_slug(slug: object, path: str, issues: list[dict[str, str]]) -> None:

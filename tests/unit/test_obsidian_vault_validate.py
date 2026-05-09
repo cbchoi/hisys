@@ -102,3 +102,60 @@ def test_vault_validate_cli_writes_report_and_returns_nonzero_for_invalid(tmp_pa
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["valid"] is False
     assert report["vault_write_attempted"] is False
+
+
+def test_validate_vault_manifests_rejects_unknown_structured_link_relation(tmp_path: Path) -> None:
+    bad_topic = json.loads((EXAMPLES / "topic-manifest.json").read_text(encoding="utf-8"))
+    bad_topic["links"] = [{"relation": "made_up_relation", "ref": "canonical/claims/CLAIM-001.md"}]
+    bad_path = tmp_path / "bad-topic-manifest.json"
+    bad_path.write_text(json.dumps(bad_topic, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    report = validate_vault_manifests(
+        registry_path=EXAMPLES / "registry.json",
+        topic_manifest_path=bad_path,
+        investigation_manifest_path=EXAMPLES / "investigation-manifest.json",
+        gatekeeper_decision_path=EXAMPLES / "gatekeeper-decision.json",
+    )
+
+    assert report["valid"] is False
+    assert any(issue["code"] == "unknown_link_relation" for issue in report["issues"])
+
+
+def test_validate_vault_manifests_rejects_invalid_group_and_investigation_ids(tmp_path: Path) -> None:
+    bad_registry = json.loads((EXAMPLES / "registry.json").read_text(encoding="utf-8"))
+    bad_registry["groups"][0]["group_uid"] = "GROUP-not-valid"
+    bad_registry_path = tmp_path / "bad-registry.json"
+    bad_registry_path.write_text(json.dumps(bad_registry, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    bad_investigation = json.loads((EXAMPLES / "investigation-manifest.json").read_text(encoding="utf-8"))
+    bad_investigation["investigation_id"] = "INV-not-valid"
+    bad_investigation_path = tmp_path / "bad-investigation-manifest.json"
+    bad_investigation_path.write_text(json.dumps(bad_investigation, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    report = validate_vault_manifests(
+        registry_path=bad_registry_path,
+        topic_manifest_path=EXAMPLES / "topic-manifest.json",
+        investigation_manifest_path=bad_investigation_path,
+        gatekeeper_decision_path=EXAMPLES / "gatekeeper-decision.json",
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "invalid_group_uid" in codes
+    assert "invalid_investigation_id" in codes
+
+
+def test_validate_vault_manifests_rejects_overlong_vault_relative_ref(tmp_path: Path) -> None:
+    bad_topic = json.loads((EXAMPLES / "topic-manifest.json").read_text(encoding="utf-8"))
+    bad_topic["canonical_indexes"]["sources"] = "canonical/sources/" + "x" * 260 + ".json"
+    bad_path = tmp_path / "bad-topic-manifest.json"
+    bad_path.write_text(json.dumps(bad_topic, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    report = validate_vault_manifests(
+        registry_path=EXAMPLES / "registry.json",
+        topic_manifest_path=bad_path,
+        investigation_manifest_path=EXAMPLES / "investigation-manifest.json",
+        gatekeeper_decision_path=EXAMPLES / "gatekeeper-decision.json",
+    )
+
+    assert report["valid"] is False
+    assert any(issue["code"] == "overlong_vault_relative_ref" for issue in report["issues"])

@@ -394,6 +394,18 @@ record, and treats Obsidian wikilinks as human-navigation projections only. The
 command writes no real vault templates and records `vault_write_attempted=false`,
 `external_call_made=false`, and `mutation_performed=false`.
 
+## Live-Obsidian-Config-E implementation status
+
+The vault manifest validator now hardens the Claude-reviewed Obsidian contract
+before any vault writer exists. It uses the same controlled relation vocabulary
+advertised by `vault-template-plan` and rejects unknown structured link
+relations, invalid `GROUP-YYYYMMDD-XXXXXX` group IDs, invalid
+`INV-YYYYMMDD-HHMM-XXXX` investigation/run IDs, and overlong vault-relative
+refs. These checks apply to registry, topic-manifest, investigation-manifest,
+and gatekeeper decision fixtures while still writing only validation reports and
+keeping `vault_write_attempted=false`, `external_call_made=false`, and
+`mutation_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

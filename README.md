@@ -297,6 +297,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   record, treats Obsidian wikilinks as projections, lists allowed relation
   vocabulary and required index files, and writes only runtime-boundary/report
   artifacts with no vault mutation.
+- Increment **Live-Obsidian-Config-E validator hardening** -
+  `hisys.config.obsidian_live.validate_vault_manifests` now shares the memo
+  ontology relation vocabulary with the template planner and rejects unknown
+  structured link relations, invalid `GROUP-YYYYMMDD-XXXXXX` group IDs, invalid
+  `INV-YYYYMMDD-HHMM-XXXX` investigation/run IDs, and overlong vault-relative
+  refs. These checks keep registry/topic/investigation/gatekeeper manifests
+  bounded, relation-controlled, and safe for future vault-write planning while
+  preserving `vault_write_attempted=false`, `external_call_made=false`, and
+  `mutation_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
