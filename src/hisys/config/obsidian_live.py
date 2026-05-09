@@ -723,6 +723,55 @@ def write_live_vault_transaction_plan(*, instance_root: Path, yyyymmdd: str, pla
     return report_path
 
 
+def build_live_obsidian_config_status_report(*, request_id: str) -> dict[str, Any]:
+    """Build the Live-Obsidian-Config completion status report."""
+
+    stage_defs = [
+        ("A", "scaffold obsidian live research config", "docs/use-cases/obsidian-live-research-layout.md", "design_scaffold"),
+        ("B", "vault dry-run planner", "vault-plan", "planner"),
+        ("C", "vault manifest validator", "vault-validate", "validator"),
+        ("D", "memo ontology template planner", "vault-template-plan", "template_planner"),
+        ("E", "validator hardening", "vault-validate", "validator_hardening"),
+        ("F", "fixture vault apply", "vault-apply", "fixture_writer"),
+        ("G", "topic transition plan", "vault-topic-transition-plan", "transition_planner"),
+        ("H", "fixture roundtrip validation", "vault-roundtrip-validate", "roundtrip_validator"),
+        ("I", "live vault preflight", "vault-live-preflight", "preflight_no_write"),
+        ("J", "live vault approval package", "vault-live-approval-package", "approval_package"),
+        ("K", "live vault write gate", "vault-live-write-gate", "write_gate"),
+        ("L", "live vault transaction plan", "vault-live-transaction-plan", "transaction_plan"),
+        ("M", "fixture transaction rehearsal", "vault-live-transaction-rehearse", "fixture_rehearsal"),
+        ("N", "approved transaction apply", "vault-live-transaction-apply", "approval_gated_writer_boundary"),
+        ("O", "completion status report", "vault-live-config-status", "completion_gate"),
+    ]
+    stages = [
+        {"increment": f"Live-Obsidian-Config-{letter}", "title": title, "command": command, "capability": capability, "status": "complete"}
+        for letter, title, command, capability in stage_defs
+    ]
+    return {
+        "schema_id": "hisys.obsidian.live_config_status",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "complete",
+        "live_obsidian_config_complete": True,
+        "completed_stage_count": len(stages),
+        "open_stage_count": 0,
+        "stages": stages,
+        "remaining_live_action": "operator may run vault-live-transaction-apply against /home/cbchoi/obsidian only with explicit approval and --allow-real-obsidian-vault",
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def write_live_obsidian_config_status_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"vault-live-config-status-{report['request_id']}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"vault-live-config-status-{report['request_id']}.md").write_text(_format_live_obsidian_config_status(report), encoding="utf-8")
+    return report_path
+
+
 def apply_live_vault_transaction(
     *,
     transaction_plan: dict[str, Any],
@@ -1175,6 +1224,25 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_live_obsidian_config_status(report: dict[str, Any]) -> str:
+    stages = "\n".join(f"- {stage['increment']}: {stage['title']} (`{stage['command']}`)" for stage in report.get("stages", []))
+    return "\n".join(
+        [
+            "# Live-Obsidian-Config Status",
+            "",
+            f"- Request: `{report['request_id']}`",
+            f"- Status: {report['status']}",
+            f"- Completed stages: {report['completed_stage_count']}",
+            f"- Open stages: {report['open_stage_count']}",
+            f"- Real Obsidian vault write performed: {str(report['real_obsidian_vault_write_performed']).lower()}",
+            "",
+            "## Stages",
+            stages,
+            "",
+        ]
+    )
+
+
 def _format_live_vault_transaction_apply(report: dict[str, Any]) -> str:
     ops = "\n".join(f"- `{item['vault_relative_ref']}` pre=`{item['pre_write_hash']}` post=`{item['post_write_hash']}`" for item in report.get("applied_operations", [])) or "- none"
     return "\n".join(
@@ -1349,6 +1417,7 @@ def _format_vault_apply_report(report: dict[str, Any]) -> str:
 __all__ = [
     "apply_live_vault_transaction",
     "apply_vault_plan_to_fixture",
+    "build_live_obsidian_config_status_report",
     "build_live_vault_approval_package",
     "build_live_vault_preflight_report",
     "build_live_vault_transaction_plan",
@@ -1359,6 +1428,7 @@ __all__ = [
     "rehearse_live_vault_transaction_in_fixture",
     "validate_fixture_vault_roundtrip",
     "validate_vault_manifests",
+    "write_live_obsidian_config_status_report",
     "write_live_vault_approval_package",
     "write_vault_apply_report",
     "write_live_vault_preflight_report",

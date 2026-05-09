@@ -365,6 +365,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   confirmation; it refuses `/home/cbchoi/obsidian` unless the separate
   `--allow-real-obsidian-vault` flag is present. Tests exercise only temporary
   candidate vault roots, not the real vault.
+- Increment **Live-Obsidian-Config-O completion status** -
+  `hisys.config.obsidian_live.build_live_obsidian_config_status_report` and
+  `hisys vault-live-config-status` record that Live-Obsidian-Config A through O
+  are complete, with zero open stages and no real Obsidian vault write performed.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

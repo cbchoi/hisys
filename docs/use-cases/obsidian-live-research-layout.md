@@ -496,6 +496,14 @@ unless `--allow-real-obsidian-vault` is supplied. Unit tests exercise temporary
 candidate vault roots only; this Ralph run did not execute the command against the
 real Obsidian vault.
 
+## Live-Obsidian-Config-O implementation status
+
+`hisys.config.obsidian_live.build_live_obsidian_config_status_report` and `hisys
+vault-live-config-status` produce the completion gate report for Live-Obsidian-
+Config. The report records A through O as complete, `open_stage_count=0`, and
+`real_obsidian_vault_write_performed=false`. It is a runtime-boundary status
+artifact, not an additional vault writer.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

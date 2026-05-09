@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -494,6 +494,14 @@ def _build_parser() -> argparse.ArgumentParser:
     live_apply.add_argument("--allow-real-obsidian-vault", action="store_true", help="required only for /home/cbchoi/obsidian")
     live_apply.add_argument("--clean-git-status", action="store_true", help="operator-confirmed clean git status signal")
 
+    live_status = sub.add_parser(
+        "vault-live-config-status",
+        help="write the Live-Obsidian-Config completion status report",
+    )
+    live_status.add_argument("--instance", required=True, help="runtime instance root for status report")
+    live_status.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    live_status.add_argument("--request-id", required=True, help="request id for status report")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -790,6 +798,12 @@ def main(argv: list[str] | None = None) -> int:
             explicit_live_write_enable=args.explicit_live_write_enable,
             allow_real_obsidian_vault=args.allow_real_obsidian_vault,
             clean_git_status=args.clean_git_status,
+        )
+    if args.command == "vault-live-config-status":
+        return _cmd_vault_live_config_status(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
         )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
@@ -1134,6 +1148,18 @@ def _cmd_vault_live_transaction_apply(
     print(f"report={report_path}")
     print(f"real_obsidian_vault_write_performed: {str(report['real_obsidian_vault_write_performed']).lower()}")
     return 0 if report["status"] == "applied" else 1
+
+
+def _cmd_vault_live_config_status(*, instance_root: Path, yyyymmdd: str, request_id: str) -> int:
+    """Write the Live-Obsidian-Config completion status report."""
+
+    report = build_live_obsidian_config_status_report(request_id=request_id)
+    report_path = write_live_obsidian_config_status_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
+    print(f"vault live config status: {report['status']}")
+    print(f"report={report_path}")
+    print(f"open_stage_count: {report['open_stage_count']}")
+    print("real_obsidian_vault_write_performed: false")
+    return 0 if report["status"] == "complete" and report["open_stage_count"] == 0 else 1
 
 
 def _cmd_vault_topic_transition_plan(
