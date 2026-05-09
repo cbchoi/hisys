@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 from hisys.cli.main import main
+from hisys.connectors.claim_evidence_ledger import ClaimEvidenceLedgerBuilder
 from hisys.connectors.open_access_pdf import OpenAccessPdfConnector
 from hisys.connectors.pdf_evidence_promotion import PdfEvidencePromotionLoader
 from hisys.connectors.pdf_quote_extractor import PdfQuoteExtractor
@@ -305,3 +306,85 @@ def test_investigate_domain_preserves_explicit_pdf_quote_refs_without_strengthen
     assert chief_decision["source_validation_status"] == "manual_pdf_quotes_present"
     assert chief_decision["status"] == "recommend_with_conditions"
     assert "Keep novelty claims conditional after quote extraction." in chief_decision["conditions"]
+
+
+def test_investigate_domain_preserves_claim_evidence_ledger_refs_without_strengthening_claims(
+    tmp_path: Path, capsys
+) -> None:
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    fixture = tmp_path / "manual-ledger.pdf"
+    fixture.write_bytes(b"%PDF-1.7\nApproved manual ledger bytes.\n%%EOF\n")
+    package = OpenAccessPdfConnector().collect_fixture(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        fixture_path=fixture,
+        source_url="https://mdpi.com/fixture/manual-ledger.pdf",
+        license_signal="open_access",
+        output_root=tmp_path,
+        yyyymmdd="20260509",
+    )
+    promoted = PdfEvidencePromotionLoader(root=tmp_path).promote(
+        source_access_refs=[package.access_ref],
+        source_evidence_refs=[package.evidence_ref],
+    )
+    quote_result = PdfQuoteExtractor(root=tmp_path).extract(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        promoted_pdf_evidence_refs=promoted.promoted_pdf_evidence_refs,
+        yyyymmdd="20260509",
+    )
+    ledger_result = ClaimEvidenceLedgerBuilder(root=tmp_path).build(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        claim_id="CLAIM-HISYS-REQ-RESEARCH-GAP-001-DSDEVS",
+        claim_text="Dynamic Structure DEVS is relevant to topology-changing simulation.",
+        relation="support",
+        rationale="The quote records structural change evidence but does not prove novelty.",
+        source_quote_refs=quote_result.source_quote_refs,
+        yyyymmdd="20260509",
+    )
+
+    result = main(
+        [
+            "investigate-domain",
+            "--instance",
+            str(tmp_path),
+            "--request",
+            str(request_path),
+            "--date",
+            "20260509",
+            "--promote-pdf-source-access-ref",
+            package.access_ref,
+            "--promote-pdf-source-evidence-ref",
+            package.evidence_ref,
+            "--source-quote-ref",
+            quote_result.source_quote_refs[0],
+            "--claim-evidence-ledger-ref",
+            ledger_result.claim_evidence_ledger_refs[0],
+        ]
+    )
+
+    capsys.readouterr()
+    assert result == 0
+    boundary_dir = tmp_path / "runtime-boundary" / "domain-investigation" / "research" / "20260509"
+    data = json.loads((boundary_dir / "investigation-data-INV-HISYS-REQ-RESEARCH-GAP-001.json").read_text(encoding="utf-8"))
+    assert data["claim_evidence_ledger_refs"] == ledger_result.claim_evidence_ledger_refs
+    assert ledger_result.claim_evidence_ledger_refs[0] in data["evidence_packages"][0]["evidence_refs"]
+    dars_trace = json.loads(
+        (tmp_path / "runtime-boundary" / "dars" / "20260509" / "dars-trace-DARSTRACE-DARSREQ-HISYS-REQ-RESEARCH-GAP-001.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert ledger_result.claim_evidence_ledger_refs[0] in dars_trace["claim_evidence_ledger_refs"]
+    chief_decision = json.loads(
+        (
+            tmp_path
+            / "runtime-boundary"
+            / "chief-editor"
+            / "research"
+            / "20260509"
+            / "research-recommendation-review-CEDEC-HISYS-REQ-RESEARCH-GAP-001.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert chief_decision["claim_evidence_ledger_refs"] == ledger_result.claim_evidence_ledger_refs
+    assert chief_decision["source_validation_status"] == "claim_evidence_ledger_present"
+    assert chief_decision["status"] == "recommend_with_conditions"
+    assert "Keep novelty claims conditional after claim-evidence ledger mapping." in chief_decision["conditions"]
