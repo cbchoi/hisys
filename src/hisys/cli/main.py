@@ -33,7 +33,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -320,6 +320,26 @@ def _build_parser() -> argparse.ArgumentParser:
         help="explicit claim evidence ledger ref; repeat for multiple refs",
     )
 
+    coverage_gate = sub.add_parser(
+        "build-claim-coverage-gate",
+        help="gate manuscript-facing claim language on explicit claim evidence summaries",
+    )
+    coverage_gate.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    coverage_gate.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    coverage_gate.add_argument("--request-id", required=True, help="request id for claim coverage gate")
+    coverage_gate.add_argument(
+        "--required-claim-id",
+        action="append",
+        required=True,
+        help="required recommendation claim id; repeat for multiple required claims",
+    )
+    coverage_gate.add_argument(
+        "--claim-evidence-summary-ref",
+        action="append",
+        required=True,
+        help="explicit claim evidence summary ref; repeat for multiple refs",
+    )
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -485,6 +505,14 @@ def main(argv: list[str] | None = None) -> int:
             request_id=args.request_id,
             claim_id=args.claim_id,
             claim_evidence_ledger_refs=args.claim_evidence_ledger_ref,
+        )
+    if args.command == "build-claim-coverage-gate":
+        return _cmd_build_claim_coverage_gate(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            required_claim_ids=args.required_claim_id,
+            claim_evidence_summary_refs=args.claim_evidence_summary_ref,
         )
     if args.command == "extract":
         return _cmd_extract(
@@ -1055,6 +1083,63 @@ def _cmd_build_claim_evidence_summary(
         encoding="utf-8",
     )
     print(f"claim evidence summary: report={report_artifact}")
+    print("external_call_made: false")
+    return 0
+
+
+def _cmd_build_claim_coverage_gate(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    required_claim_ids: list[str],
+    claim_evidence_summary_refs: list[str],
+) -> int:
+    instance = InstanceRoot(instance_root)
+    result = ClaimCoverageGateBuilder(root=instance.root).build(
+        request_id=request_id,
+        required_claim_ids=required_claim_ids,
+        claim_evidence_summary_refs=claim_evidence_summary_refs,
+        yyyymmdd=yyyymmdd,
+    )
+    gate = json.loads((instance.root / result.claim_coverage_gate_refs[0]).read_text(encoding="utf-8"))
+    report = {
+        "schema_id": "hisys.claim_coverage_gate.report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "status": "completed",
+        "coverage_status": gate["coverage_status"],
+        "claim_coverage_gate_refs": result.claim_coverage_gate_refs,
+        "gate_count": len(result.claim_coverage_gate_refs),
+        "external_call_made": result.external_call_made,
+        "mutation_performed": result.mutation_performed,
+    }
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_artifact = report_dir / "claim-coverage-gate-report.json"
+    report_artifact.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "claim-coverage-gate-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                f"# Claim coverage gate report {request_id}",
+                "",
+                "- status: `completed`",
+                f"- coverage_status: `{gate['coverage_status']}`",
+                "- manuscript_language_gate: `conditional_only`",
+                "- conditional_manuscript_language_only: true",
+                "- does_not_approve_publication_ready_claims: true",
+                "- external_call_made: false",
+                "- mutation_performed: false",
+                "",
+                "## Claim coverage gate refs",
+                *[f"- {ref}" for ref in result.claim_coverage_gate_refs],
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    print(f"claim coverage gate: report={report_artifact}")
     print("external_call_made: false")
     return 0
 
