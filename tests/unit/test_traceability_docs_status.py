@@ -262,3 +262,27 @@ def test_live_i_claim_evidence_ledger_status_and_traceability_are_documented():
     assert "tests/unit/test_domain_cli.py" in trace
     assert "claim_evidence_ledger_refs" in trace
     assert "claim_evidence_ledger_present" in trace
+
+
+def test_live_j_claim_evidence_summary_status_and_traceability_are_documented():
+    """README and traceability docs must mention implemented Live-J claim summary path."""
+
+    readme = README.read_text(encoding="utf-8")
+    trace = TRACEABILITY_DOC.read_text(encoding="utf-8")
+
+    assert "Live-J claim evidence summary" in readme
+    assert "ClaimEvidenceSummaryBuilder" in readme
+    assert "build-claim-evidence-summary" in readme
+    assert "--claim-evidence-summary-ref" in readme
+    assert "claim_evidence_summary_refs" in readme
+    assert "claim_evidence_summary_present" in readme
+    assert "advisory confidence only" in readme
+    assert "does not prove novelty" in readme
+
+    assert "Live-J Claim evidence summary" in trace
+    assert "hisys.connectors.claim_evidence_summary" in trace
+    assert "tests/unit/test_claim_evidence_summary.py" in trace
+    assert "tests/unit/test_claim_evidence_summary_cli.py" in trace
+    assert "tests/unit/test_domain_cli.py" in trace
+    assert "claim_evidence_summary_refs" in trace
+    assert "claim_evidence_summary_present" in trace

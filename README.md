@@ -231,6 +231,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `InvestigationDataPackage`, DARS trace, and Chief Editor review with
   `claim_evidence_ledger_present` status while keeping novelty claims
   conditional.
+- Increment **Live-J claim evidence summary** -
+  `ClaimEvidenceSummaryBuilder` aggregates explicit `claim_evidence_ledger_refs`
+  into support/contradict/needs-evidence balance summaries while keeping
+  confidence advisory confidence only. `hisys build-claim-evidence-summary`
+  writes `claim-evidence-summary-*.json` artifacts without network calls or
+  ledger/source mutation. `hisys investigate-domain --claim-evidence-summary-ref`
+  preserves `claim_evidence_summary_refs` in `InvestigationDataPackage`, DARS
+  trace, and Chief Editor review with `claim_evidence_summary_present` status.
+  The summary does not prove novelty or publication readiness.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
