@@ -1,6 +1,7 @@
 # Live Research Connector Boundary
 
-Status: controlled design boundary for the next Hisys live-source search phase.
+Status: controlled design boundary plus fixture-backed connector integration for
+the next Hisys live-source search phase.
 
 Traceability: HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012,
 HISYS-CON-022..023.
@@ -78,6 +79,9 @@ runtime-boundary/source-connectors/<YYYYMMDD>/
   connector-dispatch-<decision_id>.json
   connector-dispatch-<decision_id>.md
   source-access-<access_id>.json
+  source-evidence-<evidence_id>.json
+  connector-plan-<request_id>.json
+  connector-plan-<request_id>.md
 ```
 
 Evidence packages must distinguish:

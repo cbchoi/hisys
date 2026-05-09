@@ -33,6 +33,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | HISYS-T-032 Configurable Investigator connector registry | HISYS-INST-INV-001; HISYS-FR-INV-001..006; HISYS-FR-MEM-001..005; HISYS-DATA-005; HISYS-TPL-RESEARCH-SEARCH-001 | Implemented: `investigator-agents.yaml` declares global connector safety policy, purpose default/optional agent plans, and disabled optional connector definitions for publisher web search, Claude/Codex read-only evidence extraction, local LLM offline mapping, market/news search, and company filing search; `investigate-memo` resolves the default plan from config and records `agent_plan_source`, `disabled_optional_agent_refs`, and `blocked_agent_refs` in the run report while preventing disabled explicit external connector execution |
 | HISYS-T-028 Selenium read-only research harness | docs/plans/investigator-multi-agent-research.md; HISYS-CON-022..023; HISYS-D-015; HISYS-DATA-002 | Implemented: disabled-by-default `SeleniumReadOnlyAgent` enforces read-only and forbidden-action gates, rejects non-allowed live domains, extracts only local static HTML fixture content into an `EvidencePackage` with hash/path/title evidence, records `external_side_effects=false`, and performs no live browsing or network access |
 | Live-A Source connector governance foundation | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: live research connector boundary docs, disabled-by-default `source-connectors.yaml`, governed source connector registry schemas/loader, dispatch decision gate with runtime-boundary evidence, and live source provenance records for URL/access-time/hash/license-signal and quote-vs-interpretation separation. No live adapter execution is enabled. |
+| Live-B Fixture-backed source connector planning and evidence integration | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys plan-source-connectors` writes dry-run connector plan artifacts without external calls, `hisys.connectors.fixture_publisher` extracts local publisher-shaped fixture evidence/provenance, `investigate-domain` links fixture source evidence into investigation data, DARS trace lineage, and Chief Editor source-validation review conditions. No live adapter execution is enabled. |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -62,7 +63,10 @@ research, the disabled Selenium read-only harness, purpose-specific evidence
 agents, purpose-aware auto-planning, and the configurable connector registry are
 implemented. Live-A adds the governed live-source search foundation: boundary
 policy docs, disabled source connector examples, registry validation, dispatch
-decision records, and provenance schemas. No live adapter execution is enabled.
+decision records, and provenance schemas. Live-B adds dry-run connector planning
+and local fixture-publisher evidence integration into the domain investigation,
+DARS advisory trace, and Chief Editor research review, still with no live adapter
+execution enabled.
 I9-A adds a redacted secret-like value scanner for HISYS-T-021
 quality gates, I9-B adds backup manifest plus restore dry-run verification for
 HISYS-T-023, I9-C adds local operator health status for required runtime
@@ -108,6 +112,7 @@ implemented yet.
 | `hisys.connectors.live_source_config` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_live_source_config.py` |
 | `hisys.connectors.live_source_dispatch` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_live_source_config.py` |
 | `hisys.connectors.live_source_evidence` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_live_source_evidence.py` |
+| `hisys.connectors.fixture_publisher` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_fixture_publisher_connector.py` |
 | `hisys.investigator.runtime` | HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-007..008 | `tests/unit/test_investigator_runtime.py` |
 | `hisys.extraction.extractor` | HISYS-FR-EXT-001..005, HISYS-DATA-002, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
 | `hisys.extraction.runtime` | HISYS-FR-EXT-001..005, HISYS-D-015, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
@@ -130,7 +135,7 @@ implemented yet.
 | `hisys.operations.release_readiness` | HISYS-T-024, HISYS-FR-ADM-001..004, HISYS-DATA-001..005, HISYS-CON-* | `tests/unit/test_release_readiness.py` |
 | `hisys.security.secret_scan` | HISYS-T-021, HISYS-NFR-SEC-001..002, HISYS-FR-ADM-001, HISYS-R-008 | `tests/unit/test_secret_scan.py` |
 | `scripts/scan_secrets.py` | HISYS-T-021 quality-gate script | `tests/unit/test_secret_scan.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..026, HISYS-T-030..032, HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012 | `tests/unit/test_cli_runtime.py`, `tests/unit/test_domain_cli.py`, `tests/integration/test_cli_hermes_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..026, HISYS-T-030..032, HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012 | `tests/unit/test_cli_runtime.py`, `tests/unit/test_domain_cli.py`, `tests/unit/test_source_connector_cli.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests
@@ -168,7 +173,8 @@ For each path the tests assert:
 
 - HISYS-CON-022..023: no live web/network calls in this code; only fixtures.
   Live-A adds disabled live-source connector registry/dispatch/provenance records
-  but no live connector adapter execution.
+  and Live-B adds dry-run connector planning plus local fixture-publisher
+  evidence integration, but no live connector adapter execution.
 - HISYS-T-001..002: source registry entries require governance metadata;
   web/news collection is blocked without compliance checklist evidence.
 - HISYS-T-003..006: adapter contract covers initialization, health,
