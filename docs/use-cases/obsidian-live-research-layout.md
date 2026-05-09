@@ -426,6 +426,16 @@ approval refs, never delete source topic folders, produce tombstone refs such as
 command writes only runtime-boundary plan artifacts and records
 `real_obsidian_vault_write_performed=false`.
 
+## Live-Obsidian-Config-H implementation status
+
+`hisys.config.obsidian_live.validate_fixture_vault_roundtrip` and `hisys
+vault-roundtrip-validate` close the fixture writer loop by checking that a
+`vault-plan` projection applied by `vault-apply` is exactly reflected in the
+fixture vault root. The validator detects missing planned files, unexpected
+fixture files, invalid projection metadata, and apply-report/fixture drift while
+recording `real_obsidian_vault_write_performed=false` and making no external
+calls.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

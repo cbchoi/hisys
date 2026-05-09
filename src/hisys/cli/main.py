@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_vault_manifests, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -417,6 +417,16 @@ def _build_parser() -> argparse.ArgumentParser:
     vault_apply.add_argument("--approval-ref", help="required human approval ref for fixture writes")
     vault_apply.add_argument("--fixture-vault-only", action="store_true", help="required; refuses real Obsidian vault writes")
 
+    vault_roundtrip = sub.add_parser(
+        "vault-roundtrip-validate",
+        help="validate plan -> fixture vault apply roundtrip without live vault writes",
+    )
+    vault_roundtrip.add_argument("--instance", required=True, help="runtime instance root for roundtrip reports")
+    vault_roundtrip.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    vault_roundtrip.add_argument("--plan", required=True, help="vault-plan JSON path")
+    vault_roundtrip.add_argument("--fixture-vault-root", required=True, help="fixture vault root to validate")
+    vault_roundtrip.add_argument("--apply-report", required=True, help="vault-apply report JSON path")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -651,6 +661,14 @@ def main(argv: list[str] | None = None) -> int:
             approval_ref=args.approval_ref,
             fixture_vault_only=args.fixture_vault_only,
         )
+    if args.command == "vault-roundtrip-validate":
+        return _cmd_vault_roundtrip_validate(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            plan_path=Path(args.plan),
+            fixture_vault_root=Path(args.fixture_vault_root),
+            apply_report_path=Path(args.apply_report),
+        )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
             instance_root=Path(args.instance),
@@ -825,6 +843,26 @@ def _cmd_vault_apply(
     print(f"report={report_path}")
     print(f"real_obsidian_vault_write_performed: {str(report['real_obsidian_vault_write_performed']).lower()}")
     return 0 if report["status"] == "applied" else 2
+
+
+def _cmd_vault_roundtrip_validate(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    plan_path: Path,
+    fixture_vault_root: Path,
+    apply_report_path: Path,
+) -> int:
+    """Validate a fixture vault apply against its source plan."""
+
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    apply_report = json.loads(apply_report_path.read_text(encoding="utf-8"))
+    report = validate_fixture_vault_roundtrip(plan=plan, fixture_vault_root=fixture_vault_root, apply_report=apply_report)
+    report_path = write_vault_roundtrip_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
+    print(f"vault roundtrip validation: {report['status']}")
+    print(f"report={report_path}")
+    print("real_obsidian_vault_write_performed: false")
+    return 0 if report["valid"] else 1
 
 
 def _cmd_vault_topic_transition_plan(

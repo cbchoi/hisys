@@ -450,6 +450,86 @@ def _fixture_vault_file_content(*, ref: str, plan: dict[str, Any], approval_ref:
     )
 
 
+def validate_fixture_vault_roundtrip(
+    *,
+    plan: dict[str, Any],
+    fixture_vault_root: Path,
+    apply_report: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate planned -> fixture-applied vault projections without live vault writes."""
+
+    planned_files = [str(ref) for ref in plan.get("planned_files", [])]
+    _validate_refs(planned_files)
+    planned_set = set(planned_files)
+    actual_files = sorted(str(path.relative_to(fixture_vault_root)) for path in fixture_vault_root.rglob("*") if path.is_file())
+    actual_set = set(actual_files)
+    issues: list[dict[str, str]] = []
+
+    for ref in sorted(planned_set - actual_set):
+        issues.append({"code": "missing_planned_file", "path": ref, "message": "planned file is missing from fixture vault"})
+    for ref in sorted(actual_set - planned_set):
+        issues.append({"code": "unexpected_fixture_file", "path": ref, "message": "file was not present in the source vault plan"})
+
+    metadata_valid = True
+    for ref in sorted(planned_set & actual_set):
+        path = fixture_vault_root / ref
+        text = path.read_text(encoding="utf-8")
+        expected_fragments = [str(plan.get("request_id")), str(plan.get("topic_uid")), str(plan.get("investigation_id")), "real_obsidian_vault_write_performed", "external_call_made"]
+        if ref.endswith(".json"):
+            try:
+                payload = json.loads(text)
+            except json.JSONDecodeError:
+                metadata_valid = False
+                issues.append({"code": "invalid_projection_json", "path": ref, "message": "projection JSON cannot be parsed"})
+                continue
+            if payload.get("source_plan_request_id") != plan.get("request_id"):
+                metadata_valid = False
+                issues.append({"code": "projection_request_mismatch", "path": ref, "message": "source plan request id mismatch"})
+            if payload.get("topic_uid") != plan.get("topic_uid") or payload.get("investigation_id") != plan.get("investigation_id"):
+                metadata_valid = False
+                issues.append({"code": "projection_identity_mismatch", "path": ref, "message": "topic/investigation identity mismatch"})
+            if payload.get("fixture_projection_only") is not True or payload.get("real_obsidian_vault_write_performed") is not False:
+                metadata_valid = False
+                issues.append({"code": "projection_governance_mismatch", "path": ref, "message": "projection governance flags invalid"})
+        elif not all(fragment in text for fragment in expected_fragments):
+            metadata_valid = False
+            issues.append({"code": "projection_metadata_missing", "path": ref, "message": "projection frontmatter is missing required governance metadata"})
+
+    written_files = set(str(ref) for ref in apply_report.get("written_files", []))
+    apply_matches = apply_report.get("status") == "applied" and written_files == planned_set and apply_report.get("real_obsidian_vault_write_performed") is False and apply_report.get("external_call_made") is False
+    if not apply_matches:
+        issues.append({"code": "apply_report_mismatch", "path": "apply_report", "message": "apply report does not match planned fixture files"})
+
+    valid = not issues
+    return {
+        "schema_id": "hisys.obsidian.fixture_vault_roundtrip_report",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": plan.get("request_id"),
+        "valid": valid,
+        "status": "valid" if valid else "invalid",
+        "issue_count": len(issues),
+        "issues": issues,
+        "checked_file_count": len(planned_files),
+        "missing_file_count": len(planned_set - actual_set),
+        "unexpected_file_count": len(actual_set - planned_set),
+        "projection_metadata_valid": metadata_valid,
+        "apply_report_matches_fixture": apply_matches,
+        "fixture_vault_root": str(fixture_vault_root),
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def write_vault_roundtrip_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"vault-roundtrip-report-{report['request_id']}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"vault-roundtrip-report-{report['request_id']}.md").write_text(_format_vault_roundtrip_report(report), encoding="utf-8")
+    return report_path
+
+
 def validate_vault_manifests(
     *,
     registry_path: Path,
@@ -668,6 +748,24 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_vault_roundtrip_report(report: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Obsidian Fixture Vault Roundtrip Report",
+            "",
+            f"- Request: `{report['request_id']}`",
+            f"- Status: {report['status']}",
+            f"- Checked files: {report['checked_file_count']}",
+            f"- Missing files: {report['missing_file_count']}",
+            f"- Unexpected files: {report['unexpected_file_count']}",
+            f"- Projection metadata valid: {str(report['projection_metadata_valid']).lower()}",
+            f"- Apply report matches fixture: {str(report['apply_report_matches_fixture']).lower()}",
+            f"- Real vault write performed: {str(report['real_obsidian_vault_write_performed']).lower()}",
+            "",
+        ]
+    )
+
+
 def _format_topic_identity_transition_plan(plan: dict[str, Any]) -> str:
     return "\n".join(
         [
@@ -710,9 +808,11 @@ __all__ = [
     "build_topic_identity_transition_plan",
     "build_vault_plan",
     "build_vault_template_plan",
+    "validate_fixture_vault_roundtrip",
     "validate_vault_manifests",
     "write_vault_apply_report",
     "write_vault_plan_artifacts",
+    "write_vault_roundtrip_report",
     "write_vault_template_plan_artifacts",
     "write_vault_validation_report",
     "write_topic_identity_transition_plan",

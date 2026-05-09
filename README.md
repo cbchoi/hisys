@@ -320,6 +320,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   topic folders, produce tombstone refs such as `MERGED_INTO.md` or
   `SPLIT_INTO.md`, plan manifest updates, and write only runtime-boundary plan
   artifacts with `real_obsidian_vault_write_performed=false`.
+- Increment **Live-Obsidian-Config-H fixture vault roundtrip validation** -
+  `hisys.config.obsidian_live.validate_fixture_vault_roundtrip` and `hisys
+  vault-roundtrip-validate` prove planned fixture vault files match the applied
+  fixture vault projection. The report detects missing or unexpected fixture
+  files, validates projection metadata, compares the apply report with actual
+  fixture files, and records no real Obsidian vault writes.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
