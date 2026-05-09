@@ -168,6 +168,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `source_validation_status`, `source_evidence_refs`, and an explicit condition
   requiring fixture evidence to be validated against live publisher pages before
   publication-level novelty claims.
+- Increment **Live-C manual DOI metadata smoke boundary** -
+  `source-connectors.yaml` marks `doi_metadata_search` as
+  `manual_smoke_only`, guarded by `HISYS_ALLOW_LIVE_SMOKE`, and excluded from
+  CI. `hisys.connectors.doi_metadata` provides a read-only Crossref DOI metadata
+  connector with injectable transport so tests use fake responses only.
+  `hisys smoke-source-connector --dry-run` writes blocked dispatch/report
+  artifacts without a network call; a manual live run additionally requires an
+  approval ref plus the operator environment flag before any external metadata
+  call is made.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

@@ -82,6 +82,9 @@ runtime-boundary/source-connectors/<YYYYMMDD>/
   source-evidence-<evidence_id>.json
   connector-plan-<request_id>.json
   connector-plan-<request_id>.md
+reports/run-summaries/<YYYYMMDD>/
+  source-connector-smoke-report.json
+  source-connector-smoke-report.md
 ```
 
 Evidence packages must distinguish:
