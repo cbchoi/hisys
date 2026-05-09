@@ -86,6 +86,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `AlternativeDecisionSet`, full `DomainInvestigationResult`, and compact
   `HisysToolResult` projection. These schemas keep the MVP read-only by default
   and provide the contract for the future `investigate-domain` CLI/runtime flow.
+- Increment **Hisys MVP A2 domain investigation CLI boundary** -
+  `hisys investigate-domain --request <json>` validates a
+  `DomainInvestigationRequest`, writes request/result JSON and Markdown under
+  `runtime-boundary/domain-investigation/<domain>/<YYYYMMDD>/`, and writes a
+  `domain-investigation-report` while returning `needs_more_evidence` until a
+  concrete domain adapter executes in the next increment.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

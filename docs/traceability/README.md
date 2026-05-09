@@ -123,7 +123,7 @@ implemented yet.
 | `hisys.operations.release_readiness` | HISYS-T-024, HISYS-FR-ADM-001..004, HISYS-DATA-001..005, HISYS-CON-* | `tests/unit/test_release_readiness.py` |
 | `hisys.security.secret_scan` | HISYS-T-021, HISYS-NFR-SEC-001..002, HISYS-FR-ADM-001, HISYS-R-008 | `tests/unit/test_secret_scan.py` |
 | `scripts/scan_secrets.py` | HISYS-T-021 quality-gate script | `tests/unit/test_secret_scan.py` |
-| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..026 | `tests/unit/test_cli_runtime.py`, `tests/integration/test_cli_hermes_runtime.py` |
+| `hisys.cli.main` | HISYS-PKG-ARCH-001 Section 3, HISYS-RUNTIME-DIR-001, HISYS-INST-INV-001, HISYS-T-001, HISYS-T-005A, HISYS-T-007..026, HISYS-T-030..032, HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012 | `tests/unit/test_cli_runtime.py`, `tests/unit/test_domain_cli.py`, `tests/integration/test_cli_hermes_runtime.py` |
 | `examples/instance` | HISYS-RUNTIME-DIR-001, HISYS-HARNESS-GUIDE-001, HISYS-D-015, HISYS-D-016 | `tests/unit/test_example_instance.py` |
 
 ## End-to-end trace path tests

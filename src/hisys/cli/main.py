@@ -48,7 +48,15 @@ from ..investigator.agent_config import (
     select_configured_agent_plan,
 )
 from ..registry import SourceRegistry
-from ..schemas import ExtractedSignal, PerspectiveProfile, RawObservation, SourceRegistryEntry, ZettelMemo
+from ..schemas import (
+    DomainInvestigationRequest,
+    HisysToolResult,
+    ExtractedSignal,
+    PerspectiveProfile,
+    RawObservation,
+    SourceRegistryEntry,
+    ZettelMemo,
+)
 
 
 @dataclass(frozen=True)
@@ -168,6 +176,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="research agent type to dispatch; repeat for multiple agents (fixture, fixture_contradiction)",
     )
 
+    investigate_domain = sub.add_parser(
+        "investigate-domain",
+        help="run local domain-general Hisys investigation from a JSON request",
+    )
+    investigate_domain.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    investigate_domain.add_argument("--request", required=True, help="DomainInvestigationRequest JSON path")
+    investigate_domain.add_argument("--date", required=True, help="YYYYMMDD output partition")
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -267,6 +283,12 @@ def main(argv: list[str] | None = None) -> int:
             purpose=args.purpose,
             agent_types=args.agents,
         )
+    if args.command == "investigate-domain":
+        return _cmd_investigate_domain(
+            instance_root=Path(args.instance),
+            request_path=Path(args.request),
+            yyyymmdd=args.date,
+        )
     if args.command == "extract":
         return _cmd_extract(
             instance_root=Path(args.instance),
@@ -337,6 +359,137 @@ def _cmd_validate_config(instance_root: Path) -> int:
         entry = registry.entries[source_id]
         print(f"- {source_id} [{entry.source_type}] {entry.lifecycle_state}")
     return 0
+
+
+def _cmd_investigate_domain(instance_root: Path, request_path: Path, yyyymmdd: str) -> int:
+    """Persist the local MVP boundary for a domain investigation request."""
+
+    instance = InstanceRoot(instance_root)
+    request = DomainInvestigationRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
+    boundary_dir = instance.root / "runtime-boundary" / "domain-investigation" / request.domain / yyyymmdd
+    boundary_dir.mkdir(parents=True, exist_ok=True)
+
+    request_artifact = boundary_dir / f"hisys-tool-request-{request.request_id}.json"
+    request_artifact.write_text(_record_json(request), encoding="utf-8")
+    request_markdown = boundary_dir / f"hisys-tool-request-{request.request_id}.md"
+    request_markdown.write_text(_format_domain_request_markdown(request), encoding="utf-8")
+
+    result_ref = str((boundary_dir / f"hisys-tool-result-{request.request_id}.json").relative_to(instance.root))
+    tool_result = HisysToolResult(
+        status="needs_more_evidence",
+        domain=request.domain,
+        summary=(
+            "Domain investigation request accepted and preserved; domain adapter execution "
+            "is pending in the next MVP increment."
+        ),
+        recommended_alternative_id=None,
+        requires_human_review=True,
+        external_call_made=False,
+        mutation_performed=False,
+        runtime_boundary_refs=[
+            str(request_artifact.relative_to(instance.root)),
+            str(request_markdown.relative_to(instance.root)),
+            result_ref,
+        ],
+        quality_gate="needs_more_evidence",
+    )
+    result_artifact = boundary_dir / f"hisys-tool-result-{request.request_id}.json"
+    result_artifact.write_text(_record_json(tool_result), encoding="utf-8")
+    result_markdown = boundary_dir / f"hisys-tool-result-{request.request_id}.md"
+    result_markdown.write_text(_format_domain_tool_result_markdown(request, tool_result), encoding="utf-8")
+
+    report_path = _write_domain_investigation_report(
+        instance=instance,
+        request=request,
+        tool_result=tool_result,
+        tool_result_ref=str(result_artifact.relative_to(instance.root)),
+        yyyymmdd=yyyymmdd,
+    )
+    print(f"domain investigation run: report={report_path}")
+    print(f"domain: {request.domain}")
+    print(f"status: {tool_result.status}")
+    print(f"tool_result: {result_artifact}")
+    return 0
+
+
+def _format_domain_request_markdown(request: DomainInvestigationRequest) -> str:
+    return "\n".join(
+        [
+            "# Hisys Domain Investigation Request",
+            "",
+            f"- request_id: `{request.request_id}`",
+            f"- domain: `{request.domain}`",
+            f"- objective: {request.objective}",
+            f"- external_calls_allowed: `{request.constraints.external_calls_allowed}`",
+            f"- mutation_allowed: `{request.constraints.mutation_allowed}`",
+            f"- credential_use_allowed: `{request.constraints.credential_use_allowed}`",
+            "",
+            "## Sources",
+            *[f"- `{source.source_id}` ({source.source_type}) `{source.access_mode}`: {source.ref}" for source in request.sources],
+            "",
+        ]
+    )
+
+
+def _format_domain_tool_result_markdown(request: DomainInvestigationRequest, result: HisysToolResult) -> str:
+    return "\n".join(
+        [
+            "# Hisys Domain Investigation Tool Result",
+            "",
+            f"- request_id: `{request.request_id}`",
+            f"- domain: `{result.domain}`",
+            f"- status: `{result.status}`",
+            f"- quality_gate: `{result.quality_gate}`",
+            f"- external_call_made: `{result.external_call_made}`",
+            f"- mutation_performed: `{result.mutation_performed}`",
+            "",
+            "## Summary",
+            result.summary,
+            "",
+            "## Runtime Boundary References",
+            *[f"- {ref}" for ref in result.runtime_boundary_refs],
+            "",
+        ]
+    )
+
+
+def _write_domain_investigation_report(
+    *,
+    instance: InstanceRoot,
+    request: DomainInvestigationRequest,
+    tool_result: HisysToolResult,
+    tool_result_ref: str,
+    yyyymmdd: str,
+) -> Path:
+    directory = instance.root / "reports" / "run-summaries" / yyyymmdd
+    directory.mkdir(parents=True, exist_ok=True)
+    json_path = directory / "domain-investigation-report.json"
+    data = {
+        "request_id": request.request_id,
+        "domain": request.domain,
+        "status": tool_result.status,
+        "quality_gate": tool_result.quality_gate,
+        "tool_result_ref": tool_result_ref,
+        "runtime_boundary_refs": tool_result.runtime_boundary_refs,
+        "policy_refs": ["HISYS-FR-INV-001", "HISYS-T-024", "HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"],
+    }
+    json_path.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    markdown_path = directory / "domain-investigation-report.md"
+    markdown_path.write_text(
+        "\n".join(
+            [
+                "# Domain Investigation Report",
+                "",
+                f"- request_id: `{request.request_id}`",
+                f"- domain: `{request.domain}`",
+                f"- status: `{tool_result.status}`",
+                f"- tool_result_ref: {tool_result_ref}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return json_path
 
 
 def _cmd_collect(
