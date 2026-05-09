@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, load_source_registry
+from ..config import InstanceRoot, build_vault_plan, load_source_registry, write_vault_plan_artifacts
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -373,6 +373,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="optional runtime-boundary recommendation artifact ref",
     )
 
+    vault_plan = sub.add_parser(
+        "vault-plan",
+        help="plan an Obsidian live-research topic/investigation layout without writing the vault",
+    )
+    vault_plan.add_argument("--instance", required=True, help="runtime instance root for dry-run planner artifacts")
+    vault_plan.add_argument("--registry", required=True, help="Obsidian live-research registry JSON path")
+    vault_plan.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    vault_plan.add_argument("--time", required=True, help="HHMM investigation timestamp component")
+    vault_plan.add_argument("--request-id", required=True, help="request id for vault planning")
+    vault_plan.add_argument("--topic-title", required=True, help="submitted topic title")
+    vault_plan.add_argument("--domain", required=True, help="submitted topic domain")
+    vault_plan.add_argument("--objective", required=True, help="submitted investigation objective")
+    vault_plan.add_argument("--dry-run", action="store_true", required=True, help="required; compute plan only and write no vault files")
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -558,6 +572,18 @@ def main(argv: list[str] | None = None) -> int:
             claim_texts=args.claim_text,
             source_recommendation_ref=args.source_recommendation_ref,
         )
+    if args.command == "vault-plan":
+        return _cmd_vault_plan(
+            instance_root=Path(args.instance),
+            registry_path=Path(args.registry),
+            yyyymmdd=args.date,
+            hhmm=args.time,
+            request_id=args.request_id,
+            submitted_title=args.topic_title,
+            domain=args.domain,
+            objective=args.objective,
+            dry_run=args.dry_run,
+        )
     if args.command == "extract":
         return _cmd_extract(
             instance_root=Path(args.instance),
@@ -627,6 +653,38 @@ def _cmd_validate_config(instance_root: Path) -> int:
     for source_id in source_ids:
         entry = registry.entries[source_id]
         print(f"- {source_id} [{entry.source_type}] {entry.lifecycle_state}")
+    return 0
+
+
+def _cmd_vault_plan(
+    *,
+    instance_root: Path,
+    registry_path: Path,
+    yyyymmdd: str,
+    hhmm: str,
+    request_id: str,
+    submitted_title: str,
+    domain: str,
+    objective: str,
+    dry_run: bool,
+) -> int:
+    """Write a fixture-only Obsidian vault plan without writing the vault."""
+
+    plan = build_vault_plan(
+        registry_path=registry_path,
+        request_id=request_id,
+        submitted_title=submitted_title,
+        domain=domain,
+        objective=objective,
+        yyyymmdd=yyyymmdd,
+        hhmm=hhmm,
+        dry_run=dry_run,
+    )
+    plan_path, report_path = write_vault_plan_artifacts(instance_root=instance_root, yyyymmdd=yyyymmdd, plan=plan)
+    print(f"vault plan: report={report_path}")
+    print(f"plan_ref: {plan_path.relative_to(instance_root)}")
+    print("vault_write_attempted: false")
+    print("external_call_made: false")
     return 0
 
 

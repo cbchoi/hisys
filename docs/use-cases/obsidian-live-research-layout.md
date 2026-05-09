@@ -363,6 +363,16 @@ The next implementation should be scaffolded as fixture-only work:
    gatekeeper scores, missing merge approval refs, path traversal, overlong paths,
    and invalid topic/group/investigation IDs.
 
+## Live-Obsidian-Config-B implementation status
+
+`hisys.config.obsidian_live.build_vault_plan` and `hisys vault-plan --dry-run`
+implement the first fixture-only planner. The command reads a registry, computes
+canonical topic and recurring investigation paths, writes only
+`runtime-boundary/obsidian-live/<YYYYMMDD>/vault-plan-*.json` plus run-summary
+reports, and records `vault_write_attempted=false`, `external_call_made=false`,
+and `mutation_performed=false`. It rejects unsafe submitted titles before path
+construction and does not create any `91 Hisys/` vault content.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

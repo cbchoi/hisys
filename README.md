@@ -273,6 +273,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   and missing-task artifacts for future `vault-plan --dry-run` and
   `vault-validate` work. The scaffold is a planner-only dry-run boundary with no
   real vault writes.
+- Increment **Live-Obsidian-Config-B vault planner** -
+  `hisys.config.obsidian_live.build_vault_plan` and `hisys vault-plan --dry-run`
+  compute registry-first, topic/investigation vault-relative paths from fixture
+  registry input, write planner artifacts only under `runtime-boundary/obsidian-live/`
+  and `reports/run-summaries/`, preserve evidence-citing gatekeeper scores, and
+  record `vault_write_attempted=false`, `external_call_made=false`, and
+  `mutation_performed=false`. The CLI does not create `/home/cbchoi/obsidian` or
+  any `91 Hisys/` vault content.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
