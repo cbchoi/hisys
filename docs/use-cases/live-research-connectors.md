@@ -231,3 +231,30 @@ Promotion preconditions:
 Live-G does not add live PDF fetching. It only allows previously approved,
 recorded manual OA PDF smoke artifacts to become explicit inputs to a research
 investigation package.
+
+## Live-H PDF quote extraction boundary
+
+Live-H extracts quote records from already promoted OA PDF evidence only when the
+operator supplies **explicit promoted_pdf_evidence_refs** or the corresponding
+validated source-access/source-evidence refs. The extractor is a fixture/manual-ref
+boundary: CI may read only local fixture text embedded in governed evidence
+artifacts, and there is **no OCR or PDF parsing in CI**, no browser automation,
+no live PDF fetch, and no claim-strengthening based on extraction alone.
+
+Boundary rules:
+
+1. quote extraction must preserve quote-vs-interpretation separation: extracted
+   quote text is source evidence, while gap statements, novelty claims, and
+   recommendations remain interpreted products;
+2. extraction artifacts must be persisted as governed `source_quote_refs` under
+   `runtime-boundary/source-connectors/<YYYYMMDD>/` and linked back to the
+   source-access and source-evidence refs that authorized promotion;
+3. extracted quotes must record source URL, connector id, quote hash, byte/text
+   provenance, and `external_call_made=false` for CI/manual-ref extraction;
+4. `investigate-domain` may include `source_quote_refs` only when explicitly
+   supplied or produced from explicit promoted refs; prompt text cannot trigger
+   implicit PDF discovery, OCR, or fetching;
+5. DARS trace may critique promoted source quotes as advisory lineage only;
+6. Chief Editor novelty claims remain conditional even when quote refs are
+   present, because quote extraction proves source linkage, not publication-level
+   validation completeness.

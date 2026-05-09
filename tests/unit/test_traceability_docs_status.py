@@ -124,6 +124,20 @@ def test_live_g_manual_pdf_evidence_promotion_boundary_is_documented():
     assert "Chief Editor" in text
 
 
+def test_live_h_pdf_quote_extraction_boundary_is_documented():
+    """Promoted OA PDF quotes must be extracted only from explicit refs and separated from claims."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-H PDF quote extraction boundary" in text
+    assert "explicit promoted_pdf_evidence_refs" in text
+    assert "source_quote_refs" in text
+    assert "quote-vs-interpretation separation" in text
+    assert "no OCR or PDF parsing in CI" in text
+    assert "Chief Editor novelty claims remain conditional" in text
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 
