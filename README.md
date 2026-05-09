@@ -140,7 +140,9 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   dispatch decision, validates fixture JSON as `DarsResponseEnvelope`, checks
   request alignment, writes validation reports for accepted/rejected outputs,
   and persists accepted response artifacts under `runtime-boundary/dars/`.
-  The
+  `hisys.agents.dars_trace` records end-to-end DARS lineage from source/memo/alert
+  and evidence refs through request, dispatch, validation, response, critique,
+  and recommended-action refs. The
   DARS configuration contract uses a common Hisys JSON config envelope and validates
   concise role/backend settings before any DARS adapter is selected. The target
   DARS design is progressive and GAN-like: generator candidates are challenged

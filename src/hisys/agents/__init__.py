@@ -8,6 +8,7 @@ from .dars import DarsCritiqueRecord, DarsCritiqueReport, DarsRuntime
 from .dars_backend import DarsFixtureBackend
 from .dars_dispatch import DarsDispatchDecision, DarsDispatchGate
 from .dars_protocol import DarsRequestEnvelope, DarsResponseEnvelope
+from .dars_trace import DarsTraceLink, DarsTraceLinker
 
 __all__ = [
     "DarsCritiqueRecord",
@@ -18,4 +19,6 @@ __all__ = [
     "DarsDispatchGate",
     "DarsRequestEnvelope",
     "DarsResponseEnvelope",
+    "DarsTraceLink",
+    "DarsTraceLinker",
 ]

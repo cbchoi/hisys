@@ -14,6 +14,8 @@ DARS backend dispatch is guarded by `src/hisys/agents/dars_dispatch.py` and veri
 
 The first concrete adapter is the deterministic local `DarsFixtureBackend` in `src/hisys/agents/dars_backend.py`, verified by `tests/unit/test_dars_backend.py`. It runs only after an allowed dispatch decision, reads a configured local fixture JSON file, validates it as `DarsResponseEnvelope`, enforces request-ID alignment, writes accepted response JSON/Markdown artifacts under `runtime-boundary/dars/<YYYYMMDD>/`, and writes `hisys.dars.validation` reports for accepted, malformed, unsafe, or request-mismatched fixture outputs without external calls or mutation.
 
+End-to-end DARS lineage is recorded by `src/hisys/agents/dars_trace.py`, verified by `tests/unit/test_dars_trace.py`. `DarsTraceLinker` writes `hisys.dars.trace_link` JSON/Markdown artifacts that connect source, observation, signal, memo, alert, evidence, handoff, request, dispatch, validation, response, critique, and recommended-action references while preserving external-call and mutation boundary facts.
+
 The exchange has two canonical artifacts:
 
 1. `DarsRequestEnvelope` — Hisys → DARS.
