@@ -178,6 +178,8 @@ Configuration rules:
 8. Model sampling knobs such as `temperature`, `top_p`, and `max_output_tokens` belong in role/backend config and must be recorded in boundary metadata for reproducibility.
 9. User-provided prompt text may request a critique type or focus area, but it must not override safety constraints, output contract, allowed actions, tool restrictions, or approval gates.
 10. Keep configuration concise for LLM interpretation: deterministic choices are key/value enum fields; only semantically open guidance goes under a small `prompt:` block.
+11. All configuration files must pass schema validation and cross-field policy validation before runtime use.
+12. Hisys should use a common configuration envelope so validators can produce consistent diagnostics across DARS, Investigator, live connectors, and future agent configs.
 
 This mirrors the existing `investigator-agents.yaml` pattern: optional LLM/search/agent integrations are declared as future integration points, disabled by default, and bounded by output contracts and side-effect policy.
 
@@ -257,6 +259,158 @@ Recommended role profile fields:
 | `output_contract` | enum key/value | required schema | `DarsCritiqueRecord` |
 
 Suggested default: `temperature=0.2`, `strictness=high`, `creativity=medium`, `verbosity=concise_structured`. Increase creativity only for ideation/assumption discovery; keep low temperature for compliance, release, and evidence review.
+
+### 2.7 Common Configuration Format and Validator
+
+Yes: define a common configuration envelope. DARS can have its own domain schema, but every Hisys runtime configuration file should share a small top-level format so validation, reports, and errors are consistent.
+
+Recommended common envelope:
+
+```yaml
+schema_id: hisys.dars.config
+schema_version: 0.1.0
+config_id: dars-default
+config_version: 0.1.0
+owner: sysailab
+status: draft
+classification: runtime_config
+traceability:
+  requirements: [HISYS-FR-AGT-001, HISYS-T-019, HISYS-T-020]
+  constraints: [HISYS-CON-010, HISYS-CON-011, HISYS-CON-012]
+metadata:
+  description: "DARS backend and role configuration."
+  updated: 2026-05-09
+spec:
+  default_backend: loopback_placeholder
+  policy: {...}
+  roles: {...}
+  backends: {...}
+```
+
+Common fields:
+
+| Field | Required | Purpose |
+|---|---:|---|
+| `schema_id` | yes | selects validator/model, e.g. `hisys.dars.config` |
+| `schema_version` | yes | schema compatibility check |
+| `config_id` | yes | stable config artifact id |
+| `config_version` | yes | controlled configuration version |
+| `owner` | yes | accountable maintainer/site |
+| `status` | yes | `draft`, `active`, `deprecated`, `disabled` |
+| `classification` | yes | `runtime_config`, `harness_config`, etc. |
+| `traceability` | yes | requirement/constraint refs |
+| `metadata` | optional | short human description only |
+| `spec` | yes | domain-specific validated payload |
+
+Validation should have three layers:
+
+1. **Envelope validation** — all configs share this.
+   - required common fields exist;
+   - `schema_id` is known;
+   - version is supported;
+   - `traceability.requirements` and `traceability.constraints` are non-empty for controlled configs;
+   - no secret-like raw values appear in config text.
+2. **Domain schema validation** — DARS-specific Pydantic model.
+   - `default_backend` exists in `spec.backends`;
+   - enum values are valid;
+   - `roles.*.prompt` is the only location for interpretive prose;
+   - sampling bounds are valid, e.g. `0 <= temperature <= 1`, `0 < top_p <= 1`;
+   - `output_contract == DarsCritiqueRecord` for all DARS roles/backends.
+3. **Cross-field policy validation** — safety logic that basic schema cannot express.
+   - non-loopback backends are disabled by default in checked-in examples;
+   - `external_call_allowed=true` requires `policy.enabled=true`, human approval, credential reference, and non-local test evidence;
+   - `credential_ref` is allowed, raw credential values are not;
+   - `cli_agent` backends must declare allowed/disallowed tools;
+   - `openai_compatible` external API backends must not be enabled in example configs;
+   - user prompt/focus fields cannot set tools, actions, approval, schema, or backend.
+
+Validator API design:
+
+```python
+class ConfigValidationIssue(BaseModel):
+    path: str
+    severity: Literal["error", "warning"]
+    code: str
+    message: str
+
+class ConfigValidationReport(BaseModel):
+    config_ref: str
+    schema_id: str
+    valid: bool
+    issues: list[ConfigValidationIssue]
+```
+
+Suggested CLI:
+
+```bash
+hisys validate-config --instance examples/instance
+hisys validate-config --path examples/instance/config/dars.yaml --schema hisys.dars.config
+```
+
+Suggested output files when running full validation:
+
+```text
+reports/config-validation/<YYYYMMDD>/config-validation-report.json
+reports/config-validation/<YYYYMMDD>/config-validation-report.md
+```
+
+Implementation approach:
+
+- Add generic validator foundation first: `src/hisys/config/validation.py`.
+- Add DARS models second: `src/hisys/agents/dars_config.py`.
+- Keep the Pydantic model strict: reject unknown top-level/domain fields to preserve concise configuration.
+- Provide clear path-based errors like `spec.roles.default_devil_advocate.strictness`.
+
+### 2.8 Minimal Valid DARS Config Example
+
+With the common envelope, the DARS example should look like this:
+
+```yaml
+schema_id: hisys.dars.config
+schema_version: 0.1.0
+config_id: dars-default
+config_version: 0.1.0
+owner: sysailab
+status: draft
+classification: runtime_config
+traceability:
+  requirements: [HISYS-FR-AGT-001, HISYS-T-019, HISYS-T-020]
+  constraints: [HISYS-CON-010, HISYS-CON-011, HISYS-CON-012]
+spec:
+  default_backend: loopback_placeholder
+  policy:
+    enabled: false
+    allowed_actions: advisory_only
+    require_human_approval_for_external_call: true
+    require_structured_output_schema: DarsCritiqueRecord
+    allow_external_side_effects: false
+    max_runtime_seconds: 300
+    redact_markdown_outputs: true
+  roles:
+    default_devil_advocate:
+      kind: devil_advocate
+      profession: systems_safety_reviewer
+      stance: skeptical_but_constructive
+      strictness: high
+      creativity: medium
+      verbosity: concise_structured
+      critique_dimensions: [unsupported_claims, counterarguments, risk_findings, missing_evidence]
+      prompt:
+        objective: "Challenge unsupported claims and hidden assumptions."
+        focus: "Prefer evidence-linked objections over generic criticism."
+      sampling:
+        temperature: 0.2
+        top_p: 0.9
+        max_output_tokens: 2000
+      output_contract: DarsCritiqueRecord
+  backends:
+    loopback_placeholder:
+      kind: loopback
+      enabled: true
+      mode: local_only
+      external_call_allowed: false
+      output_contract: DarsCritiqueRecord
+```
 
 ---
 
@@ -391,21 +545,23 @@ Even then, DARS response remains advisory and cannot directly trigger downstream
 
 ## 6. Ralph/TDD Implementation Queue
 
-### Task DARS-0: Runtime DARS configuration contract
+### Task DARS-0: Common configuration validator and DARS configuration contract
 
-**Objective:** Add disabled-by-default `config/dars.yaml` schema/loading behavior so users can choose different DARS LLM/agent backends without changing product code.
+**Objective:** Add a common configuration envelope plus disabled-by-default `config/dars.yaml` schema/loading behavior so users can choose different DARS LLM/agent backends without changing product code.
 
 **Files:**
 
+- Create: `src/hisys/config/validation.py`
 - Create: `examples/instance/config/dars.yaml`
 - Create or modify: `src/hisys/agents/dars_config.py`
 - Modify: `src/hisys/config/loader.py` only if shared loader support is useful
+- Test: `tests/unit/test_config_validation.py`
 - Test: `tests/unit/test_dars_config.py`
 - Modify: `docs/traceability/README.md`
 
-**RED:** Add tests asserting multiple backend kinds and concise role profiles can be declared, deterministic role fields are enum-like key/value pairs, interpretive fields are contained under `prompt:`, non-loopback backends remain disabled by default, secrets are referenced only by `credential_ref`, model knobs are bounded, and invalid backend/output contract values are rejected.
+**RED:** Add tests asserting the common envelope is required, unknown schema IDs fail, path-based validation issues are reported, multiple backend kinds and concise role profiles can be declared, deterministic role fields are enum-like key/value pairs, interpretive fields are contained under `prompt:`, non-loopback backends remain disabled by default, secrets are referenced only by `credential_ref`, model knobs are bounded, and invalid backend/output contract values are rejected.
 
-**GREEN:** Implement minimal Pydantic config objects and YAML loader. Do not dispatch any backend yet.
+**GREEN:** Implement minimal Pydantic config envelope, validation report/issue objects, DARS config model, and YAML loader. Do not dispatch any backend yet.
 
 **Verify:**
 
