@@ -33,7 +33,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import DoiMetadataConnector, FixturePublisherConnector, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import DoiMetadataConnector, FixturePublisherConnector, PdfCandidatePlanner, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -221,6 +221,22 @@ def _build_parser() -> argparse.ArgumentParser:
     smoke_source.add_argument("--approval-ref", help="manual approval ref required for live smoke")
     smoke_source.add_argument("--dry-run", action="store_true", help="write blocked/dry-run evidence only; no external call")
 
+    plan_pdf = sub.add_parser(
+        "plan-pdf-candidates",
+        help="derive OA PDF candidate plans from DOI metadata without fetching PDF bytes",
+    )
+    plan_pdf.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    plan_pdf.add_argument("--metadata", required=True, help="DOI metadata JSON path")
+    plan_pdf.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    plan_pdf.add_argument("--request-id", required=True, help="request id for candidate plan")
+    plan_pdf.add_argument("--metadata-access-ref", required=True, help="runtime ref to DOI metadata source access record")
+    plan_pdf.add_argument(
+        "--metadata-evidence-ref",
+        action="append",
+        default=[],
+        help="runtime ref to DOI metadata evidence; repeat for multiple refs",
+    )
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -345,6 +361,15 @@ def main(argv: list[str] | None = None) -> int:
             license_signal=args.license_signal,
             approval_ref=args.approval_ref,
             dry_run=args.dry_run,
+        )
+    if args.command == "plan-pdf-candidates":
+        return _cmd_plan_pdf_candidates(
+            instance_root=Path(args.instance),
+            metadata_path=Path(args.metadata),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            metadata_access_ref=args.metadata_access_ref,
+            metadata_evidence_refs=args.metadata_evidence_ref,
         )
     if args.command == "extract":
         return _cmd_extract(
@@ -662,6 +687,62 @@ def _write_source_connector_smoke_report(instance: InstanceRoot, yyyymmdd: str, 
         encoding="utf-8",
     )
     return report_artifact
+
+
+def _cmd_plan_pdf_candidates(
+    *,
+    instance_root: Path,
+    metadata_path: Path,
+    yyyymmdd: str,
+    request_id: str,
+    metadata_access_ref: str,
+    metadata_evidence_refs: list[str],
+) -> int:
+    instance = InstanceRoot(instance_root)
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    plan = PdfCandidatePlanner().plan(
+        request_id=request_id,
+        metadata=metadata,
+        metadata_access_ref=metadata_access_ref,
+        metadata_evidence_refs=metadata_evidence_refs,
+        output_root=instance.root,
+        yyyymmdd=yyyymmdd,
+    )
+    report = {
+        "schema_id": "hisys.pdf_candidate.plan_report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "plan_ref": plan.plan_ref,
+        "candidate_count": len(plan.candidates),
+        "candidate_plan_only": True,
+        "pdf_downloaded": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_artifact = report_dir / "pdf-candidate-plan-report.json"
+    report_artifact.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "pdf-candidate-plan-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                f"# PDF candidate plan report {request_id}",
+                "",
+                f"- plan_ref: `{plan.plan_ref}`",
+                f"- candidate_count: {len(plan.candidates)}",
+                "- candidate_plan_only: true",
+                "- pdf_downloaded: false",
+                "- external_call_made: false",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    print(f"pdf candidate plan: report={report_artifact}")
+    print("pdf_downloaded: false")
+    print("external_call_made: false")
+    return 0
 
 
 def _select_source_connectors_for_request(request: DomainInvestigationRequest, connector_ids: Iterable[str]) -> list[str]:

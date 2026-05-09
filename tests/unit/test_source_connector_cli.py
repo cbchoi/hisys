@@ -210,3 +210,54 @@ def test_smoke_source_connector_pdf_manual_live_requires_env_without_network(tmp
     assert report["connector_id"] == "open_access_pdf_fetch"
     assert report["reason_code"] == "manual_smoke_env_missing"
     assert report["external_call_made"] is False
+
+
+def test_plan_pdf_candidates_writes_candidate_plan_without_fetching_pdf(tmp_path: Path, capsys) -> None:
+    metadata_path = tmp_path / "doi-metadata.json"
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "message": {
+                    "DOI": "10.0000/hisys.fixture.formalism",
+                    "license": [{"URL": "https://creativecommons.org/licenses/by/4.0/"}],
+                    "link": [{"URL": "https://www.mdpi.com/fixture/formalism.pdf", "content-type": "application/pdf"}],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "plan-pdf-candidates",
+            "--instance",
+            str(tmp_path),
+            "--metadata",
+            str(metadata_path),
+            "--date",
+            "20260509",
+            "--request-id",
+            "HISYS-REQ-LIVE-E-CLI-001",
+            "--metadata-access-ref",
+            "runtime-boundary/source-connectors/20260509/source-access-ACCESS-HISYS-REQ-LIVE-E-CLI-001-doi_metadata_search.json",
+            "--metadata-evidence-ref",
+            "runtime-boundary/source-connectors/20260509/source-evidence-EVID-HISYS-REQ-LIVE-E-CLI-001-doi_metadata_search.json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "pdf candidate plan" in captured.out
+    plan_artifact = tmp_path / "runtime-boundary" / "source-connectors" / "20260509" / "pdf-candidate-plan-HISYS-REQ-LIVE-E-CLI-001.json"
+    report_artifact = tmp_path / "reports" / "run-summaries" / "20260509" / "pdf-candidate-plan-report.json"
+    assert plan_artifact.exists()
+    assert report_artifact.exists()
+    plan = json.loads(plan_artifact.read_text(encoding="utf-8"))
+    report = json.loads(report_artifact.read_text(encoding="utf-8"))
+    assert plan["candidate_plan_only"] is True
+    assert plan["pdf_downloaded"] is False
+    assert plan["external_call_made"] is False
+    assert plan["candidates"][0]["connector_id"] == "open_access_pdf_fetch"
+    assert report["plan_ref"] == str(plan_artifact.relative_to(tmp_path))
+    assert report["candidate_count"] == 1
+    assert report["pdf_downloaded"] is False
