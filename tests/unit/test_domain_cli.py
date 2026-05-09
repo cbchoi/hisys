@@ -165,6 +165,9 @@ def test_investigate_domain_research_gap_fixture_generates_alternatives(tmp_path
     assert decision["decision_type"] == "research_recommendation_review"
     assert decision["status"] == "recommend_with_conditions"
     assert decision["recommended_candidate_id"] == "CAND-HISYS-REQ-RESEARCH-GAP-001-SOS-DSDEVS"
+    assert decision["source_validation_status"] == "fixture_source_evidence_present"
+    assert any("source-evidence-EVID-HISYS-REQ-RESEARCH-GAP-001-fixture_publisher_page_reader.json" in ref for ref in decision["source_evidence_refs"])
+    assert "Validate fixture source evidence against live publisher pages before publication claims." in decision["conditions"]
     assert decision["action_taken"] == "none"
     assert decision["human_approval_required"] is True
     assert decision["external_call_made"] is False

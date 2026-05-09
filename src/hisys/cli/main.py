@@ -946,6 +946,13 @@ def _write_chief_editor_research_review(
     decision_dir.mkdir(parents=True, exist_ok=True)
     recommended_id = domain_result.alternative_decision_set.recommended_candidate_id
     dars_trace_refs = [ref for ref in domain_result.dars_refs if "/dars-trace-" in ref]
+    source_evidence_refs = [
+        ref
+        for package in domain_result.investigation_data.evidence_packages
+        for ref in package.evidence_refs
+        if ref.startswith("runtime-boundary/source-connectors/")
+    ]
+    source_validation_status = "fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed"
     decision = {
         "schema_id": "hisys.chief_editor.research_recommendation_review",
         "schema_version": "0.1.0",
@@ -957,7 +964,10 @@ def _write_chief_editor_research_review(
         "objective": request.objective,
         "recommended_candidate_id": recommended_id,
         "recommended_direction": domain_result.recommendation_summary,
+        "source_validation_status": source_validation_status,
+        "source_evidence_refs": source_evidence_refs,
         "conditions": [
+            "Validate fixture source evidence against live publisher pages before publication claims.",
             "Collect publisher-source evidence for DSDEVS, graph transformation, and ABM literature.",
             "Define evaluation scenarios for topology/behavior co-evolution.",
             "Keep novelty claims conditional until DARS source-validation actions are resolved.",
@@ -989,6 +999,7 @@ def _write_chief_editor_research_review(
                 "- decision_type: `research_recommendation_review`",
                 "- status: `recommend_with_conditions`",
                 f"- recommended_candidate_id: `{recommended_id}`",
+                f"- source_validation_status: `{source_validation_status}`",
                 "- action_taken: `none`",
                 "- human_approval_required: `true`",
                 "",

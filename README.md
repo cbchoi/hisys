@@ -163,6 +163,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   evidence refs, rubric evidence refs, and trace evidence/runtime-boundary refs
   so DARS critique lineage covers source connector evidence as well as the
   domain result.
+- Increment **Live-B5 source-aware Chief Editor research review** -
+  The Chief Editor `research_recommendation_review` records
+  `source_validation_status`, `source_evidence_refs`, and an explicit condition
+  requiring fixture evidence to be validated against live publisher pages before
+  publication-level novelty claims.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
