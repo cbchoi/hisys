@@ -31,6 +31,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
+from ..connectors import load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -189,6 +190,15 @@ def _build_parser() -> argparse.ArgumentParser:
     investigate_domain.add_argument("--request", required=True, help="DomainInvestigationRequest JSON path")
     investigate_domain.add_argument("--date", required=True, help="YYYYMMDD output partition")
 
+    plan_sources = sub.add_parser(
+        "plan-source-connectors",
+        help="dry-run plan governed source connectors for a domain investigation request",
+    )
+    plan_sources.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    plan_sources.add_argument("--request", required=True, help="DomainInvestigationRequest JSON path")
+    plan_sources.add_argument("--config", required=True, help="source-connectors.yaml path")
+    plan_sources.add_argument("--date", required=True, help="YYYYMMDD output partition")
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -294,6 +304,13 @@ def main(argv: list[str] | None = None) -> int:
             request_path=Path(args.request),
             yyyymmdd=args.date,
         )
+    if args.command == "plan-source-connectors":
+        return _cmd_plan_source_connectors(
+            instance_root=Path(args.instance),
+            request_path=Path(args.request),
+            config_path=Path(args.config),
+            yyyymmdd=args.date,
+        )
     if args.command == "extract":
         return _cmd_extract(
             instance_root=Path(args.instance),
@@ -364,6 +381,102 @@ def _cmd_validate_config(instance_root: Path) -> int:
         entry = registry.entries[source_id]
         print(f"- {source_id} [{entry.source_type}] {entry.lifecycle_state}")
     return 0
+
+
+def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_path: Path, yyyymmdd: str) -> int:
+    """Write a dry-run source connector plan without executing adapters."""
+
+    instance = InstanceRoot(instance_root)
+    request = DomainInvestigationRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
+    registry = load_source_connector_registry(config_path)
+    planned = _select_source_connectors_for_request(request, registry.connectors.keys())
+    disabled = [connector_id for connector_id in planned if not registry.connectors[connector_id].enabled]
+    blocked = [
+        {
+            "connector_id": connector_id,
+            "reason_code": "connector_disabled",
+            "reason": "Connector is planned for future evidence collection but disabled in the resolved registry.",
+        }
+        for connector_id in disabled
+    ]
+    plan = {
+        "schema_id": "hisys.source_connector.plan",
+        "schema_version": "0.1.0",
+        "request_id": request.request_id,
+        "domain": request.domain,
+        "objective": request.objective,
+        "planned_connectors": planned,
+        "disabled_connectors": disabled,
+        "blocked_connectors": blocked,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "config_ref": str(config_path),
+    }
+    plan_dir = instance.runtime_boundary_dir / "source-connectors" / yyyymmdd
+    plan_dir.mkdir(parents=True, exist_ok=True)
+    plan_artifact = plan_dir / f"connector-plan-{request.request_id}.json"
+    plan_artifact.write_text(json.dumps(plan, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    plan_md = plan_dir / f"connector-plan-{request.request_id}.md"
+    plan_md.write_text(_format_source_connector_plan_markdown(plan), encoding="utf-8")
+
+    report = {
+        "schema_id": "hisys.source_connector.plan_report",
+        "schema_version": "0.1.0",
+        "request_id": request.request_id,
+        "domain": request.domain,
+        "plan_ref": str(plan_artifact.relative_to(instance.root)),
+        "planned_connector_count": len(planned),
+        "disabled_connector_count": len(disabled),
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_artifact = report_dir / "source-connector-plan-report.json"
+    report_artifact.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "source-connector-plan-report.md"
+    report_md.write_text(_format_source_connector_plan_report_markdown(report), encoding="utf-8")
+    print(f"source connector plan: report={report_artifact}")
+    print(f"planned_connectors: {len(planned)}")
+    print("external_call_made: false")
+    return 0
+
+
+def _select_source_connectors_for_request(request: DomainInvestigationRequest, connector_ids: Iterable[str]) -> list[str]:
+    ids = set(connector_ids)
+    if request.domain == "research":
+        preferred = ["publisher_web_search", "doi_metadata_search", "open_access_pdf_fetch", "arxiv_metadata_search"]
+        return [connector_id for connector_id in preferred if connector_id in ids]
+    return [connector_id for connector_id in ["local_pdf_reader"] if connector_id in ids]
+
+
+def _format_source_connector_plan_markdown(plan: dict) -> str:
+    return "\n".join(
+        [
+            f"# Source connector plan {plan['request_id']}",
+            "",
+            f"- domain: {plan['domain']}",
+            f"- external_call_made: {str(plan['external_call_made']).lower()}",
+            f"- mutation_performed: {str(plan['mutation_performed']).lower()}",
+            "",
+            "## Planned connectors",
+            *[f"- {connector_id}" for connector_id in plan["planned_connectors"]],
+            "",
+        ]
+    )
+
+
+def _format_source_connector_plan_report_markdown(report: dict) -> str:
+    return "\n".join(
+        [
+            f"# Source connector plan report {report['request_id']}",
+            "",
+            f"- plan_ref: `{report['plan_ref']}`",
+            f"- planned_connector_count: {report['planned_connector_count']}",
+            f"- external_call_made: {str(report['external_call_made']).lower()}",
+            "",
+        ]
+    )
 
 
 def _cmd_investigate_domain(instance_root: Path, request_path: Path, yyyymmdd: str) -> int:

@@ -139,6 +139,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   access time, connector ID, SHA-256 hash, license/open-access signal, and
   separation between quoted source text and interpretation; PDF downloads require
   `license_signal=open_access`.
+- Increment **Live-B1 source connector dry-run planning** -
+  `hisys plan-source-connectors` reads a `DomainInvestigationRequest` and the
+  governed source connector registry, writes `connector-plan-*.json|md` under
+  `runtime-boundary/source-connectors/<YYYYMMDD>/`, and writes
+  `source-connector-plan-report.{json,md}` without executing adapters, making
+  external calls, or performing mutations.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
