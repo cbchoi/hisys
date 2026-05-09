@@ -261,6 +261,18 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `recommendation_claim_registry_refs` in `InvestigationDataPackage`, DARS trace,
   and Chief Editor review with `recommendation_claim_registry_present` status and
   condition `Run Live-K claim coverage gates before stronger manuscript-facing claims`.
+- Increment **Live-Obsidian-Config-A scaffold** -
+  `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
+  Obsidian live-research structure before implementation. It defines
+  `registry.json` as the global entry point, canonical topics under `topics/`,
+  `topics/INDEX.json`, group overlays, `topic-manifest.json`,
+  `investigation-manifest.json`, `runtime-index.json`, `attachment-index.json`,
+  content-addressed attachment blobs, structured `type`/`phase` metadata, and
+  evidence-citing Topic Gatekeeper decisions. The scaffold examples under
+  `examples/obsidian-live/` define registry, topic, investigation, gatekeeper,
+  and missing-task artifacts for future `vault-plan --dry-run` and
+  `vault-validate` work. The scaffold is a planner-only dry-run boundary with no
+  real vault writes.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

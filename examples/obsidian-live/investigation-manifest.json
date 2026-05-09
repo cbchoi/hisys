@@ -1,0 +1,42 @@
+{
+  "schema_version": "0.1.0",
+  "schema_id": "hisys.obsidian.investigation-manifest",
+  "topic_uid": "TOPIC-20260509-7F3A92",
+  "topic_slug": "devs-structural-change-formalism",
+  "investigation_id": "INV-20260509-2101-A8C4",
+  "run_id": "INV-20260509-2101-A8C4",
+  "date": "2026-05-09",
+  "start_at": "2026-05-09T21:01:00+09:00",
+  "end_at": null,
+  "status": "planned",
+  "paths": {
+    "topic_root": "topics/TOPIC-20260509-7F3A92__devs-structural-change-formalism",
+    "investigation_root": "topics/TOPIC-20260509-7F3A92__devs-structural-change-formalism/investigations/2026-05-09/INV-20260509-2101-A8C4",
+    "input": "input",
+    "work": "work",
+    "attachments": "attachments",
+    "runtime_boundary": "runtime-boundary",
+    "reports": "reports"
+  },
+  "indexes": {
+    "attachments": "attachments/attachment-index.json",
+    "runtime": "runtime-boundary/runtime-index.json",
+    "reports": "reports/report-index.json"
+  },
+  "artifacts": {
+    "recommendation_claim_registry_refs": [],
+    "claim_coverage_gate_refs": [],
+    "gatekeeper_decision_refs": []
+  },
+  "policy": {
+    "external_call_allowed": false,
+    "mutation_allowed": false,
+    "human_approval_ref": null,
+    "allow_prompt_override": false
+  },
+  "posture": {
+    "external_call_made": false,
+    "mutation_performed": false,
+    "vault_write_attempted": false
+  }
+}

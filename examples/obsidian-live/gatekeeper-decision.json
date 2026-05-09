@@ -1,0 +1,58 @@
+{
+  "schema_version": "0.1.0",
+  "schema_id": "hisys.obsidian.topic-gatekeeper-decision",
+  "decision_id": "TGK-20260509-2101-A8C4",
+  "submitted_topic": {
+    "title": "DEVS structural change formalism for manufacturing digital twins",
+    "domain": "research",
+    "objective": "Investigate structural-change formalism for manufacturing digital twins.",
+    "aliases": []
+  },
+  "candidate_topics": [
+    {
+      "topic_uid": "TOPIC-20260509-7F3A92",
+      "title": "DEVS Structural Change Formalism",
+      "scope_relation": "narrower_than_existing",
+      "recommended_relation": "group_or_related"
+    }
+  ],
+  "scores": {
+    "semantic_similarity": {
+      "value": 0.78,
+      "evidence_refs": [
+        "registry.json#/topics/0",
+        "topics/TOPIC-20260509-7F3A92__devs-structural-change-formalism/topic-manifest.json"
+      ]
+    },
+    "group_affinity": {
+      "value": 0.81,
+      "evidence_refs": [
+        "groups/GROUP-20260509-AC91F0__devs-and-digital-twin-formalisms/group-manifest.json"
+      ]
+    },
+    "governance_compatibility": {
+      "value": 1.0,
+      "evidence_refs": [
+        "_shared/policies/no-live-default.md"
+      ]
+    }
+  },
+  "decision": {
+    "action": "group_with_existing_topic",
+    "target_topic_uid": null,
+    "canonical_topic_uid": null,
+    "target_group_uid": "GROUP-20260509-AC91F0",
+    "new_topic_uid": "TOPIC-20260512-B82DD1",
+    "requires_human_approval": true,
+    "approval_ref": null
+  },
+  "constraints": {
+    "canonical_topics_do_not_move": true,
+    "groups_are_overlays": true,
+    "no_topic_merge_without_human_approval": true,
+    "never_delete_topic_folder": true,
+    "external_call_made": false,
+    "mutation_performed": false,
+    "advisory_only": true
+  }
+}

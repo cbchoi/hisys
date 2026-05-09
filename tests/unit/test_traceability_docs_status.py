@@ -241,6 +241,62 @@ def test_live_l_recommendation_claim_registry_status_and_traceability_are_docume
     assert "Live-K" in trace
 
 
+def test_live_obsidian_config_a_claude_review_scaffold_is_documented():
+    """Claude-reviewed Obsidian layout/gatekeeper scaffold must be documented before implementation."""
+
+    obsidian_doc = ROOT / "docs" / "use-cases" / "obsidian-live-research-layout.md"
+    text = obsidian_doc.read_text(encoding="utf-8")
+    readme = README.read_text(encoding="utf-8")
+    trace = TRACEABILITY_DOC.read_text(encoding="utf-8")
+    combined = f"{text}\n{readme}\n{trace}"
+
+    assert "Live-Obsidian-Config-A" in combined
+    assert "Claude Code review reflections" in text
+    assert "registry.json is the global entry point" in text
+    assert "topics/INDEX.json" in text
+    assert "topic-manifest.json" in text
+    assert "investigation-manifest.json" in text
+    assert "runtime-index.json" in text
+    assert "attachment-index.json" in text
+    assert "canonical topics stay under topics/" in text
+    assert "groups are overlays" in text
+    assert "merge is non-destructive" in text
+    assert "human approval" in text
+    assert "content-addressed attachment blobs" in text
+    assert "phase is structured metadata, not a tag" in text
+    assert "Obsidian wikilinks are human-navigation projections" in text
+    assert "evidence-citing gatekeeper scoring" in text
+    assert "planner-only dry-run boundary" in text
+    assert "vault_write_attempted=false" in text
+    assert "no real vault writes" in text
+
+
+def test_live_obsidian_config_a_examples_scaffold_exists():
+    """Example vault manifests should scaffold the next implementation tests without writing the real vault."""
+
+    examples = ROOT / "examples" / "obsidian-live"
+    registry = (examples / "registry.json").read_text(encoding="utf-8")
+    topic_manifest = (examples / "topic-manifest.json").read_text(encoding="utf-8")
+    investigation_manifest = (examples / "investigation-manifest.json").read_text(encoding="utf-8")
+    gatekeeper_decision = (examples / "gatekeeper-decision.json").read_text(encoding="utf-8")
+    task_plan = (examples / "live-obsidian-config-a-tasks.md").read_text(encoding="utf-8")
+
+    for content in [registry, topic_manifest, investigation_manifest, gatekeeper_decision]:
+        assert '"schema_version": "0.1.0"' in content
+        assert '"external_call_made": false' in content
+        assert '"mutation_performed": false' in content
+
+    assert '"path": "topics/TOPIC-20260509-7F3A92__devs-structural-change-formalism"' in registry
+    assert '"canonical_topics_do_not_move": true' in gatekeeper_decision
+    assert '"groups_are_overlays": true' in gatekeeper_decision
+    assert '"no_topic_merge_without_human_approval": true' in gatekeeper_decision
+    assert '"scores"' in gatekeeper_decision
+    assert '"evidence_refs"' in gatekeeper_decision
+    assert "vault-plan --dry-run" in task_plan
+    assert "vault-validate" in task_plan
+    assert "no real vault writes" in task_plan
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 

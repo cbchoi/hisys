@@ -1,0 +1,370 @@
+# Obsidian Live Research Layout
+
+Status: Live-Obsidian-Config-A scaffold and design boundary. This document reflects
+Claude Code review reflections from the read-only architecture review of the Hisys
+Obsidian live-research structure and Topic Gatekeeper.
+
+Traceability: HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012,
+HISYS-CON-022..023, Live-H/I/J/K/L.
+
+## Purpose
+
+Hisys live research data must be usable by humans in Obsidian and by LLM agents
+through small, predictable entry points. Raw data, intermediate data, PDFs, HTML
+snapshots, JSON payloads, datasets, and other attached files are managed in the
+Obsidian vault. Hisys still preserves explicit runtime-boundary provenance,
+evidence-vs-interpretation separation, and approval gates.
+
+Live-Obsidian-Config-A is a **planner-only dry-run boundary**. It scaffolds the
+layout, manifests, ontology, and Topic Gatekeeper decisions before any controlled
+writer is allowed to modify the real vault. There are **no real vault writes** in
+this increment, and future `vault-plan --dry-run` artifacts must record
+`vault_write_attempted=false`, `external_call_made=false`, and
+`mutation_performed=false`.
+
+## Claude Code review reflections
+
+The reviewed design is usable, but the scaffold must encode these corrections:
+
+1. `registry.json is the global entry point` for agents; agents should not start
+   by recursively scanning the vault.
+2. Hisys repository schemas are authoritative; Obsidian `_shared/schemas/` holds
+   only vendored schema snapshots with content hashes.
+3. Runtime-boundary authority must be explicit. Obsidian may hold investigation
+   workspace records, promoted refs, or projections, but Hisys-controlled runtime
+   artifacts remain governed by Hisys boundary rules and hashes.
+4. `type`, `phase`, tags, and links are different axes. In particular,
+   **phase is structured metadata, not a tag**.
+5. **Obsidian wikilinks are human-navigation projections**. Governance links use
+   structured `links` fields with `relation`, `ref`, and optional hash fields.
+6. Topic Gatekeeper scoring must be **evidence-citing gatekeeper scoring**: no
+   score may drive a decision unless it cites source registry/topic/claim/group
+   refs.
+7. Merge and split are canonical-identity mutations and require explicit human
+   approval records. A merge is non-destructive.
+
+## Agent-efficient canonical layout
+
+Use a topic-first layout, lowercase internal folders, and small index files:
+
+```text
+91 Hisys/Live Research/
+  README.md
+  registry.json
+  registry.md
+
+  _shared/
+    templates/
+    schemas/
+    policies/
+    ontology/
+
+  groups/
+    INDEX.json
+    GROUP-YYYYMMDD-XXXXXX__group-slug/
+      group-config.yaml
+      group-manifest.json
+      index.md
+
+  topics/
+    INDEX.json
+    TOPIC-YYYYMMDD-XXXXXX__topic-slug/
+      topic-config.yaml
+      topic-manifest.json
+      index.md
+      MERGED_INTO.md        # only for non-destructive merge tombstones
+
+      canonical/
+        sources/
+          source-index.json
+          SRC-*.md
+        evidence/
+          evidence-index.json
+          EVID-*.md
+          QUOTE-*.md
+        claims/
+          claim-index.json
+          CLAIM-*.md
+          REGISTRY-*.md
+          LEDGER-*.md
+          SUMMARY-*.md
+          GATE-*.md
+        synthesis/
+          synthesis-index.json
+          SYN-*.md
+        decisions/
+          decision-index.json
+          DECISION-*.md
+        attachments/
+          attachment-index.json
+          blobs/
+            ab/
+              cd/
+                <sha256>.<ext>
+
+      investigations/
+        INDEX.json
+        YYYY-MM-DD/
+          INV-YYYYMMDD-HHMM-XXXX/
+            investigation-config.yaml
+            investigation-manifest.json
+            index.md
+
+            input/
+              request.md
+              request.json
+
+            work/
+              source-notes/
+              evidence-notes/
+              claim-notes/
+              synthesis-notes/
+              decision-notes/
+
+            attachments/
+              attachment-index.json
+              blobs/
+
+            runtime-boundary/
+              runtime-index.json
+              topic-gatekeeper/
+              source-connectors/
+              investigations/
+              dars/
+              chief-editor/
+
+            reports/
+              report-index.json
+              run-summaries/
+```
+
+The date partition under `investigations/YYYY-MM-DD/` preserves recurring
+investigation readability. `investigations/INDEX.json` is mandatory so LLM agents
+can route without scanning date folders.
+
+## Entry-point files
+
+Agents should follow this bounded path:
+
+```text
+registry.json
+  -> topics/INDEX.json
+  -> topics/<TOPIC>/topic-manifest.json
+  -> topics/<TOPIC>/investigations/INDEX.json
+  -> topics/<TOPIC>/investigations/<date>/<INV>/investigation-manifest.json
+  -> runtime-boundary/runtime-index.json
+  -> attachments/attachment-index.json
+```
+
+`topic-manifest.json`, `investigation-manifest.json`, `runtime-index.json`, and
+`attachment-index.json` are required entry points. Binary folders should never be
+used as primary indexes.
+
+## Topic and group policy
+
+canonical topics stay under topics/. groups are overlays, not physical
+parents. A group may reference many topics, and a topic may belong to multiple
+groups.
+
+Topic identifiers:
+
+```text
+TOPIC-YYYYMMDD-XXXXXX__topic-slug
+GROUP-YYYYMMDD-XXXXXX__group-slug
+INV-YYYYMMDD-HHMM-XXXX
+```
+
+Slugs are lowercase ASCII kebab-case. The readable title, including Korean title
+text, belongs in `topic-config.yaml` and `topic-manifest.json`.
+
+## Topic Gatekeeper
+
+The Topic Gatekeeper runs before creating or reusing a topic. It reads the
+registry and candidate manifests, then records an advisory decision before any
+canonical identity mutation.
+
+Decision actions:
+
+```text
+new_topic
+related_to_existing_topic
+group_with_existing_topic
+same_as_existing_topic
+merge_with_existing_topic
+split_topic_recommended
+needs_human_clarification
+```
+
+Approval policy:
+
+| Action | Approval rule |
+|---|---|
+| `new_topic` | auto-record allowed |
+| `related_to_existing_topic` | auto-record allowed |
+| `group_with_existing_topic` | overlay-only; policy-dependent approval |
+| `same_as_existing_topic` | requires approval unless policy allows very high confidence auto-route |
+| `merge_with_existing_topic` | always requires human approval |
+| `split_topic_recommended` | always requires human approval and split plan |
+| `needs_human_clarification` | requires owner/status and should not mutate anything |
+
+Every decision must cite evidence refs for each active score dimension:
+
+```text
+semantic_similarity
+source_overlap
+claim_overlap
+group_affinity
+temporal_proximity
+governance_compatibility
+```
+
+A gatekeeper decision with a score but no `evidence_refs` is invalid.
+
+## Merge, group, and split
+
+- Grouping is overlay-only: update group manifests and topic `group_refs`; do not
+  move canonical topic folders.
+- Merge is non-destructive: keep the old topic folder, write a `MERGED_INTO.md`
+  tombstone, set `status=merged`, and set `merged_into` to the canonical topic.
+- Split is staged: create a split plan, require human approval, create new topic
+  folders, copy refs rather than binary files, then mark the original topic with
+  `split_into` metadata.
+- Never delete topic folders during merge or split.
+
+## Memo ontology
+
+Use controlled frontmatter fields:
+
+```yaml
+type: hisys/claim-coverage-gate
+phase: live-k
+topic_uid: TOPIC-20260509-7F3A92
+investigation_id: INV-20260509-2101-A8C4
+governance:
+  advisory_only: true
+  conditional: true
+  external_call_made: false
+  mutation_performed: false
+links:
+  - relation: gates_claims
+    refs:
+      - canonical/claims/CLAIM-REQ-001.md
+```
+
+Recommended `type` values:
+
+```text
+hisys/topic-group
+hisys/topic
+hisys/investigation
+hisys/source
+hisys/attachment
+hisys/evidence
+hisys/quote
+hisys/claim
+hisys/recommendation-claim-registry
+hisys/claim-evidence-ledger
+hisys/claim-evidence-summary
+hisys/claim-coverage-gate
+hisys/synthesis
+hisys/decision
+hisys/gatekeeper-decision
+hisys/report
+```
+
+Use tags for navigation and domain labels only, for example
+`hisys/live-research`, `research/devs`, or `research/digital-twin`. Do not encode
+pipeline phase as tags such as `hisys/live-k`; use `phase: live-k`.
+
+## Link relation policy
+
+Structured links are primary. Wiki links may be generated for human navigation,
+but they are not the governance record.
+
+Allowed relation vocabulary starts with:
+
+```text
+belongs_to_group
+belongs_to_topic
+part_of_investigation
+derived_from_source
+has_attachment
+quotes_source
+supports_claim
+contradicts_claim
+needs_evidence_for_claim
+summarizes_ledgers
+gates_claims
+feeds_live_k_coverage_gate
+reviewed_by_dars
+reviewed_by_chief_editor
+decided_by_gatekeeper
+merged_into
+merged_from
+split_into
+split_from
+related_topics
+promoted_from_investigation
+tombstoned_by
+```
+
+Future validators should type-check relations, e.g. reject a quote note claiming
+`belongs_to_topic` with a group target.
+
+## Attachment policy
+
+Use content-addressed attachment blobs. Attachments are immutable; a changed file
+is a new hash and a new attachment-index entry.
+
+```text
+attachments/
+  attachment-index.json
+  blobs/
+    ab/
+      cd/
+        abcdef...<sha256>.pdf
+```
+
+Raw/intermediate files are investigation-local first. Durable topic knowledge is
+promoted to `canonical/` only by an explicit governed promotion step. Heavy
+attachments remain out of Git by default unless the user explicitly enables
+tracking.
+
+## Runtime-boundary policy
+
+Runtime-boundary records preserve Hisys lineage and safety fields:
+
+```json
+{
+  "external_call_made": false,
+  "mutation_performed": false,
+  "advisory_only": true
+}
+```
+
+Live-Obsidian-Config-A does not decide final runtime authority. It scaffolds the
+rule that any vault projection of runtime evidence must preserve vault-relative
+refs plus content hashes and must not override Hisys source policy, connector
+policy, output schemas, approval gates, external-call policy, or mutation policy.
+
+## Live-Obsidian-Config-A planned tasks
+
+The next implementation should be scaffolded as fixture-only work:
+
+1. Add `hisys vault-plan --dry-run` to compute paths and write a planner report
+   with `vault_write_attempted=false` and no real vault writes.
+2. Add `hisys vault-validate` to validate fixture vault manifests, indexes,
+   relation types, ID formats, and human approval gates.
+3. Add schema skeletons for registry, group/topic/investigation manifests,
+   attachment indexes, runtime indexes, and gatekeeper decisions.
+4. Add tests ensuring no path resolves under `/home/cbchoi/obsidian` during CI;
+   use fixture roots only.
+5. Add tests rejecting unknown link relations, missing evidence refs in
+   gatekeeper scores, missing merge approval refs, path traversal, overlong paths,
+   and invalid topic/group/investigation IDs.
+
+## Non-goals
+
+This scaffold does not write files into the real Obsidian vault, download PDFs,
+fetch live sources, mutate topic identities, execute merges/splits, or promote
+attachments automatically.

@@ -1,0 +1,48 @@
+{
+  "schema_version": "0.1.0",
+  "registry_id": "REGISTRY-OBSIDIAN-LIVE-EXAMPLE",
+  "vault_relative_root": "91 Hisys/Live Research",
+  "topics_index_ref": "topics/INDEX.json",
+  "groups_index_ref": "groups/INDEX.json",
+  "topics": [
+    {
+      "topic_uid": "TOPIC-20260509-7F3A92",
+      "topic_slug": "devs-structural-change-formalism",
+      "title": "DEVS Structural Change Formalism",
+      "domain": "research",
+      "status": "active",
+      "summary": "Investigates DEVS-family structural-change formalisms for digital twin and MBSE co-evolution.",
+      "aliases": [
+        "DSDEVS",
+        "dynamic structure DEVS"
+      ],
+      "keywords": [
+        "DEVS",
+        "structural change",
+        "digital twin",
+        "MBSE"
+      ],
+      "group_uids": [
+        "GROUP-20260509-AC91F0"
+      ],
+      "path": "topics/TOPIC-20260509-7F3A92__devs-structural-change-formalism",
+      "manifest": "topics/TOPIC-20260509-7F3A92__devs-structural-change-formalism/topic-manifest.json"
+    }
+  ],
+  "groups": [
+    {
+      "group_uid": "GROUP-20260509-AC91F0",
+      "group_slug": "devs-and-digital-twin-formalisms",
+      "title": "DEVS and Digital Twin Formalisms",
+      "topic_uids": [
+        "TOPIC-20260509-7F3A92"
+      ],
+      "path": "groups/GROUP-20260509-AC91F0__devs-and-digital-twin-formalisms"
+    }
+  ],
+  "posture": {
+    "external_call_made": false,
+    "mutation_performed": false,
+    "vault_write_attempted": false
+  }
+}

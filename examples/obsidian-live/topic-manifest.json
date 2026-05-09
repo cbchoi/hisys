@@ -1,0 +1,33 @@
+{
+  "schema_version": "0.1.0",
+  "schema_id": "hisys.obsidian.topic-manifest",
+  "topic_uid": "TOPIC-20260509-7F3A92",
+  "topic_slug": "devs-structural-change-formalism",
+  "title": "DEVS Structural Change Formalism",
+  "domain": "research",
+  "status": "active",
+  "path": "topics/TOPIC-20260509-7F3A92__devs-structural-change-formalism",
+  "group_refs": [
+    "groups/GROUP-20260509-AC91F0__devs-and-digital-twin-formalisms/group-manifest.json"
+  ],
+  "canonical_indexes": {
+    "sources": "canonical/sources/source-index.json",
+    "evidence": "canonical/evidence/evidence-index.json",
+    "claims": "canonical/claims/claim-index.json",
+    "synthesis": "canonical/synthesis/synthesis-index.json",
+    "decisions": "canonical/decisions/decision-index.json",
+    "attachments": "canonical/attachments/attachment-index.json"
+  },
+  "investigations_index": "investigations/INDEX.json",
+  "gatekeeper_decision_refs": [
+    "runtime-boundary/topic-gatekeeper/topic-gatekeeper-decision-TGK-20260509-2101-A8C4.json"
+  ],
+  "merged_from": [],
+  "merged_into": null,
+  "split_into": [],
+  "posture": {
+    "external_call_made": false,
+    "mutation_performed": false,
+    "vault_write_attempted": false
+  }
+}
