@@ -26,6 +26,7 @@ Adapters may translate these envelopes into backend-specific prompts, CLI input,
 7. **Record runtime boundary metadata.** Hisys records backend, role, sampling, approval, and external-call decisions separately from the critique itself.
 8. **Progressive, not blocking.** DARS critique should improve the candidate decision through evidence-linked recommendations; it must not block, approve, execute, or mutate by itself.
 9. **Multiple critics are first-class.** A request may contain a panel of critic roles with different profession/persona/knowledge scopes. Hisys records each critic's contribution and a synthesis trace.
+10. **Rubrics are controlled files.** Evaluation matrices are versioned, hash-referenced artifacts selected by Hisys, not free-form user prompt content.
 
 ## 3. Request Envelope: Hisys → DARS
 
@@ -73,6 +74,13 @@ decision_process:
   round_index: 1
   max_rounds: 3
   stop_condition: no_high_severity_unresolved_findings
+
+rubric_refs:
+  - rubric_id: dars-progressive-decision
+    rubric_version: 0.1.0
+    artifact_ref: harness/rubrics/dars/progressive-decision-v0.1.0.json
+    sha256: hex-string
+    applies_to_roles: [logical_conservative_devil, domain_expert_devil]
 
 critic_panel:
   - role_id: logical_conservative_devil
@@ -134,6 +142,7 @@ user_focus:
 | `role` | yes | object | Concise role profile selected from validated DARS config. |
 | `sampling` | yes | object | Effective model sampling settings, copied from validated config. |
 | `decision_process` | yes | object | Progressive adversarial process metadata: round, max rounds, objective, blocking policy, and stop condition. |
+| `rubric_refs` | yes | list | Versioned rubric/evaluation matrix artifact refs and hashes selected by Hisys. |
 | `critic_panel` | optional | list | Additional critic roles participating in the same progressive review round. |
 | `handoff` | yes | object | Task-level bounded context. |
 | `record_refs` | yes | object | Stable Hisys record references; no large raw payloads. |
@@ -209,10 +218,21 @@ decision_trace:
   critic_role_id: logical_conservative_devil
   critic_profession: logic_reviewer
   critic_persona: conservative_critic
+  rubric_refs: [dars-progressive-decision@0.1.0]
   improvement_direction: revise_candidate
   blocks_decision: false
   unresolved_high_severity_findings: 0
   synthesis_summary: "Revise confidence statement and add evidence requirement."
+
+rubric_scores:
+  - axis_id: logical_validity
+    score: 3
+    max_score: 5
+    severity: medium
+    confidence: high
+    rationale: "One causal premise is implied but not directly supported."
+    evidence_refs: [EVID-001]
+    improvement_recommendation: "Add evidence for the causal link or lower confidence."
 
 validation:
   schema_valid: true
@@ -238,7 +258,8 @@ boundary:
 | `handoff_id` | yes | ID | Must match handoff package. |
 | `producer` | yes | object | Backend/role provenance; used for audit. |
 | `critique` | yes | object | Structured `DarsCritiqueRecord`. |
-| `decision_trace` | yes | object | Progressive decision metadata showing critic role, round, improvement direction, and whether the critique is advisory/non-blocking. |
+| `decision_trace` | yes | object | Progressive decision metadata showing critic role, round, improvement direction, rubric refs, and whether the critique is advisory/non-blocking. |
+| `rubric_scores` | yes | list | Axis-level scores and rationales produced against the selected rubric. |
 | `validation` | yes | object | DARS-side or adapter-side validation notes. |
 | `boundary` | yes | object | Evidence that DARS remained advisory-only. |
 

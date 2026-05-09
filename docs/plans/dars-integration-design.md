@@ -80,6 +80,8 @@ candidate_prepared -> critique_requested -> critique_received -> improvement_pro
 
 A DARS critique may mark `requires_human_review=true`, but it does **not** block execution by itself. Blocking remains the responsibility of existing Hisys approval/safety gates such as live connector approval, high/critical alert approval, secret-scan failure, traceability failure, or explicit human hold.
 
+The progressive loop should evaluate candidates with a versioned rubric/evaluation matrix. The rubric should live in a separate controlled file, selected by Hisys and referenced by ID/version/hash in the request envelope, rather than being embedded as arbitrary prompt text. The design baseline is `docs/contracts/dars-evaluation-rubrics.md`; runtime instances should place approved JSON rubrics under `<instance-root>/harness/rubrics/dars/`.
+
 ### 2.4 Backend Modes
 
 | Mode | Purpose | External call | Default |
@@ -670,9 +672,9 @@ python3 scripts/scan_secrets.py --json .
 - Modify: `tests/unit/test_dars_runtime.py`
 - Modify: `docs/traceability/README.md`
 
-**RED:** Add tests asserting valid request/response envelopes pass, response `request_id`/`handoff_id` mismatches fail, mutation/external-side-effect claims are rejected, enum paths are reported, `decision_process`, `critic_panel`, and `decision_trace` preserve progressive adversarial metadata, `blocks_decision=false` is enforced for DARS critique, and `unsupported_claims`, `counterarguments`, `risk_findings`, `recommended_actions`, `requires_human_review`, and `linked_record_refs` are persisted as advisory evidence.
+**RED:** Add tests asserting valid request/response envelopes pass, response `request_id`/`handoff_id` mismatches fail, mutation/external-side-effect claims are rejected, enum paths are reported, `decision_process`, `rubric_refs`, `critic_panel`, `decision_trace`, and `rubric_scores` preserve progressive adversarial evaluation metadata, `blocks_decision=false` is enforced for DARS critique, and `unsupported_claims`, `counterarguments`, `risk_findings`, `recommended_actions`, `requires_human_review`, and `linked_record_refs` are persisted as advisory evidence.
 
-**GREEN:** Add minimal Pydantic protocol models and response validation helpers, extend `DarsCritiqueRecord` with defaults plus progressive decision trace metadata, and keep loopback/fixture behavior local-only.
+**GREEN:** Add minimal Pydantic protocol models and response validation helpers, extend `DarsCritiqueRecord` with defaults plus progressive decision trace and rubric-score metadata, and keep loopback/fixture behavior local-only.
 
 **Verify:**
 
@@ -800,5 +802,5 @@ Reason:
 
 - Users may choose different DARS agent backends such as Claude, Codex, OpenCode, Hermes delegation, a local LLM, or an OpenAI-compatible service.
 - The backend selection must be declarative and disabled-by-default before any adapter execution is implemented.
-- The DARS request/response envelopes now define progressive adversarial process metadata, so DARS-A has stable inputs for critic role, critic panel, round index, non-blocking policy, and improvement direction.
+- The DARS request/response envelopes now define progressive adversarial process metadata, so DARS-A has stable inputs for critic role, critic panel, rubric refs, rubric scores, round index, non-blocking policy, and improvement direction.
 - DARS-A remains local and testable after the config contract exists.
