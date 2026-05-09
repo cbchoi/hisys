@@ -274,16 +274,24 @@ policy, output schema, or approval gates.
 For domain-general use, persist artifacts under:
 
 ```text
-runtime-boundary/domain-investigation/<YYYYMMDD>/
+runtime-boundary/domain-investigation/<domain>/<YYYYMMDD>/
   hisys-tool-request-<request_id>.json
+  hisys-tool-request-<request_id>.md
   investigation-data-<investigation_id>.json
-  evidence-package-<investigation_id>.json
-  design-or-decision-candidates-<investigation_id>.json
-  alternative-decision-set-<investigation_id>.json
+  alternative-decision-set-<alternative_set_id>.json
+  domain-investigation-result-<result_id>.json
+  hisys-tool-result-<request_id>.json
+  hisys-tool-result-<request_id>.md
+runtime-boundary/dars/<YYYYMMDD>/
   dars-request-<dars_request_id>.json
   dars-response-<dars_response_id>.json
-  recommendation-memo-<investigation_id>.md
-  hisys-tool-result-<request_id>.json
+  dars-trace-<trace_id>.json
+runtime-boundary/chief-editor/research/<YYYYMMDD>/
+  research-recommendation-review-<decision_id>.json
+  research-recommendation-review-<decision_id>.md
+reports/run-summaries/<YYYYMMDD>/
+  domain-investigation-report.json
+  domain-investigation-report.md
 ```
 
 Domain-specific subdirectories may be used for clarity:
@@ -324,14 +332,29 @@ hisys_investigate(domain="codebase")
 
 Other domains should reuse the same shape with domain-specific evidence and rubrics.
 
-## 10. Suggested MVP Increment
+## 10. Implemented Local MVP Increment
 
-The first implementation should remain local and file-backed:
+The local MVP boundary now exists for the research-gap/formalism path and remains
+fixture-backed/read-only:
 
-1. Add `DomainInvestigationRequest` and `DomainInvestigationResult` schemas.
-2. Add a local `hisys investigate-domain` CLI command that reads a JSON request.
-3. Implement only `domain="codebase"` first, backed by existing codebase-analysis design.
-4. Persist generic runtime-boundary artifacts.
-5. Return a compact JSON result suitable for Hermes tool wrapping.
-6. Keep external calls and mutations disabled.
-7. Add tests for blocked external calls, blocked mutation requests, domain validation, artifact refs, and advisory-only DARS behavior.
+1. `DomainInvestigationRequest`, `InvestigationDataPackage`,
+   `AlternativeDecisionSet`, `DomainInvestigationResult`, and compact
+   `HisysToolResult` schemas exist.
+2. `hisys investigate-domain --request <json>` validates the request and writes
+   runtime-boundary artifacts.
+3. `domain="research"` with an objective containing research gap/formalism
+   language generates a deterministic fixture recommendation for
+   Self-organizing Dynamic Structure DEVS with graph-rewrite structural
+   transitions.
+4. DARS local loopback fixture critique writes advisory-only request, response,
+   and trace artifacts; it may recommend more evidence but cannot execute,
+   mutate, block, or approve.
+5. Chief Editor writes a `research_recommendation_review` product with
+   `recommend_with_conditions`, human-review-required, and no external action.
+6. Tests cover artifact refs, safety flags, advisory-only DARS behavior, and the
+   Chief Editor research decision product.
+7. External calls and mutations remain disabled by default.
+
+Next post-MVP increments should add file-backed ConfigRegistry/PromptRegistry
+snapshots, publisher-source research evidence harnesses, and the codebase domain
+adapter.
