@@ -504,6 +504,16 @@ Config. The report records A through O as complete, `open_stage_count=0`, and
 `real_obsidian_vault_write_performed=false`. It is a runtime-boundary status
 artifact, not an additional vault writer.
 
+## Topic-Gatekeeper implementation status
+
+`hisys.config.obsidian_live.build_topic_gatekeeper_decision` and `hisys
+vault-topic-gatekeeper` produce a read-only, evidence-citing topic routing
+decision from a proposed topic and registry. The completed sequence includes
+approval packaging, transaction planning, fixture-only rehearsal, and completion
+status helpers. It preserves the no-live-default boundary:
+`external_call_made=false`, `mutation_performed=false` for decision/planning, and
+`real_obsidian_vault_write_performed=false` for all tests and default artifacts.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

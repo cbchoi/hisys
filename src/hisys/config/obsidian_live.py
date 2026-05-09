@@ -723,6 +723,167 @@ def write_live_vault_transaction_plan(*, instance_root: Path, yyyymmdd: str, pla
     return report_path
 
 
+def _topic_tokens(value: str) -> set[str]:
+    return {token for token in re.split(r"[^a-z0-9]+", value.lower()) if token}
+
+
+def _score_overlap(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    return round(len(left & right) / len(left | right), 3)
+
+
+def build_topic_gatekeeper_decision(*, request_id: str, proposed_topic: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]:
+    """Build an evidence-citing topic routing decision without vault mutation."""
+
+    topics = list(registry.get("topics", []))
+    proposed_title = str(proposed_topic.get("title") or proposed_topic.get("topic_slug") or "untitled-topic")
+    proposed_slug = str(proposed_topic.get("topic_slug") or re.sub(r"[^a-z0-9]+", "-", proposed_title.lower()).strip("-") or "untitled-topic")
+    proposed_tokens = _topic_tokens(f"{proposed_title} {proposed_slug}")
+    proposed_sources = set(proposed_topic.get("source_ids", []))
+    proposed_claims = set(proposed_topic.get("claim_ids", []))
+    proposed_groups = set(proposed_topic.get("groups", []))
+    best: dict[str, Any] | None = None
+    best_total = -1.0
+    best_scores: dict[str, dict[str, Any]] = {}
+    best_semantic = 0.0
+    for topic in topics:
+        existing_tokens = _topic_tokens(" ".join([str(topic.get("title", "")), str(topic.get("topic_slug", "")), " ".join(topic.get("aliases", []))]))
+        semantic = _score_overlap(proposed_tokens, existing_tokens)
+        source = _score_overlap(proposed_sources, set(topic.get("source_ids", [])))
+        claim = _score_overlap(proposed_claims, set(topic.get("claim_ids", [])))
+        group = _score_overlap(proposed_groups, set(topic.get("groups", [])))
+        governance = 1.0
+        total = round((semantic * 0.4) + (source * 0.25) + (claim * 0.25) + (group * 0.05) + (governance * 0.05), 3)
+        if total > best_total:
+            best = topic
+            best_total = total
+            best_semantic = semantic
+            ref = str(topic.get("vault_relative_ref") or "registry.json")
+            best_scores = {
+                "semantic_similarity": {"value": semantic, "evidence_refs": [f"{ref}#title"]},
+                "source_overlap": {"value": source, "evidence_refs": [f"{ref}#source_ids"]},
+                "claim_overlap": {"value": claim, "evidence_refs": [f"{ref}#claim_ids"]},
+                "group_affinity": {"value": group, "evidence_refs": [f"{ref}#groups"]},
+                "governance_compatibility": {"value": governance, "evidence_refs": [f"{ref}#policy"]},
+            }
+    if best is None:
+        action = "new_topic"
+        target_uid = None
+        best_scores = {
+            "semantic_similarity": {"value": 0.0, "evidence_refs": ["registry.json#topics"]},
+            "source_overlap": {"value": 0.0, "evidence_refs": ["registry.json#topics"]},
+            "claim_overlap": {"value": 0.0, "evidence_refs": ["registry.json#topics"]},
+            "group_affinity": {"value": 0.0, "evidence_refs": ["registry.json#groups"]},
+            "governance_compatibility": {"value": 1.0, "evidence_refs": ["registry.json#policy"]},
+        }
+    else:
+        target_uid = best.get("topic_uid")
+        if best_semantic >= 0.45 or best_total >= 0.55:
+            action = "same_as_existing_topic"
+        elif best_total >= 0.4:
+            action = "merge_with_existing_topic"
+        elif best_total >= 0.25:
+            action = "group_with_existing_topic"
+        elif best_total >= 0.1:
+            action = "related_to_existing_topic"
+        else:
+            action = "new_topic"
+            target_uid = None
+    requires_human = action in {"merge_with_existing_topic", "group_with_existing_topic", "split_topic_recommended"}
+    return {
+        "schema_id": "hisys.obsidian.topic_gatekeeper_decision",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "proposed_topic": proposed_topic,
+        "decision": {"action": action, "target_topic_uid": target_uid, "proposed_topic_slug": proposed_slug, "requires_human_approval": requires_human, "approval_ref": None},
+        "scores": best_scores,
+        "policy": {"canonical_topics_do_not_move": True, "groups_are_overlays": True, "no_topic_merge_without_human_approval": True},
+        "external_call_made": False,
+        "mutation_performed": False,
+        "real_obsidian_vault_write_performed": False,
+    }
+
+
+def write_topic_gatekeeper_decision(*, instance_root: Path, yyyymmdd: str, decision: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"topic-gatekeeper-decision-{decision['request_id']}.json"
+    report_path.write_text(json.dumps(decision, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return report_path
+
+
+def build_topic_gatekeeper_approval_package(*, request_id: str, decision: dict[str, Any], approval_ref: str | None) -> dict[str, Any]:
+    action = decision.get("decision", {}).get("action")
+    return {
+        "schema_id": "hisys.obsidian.topic_gatekeeper_approval_package",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "source_decision_request_id": decision.get("request_id"),
+        "status": "approval_packaged",
+        "decision_action": action,
+        "approval_ref": approval_ref,
+        "requires_human_approval": True,
+        "planned_outcome": "route_or_create_topic_after_approval",
+        "decision": decision,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "real_obsidian_vault_write_performed": False,
+    }
+
+
+def build_topic_gatekeeper_transaction_plan(*, request_id: str, approval_package: dict[str, Any]) -> dict[str, Any]:
+    decision = approval_package.get("decision", {})
+    decision_payload = decision.get("decision", {})
+    slug = decision_payload.get("proposed_topic_slug") or "untitled-topic"
+    target = decision_payload.get("target_topic_uid") or f"TOPIC-PLANNED-000000__{slug}"
+    base = f"91 Hisys/Live Research/topics/{target}"
+    ops = [
+        {"operation_id": "topic-gatekeeper-op-0001", "operation": "write", "vault_relative_ref": "91 Hisys/Live Research/registry.json"},
+        {"operation_id": "topic-gatekeeper-op-0002", "operation": "write", "vault_relative_ref": f"{base}/topic-manifest.json"},
+        {"operation_id": "topic-gatekeeper-op-0003", "operation": "write", "vault_relative_ref": f"{base}/runtime-boundary/topic-gatekeeper/{request_id}.json"},
+    ]
+    return {
+        "schema_id": "hisys.obsidian.topic_gatekeeper_transaction_plan",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "planned_not_executed",
+        "source_approval_package_request_id": approval_package.get("request_id"),
+        "planned_operation_count": len(ops),
+        "planned_operations": ops,
+        "approval_ref": approval_package.get("approval_ref"),
+        "external_call_made": False,
+        "mutation_performed": False,
+        "real_obsidian_vault_write_performed": False,
+    }
+
+
+def rehearse_topic_gatekeeper_transaction_in_fixture(*, transaction_plan: dict[str, Any], fixture_vault_root: Path, approval_ref: str | None, fixture_vault_only: bool) -> dict[str, Any]:
+    if _is_real_obsidian_vault(fixture_vault_root) or not approval_ref or not fixture_vault_only:
+        return {"schema_id": "hisys.obsidian.topic_gatekeeper_rehearsal", "schema_version": _SCHEMA_VERSION, "status": "blocked", "reason_code": "fixture_rehearsal_gate_not_satisfied", "operation_count": 0, "mutation_performed": False, "external_call_made": False, "real_obsidian_vault_write_performed": False}
+    refs = [str(op.get("vault_relative_ref", "")) for op in transaction_plan.get("planned_operations", [])]
+    _validate_refs(refs)
+    written = []
+    for op, ref in zip(transaction_plan.get("planned_operations", []), refs, strict=True):
+        target = fixture_vault_root / ref
+        target.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"topic_gatekeeper_projection_only": True, "source_transaction_request_id": transaction_plan.get("request_id"), "source_operation_id": op.get("operation_id"), "vault_relative_ref": ref, "approval_ref": approval_ref, "real_obsidian_vault_write_performed": False}
+        target.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        written.append({"operation_id": str(op.get("operation_id")), "vault_relative_ref": ref})
+    return {"schema_id": "hisys.obsidian.topic_gatekeeper_rehearsal", "schema_version": _SCHEMA_VERSION, "status": "rehearsed_fixture_only", "source_transaction_request_id": transaction_plan.get("request_id"), "operation_count": len(written), "written_fixture_refs": written, "mutation_performed": True, "external_call_made": False, "real_obsidian_vault_write_performed": False}
+
+
+def build_topic_gatekeeper_status_report(*, request_id: str) -> dict[str, Any]:
+    stages = [
+        {"stage": "Topic-Gatekeeper-A", "capability": "decision", "status": "complete"},
+        {"stage": "Topic-Gatekeeper-B", "capability": "approval_package", "status": "complete"},
+        {"stage": "Topic-Gatekeeper-C", "capability": "transaction_plan", "status": "complete"},
+        {"stage": "Topic-Gatekeeper-D", "capability": "fixture_rehearsal", "status": "complete"},
+        {"stage": "Topic-Gatekeeper-E", "capability": "completion_status", "status": "complete"},
+    ]
+    return {"schema_id": "hisys.obsidian.topic_gatekeeper_status", "schema_version": _SCHEMA_VERSION, "request_id": request_id, "status": "complete", "topic_gatekeeper_complete": True, "completed_stage_count": len(stages), "open_stage_count": 0, "stages": stages, "external_call_made": False, "mutation_performed": False, "real_obsidian_vault_write_performed": False}
+
+
 def build_live_obsidian_config_status_report(*, request_id: str) -> dict[str, Any]:
     """Build the Live-Obsidian-Config completion status report."""
 
@@ -1422,10 +1583,15 @@ __all__ = [
     "build_live_vault_preflight_report",
     "build_live_vault_transaction_plan",
     "build_live_vault_write_gate_report",
+    "build_topic_gatekeeper_approval_package",
+    "build_topic_gatekeeper_decision",
+    "build_topic_gatekeeper_status_report",
+    "build_topic_gatekeeper_transaction_plan",
     "build_topic_identity_transition_plan",
     "build_vault_plan",
     "build_vault_template_plan",
     "rehearse_live_vault_transaction_in_fixture",
+    "rehearse_topic_gatekeeper_transaction_in_fixture",
     "validate_fixture_vault_roundtrip",
     "validate_vault_manifests",
     "write_live_obsidian_config_status_report",
@@ -1436,6 +1602,7 @@ __all__ = [
     "write_live_vault_transaction_plan",
     "write_live_vault_transaction_rehearsal_report",
     "write_live_vault_write_gate_report",
+    "write_topic_gatekeeper_decision",
     "write_vault_plan_artifacts",
     "write_vault_roundtrip_report",
     "write_vault_template_plan_artifacts",

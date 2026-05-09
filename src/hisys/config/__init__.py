@@ -2,7 +2,7 @@
 
 from .instance import InstanceRoot
 from .loader import load_source_registry
-from .obsidian_live import apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from .obsidian_live import apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from .validation import ConfigEnvelope, ConfigValidationIssue, ConfigValidationReport, validate_config_document
 
 __all__ = [
@@ -17,6 +17,7 @@ __all__ = [
     "build_live_vault_preflight_report",
     "build_live_vault_transaction_plan",
     "build_live_vault_write_gate_report",
+    "build_topic_gatekeeper_decision",
     "build_topic_identity_transition_plan",
     "build_vault_plan",
     "build_vault_template_plan",
@@ -32,6 +33,7 @@ __all__ = [
     "write_live_vault_transaction_plan",
     "write_live_vault_transaction_rehearsal_report",
     "write_live_vault_write_gate_report",
+    "write_topic_gatekeeper_decision",
     "write_topic_identity_transition_plan",
     "write_vault_apply_report",
     "write_vault_plan_artifacts",

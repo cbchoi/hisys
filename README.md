@@ -369,6 +369,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys.config.obsidian_live.build_live_obsidian_config_status_report` and
   `hisys vault-live-config-status` record that Live-Obsidian-Config A through O
   are complete, with zero open stages and no real Obsidian vault write performed.
+- Increment **Topic-Gatekeeper complete** -
+  `hisys.config.obsidian_live.build_topic_gatekeeper_decision` and `hisys
+  vault-topic-gatekeeper` provide read-only, evidence-citing topic routing over a
+  registry. The completion sequence also covers approval package, transaction
+  plan, fixture rehearsal, and status reporting helpers; all default artifacts
+  record no external calls and no real Obsidian vault writes.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
