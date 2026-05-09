@@ -33,7 +33,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -252,6 +252,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="runtime ref to DOI metadata evidence; repeat for multiple refs",
     )
 
+    extract_pdf_quotes = sub.add_parser(
+        "extract-pdf-quotes",
+        help="extract quote-only records from explicit promoted OA PDF evidence refs",
+    )
+    extract_pdf_quotes.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    extract_pdf_quotes.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    extract_pdf_quotes.add_argument("--request-id", required=True, help="request id for quote extraction")
+    extract_pdf_quotes.add_argument(
+        "--promoted-pdf-evidence-ref",
+        action="append",
+        required=True,
+        help="explicit promoted PDF source-evidence ref; repeat for multiple refs",
+    )
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -388,6 +402,13 @@ def main(argv: list[str] | None = None) -> int:
             request_id=args.request_id,
             metadata_access_ref=args.metadata_access_ref,
             metadata_evidence_refs=args.metadata_evidence_ref,
+        )
+    if args.command == "extract-pdf-quotes":
+        return _cmd_extract_pdf_quotes(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            promoted_pdf_evidence_refs=args.promoted_pdf_evidence_ref,
         )
     if args.command == "extract":
         return _cmd_extract(
@@ -790,6 +811,56 @@ def _cmd_plan_pdf_candidates(
     )
     print(f"pdf candidate plan: report={report_artifact}")
     print("pdf_downloaded: false")
+    print("external_call_made: false")
+    return 0
+
+
+def _cmd_extract_pdf_quotes(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    promoted_pdf_evidence_refs: list[str],
+) -> int:
+    instance = InstanceRoot(instance_root)
+    result = PdfQuoteExtractor(root=instance.root).extract(
+        request_id=request_id,
+        promoted_pdf_evidence_refs=promoted_pdf_evidence_refs,
+        yyyymmdd=yyyymmdd,
+    )
+    report = {
+        "schema_id": "hisys.pdf_quote.extraction_report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "status": "completed",
+        "source_quote_refs": result.source_quote_refs,
+        "quote_count": len(result.source_quote_refs),
+        "external_call_made": result.external_call_made,
+        "mutation_performed": result.mutation_performed,
+    }
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_artifact = report_dir / "pdf-quote-extraction-report.json"
+    report_artifact.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "pdf-quote-extraction-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                f"# PDF quote extraction report {request_id}",
+                "",
+                "- status: `completed`",
+                f"- quote_count: {len(result.source_quote_refs)}",
+                "- external_call_made: false",
+                "- mutation_performed: false",
+                "",
+                "## Source quote refs",
+                *[f"- {ref}" for ref in result.source_quote_refs],
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    print(f"pdf quote extraction: report={report_artifact}")
     print("external_call_made: false")
     return 0
 
