@@ -113,6 +113,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   fixture, the decision is `recommend_with_conditions`, requires human review,
   requests publisher-source/evaluation-scenario evidence, and takes no external
   action or mutation.
+- Increment **Live-A2 Source connector registry schemas** -
+  `hisys.connectors.live_source_config` defines disabled-by-default live source
+  connector registry models and loader behavior for future publisher/search/PDF,
+  metadata, local-file, Selenium read-only, fixture, and read-only LLM evidence
+  connectors. The registry rejects mutating modes, credential refs, enabled
+  external connectors when live-network policy is disabled, and external
+  connectors without approval policy or allowlisted domains.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
