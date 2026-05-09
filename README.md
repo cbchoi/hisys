@@ -281,6 +281,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   record `vault_write_attempted=false`, `external_call_made=false`, and
   `mutation_performed=false`. The CLI does not create `/home/cbchoi/obsidian` or
   any `91 Hisys/` vault content.
+- Increment **Live-Obsidian-Config-C vault validator** -
+  `hisys.config.obsidian_live.validate_vault_manifests` and `hisys vault-validate`
+  validate fixture registry/topic/investigation/gatekeeper manifests without
+  vault writes. The validator rejects missing gatekeeper score evidence refs,
+  unsafe vault-relative refs, invalid topic IDs/slugs, and merge/split decisions
+  missing required human approval refs, then writes validation reports with
+  `vault_write_attempted=false`, `external_call_made=false`, and
+  `mutation_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

@@ -171,6 +171,121 @@ def _validate_refs(refs: list[str]) -> None:
             raise ValueError(f"unsafe vault-relative ref: {ref}")
 
 
+def validate_vault_manifests(
+    *,
+    registry_path: Path,
+    topic_manifest_path: Path,
+    investigation_manifest_path: Path,
+    gatekeeper_decision_path: Path,
+) -> dict[str, Any]:
+    """Validate Live-Obsidian fixture manifests without touching the vault."""
+
+    files = [registry_path, topic_manifest_path, investigation_manifest_path, gatekeeper_decision_path]
+    docs = [json.loads(path.read_text(encoding="utf-8")) for path in files]
+    registry, topic_manifest, investigation_manifest, gatekeeper = docs
+    issues: list[dict[str, str]] = []
+
+    for path, doc in zip(files, docs):
+        if doc.get("schema_version") != _SCHEMA_VERSION:
+            issues.append({"code": "unsupported_schema_version", "path": str(path), "message": "schema_version must be 0.1.0"})
+
+    _check_ref(registry.get("topics_index_ref"), "registry.topics_index_ref", issues)
+    _check_ref(registry.get("groups_index_ref"), "registry.groups_index_ref", issues)
+    for topic in registry.get("topics", []):
+        _check_topic_uid(topic.get("topic_uid"), "registry.topic_uid", issues)
+        _check_slug(topic.get("topic_slug"), "registry.topic_slug", issues)
+        _check_ref(topic.get("path"), "registry.topic.path", issues)
+        _check_ref(topic.get("manifest"), "registry.topic.manifest", issues)
+
+    _check_topic_uid(topic_manifest.get("topic_uid"), "topic_manifest.topic_uid", issues)
+    _check_ref(topic_manifest.get("path"), "topic_manifest.path", issues)
+    for ref in _flatten_refs(topic_manifest.get("canonical_indexes", {})):
+        _check_ref(ref, "topic_manifest.canonical_indexes", issues)
+    _check_ref(topic_manifest.get("investigations_index"), "topic_manifest.investigations_index", issues)
+
+    paths = investigation_manifest.get("paths", {})
+    for ref in _flatten_refs(paths):
+        _check_ref(ref, "investigation_manifest.paths", issues)
+    for ref in _flatten_refs(investigation_manifest.get("indexes", {})):
+        _check_ref(ref, "investigation_manifest.indexes", issues)
+
+    for score_name, score in gatekeeper.get("scores", {}).items():
+        if score.get("value") is None:
+            issues.append({"code": "gatekeeper_score_missing_value", "path": score_name, "message": "score requires value"})
+        evidence_refs = score.get("evidence_refs") or []
+        if not evidence_refs:
+            issues.append({"code": "gatekeeper_score_missing_evidence_refs", "path": score_name, "message": "score requires evidence_refs"})
+        for ref in evidence_refs:
+            _check_ref(ref.split("#", 1)[0] or "registry.json", f"gatekeeper.scores.{score_name}.evidence_refs", issues)
+
+    decision = gatekeeper.get("decision", {})
+    action = decision.get("action")
+    if action in {"merge_with_existing_topic", "split_topic_recommended"} and not decision.get("approval_ref"):
+        issues.append(
+            {
+                "code": "canonical_identity_mutation_missing_approval",
+                "path": "gatekeeper.decision.approval_ref",
+                "message": f"{action} requires a human approval ref",
+            }
+        )
+
+    return {
+        "schema_id": "hisys.obsidian.vault_validation_report",
+        "schema_version": _SCHEMA_VERSION,
+        "valid": not issues,
+        "error_count": len(issues),
+        "issues": issues,
+        "checked_files": len(files),
+        "vault_write_attempted": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def write_vault_validation_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "reports" / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "vault-validation-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / "vault-validation-report.md").write_text(_format_vault_validation_report(report), encoding="utf-8")
+    return report_path
+
+
+def _check_ref(ref: object, path: str, issues: list[dict[str, str]]) -> None:
+    if not isinstance(ref, str) or not ref:
+        issues.append({"code": "missing_ref", "path": path, "message": "ref is required"})
+        return
+    ref_path = Path(ref)
+    if ref_path.is_absolute() or ".." in ref_path.parts:
+        issues.append({"code": "unsafe_vault_relative_ref", "path": path, "message": ref})
+
+
+def _check_topic_uid(uid: object, path: str, issues: list[dict[str, str]]) -> None:
+    if not isinstance(uid, str) or not _TOPIC_UID_RE.fullmatch(uid):
+        issues.append({"code": "invalid_topic_uid", "path": path, "message": str(uid)})
+
+
+def _check_slug(slug: object, path: str, issues: list[dict[str, str]]) -> None:
+    if not isinstance(slug, str) or not _SAFE_SLUG_RE.fullmatch(slug):
+        issues.append({"code": "invalid_slug", "path": path, "message": str(slug)})
+
+
+def _flatten_refs(value: object) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        refs: list[str] = []
+        for child in value.values():
+            refs.extend(_flatten_refs(child))
+        return refs
+    if isinstance(value, list):
+        refs = []
+        for child in value:
+            refs.extend(_flatten_refs(child))
+        return refs
+    return []
+
+
 def _format_vault_plan_report(report: dict[str, Any]) -> str:
     return "\n".join(
         [
@@ -189,4 +304,27 @@ def _format_vault_plan_report(report: dict[str, Any]) -> str:
     )
 
 
-__all__ = ["build_vault_plan", "write_vault_plan_artifacts"]
+def _format_vault_validation_report(report: dict[str, Any]) -> str:
+    status = "valid" if report["valid"] else "invalid"
+    lines = [
+        "# Obsidian Vault Validation Report",
+        "",
+        f"- Status: {status}",
+        f"- Error count: {report['error_count']}",
+        "- vault_write_attempted: false",
+        "- external_call_made: false",
+        "- mutation_performed: false",
+        "",
+    ]
+    for issue in report.get("issues", []):
+        lines.append(f"- {issue['code']} at `{issue['path']}`: {issue['message']}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+__all__ = [
+    "build_vault_plan",
+    "validate_vault_manifests",
+    "write_vault_plan_artifacts",
+    "write_vault_validation_report",
+]

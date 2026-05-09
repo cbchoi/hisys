@@ -373,6 +373,16 @@ reports, and records `vault_write_attempted=false`, `external_call_made=false`,
 and `mutation_performed=false`. It rejects unsafe submitted titles before path
 construction and does not create any `91 Hisys/` vault content.
 
+## Live-Obsidian-Config-C implementation status
+
+`hisys.config.obsidian_live.validate_vault_manifests` and `hisys vault-validate`
+validate fixture-only registry, topic-manifest, investigation-manifest, and
+Topic Gatekeeper decision artifacts. The validator rejects missing evidence refs
+on gatekeeper scores, unsafe vault-relative refs, invalid topic IDs/slugs, and
+merge/split decisions without required approval refs. Validation writes only
+run-summary reports and preserves `vault_write_attempted=false`,
+`external_call_made=false`, and `mutation_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

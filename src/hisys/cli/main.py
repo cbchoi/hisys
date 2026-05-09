@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, build_vault_plan, load_source_registry, write_vault_plan_artifacts
+from ..config import InstanceRoot, build_vault_plan, load_source_registry, validate_vault_manifests, write_vault_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -387,6 +387,17 @@ def _build_parser() -> argparse.ArgumentParser:
     vault_plan.add_argument("--objective", required=True, help="submitted investigation objective")
     vault_plan.add_argument("--dry-run", action="store_true", required=True, help="required; compute plan only and write no vault files")
 
+    vault_validate = sub.add_parser(
+        "vault-validate",
+        help="validate Obsidian live-research manifests without writing the vault",
+    )
+    vault_validate.add_argument("--instance", required=True, help="runtime instance root for validation reports")
+    vault_validate.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    vault_validate.add_argument("--registry", required=True, help="registry.json path")
+    vault_validate.add_argument("--topic-manifest", required=True, help="topic-manifest.json path")
+    vault_validate.add_argument("--investigation-manifest", required=True, help="investigation-manifest.json path")
+    vault_validate.add_argument("--gatekeeper-decision", required=True, help="gatekeeper decision JSON path")
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -584,6 +595,15 @@ def main(argv: list[str] | None = None) -> int:
             objective=args.objective,
             dry_run=args.dry_run,
         )
+    if args.command == "vault-validate":
+        return _cmd_vault_validate(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            registry_path=Path(args.registry),
+            topic_manifest_path=Path(args.topic_manifest),
+            investigation_manifest_path=Path(args.investigation_manifest),
+            gatekeeper_decision_path=Path(args.gatekeeper_decision),
+        )
     if args.command == "extract":
         return _cmd_extract(
             instance_root=Path(args.instance),
@@ -686,6 +706,31 @@ def _cmd_vault_plan(
     print("vault_write_attempted: false")
     print("external_call_made: false")
     return 0
+
+
+def _cmd_vault_validate(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    registry_path: Path,
+    topic_manifest_path: Path,
+    investigation_manifest_path: Path,
+    gatekeeper_decision_path: Path,
+) -> int:
+    """Validate Obsidian live-research manifests without writing the vault."""
+
+    report = validate_vault_manifests(
+        registry_path=registry_path,
+        topic_manifest_path=topic_manifest_path,
+        investigation_manifest_path=investigation_manifest_path,
+        gatekeeper_decision_path=gatekeeper_decision_path,
+    )
+    report_path = write_vault_validation_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
+    status = "valid" if report["valid"] else "invalid"
+    print(f"vault validation: {status}")
+    print(f"report={report_path}")
+    print("vault_write_attempted: false")
+    return 0 if report["valid"] else 1
 
 
 def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_path: Path, yyyymmdd: str) -> int:
