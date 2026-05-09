@@ -16,6 +16,8 @@ The first concrete adapter is the deterministic local `DarsFixtureBackend` in `s
 
 End-to-end DARS lineage is recorded by `src/hisys/agents/dars_trace.py`, verified by `tests/unit/test_dars_trace.py`. `DarsTraceLinker` writes `hisys.dars.trace_link` JSON/Markdown artifacts that connect source, observation, signal, memo, alert, evidence, handoff, request, dispatch, validation, response, critique, and recommended-action references while preserving external-call and mutation boundary facts.
 
+A disabled-by-default mock endpoint adapter boundary is declared by `DarsMockEndpointAdapter` and the `mock_endpoint` example config entry. It is verified by `tests/unit/test_dars_mock_endpoint.py`, remains disabled in checked-in config, performs no HTTP/network operation, and refuses blocked dispatch decisions.
+
 The exchange has two canonical artifacts:
 
 1. `DarsRequestEnvelope` — Hisys → DARS.

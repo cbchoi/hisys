@@ -157,4 +157,30 @@ def _response_markdown(response: DarsResponseEnvelope) -> str:
     )
 
 
-__all__ = ["DarsFixtureBackend"]
+class DarsMockEndpointAdapter:
+    """Disabled-by-default mock HTTP adapter skeleton.
+
+    This adapter intentionally performs no HTTP/network operation. It exists to
+    preserve the future adapter boundary and refuses blocked dispatch decisions.
+    """
+
+    def __init__(self, *, instance: InstanceRoot) -> None:
+        self.instance = instance
+
+    def run(
+        self,
+        *,
+        yyyymmdd: str,
+        request_id: str,
+        backend_config: DarsBackendConfig,
+        dispatch_decision: DarsDispatchDecision,
+    ) -> DarsResponseEnvelope:
+        del yyyymmdd, request_id
+        if dispatch_decision.decision != "allowed":
+            raise ValueError("dispatch decision is not allowed")
+        if backend_config.kind != "mock_http":
+            raise ValueError("DarsMockEndpointAdapter requires a mock_http backend")
+        raise NotImplementedError("mock endpoint adapter is a disabled-by-default harness boundary")
+
+
+__all__ = ["DarsFixtureBackend", "DarsMockEndpointAdapter"]
