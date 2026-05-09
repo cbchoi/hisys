@@ -214,3 +214,21 @@ def test_investigate_domain_promotes_explicit_manual_pdf_evidence_refs(tmp_path:
     assert package.access_ref in data["source_governance_refs"]
     assert package.evidence_ref in data["source_governance_refs"]
     assert package.evidence_ref in data["evidence_packages"][0]["evidence_refs"]
+    dars_trace = json.loads(
+        (tmp_path / "runtime-boundary" / "dars" / "20260509" / "dars-trace-DARSTRACE-DARSREQ-HISYS-REQ-RESEARCH-GAP-001.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert package.evidence_ref in dars_trace["evidence_refs"]
+    chief_decision = json.loads(
+        (
+            tmp_path
+            / "runtime-boundary"
+            / "chief-editor"
+            / "research"
+            / "20260509"
+            / "research-recommendation-review-CEDEC-HISYS-REQ-RESEARCH-GAP-001.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert chief_decision["source_validation_status"] == "manual_pdf_evidence_promoted"
+    assert chief_decision["promoted_pdf_evidence_refs"] == [package.evidence_ref]

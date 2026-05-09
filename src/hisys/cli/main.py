@@ -1294,6 +1294,7 @@ def _write_dars_fixture_for_domain_result(
         "memo_refs": [domain_result_ref],
         "alert_refs": [],
         "evidence_refs": [evidence_ref, *connector_evidence_refs],
+        "promoted_pdf_evidence_refs": domain_result.investigation_data.promoted_pdf_evidence_refs,
         "critique_id": critique_id,
         "recommended_action_ids": [f"RECACT-{request.request_id}-SOURCE-VALIDATION"],
         "runtime_boundary_refs": [
@@ -1344,7 +1345,7 @@ def _write_chief_editor_research_review(
         for ref in package.evidence_refs
         if ref.startswith("runtime-boundary/source-connectors/")
     ]
-    source_validation_status = "fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed"
+    source_validation_status = "manual_pdf_evidence_promoted" if domain_result.investigation_data.promoted_pdf_evidence_refs else ("fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed")
     decision = {
         "schema_id": "hisys.chief_editor.research_recommendation_review",
         "schema_version": "0.1.0",
@@ -1358,6 +1359,7 @@ def _write_chief_editor_research_review(
         "recommended_direction": domain_result.recommendation_summary,
         "source_validation_status": source_validation_status,
         "source_evidence_refs": source_evidence_refs,
+        "promoted_pdf_evidence_refs": domain_result.investigation_data.promoted_pdf_evidence_refs,
         "conditions": [
             "Validate fixture source evidence against live publisher pages before publication claims.",
             "Collect publisher-source evidence for DSDEVS, graph transformation, and ABM literature.",
