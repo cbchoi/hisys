@@ -192,3 +192,18 @@ def test_live_g_pdf_evidence_promotion_status_and_traceability_are_documented():
     assert "| Live-G Manual OA PDF evidence promotion |" in trace
     assert "`hisys.connectors.pdf_evidence_promotion`" in trace
     assert "tests/unit/test_pdf_evidence_promotion.py" in trace
+
+
+def test_live_h_pdf_quote_extraction_status_and_traceability_are_documented():
+    """README and traceability docs must mention implemented Live-H quote extraction path."""
+
+    readme = README.read_text(encoding="utf-8")
+    trace = TRACEABILITY_DOC.read_text(encoding="utf-8")
+
+    assert "Increment **Live-H PDF quote extraction from promoted OA evidence**" in readme
+    assert "PdfQuoteExtractor" in readme
+    assert "hisys extract-pdf-quotes" in readme
+    assert "--source-quote-ref" in readme
+    assert "| Live-H PDF quote extraction from promoted OA evidence |" in trace
+    assert "`hisys.connectors.pdf_quote_extractor`" in trace
+    assert "tests/unit/test_pdf_quote_extractor.py" in trace

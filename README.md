@@ -213,6 +213,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   governance, and preserves promoted PDF refs in DARS trace and Chief Editor
   `research_recommendation_review` with `manual_pdf_evidence_promoted` status.
   This adds no implicit PDF discovery or live fetch.
+- Increment **Live-H PDF quote extraction from promoted OA evidence** -
+  `PdfQuoteExtractor` derives quote-only `source_quote_refs` from explicit
+  promoted OA PDF evidence refs. `hisys extract-pdf-quotes` writes
+  `source-quote-<quote_id>.json` artifacts and a
+  `pdf-quote-extraction-report.json` without OCR, PDF parsing, or network calls
+  in CI. `hisys investigate-domain --source-quote-ref` preserves quote refs in
+  `InvestigationDataPackage`, DARS trace, and Chief Editor review while keeping
+  novelty/publication claims conditional.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
