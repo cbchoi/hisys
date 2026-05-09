@@ -117,7 +117,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `action_taken=none`.
 - Increment **I8-A/B/C foundation** (DARS advisory handoff loopback contract and
   config-validation gate) -
-  DARS itself is intentionally not implemented. `hisys request-dars-critique`
+  DARS itself is intentionally not implemented. The adopted Hisys design
+  philosophy is documented in `docs/architecture/design-philosophy.md`: Hermes
+  orchestrates conversation and tasks; Hisys governs investigation, evidence,
+  alternatives, and runtime-boundary records; DARS critiques alternatives as an
+  advisory evaluator; and humans or approved governance select consequential
+  actions. `hisys request-dars-critique`
   creates runtime-local `AgentHandoffPackage` JSON/Markdown records linked to
   disabled connector executions and returns a loopback placeholder critique when
   no critique text is supplied. The artifact shape records

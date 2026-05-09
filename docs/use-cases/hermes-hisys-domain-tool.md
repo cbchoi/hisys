@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-Hisys should be designed as a **domain-general investigation and decision-support tool** that Hermes can call. Codebase analysis is one important specialization, but the core product should apply to any domain where Hermes needs controlled investigation, evidence packaging, progressive DARS critique, and advisory alternatives.
+Hisys should be designed as a **domain-general investigation and decision-support tool** that Hermes can call. Codebase analysis is one important specialization, but the core product should apply to any domain where Hermes needs controlled investigation, evidence packaging, progressive DARS critique, and advisory alternatives. This use case follows the adopted design philosophy in `docs/architecture/design-philosophy.md`.
 
 Conceptually:
 

@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-This document defines how Hisys should manage configurations beyond DARS prompts as the product moves toward commercialization. The key decision is to separate **configuration governance** from **runtime evidence** and from **secret storage**.
+This document defines how Hisys should manage configurations beyond DARS prompts as the product moves toward commercialization. It supports the adopted design philosophy in `docs/architecture/design-philosophy.md`: separate **configuration governance** from **runtime evidence** and from **secret storage**, while preserving Hisys as a governed domain-general investigation and decision-support tool for Hermes.
 
 Near-term implementation can continue to use versioned JSON/YAML files under an instance root. Future commercial deployment should use a database-backed `ConfigRegistry` for tenant-scoped, audited, approved configuration snapshots while preserving the existing common config envelope and validator behavior.
 

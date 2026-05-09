@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-This use case specializes the domain-general Hermes-facing Hisys tool model in `docs/use-cases/hermes-hisys-domain-tool.md` for software repositories. It applies Hisys to software repositories and related project evidence so it can analyze the **current codebase**, relevant **open-source references**, and **previous project results**, then identify design candidates, critique alternatives with DARS, and recommend better uses or better architecture paths.
+This use case specializes the domain-general Hermes-facing Hisys tool model in `docs/use-cases/hermes-hisys-domain-tool.md` for software repositories and follows the adopted Hisys design philosophy in `docs/architecture/design-philosophy.md`. It applies Hisys to software repositories and related project evidence so it can analyze the **current codebase**, relevant **open-source references**, and **previous project results**, then identify design candidates, critique alternatives with DARS, and recommend better uses or better architecture paths.
 
 The target output is not an automatic code change. The target output is a controlled advisory package:
 
