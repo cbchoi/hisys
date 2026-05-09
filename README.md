@@ -250,6 +250,17 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   Chief Editor review with `claim_coverage_gate_present` status,
   `conditional_manuscript_language_only=true`, and a conditional manuscript
   language gate.
+- Increment **Live-L recommendation claim registry** -
+  `RecommendationClaimRegistryBuilder` records controlled required recommendation
+  claims from explicit recommendation text and writes
+  `recommendation-claim-registry-*.json` artifacts without network calls, source
+  mutation, novelty proof, or publication-readiness approval. `hisys
+  build-recommendation-claim-registry` writes registry reports with
+  `feeds_live_k_coverage_gates=true`, and `hisys investigate-domain
+  --recommendation-claim-registry-ref` preserves
+  `recommendation_claim_registry_refs` in `InvestigationDataPackage`, DARS trace,
+  and Chief Editor review with `recommendation_claim_registry_present` status and
+  condition `Run Live-K claim coverage gates before stronger manuscript-facing claims`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

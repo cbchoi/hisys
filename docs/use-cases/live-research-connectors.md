@@ -348,7 +348,7 @@ Boundary rules:
    `runtime-boundary/source-connectors/<YYYYMMDD>/`;
 3. each required recommendation claim receives controlled claim IDs and preserves
    the source recommendation wording used to derive it;
-4. registry records feeds Live-K coverage gates by providing required recommendation claims, but Live-K still requires explicit
+4. registry records feed Live-K coverage gates by providing required recommendation claims; this feeds Live-K coverage gates explicitly, but Live-K still requires explicit
    `claim_evidence_summary_refs` before coverage can be recorded;
 5. the registry does not prove novelty, does not approve publication-ready claims,
    and does not make advisory confidence stronger;

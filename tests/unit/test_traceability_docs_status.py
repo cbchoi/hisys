@@ -218,6 +218,29 @@ def test_live_k_claim_coverage_gate_status_and_traceability_are_documented():
     assert "tests/unit/test_domain_cli.py" in trace
 
 
+def test_live_l_recommendation_claim_registry_status_and_traceability_are_documented():
+    """README and traceability docs must mention implemented Live-L recommendation registry."""
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    trace = (ROOT / "docs" / "traceability" / "README.md").read_text(encoding="utf-8")
+
+    assert "Live-L recommendation claim registry" in readme
+    assert "RecommendationClaimRegistryBuilder" in readme
+    assert "build-recommendation-claim-registry" in readme
+    assert "recommendation_claim_registry_refs" in readme
+    assert "feeds_live_k_coverage_gates" in readme
+    assert "recommendation_claim_registry_present" in readme
+    assert "Run Live-K claim coverage gates before stronger manuscript-facing claims" in readme
+
+    assert "Live-L Recommendation claim registry" in trace
+    assert "hisys.connectors.recommendation_claim_registry" in trace
+    assert "tests/unit/test_recommendation_claim_registry.py" in trace
+    assert "tests/unit/test_recommendation_claim_registry_cli.py" in trace
+    assert "recommendation_claim_registry_refs" in trace
+    assert "recommendation_claim_registry_present" in trace
+    assert "Live-K" in trace
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 
