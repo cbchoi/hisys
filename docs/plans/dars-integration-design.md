@@ -296,10 +296,12 @@ Separate the design into four layers:
 The final prompt should be assembled deterministically:
 
 ```text
-system_contract + role_profile + handoff_context + evidence_refs + output_schema + user_focus
+system_contract + role_profile + rubric_snapshot + handoff_context + evidence_refs + output_schema + user_focus
 ```
 
-User focus is last-mile guidance only. It may narrow the critique lens, but cannot change safety policy, schema, tools, or approval gates.
+For commercialization, the system contract, role profile, rubric refs, templates, and policy bindings should be managed through a prompt registry abstraction. The near-term implementation can use file-backed JSON artifacts, but the future deployment should support a database-backed prompt registry with tenant scoping, approval workflow, immutable versions, hashes, audit events, and rollback. The commercial prompt-registry design baseline is `docs/contracts/dars-prompt-registry.md`.
+
+User focus is last-mile guidance only. It may narrow the critique lens, but cannot change safety policy, schema, tools, prompt bundle, rubric, approval gates, or backend selection.
 
 Recommended role profile fields:
 

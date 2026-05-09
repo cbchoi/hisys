@@ -27,6 +27,7 @@ Adapters may translate these envelopes into backend-specific prompts, CLI input,
 8. **Progressive, not blocking.** DARS critique should improve the candidate decision through evidence-linked recommendations; it must not block, approve, execute, or mutate by itself.
 9. **Multiple critics are first-class.** A request may contain a panel of critic roles with different profession/persona/knowledge scopes. Hisys records each critic's contribution and a synthesis trace.
 10. **Rubrics are controlled files.** Evaluation matrices are versioned, hash-referenced artifacts selected by Hisys, not free-form user prompt content.
+11. **Prompt bundles are registry-managed.** Future commercial deployments should resolve system contracts, role profiles, rubrics, templates, and policy bindings through a file- or database-backed `PromptRegistry` and record immutable bundle refs/hashes in every request.
 
 ## 3. Request Envelope: Hisys → DARS
 
@@ -46,6 +47,14 @@ contract:
   external_side_effects_allowed: false
   mutation_allowed: false
   requires_structured_output: true
+
+prompt_bundle_ref:
+  prompt_bundle_id: pb-dars-logical-conservative-devil
+  prompt_bundle_version: 0.1.0
+  registry_backend: file
+  tenant_scope: sysailab-default
+  status: approved
+  sha256: hex-string
 
 role:
   role_id: logical_conservative_devil
@@ -139,7 +148,8 @@ user_focus:
 | `request_id` | yes | ID | Stable request ID; recommended prefix `DARSREQ-`. |
 | `handoff_id` | yes | ID | Existing `AgentHandoffPackage.handoff_id`. |
 | `contract` | yes | object | Non-overridable safety/output contract. |
-| `role` | yes | object | Concise role profile selected from validated DARS config. |
+| `prompt_bundle_ref` | yes | object | Immutable prompt bundle ID/version/hash resolved from the prompt registry. |
+| `role` | yes | object | Concise role profile selected from validated DARS config or resolved prompt bundle. |
 | `sampling` | yes | object | Effective model sampling settings, copied from validated config. |
 | `decision_process` | yes | object | Progressive adversarial process metadata: round, max rounds, objective, blocking policy, and stop condition. |
 | `rubric_refs` | yes | list | Versioned rubric/evaluation matrix artifact refs and hashes selected by Hisys. |
@@ -218,6 +228,7 @@ decision_trace:
   critic_role_id: logical_conservative_devil
   critic_profession: logic_reviewer
   critic_persona: conservative_critic
+  prompt_bundle_ref: pb-dars-logical-conservative-devil@0.1.0
   rubric_refs: [dars-progressive-decision@0.1.0]
   improvement_direction: revise_candidate
   blocks_decision: false
@@ -258,7 +269,7 @@ boundary:
 | `handoff_id` | yes | ID | Must match handoff package. |
 | `producer` | yes | object | Backend/role provenance; used for audit. |
 | `critique` | yes | object | Structured `DarsCritiqueRecord`. |
-| `decision_trace` | yes | object | Progressive decision metadata showing critic role, round, improvement direction, rubric refs, and whether the critique is advisory/non-blocking. |
+| `decision_trace` | yes | object | Progressive decision metadata showing critic role, round, prompt bundle ref, improvement direction, rubric refs, and whether the critique is advisory/non-blocking. |
 | `rubric_scores` | yes | list | Axis-level scores and rationales produced against the selected rubric. |
 | `validation` | yes | object | DARS-side or adapter-side validation notes. |
 | `boundary` | yes | object | Evidence that DARS remained advisory-only. |

@@ -128,7 +128,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   concise role/backend settings before any DARS adapter is selected. The target
   DARS design is progressive and GAN-like: generator candidates are challenged
   by conservative logical and domain-specific critics, then converted into
-  evidence-linked improvement proposals rather than automatic blocks.
+  evidence-linked improvement proposals rather than automatic blocks. Future
+  commercialization should manage DARS system prompts, role profiles, templates,
+  policy bindings, and rubric refs through a prompt registry abstraction that can
+  start file-backed and later move to a tenant-scoped database with immutable
+  versions, approvals, hashes, audit events, and rollback.
 - Increment **I9-A/B/C/D product hardening** - `hisys.security.secret_scan` and
   `scripts/scan_secrets.py` scan repository/runtime files for assignment-style
   secret-like values, skip runtime caches such as `.git`/`.pytest_cache`/

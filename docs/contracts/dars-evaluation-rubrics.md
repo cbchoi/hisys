@@ -45,7 +45,7 @@ Runtime request reference:
 }
 ```
 
-The adapter may inline the rubric text into a backend prompt, but the canonical `DarsRequestEnvelope` should preserve the file reference and hash so the evaluation basis is auditable.
+The adapter may inline the rubric text into a backend prompt, but the canonical `DarsRequestEnvelope` should preserve the file reference and hash so the evaluation basis is auditable. In future commercial deployments, rubric references should be resolved through the prompt registry described in `docs/contracts/dars-prompt-registry.md`, so rubric, system prompt, role profile, and template versions can be governed together.
 
 ## 3. Why Separate Rubric Files
 
