@@ -157,6 +157,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   those refs into `DomainEvidencePackage.evidence_refs` and
   `InvestigationDataPackage.source_governance_refs` while preserving
   `external_call_made=false` and `mutation_performed=false`.
+- Increment **Live-B4 connector evidence in DARS trace** -
+  The DARS advisory fixture handoff now includes fixture source-access and
+  source-evidence refs in DARS request `record_refs.runtime_boundary`, critique
+  evidence refs, rubric evidence refs, and trace evidence/runtime-boundary refs
+  so DARS critique lineage covers source connector evidence as well as the
+  domain result.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

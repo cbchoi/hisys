@@ -146,6 +146,10 @@ def test_investigate_domain_research_gap_fixture_generates_alternatives(tmp_path
     assert dars_trace.exists()
     assert str(dars_trace.relative_to(tmp_path)) in domain_result["dars_refs"]
     response = json.loads(dars_response.read_text(encoding="utf-8"))
+    dars_request_payload = json.loads(dars_request.read_text(encoding="utf-8"))
+    dars_trace_payload = json.loads(dars_trace.read_text(encoding="utf-8"))
+    assert any("source-evidence-EVID-HISYS-REQ-RESEARCH-GAP-001-fixture_publisher_page_reader.json" in ref for ref in dars_request_payload["record_refs"]["runtime_boundary"])
+    assert any("source-evidence-EVID-HISYS-REQ-RESEARCH-GAP-001-fixture_publisher_page_reader.json" in ref for ref in dars_trace_payload["evidence_refs"])
     assert response["producer"]["backend_kind"] == "loopback"
     assert response["producer"]["external_call_made"] is False
     assert response["boundary"]["action_taken"] == "none"

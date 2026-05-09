@@ -680,6 +680,11 @@ def _write_dars_fixture_for_domain_result(
         (boundary_dir / f"domain-investigation-result-{domain_result.result_id}.json").relative_to(instance.root)
     )
     evidence_ref = domain_result.investigation_data.evidence_packages[0].package_id
+    connector_evidence_refs = [
+        ref
+        for ref in domain_result.investigation_data.evidence_packages[0].evidence_refs
+        if ref.startswith("runtime-boundary/source-connectors/")
+    ]
     candidate_id = domain_result.alternative_decision_set.recommended_candidate_id or "candidate-not-selected"
 
     dars_request = {
@@ -762,7 +767,7 @@ def _write_dars_fixture_for_domain_result(
             "alerts": [],
             "handoffs": [handoff_id],
             "requirements": ["HISYS-DARS-CONTRACT-001", "HISYS-T-024"],
-            "runtime_boundary": [domain_result_ref],
+            "runtime_boundary": [domain_result_ref, *connector_evidence_refs],
         },
         "evidence": {
             "bundles": [
@@ -814,7 +819,7 @@ def _write_dars_fixture_for_domain_result(
                     "claim_ref": candidate_id,
                     "statement": "Unified novelty is not yet proven by fixture evidence alone.",
                     "reason": "Publisher-source comparison has not been collected in the MVP fixture path.",
-                    "evidence_refs": [evidence_ref],
+                    "evidence_refs": [evidence_ref, *connector_evidence_refs],
                     "severity": "medium",
                 }
             ],
@@ -846,7 +851,7 @@ def _write_dars_fixture_for_domain_result(
                 "alerts": [],
                 "handoffs": [handoff_id],
                 "requirements": ["HISYS-DARS-CONTRACT-001", "HISYS-FR-INV-006"],
-                "runtime_boundary": [domain_result_ref],
+                "runtime_boundary": [domain_result_ref, *connector_evidence_refs],
             },
         },
         "decision_trace": {
@@ -870,7 +875,7 @@ def _write_dars_fixture_for_domain_result(
                 "severity": "medium",
                 "confidence": "medium",
                 "rationale": "Fixture evidence covers the gap structure but not publisher-source novelty.",
-                "evidence_refs": [evidence_ref],
+                "evidence_refs": [evidence_ref, *connector_evidence_refs],
                 "improvement_recommendation": "Add publisher-source literature evidence packages.",
             }
         ],
@@ -896,13 +901,14 @@ def _write_dars_fixture_for_domain_result(
         "signal_refs": [],
         "memo_refs": [domain_result_ref],
         "alert_refs": [],
-        "evidence_refs": [evidence_ref],
+        "evidence_refs": [evidence_ref, *connector_evidence_refs],
         "critique_id": critique_id,
         "recommended_action_ids": [f"RECACT-{request.request_id}-SOURCE-VALIDATION"],
         "runtime_boundary_refs": [
             f"runtime-boundary/dars/{yyyymmdd}/dars-request-{dars_request_id}.json",
             f"runtime-boundary/dars/{yyyymmdd}/dars-response-{dars_response_id}.json",
             domain_result_ref,
+            *connector_evidence_refs,
         ],
         "requirement_refs": ["HISYS-DARS-CONTRACT-001", "HISYS-FR-INV-006"],
         "policy_refs": ["HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"],
