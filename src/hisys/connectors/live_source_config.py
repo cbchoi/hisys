@@ -63,6 +63,9 @@ class SourceConnectorConfig(BaseModel):
     )
     output_schema: Literal["EvidencePackage", "SourceAccessRecord"] = "EvidencePackage"
     credential_ref: str | None = None
+    manual_smoke_only: bool = False
+    manual_smoke_env_var: str | None = None
+    smoke_test_in_ci: bool = False
 
 
 class SourceConnectorRegistry(BaseModel):
@@ -92,6 +95,10 @@ class SourceConnectorRegistry(BaseModel):
                 raise LiveSourceConnectorSafetyError("connector mode must be read_only or safer")
             if connector.credential_ref:
                 raise LiveSourceConnectorSafetyError("credential_ref is not allowed in checked live source registry baseline")
+            if connector.smoke_test_in_ci:
+                raise LiveSourceConnectorSafetyError("manual smoke connectors must not run in CI")
+            if connector.manual_smoke_only and not connector.manual_smoke_env_var:
+                raise LiveSourceConnectorSafetyError("manual smoke connectors require manual_smoke_env_var")
             if connector.external_call_allowed and connector.enabled and not self.policy.live_network_enabled:
                 raise LiveSourceConnectorSafetyError("live_network_enabled must be true before enabled external connectors")
             if connector.external_call_allowed and connector.requires_human_approval and not connector.approval_policy_ref:

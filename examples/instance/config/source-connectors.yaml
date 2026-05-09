@@ -48,8 +48,12 @@ connectors:
     allowed_domains:
       - doi.org
       - crossref.org
+      - api.crossref.org
     forbidden_actions: *forbidden_live_actions
     output_schema: EvidencePackage
+    manual_smoke_only: true
+    manual_smoke_env_var: HISYS_ALLOW_LIVE_SMOKE
+    smoke_test_in_ci: false
   open_access_pdf_fetch:
     connector_id: open_access_pdf_fetch
     connector_type: pdf_fetch

@@ -43,6 +43,11 @@ def test_example_source_connector_registry_declares_all_live_connectors_disabled
         assert connector.external_call_allowed is False
         assert connector.requires_human_approval is True
         assert "credential_use" in connector.forbidden_actions
+    doi = registry.connectors["doi_metadata_search"]
+    assert doi.manual_smoke_only is True
+    assert doi.manual_smoke_env_var == "HISYS_ALLOW_LIVE_SMOKE"
+    assert doi.smoke_test_in_ci is False
+    assert "api.crossref.org" in doi.allowed_domains
 
 
 def test_live_source_connector_registry_loads_disabled_connectors(tmp_path: Path):
@@ -166,3 +171,27 @@ def test_source_connector_dispatch_gate_blocks_prompt_forbidden_action(tmp_path:
     assert decision.decision == "blocked"
     assert decision.reason_code == "forbidden_action_requested"
     assert decision.external_call_made is False
+
+
+def test_manual_smoke_connector_must_not_run_in_ci():
+    with pytest.raises(LiveSourceConnectorSafetyError, match="manual smoke connectors must not run in CI"):
+        SourceConnectorRegistry.model_validate(
+            {
+                "policy": {"live_network_enabled": False},
+                "connectors": {
+                    "doi_metadata_search": {
+                        "connector_id": "doi_metadata_search",
+                        "connector_type": "metadata_search",
+                        "enabled": False,
+                        "mode": "read_only",
+                        "external_call_allowed": False,
+                        "requires_human_approval": True,
+                        "approval_policy_ref": "POLICY-LIVE-RESEARCH-001",
+                        "allowed_domains": ["api.crossref.org"],
+                        "manual_smoke_only": True,
+                        "manual_smoke_env_var": "HISYS_ALLOW_LIVE_SMOKE",
+                        "smoke_test_in_ci": True,
+                    }
+                },
+            }
+        )
