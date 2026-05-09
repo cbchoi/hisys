@@ -390,10 +390,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys.config.obsidian_live.build_obsidian_git_initialization_plan` and
   `build_obsidian_git_sync_plan` capture the corrected lifecycle: Hisys should
   initialize the Obsidian vault as a Git-managed repository using only
-  operator-provided credential refs, then after approved memo writes stage the
-  approved memo/runtime-boundary refs, commit them, push to the configured remote,
-  and record Git status/push evidence. This increment is still plan-only: it
-  rejects raw credential values and records no mutation or external calls.
+  operator-provided credential refs, then after approved memo or runtime-boundary
+  vault writes stage at least one approved memo/runtime-boundary ref, commit it,
+  push to the configured remote, and record Git status/push evidence. This
+  increment is still plan-only: it rejects raw credential values and records no
+  mutation or external calls.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

@@ -101,6 +101,50 @@ def test_obsidian_git_sync_plan_commits_memo_and_pushes_after_write() -> None:
     assert plan["external_call_made"] is False
 
 
+def test_obsidian_git_sync_plan_allows_runtime_boundary_only_governance_update() -> None:
+    runtime_refs = [
+        "91 Hisys/Live Research/topics/TOPIC-20260509-7F3A92__devs/runtime-boundary/topic-gatekeeper/decision.json"
+    ]
+
+    plan = build_obsidian_git_sync_plan(
+        request_id="REQ-GIT-SYNC-RUNTIME-ONLY",
+        vault_root=Path("/tmp/example-vault"),
+        memo_refs=[],
+        runtime_boundary_refs=runtime_refs,
+        commit_message="chore(obsidian): record topic gatekeeper decision",
+        remote_name="origin",
+        branch="main",
+        credential_ref="env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+        approval_ref="APPROVAL-20260510-002",
+    )
+
+    assert plan["status"] == "planned_after_vault_write"
+    assert plan["memo_refs"] == []
+    assert plan["runtime_boundary_refs"] == runtime_refs
+    assert plan["planned_operations"][1]["refs"] == runtime_refs
+    assert plan["raw_credential_stored"] is False
+    assert plan["mutation_performed"] is False
+    assert plan["external_call_made"] is False
+
+
+def test_obsidian_git_sync_plan_blocks_when_no_refs() -> None:
+    plan = build_obsidian_git_sync_plan(
+        request_id="REQ-GIT-SYNC-NO-REFS",
+        vault_root=Path("/tmp/example-vault"),
+        memo_refs=[],
+        runtime_boundary_refs=[],
+        commit_message="chore(obsidian): no refs",
+        remote_name="origin",
+        branch="main",
+        credential_ref="env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+        approval_ref="APPROVAL-20260510-003",
+    )
+
+    assert plan["status"] == "blocked"
+    assert plan["reason_code"] == "refs_required"
+    assert plan["planned_operation_count"] == 0
+
+
 def test_obsidian_git_sync_plan_blocks_unsafe_refs() -> None:
     plan = build_obsidian_git_sync_plan(
         request_id="REQ-GIT-SYNC-UNSAFE",

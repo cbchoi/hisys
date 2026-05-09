@@ -601,7 +601,7 @@ def build_obsidian_git_sync_plan(
     credential_ref: str,
     approval_ref: str | None,
 ) -> dict[str, Any]:
-    """Plan the operational memo Git sync after an approved vault write."""
+    """Plan Git sync after an approved vault write with at least one scoped ref."""
 
     refs = [*memo_refs, *runtime_boundary_refs]
     try:
@@ -623,7 +623,7 @@ def build_obsidian_git_sync_plan(
             vault_root=vault_root,
             credential_ref=credential_ref,
         )
-    missing = _missing_git_sync_field(memo_refs, commit_message, remote_name, branch, approval_ref)
+    missing = _missing_git_sync_field(refs, commit_message, remote_name, branch, approval_ref)
     if missing:
         return _blocked_obsidian_git_plan(
             schema_id="hisys.obsidian.git_sync_plan",
@@ -679,14 +679,14 @@ def _git_credential_issue(credential_ref: str) -> str | None:
 
 
 def _missing_git_sync_field(
-    memo_refs: list[str],
+    refs: list[str],
     commit_message: str,
     remote_name: str,
     branch: str,
     approval_ref: str | None,
 ) -> str | None:
-    if not memo_refs:
-        return "memo_refs_required"
+    if not refs:
+        return "refs_required"
     if not commit_message.strip():
         return "commit_message_required"
     if not remote_name.strip():

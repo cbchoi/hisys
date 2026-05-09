@@ -545,11 +545,14 @@ explicit approval. Credentials are provided to Hisys by reference (`env:`,
 `keyring:`, `file:`, `ssh-agent:`, or equivalent secret-store refs), never as raw
 tokens in config, prompts, repository files, or runtime-boundary records.
 
-During operation, after an approved vault transaction writes a memo projection and
-runtime-boundary record, Hisys should stage only the approved memo/runtime refs,
-commit with a traceable message, push to the configured remote/branch using the
-credential ref, and record pre/post Git status plus push result under the runtime
-boundary. The current implementation adds plan builders for this lifecycle:
+During operation, after an approved vault transaction writes a memo projection,
+runtime-boundary record, or governance-only runtime-boundary update, Hisys should
+stage only the approved memo and/or runtime-boundary refs. At least one scoped ref
+must be present, but memo refs are not required when the approved change is a
+runtime-boundary-only governance update. Hisys then commits with a traceable
+message, pushes to the configured remote/branch using the credential ref, and
+records pre/post Git status plus push result under the runtime boundary. The
+current implementation adds plan builders for this lifecycle:
 
 - `build_obsidian_git_initialization_plan`: initialization-phase Git setup plan,
   with raw credential rejection and lightweight-vault policy.
