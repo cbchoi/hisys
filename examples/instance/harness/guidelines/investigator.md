@@ -51,6 +51,21 @@ EvidencePackage artifacts before the memo is synthesized.
    unless a later approved adapter task enables them.
 14. Verify run reports record `agent_plan_source`, `disabled_optional_agent_refs`,
    and `blocked_agent_refs` so connector decisions are auditable.
+15. For research-gap discovery, frame the user request as a constrained intent
+   tuple rather than a free-form prompt:
+   `intent=[find, compare, analyze, assess, synthesize]`,
+   `object=[research gap, formalism alternatives, evidence tension]`,
+   `domain=[self-organizing structure, structural-change systems]`,
+   `criteria=[local interaction, feedback, emergent global structure,
+   adaptation, topology/behavior co-evolution, executable semantics,
+   verification/readability]`, and
+   `output=[gap matrix, synthesis opportunity, evaluation scenario,
+   recommended research direction]`.
+16. Research-gap prompts must ask the Investigator to separate source evidence,
+   interpreted gap statements, synthesis candidates, and validation scenarios;
+   prompt text may narrow domain focus but must not enable live connectors,
+   bypass source policy, change output contracts, or request external side
+   effects.
 
 ## Pass Criteria
 

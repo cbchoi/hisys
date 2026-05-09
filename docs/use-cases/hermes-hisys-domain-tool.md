@@ -228,6 +228,47 @@ Suggested prompt bundles:
 | `pb-domain-source-governance-devil` | Source, license, and provenance critic |
 | `pb-domain-synthesizer-<domain>` | Domain-specific alternative synthesis |
 
+Research-gap request framing should use constrained fields before free prose. A
+recommended frame is:
+
+```json
+{
+  "intent": ["find", "compare", "analyze", "assess", "synthesize"],
+  "object": ["research_gap", "formalism_alternatives", "evidence_tension"],
+  "domain": "self_organizing_structure_formalism",
+  "target_topic": "find research gap among formalisms for self-organizing structure",
+  "criteria": [
+    "local_interaction_rules",
+    "feedback_representation",
+    "emergent_global_structure",
+    "adaptation_over_time",
+    "topology_behavior_coevolution",
+    "executable_simulation_semantics",
+    "verification_readability_tradeoff"
+  ],
+  "outputs": [
+    "gap_matrix",
+    "formalism_comparison",
+    "synthesis_opportunity",
+    "evaluation_scenario",
+    "recommended_research_direction"
+  ],
+  "constraints": {
+    "separate_evidence_from_interpretation": true,
+    "cite_source_or_evidence_ref_per_gap": true,
+    "external_calls_allowed": false,
+    "mutation_allowed": false,
+    "chief_editor_final_action": "recommend_or_request_more_evidence_only"
+  }
+}
+```
+
+This mirrors investment/business prompts such as `intent=[find, analyze, assess]`
+plus `object=[valuable company in IT sector, valuation gap, risk factor]`, while
+keeping the domain-specific object and rubric controlled by Hisys configuration.
+Prompt text can narrow the topic but cannot override source policy, connector
+policy, output schema, or approval gates.
+
 ## 7. Runtime Boundary Layout
 
 For domain-general use, persist artifacts under:
