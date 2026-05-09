@@ -15,6 +15,8 @@ from hisys.connectors.live_source_config import (
     SourceConnectorRegistry,
     load_source_connector_registry,
 )
+from hisys.connectors.live_source_dispatch import SourceConnectorDispatchGate
+from hisys.config import InstanceRoot
 
 
 EXAMPLE_CONFIG = Path("examples/instance/config/source-connectors.yaml")
@@ -121,3 +123,46 @@ def test_live_source_connector_registry_rejects_mutating_modes():
                 },
             }
         )
+
+
+def test_source_connector_dispatch_gate_blocks_disabled_connector(tmp_path: Path):
+    registry = load_source_connector_registry(EXAMPLE_CONFIG)
+    gate = SourceConnectorDispatchGate(instance=InstanceRoot(tmp_path))
+
+    decision = gate.evaluate(
+        yyyymmdd="20260509",
+        request_id="HISYS-REQ-LIVE-001",
+        registry=registry,
+        connector_id="publisher_web_search",
+        approval_ref=None,
+        requested_domain="arxiv.org",
+        requested_actions=["read"],
+    )
+
+    assert decision.decision == "blocked"
+    assert decision.reason_code == "connector_disabled"
+    assert decision.external_call_requested is True
+    assert decision.external_call_permitted is False
+    assert decision.external_call_made is False
+    assert decision.mutation_performed is False
+    artifact = tmp_path / "runtime-boundary" / "source-connectors" / "20260509" / "connector-dispatch-HISYS-REQ-LIVE-001-publisher_web_search.json"
+    assert artifact.exists()
+
+
+def test_source_connector_dispatch_gate_blocks_prompt_forbidden_action(tmp_path: Path):
+    registry = load_source_connector_registry(EXAMPLE_CONFIG)
+    gate = SourceConnectorDispatchGate(instance=InstanceRoot(tmp_path))
+
+    decision = gate.evaluate(
+        yyyymmdd="20260509",
+        request_id="HISYS-REQ-LIVE-002",
+        registry=registry,
+        connector_id="publisher_web_search",
+        approval_ref="APPROVAL-001",
+        requested_domain="arxiv.org",
+        requested_actions=["read", "form_submit"],
+    )
+
+    assert decision.decision == "blocked"
+    assert decision.reason_code == "forbidden_action_requested"
+    assert decision.external_call_made is False

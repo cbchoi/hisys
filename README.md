@@ -126,6 +126,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   arXiv metadata search, local PDF reading, and Selenium read-only browsing.
   All checked-in examples keep `enabled=false`, `external_call_allowed=false`,
   `requires_human_approval=true`, no credentials, and forbidden live actions.
+- Increment **Live-A4 source connector dispatch gate** -
+  `hisys.connectors.live_source_dispatch` records allow/block decisions under
+  `runtime-boundary/source-connectors/<YYYYMMDD>/` before any future source
+  connector adapter can run. The gate blocks disabled connectors, forbidden
+  prompt/request actions, missing approval references, and non-allowlisted
+  domains while always recording `external_call_made=false` and
+  `mutation_performed=false` at decision time.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
