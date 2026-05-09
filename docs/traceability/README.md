@@ -42,6 +42,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | Live-H PDF quote extraction from promoted OA evidence | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.pdf_quote_extractor` creates quote-only `source_quote_refs` from explicit promoted OA PDF evidence refs, `hisys extract-pdf-quotes` writes source-quote artifacts/reports without OCR, parsing, or network calls, and `hisys investigate-domain --source-quote-ref` preserves quote refs in investigation data, DARS trace, and Chief Editor review while keeping novelty claims conditional. |
 | Live-I Quote-to-claim evidence ledger | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.claim_evidence_ledger` maps explicit source quotes to support/contradict/needs-evidence interpretation records, `hisys build-claim-evidence-ledger` writes claim ledger artifacts/reports without network calls or quote mutation, and `hisys investigate-domain --claim-evidence-ledger-ref` preserves `claim_evidence_ledger_refs` with Chief Editor `claim_evidence_ledger_present` status while keeping claims conditional. |
 | Live-J Claim evidence summary | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.claim_evidence_summary` aggregates explicit claim ledger refs into advisory support/contradict/needs-evidence balance records, `hisys build-claim-evidence-summary` writes summary artifacts/reports without network calls or source mutation, and `hisys investigate-domain --claim-evidence-summary-ref` preserves `claim_evidence_summary_refs` with Chief Editor `claim_evidence_summary_present` status while keeping confidence advisory and conditional. |
+| Live-K Claim coverage gate | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.claim_coverage_gate` checks required recommendation claims against explicit summary refs, `hisys build-claim-coverage-gate` writes gate artifacts/reports without network calls or source mutation, and `hisys investigate-domain --claim-coverage-gate-ref` preserves `claim_coverage_gate_refs` with Chief Editor `claim_coverage_gate_present` status and `conditional_manuscript_language_only` manuscript-language gate. |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -99,7 +100,11 @@ Live-J aggregates explicit ledger refs into `claim_evidence_summary_refs` with
 support/contradict/needs-evidence balance and advisory confidence, links summary
 refs into `InvestigationDataPackage`, DARS trace, and Chief Editor review with
 `claim_evidence_summary_present` status, and keeps confidence conditional rather
-than proof of novelty or publication readiness.
+than proof of novelty or publication readiness. Live-K checks required
+recommendation claims against explicit summary refs, links `claim_coverage_gate_refs`
+into `InvestigationDataPackage`, DARS trace, and Chief Editor review with
+`claim_coverage_gate_present` status and `conditional_manuscript_language_only`
+so manuscript-facing claims remain conditional.
 I9-A adds a redacted secret-like value scanner for HISYS-T-021
 quality gates, I9-B adds backup manifest plus restore dry-run verification for
 HISYS-T-023, I9-C adds local operator health status for required runtime
@@ -153,6 +158,7 @@ implemented yet.
 | `hisys.connectors.pdf_quote_extractor` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_pdf_quote_extractor.py`, `tests/unit/test_pdf_quote_cli.py`, `tests/unit/test_domain_cli.py` |
 | `hisys.connectors.claim_evidence_ledger` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_claim_evidence_ledger.py`, `tests/unit/test_claim_evidence_ledger_cli.py`, `tests/unit/test_domain_cli.py` |
 | `hisys.connectors.claim_evidence_summary` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_claim_evidence_summary.py`, `tests/unit/test_claim_evidence_summary_cli.py`, `tests/unit/test_domain_cli.py` |
+| `hisys.connectors.claim_coverage_gate` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_claim_coverage_gate.py`, `tests/unit/test_claim_coverage_gate_cli.py`, `tests/unit/test_domain_cli.py` |
 | `hisys.investigator.runtime` | HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-007..008 | `tests/unit/test_investigator_runtime.py` |
 | `hisys.extraction.extractor` | HISYS-FR-EXT-001..005, HISYS-DATA-002, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
 | `hisys.extraction.runtime` | HISYS-FR-EXT-001..005, HISYS-D-015, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |

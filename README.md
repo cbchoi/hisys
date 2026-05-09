@@ -240,6 +240,16 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   preserves `claim_evidence_summary_refs` in `InvestigationDataPackage`, DARS
   trace, and Chief Editor review with `claim_evidence_summary_present` status.
   The summary does not prove novelty or publication readiness.
+- Increment **Live-K claim coverage gate** -
+  `ClaimCoverageGateBuilder` checks required recommendation claims against
+  explicit `claim_evidence_summary_refs` and writes `claim-coverage-gate-*.json`
+  artifacts without network calls, source mutation, or claim strengthening.
+  `hisys build-claim-coverage-gate` writes gate reports and `hisys
+  investigate-domain --claim-coverage-gate-ref` preserves
+  `claim_coverage_gate_refs` in `InvestigationDataPackage`, DARS trace, and
+  Chief Editor review with `claim_coverage_gate_present` status,
+  `conditional_manuscript_language_only=true`, and a conditional manuscript
+  language gate.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

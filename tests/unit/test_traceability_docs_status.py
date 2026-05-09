@@ -183,6 +183,25 @@ def test_live_k_claim_coverage_gate_boundary_is_documented():
     assert "Chief Editor manuscript-language gate remains conditional" in text
 
 
+def test_live_k_claim_coverage_gate_status_and_traceability_are_documented():
+    """README and traceability docs must mention implemented Live-K claim coverage gate."""
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    trace = (ROOT / "docs" / "traceability" / "README.md").read_text(encoding="utf-8")
+    combined = f"{readme}\n{trace}"
+
+    assert "Live-K" in combined
+    assert "ClaimCoverageGateBuilder" in combined or "hisys.connectors.claim_coverage_gate" in combined
+    assert "build-claim-coverage-gate" in combined
+    assert "claim_coverage_gate_refs" in combined
+    assert "claim_coverage_gate_present" in combined
+    assert "conditional_manuscript_language_only" in combined
+    assert "claim coverage gate" in combined.lower()
+    assert "tests/unit/test_claim_coverage_gate.py" in trace
+    assert "tests/unit/test_claim_coverage_gate_cli.py" in trace
+    assert "tests/unit/test_domain_cli.py" in trace
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 
