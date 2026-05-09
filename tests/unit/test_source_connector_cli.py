@@ -268,8 +268,11 @@ def test_smoke_source_connector_pdf_manual_live_uses_fixture_transport_after_gat
     assert report["status"] == "completed"
     assert report["reason_code"] == "manual_pdf_smoke_completed"
     assert report["external_call_made"] is True
+    assert report["pdf_downloaded"] is True
+    assert report["transport_kind"] == "fixture_injected"
+    assert report["source_access_refs"]
     assert report["source_evidence_refs"]
-    access_ref = tmp_path / report["source_evidence_refs"][0]
+    access_ref = tmp_path / report["source_access_refs"][0]
     assert json.loads(access_ref.read_text(encoding="utf-8"))["pdf_downloaded"] is True
 
 

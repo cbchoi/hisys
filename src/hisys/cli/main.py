@@ -628,8 +628,11 @@ def _cmd_smoke_source_connector(
             status="completed",
             reason_code="manual_pdf_smoke_completed",
             dispatch_ref=dispatch_ref,
-            source_evidence_refs=[package.access_ref, package.evidence_ref],
+            source_access_refs=[package.access_ref],
+            source_evidence_refs=[package.evidence_ref],
             external_call_made=True,
+            pdf_downloaded=True,
+            transport_kind="fixture_injected" if transport_fixture_pdf is not None else "live_network",
         )
         _write_source_connector_smoke_report(instance, yyyymmdd, report)
         print(f"source connector smoke: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'source-connector-smoke-report.json'}")
@@ -672,6 +675,9 @@ def _source_connector_smoke_report(
     dispatch_ref: str | None,
     source_evidence_refs: list[str],
     external_call_made: bool,
+    source_access_refs: list[str] | None = None,
+    pdf_downloaded: bool = False,
+    transport_kind: str | None = None,
 ) -> dict[str, object]:
     return {
         "schema_id": "hisys.source_connector.smoke_report",
@@ -682,7 +688,10 @@ def _source_connector_smoke_report(
         "status": status,
         "reason_code": reason_code,
         "dispatch_ref": dispatch_ref,
+        "source_access_refs": source_access_refs or [],
         "source_evidence_refs": source_evidence_refs,
+        "pdf_downloaded": pdf_downloaded,
+        "transport_kind": transport_kind,
         "external_call_made": external_call_made,
         "mutation_performed": False,
     }
@@ -702,6 +711,7 @@ def _write_source_connector_smoke_report(instance: InstanceRoot, yyyymmdd: str, 
                 f"- request_id: `{report['request_id']}`",
                 f"- connector_id: `{report['connector_id']}`",
                 f"- status: `{report['status']}`",
+                f"- pdf_downloaded: `{report.get('pdf_downloaded', False)}`",
                 f"- external_call_made: `{report['external_call_made']}`",
                 f"- mutation_performed: `{report['mutation_performed']}`",
                 "",
