@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -31,7 +32,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import FixturePublisherConnector, load_source_connector_registry
+from ..connectors import DoiMetadataConnector, FixturePublisherConnector, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -199,6 +200,19 @@ def _build_parser() -> argparse.ArgumentParser:
     plan_sources.add_argument("--config", required=True, help="source-connectors.yaml path")
     plan_sources.add_argument("--date", required=True, help="YYYYMMDD output partition")
 
+    smoke_source = sub.add_parser(
+        "smoke-source-connector",
+        help="manual/dry-run smoke boundary for one governed source connector",
+    )
+    smoke_source.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    smoke_source.add_argument("--config", required=True, help="source-connectors.yaml path")
+    smoke_source.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    smoke_source.add_argument("--request-id", required=True, help="request id for runtime-boundary evidence")
+    smoke_source.add_argument("--connector-id", required=True, help="source connector id to smoke")
+    smoke_source.add_argument("--doi", required=True, help="DOI to retrieve for DOI metadata smoke")
+    smoke_source.add_argument("--approval-ref", help="manual approval ref required for live smoke")
+    smoke_source.add_argument("--dry-run", action="store_true", help="write blocked/dry-run evidence only; no external call")
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -310,6 +324,17 @@ def main(argv: list[str] | None = None) -> int:
             request_path=Path(args.request),
             config_path=Path(args.config),
             yyyymmdd=args.date,
+        )
+    if args.command == "smoke-source-connector":
+        return _cmd_smoke_source_connector(
+            instance_root=Path(args.instance),
+            config_path=Path(args.config),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            connector_id=args.connector_id,
+            doi=args.doi,
+            approval_ref=args.approval_ref,
+            dry_run=args.dry_run,
         )
     if args.command == "extract":
         return _cmd_extract(
@@ -440,6 +465,153 @@ def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_
     print(f"planned_connectors: {len(planned)}")
     print("external_call_made: false")
     return 0
+
+
+def _cmd_smoke_source_connector(
+    *,
+    instance_root: Path,
+    config_path: Path,
+    yyyymmdd: str,
+    request_id: str,
+    connector_id: str,
+    doi: str,
+    approval_ref: str | None,
+    dry_run: bool,
+) -> int:
+    """Write dry-run/manual smoke source connector evidence."""
+
+    instance = InstanceRoot(instance_root)
+    registry = load_source_connector_registry(config_path)
+    gate = SourceConnectorDispatchGate(instance=instance)
+    connector = registry.connectors[connector_id]
+    env_name = connector.manual_smoke_env_var or "HISYS_ALLOW_LIVE_SMOKE"
+    requested_domain = "api.crossref.org" if connector_id == "doi_metadata_search" else "unknown"
+    dispatch_ref = f"runtime-boundary/source-connectors/{yyyymmdd}/connector-dispatch-{request_id}-{connector_id}.json"
+    if dry_run:
+        decision = gate.evaluate(
+            yyyymmdd=yyyymmdd,
+            request_id=request_id,
+            registry=registry,
+            connector_id=connector_id,
+            approval_ref=None,
+            requested_domain=requested_domain,
+            requested_actions=["read"],
+        )
+        report = _source_connector_smoke_report(
+            request_id=request_id,
+            connector_id=connector_id,
+            mode="dry_run",
+            status="blocked",
+            reason_code=decision.reason_code,
+            dispatch_ref=dispatch_ref,
+            source_evidence_refs=[],
+            external_call_made=False,
+        )
+        _write_source_connector_smoke_report(instance, yyyymmdd, report)
+        print(f"source connector smoke: status=blocked report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'source-connector-smoke-report.json'}")
+        return 0
+    if os.environ.get(env_name) != "1":
+        report = _source_connector_smoke_report(
+            request_id=request_id,
+            connector_id=connector_id,
+            mode="manual_live",
+            status="blocked",
+            reason_code="manual_smoke_env_missing",
+            dispatch_ref=None,
+            source_evidence_refs=[],
+            external_call_made=False,
+        )
+        _write_source_connector_smoke_report(instance, yyyymmdd, report)
+        print("source connector smoke: status=blocked reason=manual_smoke_env_missing")
+        return 2
+    decision = gate.evaluate(
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        registry=registry,
+        connector_id=connector_id,
+        approval_ref=approval_ref,
+        requested_domain=requested_domain,
+        requested_actions=["read"],
+    )
+    if decision.decision != "allowed":
+        report = _source_connector_smoke_report(
+            request_id=request_id,
+            connector_id=connector_id,
+            mode="manual_live",
+            status="blocked",
+            reason_code=decision.reason_code,
+            dispatch_ref=dispatch_ref,
+            source_evidence_refs=[],
+            external_call_made=False,
+        )
+        _write_source_connector_smoke_report(instance, yyyymmdd, report)
+        return 2
+    if connector_id != "doi_metadata_search":
+        raise ValueError("Live-C supports only doi_metadata_search")
+    package = DoiMetadataConnector().collect(request_id=request_id, doi=doi, output_root=instance.root, yyyymmdd=yyyymmdd)
+    report = _source_connector_smoke_report(
+        request_id=request_id,
+        connector_id=connector_id,
+        mode="manual_live",
+        status="completed",
+        reason_code="manual_smoke_completed",
+        dispatch_ref=dispatch_ref,
+        source_evidence_refs=[package.access_ref, package.evidence_ref],
+        external_call_made=True,
+    )
+    _write_source_connector_smoke_report(instance, yyyymmdd, report)
+    print(f"source connector smoke: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'source-connector-smoke-report.json'}")
+    return 0
+
+
+def _source_connector_smoke_report(
+    *,
+    request_id: str,
+    connector_id: str,
+    mode: str,
+    status: str,
+    reason_code: str | None,
+    dispatch_ref: str | None,
+    source_evidence_refs: list[str],
+    external_call_made: bool,
+) -> dict[str, object]:
+    return {
+        "schema_id": "hisys.source_connector.smoke_report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "connector_id": connector_id,
+        "mode": mode,
+        "status": status,
+        "reason_code": reason_code,
+        "dispatch_ref": dispatch_ref,
+        "source_evidence_refs": source_evidence_refs,
+        "external_call_made": external_call_made,
+        "mutation_performed": False,
+    }
+
+
+def _write_source_connector_smoke_report(instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_artifact = report_dir / "source-connector-smoke-report.json"
+    report_artifact.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "source-connector-smoke-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                "# Source Connector Smoke Report",
+                "",
+                f"- request_id: `{report['request_id']}`",
+                f"- connector_id: `{report['connector_id']}`",
+                f"- status: `{report['status']}`",
+                f"- external_call_made: `{report['external_call_made']}`",
+                f"- mutation_performed: `{report['mutation_performed']}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return report_artifact
 
 
 def _select_source_connectors_for_request(request: DomainInvestigationRequest, connector_ids: Iterable[str]) -> list[str]:
