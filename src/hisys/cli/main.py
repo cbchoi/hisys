@@ -381,6 +381,13 @@ def _cmd_investigate_domain(instance_root: Path, request_path: Path, yyyymmdd: s
 
     domain_result = _build_research_domain_result(request, instance, boundary_dir, yyyymmdd)
     if domain_result is not None:
+        domain_result = _write_dars_fixture_for_domain_result(
+            instance=instance,
+            request=request,
+            domain_result=domain_result,
+            boundary_dir=boundary_dir,
+            yyyymmdd=yyyymmdd,
+        )
         data_artifact = boundary_dir / f"investigation-data-{domain_result.investigation_data.investigation_id}.json"
         data_artifact.write_text(_record_json(domain_result.investigation_data), encoding="utf-8")
         alternatives_artifact = boundary_dir / f"alternative-decision-set-{domain_result.alternative_decision_set.alternative_set_id}.json"
@@ -521,6 +528,273 @@ def _build_research_domain_result(
         external_call_made=False,
         mutation_performed=False,
     )
+
+
+def _write_dars_fixture_for_domain_result(
+    *,
+    instance: InstanceRoot,
+    request: DomainInvestigationRequest,
+    domain_result: DomainInvestigationResult,
+    boundary_dir: Path,
+    yyyymmdd: str,
+) -> DomainInvestigationResult:
+    """Write local advisory-only DARS critique artifacts for the domain MVP."""
+
+    dars_request_id = f"DARSREQ-{request.request_id}"
+    dars_response_id = f"DARSRESP-{request.request_id}"
+    handoff_id = f"DARSHANDOFF-{request.request_id}"
+    critique_id = f"DARSCRIT-{request.request_id}"
+    trace_id = f"DARSTRACE-{dars_request_id}"
+    dars_dir = instance.runtime_boundary_dir / "dars" / yyyymmdd
+    dars_dir.mkdir(parents=True, exist_ok=True)
+    domain_result_ref = str(
+        (boundary_dir / f"domain-investigation-result-{domain_result.result_id}.json").relative_to(instance.root)
+    )
+    evidence_ref = domain_result.investigation_data.evidence_packages[0].package_id
+    candidate_id = domain_result.alternative_decision_set.recommended_candidate_id or "candidate-not-selected"
+
+    dars_request = {
+        "schema_id": "hisys.dars.request",
+        "schema_version": "0.1.0",
+        "request_id": dars_request_id,
+        "handoff_id": handoff_id,
+        "created_at": f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:]}T00:00:00Z",
+        "contract": {
+            "output_schema_id": "hisys.dars.critique",
+            "output_schema_version": "0.1.0",
+            "allowed_actions": "advisory_only",
+            "external_side_effects_allowed": False,
+            "mutation_allowed": False,
+            "requires_structured_output": True,
+        },
+        "prompt_bundle_ref": {
+            "prompt_bundle_id": "pb-dars-logical-conservative-devil",
+            "prompt_bundle_version": "0.1.0",
+            "registry_backend": "file",
+            "tenant_scope": "sysailab-default",
+            "status": "approved",
+            "sha256": "0" * 64,
+        },
+        "role": {
+            "role_id": "logical_conservative_devil",
+            "kind": "devil_advocate",
+            "profession": "research_gap_reviewer",
+            "persona": "conservative_critic",
+            "knowledge_scope": ["formal_methods", "self_organization", "evidence_quality"],
+            "stance": "skeptical_but_constructive",
+            "strictness": "high",
+            "creativity": "low",
+            "verbosity": "concise_structured",
+            "critique_dimensions": ["unsupported_claims", "novelty_overclaim", "validation_gap"],
+            "prompt": {
+                "objective": "Critique the recommended research direction without executing actions.",
+                "focus": request.user_focus,
+            },
+        },
+        "sampling": {"temperature": 0.2, "top_p": 0.9, "max_output_tokens": 2000},
+        "decision_process": {
+            "mode": "progressive_adversarial",
+            "objective": "improve_research_recommendation",
+            "blocking_policy": "advisory_only",
+            "round_index": 1,
+            "max_rounds": request.constraints.max_rounds,
+            "stop_condition": "no_critical_unresolved_findings",
+        },
+        "rubric_refs": [
+            {
+                "rubric_id": "research-gap-logical-devil",
+                "rubric_version": "0.1.0",
+                "artifact_ref": "harness/rubrics/research/research-gap-v0.1.0.json",
+                "sha256": "1" * 64,
+                "applies_to_roles": ["logical_conservative_devil"],
+            }
+        ],
+        "critic_panel": [
+            {
+                "role_id": "logical_conservative_devil",
+                "profession": "research_gap_reviewer",
+                "persona": "conservative_critic",
+                "knowledge_scope": ["formal_methods", "evidence_quality"],
+            }
+        ],
+        "handoff": {
+            "handoff_type": "evidence_gap_review",
+            "requester": "hisys_domain_investigator",
+            "task": "Review the formalism research-gap alternative set.",
+            "context_summary": domain_result.recommendation_summary,
+            "expected_output": "DarsCritiqueRecord",
+            "due_condition": None,
+        },
+        "record_refs": {
+            "sources": [source.source_id for source in request.sources],
+            "observations": [],
+            "signals": [],
+            "memos": [domain_result_ref],
+            "alerts": [],
+            "handoffs": [handoff_id],
+            "requirements": ["HISYS-DARS-CONTRACT-001", "HISYS-T-024"],
+            "runtime_boundary": [domain_result_ref],
+        },
+        "evidence": {
+            "bundles": [
+                {
+                    "evidence_ref": evidence_ref,
+                    "artifact_ref": f"runtime-boundary/domain-investigation/{request.domain}/{yyyymmdd}/investigation-data-{domain_result.investigation_data.investigation_id}.json",
+                    "sha256": "2" * 64,
+                    "summary": domain_result.investigation_data.evidence_packages[0].summary,
+                    "relevance": "primary",
+                }
+            ],
+            "limitations": domain_result.investigation_data.evidence_packages[0].limitations,
+        },
+        "constraints": {
+            "requirement_refs": ["HISYS-DARS-CONTRACT-001", "HISYS-FR-INV-006"],
+            "policy_refs": ["HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"],
+            "prohibited_actions": ["external_call", "file_write", "alert_send", "software_trigger"],
+            "approval_state": "not_required",
+            "approval_ref": None,
+        },
+        "user_focus": {"prompt": request.user_focus},
+    }
+    dars_response = {
+        "schema_id": "hisys.dars.response",
+        "schema_version": "0.1.0",
+        "response_id": dars_response_id,
+        "request_id": dars_request_id,
+        "handoff_id": handoff_id,
+        "created_at": f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:]}T00:01:00Z",
+        "producer": {
+            "backend_id": "loopback_fixture",
+            "backend_kind": "loopback",
+            "role_id": "logical_conservative_devil",
+            "model": None,
+            "external_call_made": False,
+        },
+        "critique": {
+            "critique_id": critique_id,
+            "status": "received",
+            "critique_summary": (
+                "Recommendation is useful as a research direction, but novelty and proof obligations require "
+                "publisher-source validation before stronger claims."
+            ),
+            "confidence_assessment": "medium",
+            "severity": "medium",
+            "requires_human_review": True,
+            "unsupported_claims": [
+                {
+                    "claim_ref": candidate_id,
+                    "statement": "Unified novelty is not yet proven by fixture evidence alone.",
+                    "reason": "Publisher-source comparison has not been collected in the MVP fixture path.",
+                    "evidence_refs": [evidence_ref],
+                    "severity": "medium",
+                }
+            ],
+            "counterarguments": [],
+            "risk_findings": [
+                {
+                    "risk_id": f"RISK-{request.request_id}-NOVELTY",
+                    "category": "overclaiming",
+                    "statement": "The proposed formalism may overlap existing graph-transformation or DSDEVS variants.",
+                    "severity": "medium",
+                    "mitigation": "Collect publisher-source evidence and define evaluation scenarios before manuscript claims.",
+                }
+            ],
+            "recommended_actions": [
+                {
+                    "action_id": f"RECACT-{request.request_id}-SOURCE-VALIDATION",
+                    "action_type": "request_more_evidence",
+                    "statement": "Validate DSDEVS, graph transformation, and ABM sources before elevating confidence.",
+                    "priority": "medium",
+                    "requires_approval": True,
+                    "allowed_to_execute": False,
+                }
+            ],
+            "linked_record_refs": {
+                "sources": [source.source_id for source in request.sources],
+                "observations": [],
+                "signals": [],
+                "memos": [domain_result_ref],
+                "alerts": [],
+                "handoffs": [handoff_id],
+                "requirements": ["HISYS-DARS-CONTRACT-001", "HISYS-FR-INV-006"],
+                "runtime_boundary": [domain_result_ref],
+            },
+        },
+        "decision_trace": {
+            "process_mode": "progressive_adversarial",
+            "round_index": 1,
+            "critic_role_id": "logical_conservative_devil",
+            "critic_profession": "research_gap_reviewer",
+            "critic_persona": "conservative_critic",
+            "prompt_bundle_ref": "pb-dars-logical-conservative-devil@0.1.0",
+            "rubric_refs": ["research-gap-logical-devil@0.1.0"],
+            "improvement_direction": "request_more_evidence",
+            "blocks_decision": False,
+            "unresolved_high_severity_findings": 0,
+            "synthesis_summary": "Proceed as a human-reviewed research direction with medium confidence and source-validation conditions.",
+        },
+        "rubric_scores": [
+            {
+                "axis_id": "evidence_coverage",
+                "score": 3,
+                "max_score": 5,
+                "severity": "medium",
+                "confidence": "medium",
+                "rationale": "Fixture evidence covers the gap structure but not publisher-source novelty.",
+                "evidence_refs": [evidence_ref],
+                "improvement_recommendation": "Add publisher-source literature evidence packages.",
+            }
+        ],
+        "validation": {"schema_valid": True, "warnings": ["fixture-local evidence only"], "rejected_fields": []},
+        "boundary": {
+            "allowed_actions": "advisory_only",
+            "action_taken": "none",
+            "mutation_requested": False,
+            "mutation_performed": False,
+            "external_side_effects_requested": False,
+            "external_side_effects_performed": False,
+        },
+    }
+    dars_trace = {
+        "schema_id": "hisys.dars.trace_link",
+        "schema_version": "0.1.0",
+        "trace_id": trace_id,
+        "request_id": dars_request_id,
+        "response_id": dars_response_id,
+        "handoff_id": handoff_id,
+        "source_refs": [source.source_id for source in request.sources],
+        "observation_refs": [],
+        "signal_refs": [],
+        "memo_refs": [domain_result_ref],
+        "alert_refs": [],
+        "evidence_refs": [evidence_ref],
+        "critique_id": critique_id,
+        "recommended_action_ids": [f"RECACT-{request.request_id}-SOURCE-VALIDATION"],
+        "runtime_boundary_refs": [
+            f"runtime-boundary/dars/{yyyymmdd}/dars-request-{dars_request_id}.json",
+            f"runtime-boundary/dars/{yyyymmdd}/dars-response-{dars_response_id}.json",
+            domain_result_ref,
+        ],
+        "requirement_refs": ["HISYS-DARS-CONTRACT-001", "HISYS-FR-INV-006"],
+        "policy_refs": ["HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"],
+        "trace_complete": True,
+        "gaps": [],
+        "external_call_made": False,
+        "mutation_performed": False,
+        "action_taken": "none",
+    }
+    request_path = dars_dir / f"dars-request-{dars_request_id}.json"
+    response_path = dars_dir / f"dars-response-{dars_response_id}.json"
+    trace_path = dars_dir / f"dars-trace-{trace_id}.json"
+    request_path.write_text(json.dumps(dars_request, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    response_path.write_text(json.dumps(dars_response, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    trace_path.write_text(json.dumps(dars_trace, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    trace_ref = str(trace_path.relative_to(instance.root))
+    domain_result.dars_refs.extend(
+        [str(request_path.relative_to(instance.root)), str(response_path.relative_to(instance.root)), trace_ref]
+    )
+    domain_result.runtime_boundary_refs.extend([str(request_path.relative_to(instance.root)), str(response_path.relative_to(instance.root)), trace_ref])
+    return domain_result
 
 
 def _format_domain_request_markdown(request: DomainInvestigationRequest) -> str:

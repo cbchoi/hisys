@@ -100,6 +100,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   graph-rewrite structural transitions, marked human-review-required and
   publisher-source-validation-needed, with `external_call_made=false` and
   `mutation_performed=false`.
+- Increment **Hisys MVP A4 DARS fixture critique trace** -
+  The research domain fixture writes advisory-only DARS request, response, and
+  trace-link artifacts under `runtime-boundary/dars/<YYYYMMDD>/`. The local
+  loopback critique flags novelty/proof-obligation risks, recommends publisher
+  source validation, never blocks the decision, and records `action_taken=none`,
+  `external_call_made=false`, and `mutation_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

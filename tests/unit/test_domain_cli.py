@@ -134,3 +134,20 @@ def test_investigate_domain_research_gap_fixture_generates_alternatives(tmp_path
     assert tool_result["recommended_alternative_id"] == "CAND-HISYS-REQ-RESEARCH-GAP-001-SOS-DSDEVS"
     assert tool_result["external_call_made"] is False
     assert tool_result["mutation_performed"] is False
+
+    dars_dir = tmp_path / "runtime-boundary" / "dars" / "20260509"
+    dars_request = dars_dir / "dars-request-DARSREQ-HISYS-REQ-RESEARCH-GAP-001.json"
+    dars_response = dars_dir / "dars-response-DARSRESP-HISYS-REQ-RESEARCH-GAP-001.json"
+    dars_trace = dars_dir / "dars-trace-DARSTRACE-DARSREQ-HISYS-REQ-RESEARCH-GAP-001.json"
+    assert dars_request.exists()
+    assert dars_response.exists()
+    assert dars_trace.exists()
+    assert str(dars_trace.relative_to(tmp_path)) in domain_result["dars_refs"]
+    response = json.loads(dars_response.read_text(encoding="utf-8"))
+    assert response["producer"]["backend_kind"] == "loopback"
+    assert response["producer"]["external_call_made"] is False
+    assert response["boundary"]["action_taken"] == "none"
+    assert response["boundary"]["external_side_effects_performed"] is False
+    assert response["boundary"]["mutation_performed"] is False
+    assert response["critique"]["recommended_actions"][0]["allowed_to_execute"] is False
+    assert response["decision_trace"]["blocks_decision"] is False
