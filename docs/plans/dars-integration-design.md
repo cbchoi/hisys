@@ -90,31 +90,20 @@ policy:
 
 roles:
   default_devil_advocate:
-    role_id: default_devil_advocate
-    title: "DARS Devil's Advocate"
-    objective: "Challenge unsupported claims, weak evidence, hidden assumptions, and unsafe actions."
+    kind: devil_advocate
+    profession: systems_safety_reviewer
     stance: skeptical_but_constructive
-    profession_profile: systems_safety_reviewer
-    domain_expertise:
-      - requirements_engineering
-      - evidence_quality
-      - risk_management
-      - security_privacy
-      - research_methodology
-    critique_dimensions:
-      - unsupported_claims
-      - counterarguments
-      - risk_findings
-      - missing_evidence
-      - assumption_checks
-      - compliance_or_policy_gaps
     strictness: high
     creativity: medium
     verbosity: concise_structured
-    temperature: 0.2
-    top_p: 0.9
-    max_output_tokens: 2000
-    prompt_template_ref: harness/prompts/dars/devil-advocate.md
+    critique_dimensions: [unsupported_claims, counterarguments, risk_findings, missing_evidence, assumption_checks]
+    prompt:
+      objective: "Challenge unsupported claims, weak evidence, hidden assumptions, and unsafe actions."
+      focus: "Prefer concise, structured critique with evidence-linked objections."
+    sampling:
+      temperature: 0.2
+      top_p: 0.9
+      max_output_tokens: 2000
     output_contract: DarsCritiqueRecord
 
 backends:
@@ -188,6 +177,7 @@ Configuration rules:
 7. Role/persona settings are controlled configuration, not free-form runtime prompt injection. A runtime prompt is assembled from: approved role profile + handoff context + evidence refs + output schema + safety constraints.
 8. Model sampling knobs such as `temperature`, `top_p`, and `max_output_tokens` belong in role/backend config and must be recorded in boundary metadata for reproducibility.
 9. User-provided prompt text may request a critique type or focus area, but it must not override safety constraints, output contract, allowed actions, tool restrictions, or approval gates.
+10. Keep configuration concise for LLM interpretation: deterministic choices are key/value enum fields; only semantically open guidance goes under a small `prompt:` block.
 
 This mirrors the existing `investigator-agents.yaml` pattern: optional LLM/search/agent integrations are declared as future integration points, disabled by default, and bounded by output contracts and side-effect policy.
 
@@ -210,6 +200,31 @@ All adapter kinds must normalize to the same `DarsCritiqueRecord`; downstream Hi
 
 DARS should include configurable "devil" characteristics, but they should be encoded as **approved role profiles** and prompt templates, not as arbitrary prompt text that can bypass the product boundary.
 
+Configuration must stay concise and easy for an LLM to interpret. Use this rule:
+
+- If a setting has deterministic meaning, express it as a key/value pair with an enum-like value.
+- If a setting needs interpretation, place it inside a small `prompt:` block.
+- Avoid long prose at the top level of config.
+- Avoid multiple synonymous fields that ask the LLM to infer the same thing.
+
+Examples:
+
+```yaml
+# deterministic / enum-like
+kind: devil_advocate
+profession: systems_safety_reviewer
+stance: skeptical_but_constructive
+strictness: high
+creativity: medium
+verbosity: concise_structured
+critique_dimensions: [unsupported_claims, counterarguments, risk_findings]
+
+# interpretive / prompt-like
+prompt:
+  objective: "Challenge unsupported claims and hidden assumptions."
+  focus: "Prefer evidence-linked objections over generic criticism."
+```
+
 Separate the design into four layers:
 
 1. **Stable system contract** — non-overridable safety rules, output schema, allowed actions, traceability requirements.
@@ -227,21 +242,19 @@ User focus is last-mile guidance only. It may narrow the critique lens, but cann
 
 Recommended role profile fields:
 
-| Field | Purpose | Example |
-|---|---|---|
-| `role_id` | stable identifier | `default_devil_advocate` |
-| `title` | human-readable role name | `DARS Devil's Advocate` |
-| `objective` | what the agent is trying to do | challenge weak evidence |
-| `stance` | critique posture | `skeptical_but_constructive` |
-| `profession_profile` | professional lens | `systems_safety_reviewer`, `security_reviewer`, `domain_scientist`, `investment_risk_reviewer` |
-| `domain_expertise` | knowledge areas to apply | requirements, evidence quality, risk, privacy |
-| `critique_dimensions` | required critique axes | unsupported claims, counterarguments, risks |
-| `strictness` | threshold for flagging issues | low/medium/high |
-| `creativity` | how much to search for non-obvious objections | low/medium/high |
-| `verbosity` | output style | concise_structured |
-| `temperature` | model sampling | usually `0.1` to `0.3` for reproducible critique |
-| `prompt_template_ref` | controlled template path | `harness/prompts/dars/devil-advocate.md` |
-| `output_contract` | required schema | `DarsCritiqueRecord` |
+| Field | Type | Purpose | Example |
+|---|---|---|---|
+| `kind` | enum key/value | stable role kind | `devil_advocate` |
+| `profession` | enum key/value | professional lens | `systems_safety_reviewer`, `security_reviewer`, `domain_scientist`, `investment_risk_reviewer` |
+| `stance` | enum key/value | critique posture | `skeptical_but_constructive` |
+| `strictness` | enum key/value | threshold for flagging issues | low/medium/high |
+| `creativity` | enum key/value | how much to search for non-obvious objections | low/medium/high |
+| `verbosity` | enum key/value | output style | concise_structured |
+| `critique_dimensions` | enum list | required critique axes | unsupported_claims, counterarguments, risks |
+| `sampling.temperature` | numeric key/value | model sampling | usually `0.1` to `0.3` for reproducible critique |
+| `prompt.objective` | prompt text | concise interpretive goal | challenge weak evidence |
+| `prompt.focus` | prompt text | optional emphasis | prefer evidence-linked objections |
+| `output_contract` | enum key/value | required schema | `DarsCritiqueRecord` |
 
 Suggested default: `temperature=0.2`, `strictness=high`, `creativity=medium`, `verbosity=concise_structured`. Increase creativity only for ideation/assumption discovery; keep low temperature for compliance, release, and evidence review.
 
@@ -390,7 +403,7 @@ Even then, DARS response remains advisory and cannot directly trigger downstream
 - Test: `tests/unit/test_dars_config.py`
 - Modify: `docs/traceability/README.md`
 
-**RED:** Add tests asserting multiple backend kinds and role profiles can be declared, non-loopback backends remain disabled by default, secrets are referenced only by `credential_ref`, role prompt templates are referenced by path, model knobs are bounded, and invalid backend/output contract values are rejected.
+**RED:** Add tests asserting multiple backend kinds and concise role profiles can be declared, deterministic role fields are enum-like key/value pairs, interpretive fields are contained under `prompt:`, non-loopback backends remain disabled by default, secrets are referenced only by `credential_ref`, model knobs are bounded, and invalid backend/output contract values are rejected.
 
 **GREEN:** Implement minimal Pydantic config objects and YAML loader. Do not dispatch any backend yet.
 
