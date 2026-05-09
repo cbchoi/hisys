@@ -205,6 +205,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         help="explicit source-evidence ref for approved OA PDF evidence promotion; repeatable",
     )
+    investigate_domain.add_argument(
+        "--source-quote-ref",
+        dest="source_quote_refs",
+        action="append",
+        default=[],
+        help="explicit source-quote ref from promoted OA PDF quote extraction; repeatable",
+    )
 
     plan_sources = sub.add_parser(
         "plan-source-connectors",
@@ -372,6 +379,7 @@ def main(argv: list[str] | None = None) -> int:
             yyyymmdd=args.date,
             promote_pdf_source_access_refs=args.promote_pdf_source_access_refs,
             promote_pdf_source_evidence_refs=args.promote_pdf_source_evidence_refs,
+            source_quote_refs=args.source_quote_refs,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -927,6 +935,7 @@ def _cmd_investigate_domain(
     yyyymmdd: str,
     promote_pdf_source_access_refs: list[str] | None = None,
     promote_pdf_source_evidence_refs: list[str] | None = None,
+    source_quote_refs: list[str] | None = None,
 ) -> int:
     """Persist the local MVP boundary for a domain investigation request."""
 
@@ -947,7 +956,14 @@ def _cmd_investigate_domain(
             source_evidence_refs=promote_pdf_source_evidence_refs or [],
         )
 
-    domain_result = _build_research_domain_result(request, instance, boundary_dir, yyyymmdd, promoted_pdf_evidence=promoted_pdf_evidence)
+    domain_result = _build_research_domain_result(
+        request,
+        instance,
+        boundary_dir,
+        yyyymmdd,
+        promoted_pdf_evidence=promoted_pdf_evidence,
+        source_quote_refs=source_quote_refs or [],
+    )
     if domain_result is not None:
         domain_result = _write_dars_fixture_for_domain_result(
             instance=instance,
@@ -1024,6 +1040,7 @@ def _build_research_domain_result(
     boundary_dir: Path,
     yyyymmdd: str,
     promoted_pdf_evidence=None,
+    source_quote_refs: list[str] | None = None,
 ) -> DomainInvestigationResult | None:
     """Build the MVP deterministic research adapter result for research-gap requests."""
 
@@ -1047,6 +1064,10 @@ def _build_research_domain_result(
     if promoted_pdf_evidence is not None:
         promoted_source_refs = [*promoted_pdf_evidence.source_access_refs, *promoted_pdf_evidence.source_evidence_refs]
         promoted_evidence_refs = promoted_pdf_evidence.promoted_pdf_evidence_refs
+    quote_refs = source_quote_refs or []
+    for quote_ref in quote_refs:
+        if not quote_ref.startswith("runtime-boundary/source-connectors/") or "/source-quote-" not in quote_ref:
+            raise ValueError("source_quote_refs must point to runtime-boundary/source-connectors source-quote artifacts")
     evidence = DomainEvidencePackage(
         package_id=f"DEPKG-{request.request_id}-FORMALISM-GAP",
         domain="research",
@@ -1058,7 +1079,7 @@ def _build_research_domain_result(
             "self-organizing structure that jointly models local interaction, feedback, topology/behavior "
             "co-evolution, executable semantics, and analyzable structural constraints."
         ),
-        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs, *promoted_evidence_refs],
+        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs, *promoted_evidence_refs, *quote_refs],
         source_refs=source_refs,
         claims=[
             "DSDEVS, graph rewriting, and ABM cover complementary but separated formalism capabilities.",
@@ -1082,6 +1103,7 @@ def _build_research_domain_result(
             *promoted_source_refs,
         ],
         promoted_pdf_evidence_refs=promoted_evidence_refs,
+        source_quote_refs=quote_refs,
     )
     candidate_id = f"CAND-{request.request_id}-SOS-DSDEVS"
     candidate = CandidateRecord(
@@ -1366,6 +1388,7 @@ def _write_dars_fixture_for_domain_result(
         "alert_refs": [],
         "evidence_refs": [evidence_ref, *connector_evidence_refs],
         "promoted_pdf_evidence_refs": domain_result.investigation_data.promoted_pdf_evidence_refs,
+        "source_quote_refs": domain_result.investigation_data.source_quote_refs,
         "critique_id": critique_id,
         "recommended_action_ids": [f"RECACT-{request.request_id}-SOURCE-VALIDATION"],
         "runtime_boundary_refs": [
@@ -1416,7 +1439,15 @@ def _write_chief_editor_research_review(
         for ref in package.evidence_refs
         if ref.startswith("runtime-boundary/source-connectors/")
     ]
-    source_validation_status = "manual_pdf_evidence_promoted" if domain_result.investigation_data.promoted_pdf_evidence_refs else ("fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed")
+    source_validation_status = (
+        "manual_pdf_quotes_present"
+        if domain_result.investigation_data.source_quote_refs
+        else (
+            "manual_pdf_evidence_promoted"
+            if domain_result.investigation_data.promoted_pdf_evidence_refs
+            else ("fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed")
+        )
+    )
     decision = {
         "schema_id": "hisys.chief_editor.research_recommendation_review",
         "schema_version": "0.1.0",
@@ -1431,11 +1462,13 @@ def _write_chief_editor_research_review(
         "source_validation_status": source_validation_status,
         "source_evidence_refs": source_evidence_refs,
         "promoted_pdf_evidence_refs": domain_result.investigation_data.promoted_pdf_evidence_refs,
+        "source_quote_refs": domain_result.investigation_data.source_quote_refs,
         "conditions": [
             "Validate fixture source evidence against live publisher pages before publication claims.",
             "Collect publisher-source evidence for DSDEVS, graph transformation, and ABM literature.",
             "Define evaluation scenarios for topology/behavior co-evolution.",
             "Keep novelty claims conditional until DARS source-validation actions are resolved.",
+            "Keep novelty claims conditional after quote extraction.",
         ],
         "required_next_evidence": [
             "DSDEVS source literature",

@@ -11,6 +11,8 @@ from pathlib import Path
 
 from hisys.cli.main import main
 from hisys.connectors.open_access_pdf import OpenAccessPdfConnector
+from hisys.connectors.pdf_evidence_promotion import PdfEvidencePromotionLoader
+from hisys.connectors.pdf_quote_extractor import PdfQuoteExtractor
 
 
 def _write_domain_request(path: Path) -> None:
@@ -232,3 +234,74 @@ def test_investigate_domain_promotes_explicit_manual_pdf_evidence_refs(tmp_path:
     )
     assert chief_decision["source_validation_status"] == "manual_pdf_evidence_promoted"
     assert chief_decision["promoted_pdf_evidence_refs"] == [package.evidence_ref]
+
+
+def test_investigate_domain_preserves_explicit_pdf_quote_refs_without_strengthening_claims(
+    tmp_path: Path, capsys
+) -> None:
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    fixture = tmp_path / "manual-smoke.pdf"
+    fixture.write_bytes(b"%PDF-1.7\nApproved manual quote bytes.\n%%EOF\n")
+    package = OpenAccessPdfConnector().collect_fixture(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        fixture_path=fixture,
+        source_url="https://mdpi.com/fixture/manual-quote.pdf",
+        license_signal="open_access",
+        output_root=tmp_path,
+        yyyymmdd="20260509",
+    )
+    promoted = PdfEvidencePromotionLoader(root=tmp_path).promote(
+        source_access_refs=[package.access_ref],
+        source_evidence_refs=[package.evidence_ref],
+    )
+    quote_result = PdfQuoteExtractor(root=tmp_path).extract(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        promoted_pdf_evidence_refs=promoted.promoted_pdf_evidence_refs,
+        yyyymmdd="20260509",
+    )
+
+    result = main(
+        [
+            "investigate-domain",
+            "--instance",
+            str(tmp_path),
+            "--request",
+            str(request_path),
+            "--date",
+            "20260509",
+            "--promote-pdf-source-access-ref",
+            package.access_ref,
+            "--promote-pdf-source-evidence-ref",
+            package.evidence_ref,
+            "--source-quote-ref",
+            quote_result.source_quote_refs[0],
+        ]
+    )
+
+    capsys.readouterr()
+    assert result == 0
+    boundary_dir = tmp_path / "runtime-boundary" / "domain-investigation" / "research" / "20260509"
+    data = json.loads((boundary_dir / "investigation-data-INV-HISYS-REQ-RESEARCH-GAP-001.json").read_text(encoding="utf-8"))
+    assert data["source_quote_refs"] == quote_result.source_quote_refs
+    assert quote_result.source_quote_refs[0] in data["evidence_packages"][0]["evidence_refs"]
+    dars_trace = json.loads(
+        (tmp_path / "runtime-boundary" / "dars" / "20260509" / "dars-trace-DARSTRACE-DARSREQ-HISYS-REQ-RESEARCH-GAP-001.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert quote_result.source_quote_refs[0] in dars_trace["source_quote_refs"]
+    chief_decision = json.loads(
+        (
+            tmp_path
+            / "runtime-boundary"
+            / "chief-editor"
+            / "research"
+            / "20260509"
+            / "research-recommendation-review-CEDEC-HISYS-REQ-RESEARCH-GAP-001.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert chief_decision["source_quote_refs"] == quote_result.source_quote_refs
+    assert chief_decision["source_validation_status"] == "manual_pdf_quotes_present"
+    assert chief_decision["status"] == "recommend_with_conditions"
+    assert "Keep novelty claims conditional after quote extraction." in chief_decision["conditions"]

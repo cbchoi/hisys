@@ -129,6 +129,7 @@ class InvestigationDataPackage(BaseModel):
     evidence_packages: list[DomainEvidencePackage]
     source_governance_refs: list[str] = Field(default_factory=list)
     promoted_pdf_evidence_refs: list[str] = Field(default_factory=list)
+    source_quote_refs: list[str] = Field(default_factory=list)
     runtime_boundary_refs: list[str] = Field(default_factory=list)
 
 
