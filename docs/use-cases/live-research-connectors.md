@@ -123,3 +123,30 @@ Manual smoke preconditions:
 CI, automated cron jobs, and default Ralph loops must not run the live smoke
 path. Without the environment flag and approval reference, the connector must
 write a blocked/dry-run artifact and perform no network call.
+
+## Live-D open-access PDF collector boundary
+
+Live-D introduces a legal open-access PDF collector boundary for the
+`open_access_pdf_fetch` connector. It is **fixture-only first**: checked-in tests
+must validate local PDF-like fixture bytes, license/open-access evidence,
+provenance hashes, and extraction records before any live PDF URL is fetched.
+The manual live smoke path is not part of CI.
+
+PDF collection preconditions:
+
+1. collect metadata or fixture evidence that records `license_signal=open_access`;
+2. reject closed, unknown, or missing license signals before any PDF bytes are
+   downloaded or persisted;
+3. create a dry-run artifact first with `hisys smoke-source-connector --dry-run`;
+4. provide an `approval_ref` recorded outside prompt text;
+5. set `HISYS_ALLOW_LIVE_PDF_SMOKE=1` in the operator shell for a manual live
+   smoke run;
+6. request only read-only PDF retrieval from an allowlisted public OA URL;
+7. preserve dispatch, source-access, source-evidence, content-hash, and report
+   artifacts under `runtime-boundary/source-connectors/<YYYYMMDD>/`;
+8. record `external_call_made` truthfully and keep `mutation_performed=false`.
+
+CI, automated cron jobs, and default Ralph loops must not fetch live PDF bytes.
+Without open-access license evidence, operator approval, and the environment
+flag, the connector must write a blocked/dry-run artifact and perform no network
+call.

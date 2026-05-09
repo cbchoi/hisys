@@ -67,3 +67,17 @@ def test_live_c_manual_metadata_smoke_boundary_is_documented():
     assert "not part of CI" in text
     assert "HISYS_ALLOW_LIVE_SMOKE" in text
     assert "dry-run artifact first" in text
+
+
+def test_live_d_open_access_pdf_boundary_is_documented():
+    """OA PDF collection must start fixture-only and require license evidence."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-D open-access PDF collector boundary" in text
+    assert "open_access_pdf_fetch" in text
+    assert "fixture-only first" in text
+    assert "license_signal=open_access" in text
+    assert "HISYS_ALLOW_LIVE_PDF_SMOKE" in text
+    assert "not part of CI" in text
