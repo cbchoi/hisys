@@ -33,7 +33,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import DoiMetadataConnector, FixturePublisherConnector, PdfCandidatePlanner, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -219,6 +219,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="license/open-access signal required for PDF smoke gating",
     )
     smoke_source.add_argument("--approval-ref", help="manual approval ref required for live smoke")
+    smoke_source.add_argument("--transport-fixture-pdf", help="local PDF fixture used as injected transport for tested manual PDF smoke")
     smoke_source.add_argument("--dry-run", action="store_true", help="write blocked/dry-run evidence only; no external call")
 
     plan_pdf = sub.add_parser(
@@ -360,6 +361,7 @@ def main(argv: list[str] | None = None) -> int:
             source_url=args.source_url,
             license_signal=args.license_signal,
             approval_ref=args.approval_ref,
+            transport_fixture_pdf=Path(args.transport_fixture_pdf) if args.transport_fixture_pdf else None,
             dry_run=args.dry_run,
         )
     if args.command == "plan-pdf-candidates":
@@ -516,6 +518,7 @@ def _cmd_smoke_source_connector(
     source_url: str | None,
     license_signal: str,
     approval_ref: str | None,
+    transport_fixture_pdf: Path | None,
     dry_run: bool,
 ) -> int:
     """Write dry-run/manual smoke source connector evidence."""
@@ -601,19 +604,36 @@ def _cmd_smoke_source_connector(
         _write_source_connector_smoke_report(instance, yyyymmdd, report)
         return 2
     if connector_id == "open_access_pdf_fetch":
+        if not source_url:
+            raise ValueError("source-url is required for open_access_pdf_fetch")
+        transport = None
+        if transport_fixture_pdf is not None:
+            def transport(url: str) -> dict[str, object]:
+                return {
+                    "status_code": 200,
+                    "content_type": "application/pdf",
+                    "content": transport_fixture_pdf.read_bytes(),
+                }
+        package = OpenAccessPdfConnector(transport=transport).collect_manual_smoke(
+            request_id=request_id,
+            source_url=source_url,
+            license_signal="open_access",
+            output_root=instance.root,
+            yyyymmdd=yyyymmdd,
+        )
         report = _source_connector_smoke_report(
             request_id=request_id,
             connector_id=connector_id,
             mode="manual_live",
-            status="blocked",
-            reason_code="manual_pdf_smoke_not_implemented",
+            status="completed",
+            reason_code="manual_pdf_smoke_completed",
             dispatch_ref=dispatch_ref,
-            source_evidence_refs=[],
-            external_call_made=False,
+            source_evidence_refs=[package.access_ref, package.evidence_ref],
+            external_call_made=True,
         )
         _write_source_connector_smoke_report(instance, yyyymmdd, report)
-        print("source connector smoke: status=blocked reason=manual_pdf_smoke_not_implemented")
-        return 2
+        print(f"source connector smoke: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'source-connector-smoke-report.json'}")
+        return 0
     if connector_id != "doi_metadata_search":
         raise ValueError("Live-C/D supports only doi_metadata_search and open_access_pdf_fetch")
     if not doi:

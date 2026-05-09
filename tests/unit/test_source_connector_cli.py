@@ -223,6 +223,56 @@ def test_smoke_source_connector_pdf_manual_live_requires_env_without_network(tmp
     assert report["external_call_made"] is False
 
 
+def test_smoke_source_connector_pdf_manual_live_uses_fixture_transport_after_gates(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_PDF_SMOKE", "1")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1)
+        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1)
+        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1),
+        encoding="utf-8",
+    )
+    fixture = tmp_path / "manual-smoke.pdf"
+    fixture.write_bytes(b"%PDF-1.7\nApproved manual smoke bytes.\n%%EOF\n")
+
+    result = main(
+        [
+            "smoke-source-connector",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260509",
+            "--request-id",
+            "HISYS-REQ-LIVE-F-CLI-001",
+            "--connector-id",
+            "open_access_pdf_fetch",
+            "--source-url",
+            "https://mdpi.com/fixture/open-access.pdf",
+            "--license-signal",
+            "open_access",
+            "--approval-ref",
+            "APPROVAL-PDF-SMOKE-F-001",
+            "--transport-fixture-pdf",
+            str(fixture),
+        ]
+    )
+
+    assert result == 0
+    report_artifact = tmp_path / "reports" / "run-summaries" / "20260509" / "source-connector-smoke-report.json"
+    report = json.loads(report_artifact.read_text(encoding="utf-8"))
+    assert report["status"] == "completed"
+    assert report["reason_code"] == "manual_pdf_smoke_completed"
+    assert report["external_call_made"] is True
+    assert report["source_evidence_refs"]
+    access_ref = tmp_path / report["source_evidence_refs"][0]
+    assert json.loads(access_ref.read_text(encoding="utf-8"))["pdf_downloaded"] is True
+
+
 def test_plan_pdf_candidates_writes_candidate_plan_without_fetching_pdf(tmp_path: Path, capsys) -> None:
     metadata_path = tmp_path / "doi-metadata.json"
     metadata_path.write_text(
