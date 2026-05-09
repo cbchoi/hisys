@@ -195,6 +195,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   planning now records a `doi_metadata_search -> open_access_pdf_fetch` planned
   handoff of type `pdf_candidate_plan_only`, so DOI metadata and OA PDF gates are
   linked without making live PDF calls.
+- Increment **Live-F approved manual OA PDF fetch smoke** -
+  `hisys.connectors.open_access_pdf.collect_manual_smoke` uses an injectable
+  transport so tests and CI use `--transport-fixture-pdf` fake PDF bytes while an
+  operator-only live path remains behind `HISYS_ALLOW_LIVE_PDF_SMOKE`, approval,
+  allowlist, and dispatch gates. On success, `hisys smoke-source-connector`
+  writes `manual_pdf_smoke_completed` with `pdf_downloaded=true`,
+  `external_call_made=true`, `mutation_performed=false`, source-access refs, and
+  source-evidence refs. Checked-in config remains disabled and CI still performs
+  no live PDF fetch.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
