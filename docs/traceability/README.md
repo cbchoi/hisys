@@ -38,6 +38,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | Live-D Legal open-access PDF collector boundary | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `open_access_pdf_fetch` has explicit manual-smoke policy fields, `hisys.connectors.open_access_pdf` fixture-collects OA PDF bytes only after `license_signal=open_access`, and `hisys smoke-source-connector` dry-runs/blocks PDF smoke when license/approval/env gates are missing. CI performs no live PDF fetch. |
 | Live-E DOI metadata to OA PDF candidate planning | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.pdf_candidate_planner` derives `candidate_plan_only` PDF candidates from DOI metadata OA hints, `hisys plan-pdf-candidates` writes dry-run candidate plan/report artifacts, and source connector planning records the `doi_metadata_search -> open_access_pdf_fetch` planned handoff. CI performs no live PDF fetch. |
 | Live-F Approved manual OA PDF fetch smoke | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.open_access_pdf.collect_manual_smoke` supports injectable PDF transport, `hisys smoke-source-connector --transport-fixture-pdf` verifies the approved manual path without CI network, and completed smoke reports record `manual_pdf_smoke_completed`, `pdf_downloaded=true`, source-access refs, and source-evidence refs. Checked-in config remains disabled. |
+| Live-G Manual OA PDF evidence promotion | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys.connectors.pdf_evidence_promotion` validates explicit OA PDF source refs, `hisys investigate-domain --promote-pdf-source-access-ref --promote-pdf-source-evidence-ref` records `promoted_pdf_evidence_refs` in `InvestigationDataPackage`, and DARS/Chief Editor traces preserve promoted refs without implicit PDF discovery or live fetch. |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -80,7 +81,10 @@ with `candidate_plan_only` artifacts and planned connector handoffs while still
 fetching no PDF bytes. Live-F adds approved manual OA PDF smoke retrieval with
 injectable transport, fixture-transport CLI tests, and completed smoke reports
 that truthfully record `pdf_downloaded=true` and `external_call_made=true` only
-after gates pass; checked-in config and CI remain no-live-PDF.
+after gates pass; checked-in config and CI remain no-live-PDF. Live-G promotes
+explicit approved OA PDF source refs into `InvestigationDataPackage`, DARS trace,
+and Chief Editor review with `promoted_pdf_evidence_refs` and no implicit PDF
+discovery or live fetch.
 I9-A adds a redacted secret-like value scanner for HISYS-T-021
 quality gates, I9-B adds backup manifest plus restore dry-run verification for
 HISYS-T-023, I9-C adds local operator health status for required runtime
@@ -130,6 +134,7 @@ implemented yet.
 | `hisys.connectors.doi_metadata` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_doi_metadata_connector.py` |
 | `hisys.connectors.open_access_pdf` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_open_access_pdf_connector.py` |
 | `hisys.connectors.pdf_candidate_planner` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_pdf_candidate_planner.py` |
+| `hisys.connectors.pdf_evidence_promotion` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_pdf_evidence_promotion.py`, `tests/unit/test_domain_cli.py` |
 | `hisys.investigator.runtime` | HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-007..008 | `tests/unit/test_investigator_runtime.py` |
 | `hisys.extraction.extractor` | HISYS-FR-EXT-001..005, HISYS-DATA-002, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
 | `hisys.extraction.runtime` | HISYS-FR-EXT-001..005, HISYS-D-015, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |

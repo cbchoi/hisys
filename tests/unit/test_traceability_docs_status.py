@@ -164,3 +164,17 @@ def test_live_f_manual_oa_pdf_smoke_status_and_traceability_are_documented():
     assert "| Live-F Approved manual OA PDF fetch smoke |" in trace
     assert "manual_pdf_smoke_completed" in trace
     assert "tests/unit/test_source_connector_cli.py" in trace
+
+
+def test_live_g_pdf_evidence_promotion_status_and_traceability_are_documented():
+    """README and traceability docs must mention implemented Live-G promotion path."""
+
+    readme = README.read_text(encoding="utf-8")
+    trace = TRACEABILITY_DOC.read_text(encoding="utf-8")
+
+    assert "Increment **Live-G manual OA PDF evidence promotion**" in readme
+    assert "PdfEvidencePromotionLoader" in readme
+    assert "--promote-pdf-source-access-ref" in readme
+    assert "| Live-G Manual OA PDF evidence promotion |" in trace
+    assert "`hisys.connectors.pdf_evidence_promotion`" in trace
+    assert "tests/unit/test_pdf_evidence_promotion.py" in trace

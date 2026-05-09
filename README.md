@@ -204,6 +204,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `external_call_made=true`, `mutation_performed=false`, source-access refs, and
   source-evidence refs. Checked-in config remains disabled and CI still performs
   no live PDF fetch.
+- Increment **Live-G manual OA PDF evidence promotion** -
+  `PdfEvidencePromotionLoader` validates explicit `open_access_pdf_fetch`
+  source-access/source-evidence refs before promotion. `hisys investigate-domain`
+  accepts `--promote-pdf-source-access-ref` and
+  `--promote-pdf-source-evidence-ref`, records `promoted_pdf_evidence_refs` in
+  `InvestigationDataPackage`, keeps source-access/source-evidence refs in source
+  governance, and preserves promoted PDF refs in DARS trace and Chief Editor
+  `research_recommendation_review` with `manual_pdf_evidence_promoted` status.
+  This adds no implicit PDF discovery or live fetch.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
