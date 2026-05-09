@@ -138,6 +138,21 @@ def test_live_h_pdf_quote_extraction_boundary_is_documented():
     assert "Chief Editor novelty claims remain conditional" in text
 
 
+def test_live_i_quote_to_claim_ledger_boundary_is_documented():
+    """Quote-to-claim ledger must map quotes to claims without merging source and interpretation."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-I quote-to-claim evidence ledger boundary" in text
+    assert "source_quote_refs" in text
+    assert "claim_evidence_ledger_refs" in text
+    assert "support/contradict/needs_evidence" in text
+    assert "quote text remains source evidence" in text
+    assert "claim mapping remains interpretation" in text
+    assert "Chief Editor claims remain conditional" in text
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 

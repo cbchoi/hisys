@@ -258,3 +258,27 @@ Boundary rules:
 6. Chief Editor novelty claims remain conditional even when quote refs are
    present, because quote extraction proves source linkage, not publication-level
    validation completeness.
+
+## Live-I quote-to-claim evidence ledger boundary
+
+Live-I maps extracted `source_quote_refs` to explicit claim-evidence ledger
+entries. The ledger is an interpretation boundary, not a source mutation: **quote text remains source evidence** and the **claim mapping remains interpretation**.
+It can classify a quote relationship to a proposed claim as
+**support/contradict/needs_evidence**, but it must not rewrite quote artifacts,
+upgrade recommendations automatically, or convert quote presence into validated
+novelty.
+
+Boundary rules:
+
+1. ledger construction requires explicit `source_quote_refs`; prompts cannot
+   discover quotes, fetch PDFs, or infer source refs implicitly;
+2. ledger artifacts must be persisted as governed `claim_evidence_ledger_refs`
+   under `runtime-boundary/source-connectors/<YYYYMMDD>/`;
+3. each ledger entry must record the claim text, relation
+   `support/contradict/needs_evidence`, rationale, quote ref, quote hash, and
+   whether the mapping is advisory;
+4. ledger construction performs no live calls, no PDF parsing/OCR, and no
+   mutation of source-access/source-evidence/source-quote artifacts;
+5. DARS may critique claim-evidence mappings as advisory lineage only;
+6. Chief Editor claims remain conditional until source coverage and validation
+   criteria are sufficient beyond the quote-to-claim ledger.
