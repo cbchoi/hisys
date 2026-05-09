@@ -120,6 +120,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   connectors. The registry rejects mutating modes, credential refs, enabled
   external connectors when live-network policy is disabled, and external
   connectors without approval policy or allowlisted domains.
+- Increment **Live-A3 disabled source connector examples** -
+  `examples/instance/config/source-connectors.yaml` declares disabled examples
+  for publisher web search, DOI metadata search, open-access PDF fetch,
+  arXiv metadata search, local PDF reading, and Selenium read-only browsing.
+  All checked-in examples keep `enabled=false`, `external_call_allowed=false`,
+  `requires_human_approval=true`, no credentials, and forbidden live actions.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

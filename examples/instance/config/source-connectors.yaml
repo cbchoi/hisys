@@ -1,0 +1,101 @@
+# Disabled-by-default source connector registry for future live research search.
+# Traceability: HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012,
+# HISYS-CON-022..023.
+
+default_mode: fixture_only
+policy:
+  live_network_enabled: false
+  require_human_approval_for_external_call: true
+  allow_credentials: false
+  allow_mutation: false
+  require_allowlist: true
+  require_provenance_record: true
+connectors:
+  publisher_web_search:
+    connector_id: publisher_web_search
+    connector_type: web_search
+    enabled: false
+    mode: read_only
+    external_call_allowed: false
+    requires_human_approval: true
+    approval_policy_ref: POLICY-LIVE-RESEARCH-001
+    allowed_domains:
+      - arxiv.org
+      - doi.org
+      - mdpi.com
+      - sciencedirect.com
+      - springer.com
+      - ieee.org
+    disallowed_domains: []
+    forbidden_actions: &forbidden_live_actions
+      - login
+      - credential_use
+      - form_submit
+      - upload
+      - purchase
+      - post
+      - mutation
+      - access_control_bypass
+    output_schema: EvidencePackage
+  doi_metadata_search:
+    connector_id: doi_metadata_search
+    connector_type: metadata_search
+    enabled: false
+    mode: read_only
+    external_call_allowed: false
+    requires_human_approval: true
+    approval_policy_ref: POLICY-LIVE-RESEARCH-001
+    allowed_domains:
+      - doi.org
+      - crossref.org
+    forbidden_actions: *forbidden_live_actions
+    output_schema: EvidencePackage
+  open_access_pdf_fetch:
+    connector_id: open_access_pdf_fetch
+    connector_type: pdf_fetch
+    enabled: false
+    mode: read_only
+    external_call_allowed: false
+    requires_human_approval: true
+    approval_policy_ref: POLICY-LIVE-RESEARCH-001
+    allowed_domains:
+      - arxiv.org
+      - mdpi.com
+      - frontiersin.org
+      - plos.org
+    forbidden_actions: *forbidden_live_actions
+    output_schema: EvidencePackage
+  arxiv_metadata_search:
+    connector_id: arxiv_metadata_search
+    connector_type: metadata_search
+    enabled: false
+    mode: read_only
+    external_call_allowed: false
+    requires_human_approval: true
+    approval_policy_ref: POLICY-LIVE-RESEARCH-001
+    allowed_domains:
+      - arxiv.org
+    forbidden_actions: *forbidden_live_actions
+    output_schema: EvidencePackage
+  local_pdf_reader:
+    connector_id: local_pdf_reader
+    connector_type: local_file
+    enabled: false
+    mode: local_only
+    external_call_allowed: false
+    requires_human_approval: true
+    approval_policy_ref: POLICY-LOCAL-RESEARCH-001
+    allowed_domains: []
+    forbidden_actions: *forbidden_live_actions
+    output_schema: EvidencePackage
+  selenium_read_only:
+    connector_id: selenium_read_only
+    connector_type: selenium_read_only
+    enabled: false
+    mode: read_only
+    external_call_allowed: false
+    requires_human_approval: true
+    approval_policy_ref: POLICY-LIVE-RESEARCH-001
+    allowed_domains: []
+    forbidden_actions: *forbidden_live_actions
+    output_schema: EvidencePackage

@@ -17,6 +17,32 @@ from hisys.connectors.live_source_config import (
 )
 
 
+EXAMPLE_CONFIG = Path("examples/instance/config/source-connectors.yaml")
+
+
+def test_example_source_connector_registry_declares_all_live_connectors_disabled():
+    registry = load_source_connector_registry(EXAMPLE_CONFIG)
+
+    assert registry.default_mode == "fixture_only"
+    assert registry.policy.live_network_enabled is False
+    assert registry.policy.require_human_approval_for_external_call is True
+    expected = {
+        "publisher_web_search",
+        "doi_metadata_search",
+        "open_access_pdf_fetch",
+        "arxiv_metadata_search",
+        "local_pdf_reader",
+        "selenium_read_only",
+    }
+    assert expected.issubset(registry.connectors)
+    for connector_id in expected:
+        connector = registry.connectors[connector_id]
+        assert connector.enabled is False
+        assert connector.external_call_allowed is False
+        assert connector.requires_human_approval is True
+        assert "credential_use" in connector.forbidden_actions
+
+
 def test_live_source_connector_registry_loads_disabled_connectors(tmp_path: Path):
     config_path = tmp_path / "source-connectors.yaml"
     config_path.write_text(
