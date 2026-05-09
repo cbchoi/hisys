@@ -115,14 +115,17 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   is explicitly enabled, the requested action is allow-listed, and approval is
   present; this baseline still records `external_call_made=false` and
   `action_taken=none`.
-- Increment **I8-A/B foundation** (DARS advisory handoff loopback contract) -
+- Increment **I8-A/B/C foundation** (DARS advisory handoff loopback contract and
+  config-validation gate) -
   DARS itself is intentionally not implemented. `hisys request-dars-critique`
   creates runtime-local `AgentHandoffPackage` JSON/Markdown records linked to
   disabled connector executions and returns a loopback placeholder critique when
   no critique text is supplied. The artifact shape records
   `dars_backend=loopback_placeholder`, `external_call_made=false`,
   `allowed_actions=advisory_only`, and `action_taken=none`, so a future DARS
-  adapter can replace the loopback without changing downstream records.
+  adapter can replace the loopback without changing downstream records. The
+  DARS configuration contract uses a common Hisys config envelope and validates
+  concise role/backend settings before any DARS adapter is selected.
 - Increment **I9-A/B/C/D product hardening** - `hisys.security.secret_scan` and
   `scripts/scan_secrets.py` scan repository/runtime files for assignment-style
   secret-like values, skip runtime caches such as `.git`/`.pytest_cache`/
@@ -152,7 +155,8 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
                    hermes_trace)
       registry/    source registry and web compliance collection gate
       adapters/    base + hardware/web/agent/Hermes mocks and runtime manager
-      config/      runtime instance root and YAML config/source-registry loader
+      config/      runtime instance root, YAML config/source-registry loader,
+                   common config validation, and DARS role/backend config
       audit/       JSONL audit writer with minimal redaction
       integrations/ Hermes Markdown boundary writer
       investigator/ registry-gated collection skeleton
