@@ -33,7 +33,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import ClaimEvidenceLedgerBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -298,6 +298,21 @@ def _build_parser() -> argparse.ArgumentParser:
         help="explicit source quote ref; repeat for multiple refs",
     )
 
+    claim_summary = sub.add_parser(
+        "build-claim-evidence-summary",
+        help="aggregate explicit claim evidence ledger refs into advisory evidence balance summaries",
+    )
+    claim_summary.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    claim_summary.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    claim_summary.add_argument("--request-id", required=True, help="request id for claim evidence summary")
+    claim_summary.add_argument("--claim-id", required=True, help="claim id being summarized")
+    claim_summary.add_argument(
+        "--claim-evidence-ledger-ref",
+        action="append",
+        required=True,
+        help="explicit claim evidence ledger ref; repeat for multiple refs",
+    )
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -454,6 +469,14 @@ def main(argv: list[str] | None = None) -> int:
             relation=args.relation,
             rationale=args.rationale,
             source_quote_refs=args.source_quote_ref,
+        )
+    if args.command == "build-claim-evidence-summary":
+        return _cmd_build_claim_evidence_summary(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            claim_id=args.claim_id,
+            claim_evidence_ledger_refs=args.claim_evidence_ledger_ref,
         )
     if args.command == "extract":
         return _cmd_extract(
@@ -968,6 +991,62 @@ def _cmd_build_claim_evidence_ledger(
         encoding="utf-8",
     )
     print(f"claim evidence ledger: report={report_artifact}")
+    print("external_call_made: false")
+    return 0
+
+
+def _cmd_build_claim_evidence_summary(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    claim_id: str,
+    claim_evidence_ledger_refs: list[str],
+) -> int:
+    instance = InstanceRoot(instance_root)
+    result = ClaimEvidenceSummaryBuilder(root=instance.root).build(
+        request_id=request_id,
+        claim_id=claim_id,
+        claim_evidence_ledger_refs=claim_evidence_ledger_refs,
+        yyyymmdd=yyyymmdd,
+    )
+    report = {
+        "schema_id": "hisys.claim_evidence_summary.report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "status": "completed",
+        "claim_id": claim_id,
+        "claim_evidence_summary_refs": result.claim_evidence_summary_refs,
+        "summary_count": len(result.claim_evidence_summary_refs),
+        "external_call_made": result.external_call_made,
+        "mutation_performed": result.mutation_performed,
+    }
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_artifact = report_dir / "claim-evidence-summary-report.json"
+    report_artifact.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "claim-evidence-summary-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                f"# Claim evidence summary report {request_id}",
+                "",
+                "- status: `completed`",
+                f"- claim_id: `{claim_id}`",
+                f"- summary_count: {len(result.claim_evidence_summary_refs)}",
+                "- advisory_confidence_only: true",
+                "- does_not_prove_novelty: true",
+                "- external_call_made: false",
+                "- mutation_performed: false",
+                "",
+                "## Claim evidence summary refs",
+                *[f"- {ref}" for ref in result.claim_evidence_summary_refs],
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    print(f"claim evidence summary: report={report_artifact}")
     print("external_call_made: false")
     return 0
 
