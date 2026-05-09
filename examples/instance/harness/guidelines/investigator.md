@@ -63,9 +63,13 @@ EvidencePackage artifacts before the memo is synthesized.
    recommended research direction]`.
 16. Research-gap prompts must ask the Investigator to separate source evidence,
    interpreted gap statements, synthesis candidates, and validation scenarios;
-   prompt text may narrow domain focus but must not enable live connectors,
+   prompt text may narrow domain focus but prompt text may not enable live connectors,
    bypass source policy, change output contracts, or request external side
    effects.
+17. Live-source connector requests must be routed through the source connector
+   registry and dispatch gate. The Investigator may request connector planning,
+   but may not call live publisher/search/PDF/browser/LLM connectors unless
+   checked-in config, runtime policy, and an approval reference allow it.
 
 ## Pass Criteria
 

@@ -33,3 +33,23 @@ def test_readme_status_lists_selenium_harness_as_completed_increment():
     assert "disabled-by-default" in text
     assert "local static" in text
     assert "HTML fixture" in text
+
+
+def test_live_research_connector_boundary_is_documented():
+    """Live source search must be documented as disabled-by-default and governed."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+    investigator = (ROOT / "examples" / "instance" / "harness" / "guidelines" / "investigator.md").read_text(
+        encoding="utf-8"
+    )
+    source_governance = (
+        ROOT / "examples" / "instance" / "harness" / "guidelines" / "source-governance.md"
+    ).read_text(encoding="utf-8")
+
+    assert "disabled-by-default" in text
+    assert "no live external action until harness passes" in text
+    assert "forbidden_actions" in text
+    assert "approval_ref" in text
+    assert "prompt text may not enable live connectors" in investigator
+    assert "live connector dispatch decision" in source_governance
