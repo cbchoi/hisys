@@ -81,3 +81,17 @@ def test_live_d_open_access_pdf_boundary_is_documented():
     assert "license_signal=open_access" in text
     assert "HISYS_ALLOW_LIVE_PDF_SMOKE" in text
     assert "not part of CI" in text
+
+
+def test_live_d_open_access_pdf_status_and_traceability_are_documented():
+    """README and traceability docs must mention the implemented Live-D connector."""
+
+    readme = README.read_text(encoding="utf-8")
+    trace = TRACEABILITY_DOC.read_text(encoding="utf-8")
+
+    assert "Increment **Live-D legal open-access PDF collector boundary**" in readme
+    assert "hisys.connectors.open_access_pdf" in readme
+    assert "HISYS_ALLOW_LIVE_PDF_SMOKE" in readme
+    assert "| Live-D Legal open-access PDF collector boundary |" in trace
+    assert "`hisys.connectors.open_access_pdf`" in trace
+    assert "tests/unit/test_open_access_pdf_connector.py" in trace

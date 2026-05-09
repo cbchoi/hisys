@@ -35,6 +35,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 | Live-A Source connector governance foundation | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: live research connector boundary docs, disabled-by-default `source-connectors.yaml`, governed source connector registry schemas/loader, dispatch decision gate with runtime-boundary evidence, and live source provenance records for URL/access-time/hash/license-signal and quote-vs-interpretation separation. No live adapter execution is enabled. |
 | Live-B Fixture-backed source connector planning and evidence integration | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `hisys plan-source-connectors` writes dry-run connector plan artifacts without external calls, `hisys.connectors.fixture_publisher` extracts local publisher-shaped fixture evidence/provenance, `investigate-domain` links fixture source evidence into investigation data, DARS trace lineage, and Chief Editor source-validation review conditions. No live adapter execution is enabled. |
 | Live-C Manual DOI metadata smoke boundary | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `doi_metadata_search` has explicit manual-smoke policy fields, the read-only DOI metadata connector uses injectable transport for tests, and `hisys smoke-source-connector` writes dry-run/blocked smoke reports unless an operator supplies approval plus `HISYS_ALLOW_LIVE_SMOKE=1`. CI performs no live network call. |
+| Live-D Legal open-access PDF collector boundary | docs/use-cases/live-research-connectors.md; HISYS-FR-INV-001..006; HISYS-T-024; HISYS-CON-010..012; HISYS-CON-022..023 | Implemented: `open_access_pdf_fetch` has explicit manual-smoke policy fields, `hisys.connectors.open_access_pdf` fixture-collects OA PDF bytes only after `license_signal=open_access`, and `hisys smoke-source-connector` dry-runs/blocks PDF smoke when license/approval/env gates are missing. CI performs no live PDF fetch. |
 
 I4 is present as a fixture-backed foundation/skeleton with CLI glue for local
 runtime execution. I5 is present as a fixture-backed extraction foundation.
@@ -70,7 +71,9 @@ DARS advisory trace, and Chief Editor research review, still with no live adapte
 execution enabled. Live-C adds a manual-smoke DOI metadata boundary with
 injectable-transport tests, dry-run/blocked CLI evidence, and an opt-in operator
 environment flag for manual live metadata smoke only; CI still performs no live
-network call.
+network call. Live-D adds a fixture-first OA PDF collector with license-signal
+gating, manual PDF smoke env gating, and dry-run/blocked CLI evidence; CI still
+performs no live PDF fetch.
 I9-A adds a redacted secret-like value scanner for HISYS-T-021
 quality gates, I9-B adds backup manifest plus restore dry-run verification for
 HISYS-T-023, I9-C adds local operator health status for required runtime
@@ -118,6 +121,7 @@ implemented yet.
 | `hisys.connectors.live_source_evidence` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_live_source_evidence.py` |
 | `hisys.connectors.fixture_publisher` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_fixture_publisher_connector.py` |
 | `hisys.connectors.doi_metadata` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_doi_metadata_connector.py` |
+| `hisys.connectors.open_access_pdf` | HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012, HISYS-CON-022..023 | `tests/unit/test_open_access_pdf_connector.py` |
 | `hisys.investigator.runtime` | HISYS-INST-INV-001, HISYS-FR-INV-001..006, HISYS-T-007..008 | `tests/unit/test_investigator_runtime.py` |
 | `hisys.extraction.extractor` | HISYS-FR-EXT-001..005, HISYS-DATA-002, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
 | `hisys.extraction.runtime` | HISYS-FR-EXT-001..005, HISYS-D-015, HISYS-T-009..010 | `tests/unit/test_extraction_runtime.py` |
@@ -178,10 +182,11 @@ For each path the tests assert:
 
 - HISYS-CON-022..023: no live web/network calls in this code except the
   explicitly manual `smoke-source-connector` DOI metadata path, which is blocked
-  unless an operator supplies approval and `HISYS_ALLOW_LIVE_SMOKE=1`; CI tests
-  use injected fake transports only. Live-A adds disabled live-source connector
-  registry/dispatch/provenance records and Live-B adds dry-run connector
-  planning plus local fixture-publisher evidence integration.
+  unless an operator supplies approval and the matching manual-smoke env flag;
+  CI tests use injected fake transports or local fixtures only. Live-A adds
+  disabled live-source connector registry/dispatch/provenance records and Live-B
+  adds dry-run connector planning plus local fixture-publisher evidence
+  integration.
 - HISYS-T-001..002: source registry entries require governance metadata;
   web/news collection is blocked without compliance checklist evidence.
 - HISYS-T-003..006: adapter contract covers initialization, health,

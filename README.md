@@ -177,6 +177,16 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   artifacts without a network call; a manual live run additionally requires an
   approval ref plus the operator environment flag before any external metadata
   call is made.
+- Increment **Live-D legal open-access PDF collector boundary** -
+  `source-connectors.yaml` marks `open_access_pdf_fetch` as
+  `manual_smoke_only`, guarded by `HISYS_ALLOW_LIVE_PDF_SMOKE`, and excluded
+  from CI. `hisys.connectors.open_access_pdf` provides a fixture-only OA PDF
+  collector that rejects non-`open_access` license signals before persisting PDF
+  bytes and records source-access/source-evidence provenance with
+  `pdf_downloaded=true`, `external_call_made=false`, and `mutation_performed=false`.
+  `hisys smoke-source-connector` now dry-runs/blocks PDF smoke attempts unless
+  open-access license evidence, approval, allowlist, and the operator env flag
+  are present; manual live PDF fetching remains blocked/not implemented.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
