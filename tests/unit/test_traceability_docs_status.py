@@ -153,6 +153,21 @@ def test_live_i_quote_to_claim_ledger_boundary_is_documented():
     assert "Chief Editor claims remain conditional" in text
 
 
+def test_live_j_claim_evidence_summary_boundary_is_documented():
+    """Claim ledger aggregation must stay advisory and not prove novelty."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-J claim ledger aggregation boundary" in text
+    assert "claim_evidence_summary_refs" in text
+    assert "claim_evidence_ledger_refs" in text
+    assert "support/contradict/needs_evidence balance" in text
+    assert "advisory confidence only" in text
+    assert "does not prove novelty" in text
+    assert "Chief Editor confidence remains conditional" in text
+
+
 def test_live_d_open_access_pdf_status_and_traceability_are_documented():
     """README and traceability docs must mention the implemented Live-D connector."""
 

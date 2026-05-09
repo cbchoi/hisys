@@ -282,3 +282,28 @@ Boundary rules:
 5. DARS may critique claim-evidence mappings as advisory lineage only;
 6. Chief Editor claims remain conditional until source coverage and validation
    criteria are sufficient beyond the quote-to-claim ledger.
+
+## Live-J claim ledger aggregation boundary
+
+Live-J aggregates explicit `claim_evidence_ledger_refs` into governed
+`claim_evidence_summary_refs`. The summary may compute a
+**support/contradict/needs_evidence balance** and an **advisory confidence only**
+classification, but it does not prove novelty, publication readiness, or formal
+validity. Chief Editor confidence remains conditional even when summaries are
+present.
+
+Boundary rules:
+
+1. aggregation requires explicit `claim_evidence_ledger_refs`; prompts cannot
+   infer or search for ledger refs implicitly;
+2. summaries are persisted as `claim_evidence_summary_refs` under
+   `runtime-boundary/source-connectors/<YYYYMMDD>/`;
+3. summary counts separate `support`, `contradict`, and `needs_evidence`
+   records and preserve source ledger refs without mutating them;
+4. confidence is advisory and conservative: contradiction or needs-evidence
+   records lower confidence and cannot be overridden by prompt text;
+5. aggregation performs no live calls, no PDF parsing/OCR, no quote mutation,
+   and no source artifact mutation;
+6. DARS and Chief Editor may reference summaries as advisory evidence balance
+   only; Chief Editor confidence remains conditional and publication/novelty
+   claims require further validation.
