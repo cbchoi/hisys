@@ -233,6 +233,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         help="explicit claim coverage gate ref for conditional manuscript-language gating; repeatable",
     )
+    investigate_domain.add_argument(
+        "--recommendation-claim-registry-ref",
+        dest="recommendation_claim_registry_refs",
+        action="append",
+        default=[],
+        help="explicit recommendation claim registry ref for conditional required-claim lineage; repeatable",
+    )
 
     plan_sources = sub.add_parser(
         "plan-source-connectors",
@@ -476,6 +483,7 @@ def main(argv: list[str] | None = None) -> int:
             claim_evidence_ledger_refs=args.claim_evidence_ledger_refs,
             claim_evidence_summary_refs=args.claim_evidence_summary_refs,
             claim_coverage_gate_refs=args.claim_coverage_gate_refs,
+            recommendation_claim_registry_refs=args.recommendation_claim_registry_refs,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -1307,6 +1315,7 @@ def _cmd_investigate_domain(
     claim_evidence_ledger_refs: list[str] | None = None,
     claim_evidence_summary_refs: list[str] | None = None,
     claim_coverage_gate_refs: list[str] | None = None,
+    recommendation_claim_registry_refs: list[str] | None = None,
 ) -> int:
     """Persist the local MVP boundary for a domain investigation request."""
 
@@ -1337,6 +1346,7 @@ def _cmd_investigate_domain(
         claim_evidence_ledger_refs=claim_evidence_ledger_refs or [],
         claim_evidence_summary_refs=claim_evidence_summary_refs or [],
         claim_coverage_gate_refs=claim_coverage_gate_refs or [],
+        recommendation_claim_registry_refs=recommendation_claim_registry_refs or [],
     )
     if domain_result is not None:
         domain_result = _write_dars_fixture_for_domain_result(
@@ -1418,6 +1428,7 @@ def _build_research_domain_result(
     claim_evidence_ledger_refs: list[str] | None = None,
     claim_evidence_summary_refs: list[str] | None = None,
     claim_coverage_gate_refs: list[str] | None = None,
+    recommendation_claim_registry_refs: list[str] | None = None,
 ) -> DomainInvestigationResult | None:
     """Build the MVP deterministic research adapter result for research-gap requests."""
 
@@ -1457,6 +1468,10 @@ def _build_research_domain_result(
     for gate_ref in gate_refs:
         if not gate_ref.startswith("runtime-boundary/source-connectors/") or "/claim-coverage-gate-" not in gate_ref:
             raise ValueError("claim_coverage_gate_refs must point to runtime-boundary/source-connectors claim-coverage-gate artifacts")
+    registry_refs = recommendation_claim_registry_refs or []
+    for registry_ref in registry_refs:
+        if not registry_ref.startswith("runtime-boundary/source-connectors/") or "/recommendation-claim-registry-" not in registry_ref:
+            raise ValueError("recommendation_claim_registry_refs must point to runtime-boundary/source-connectors recommendation-claim-registry artifacts")
     evidence = DomainEvidencePackage(
         package_id=f"DEPKG-{request.request_id}-FORMALISM-GAP",
         domain="research",
@@ -1468,7 +1483,7 @@ def _build_research_domain_result(
             "self-organizing structure that jointly models local interaction, feedback, topology/behavior "
             "co-evolution, executable semantics, and analyzable structural constraints."
         ),
-        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs, *promoted_evidence_refs, *quote_refs, *ledger_refs, *summary_refs, *gate_refs],
+        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs, *promoted_evidence_refs, *quote_refs, *ledger_refs, *summary_refs, *gate_refs, *registry_refs],
         source_refs=source_refs,
         claims=[
             "DSDEVS, graph rewriting, and ABM cover complementary but separated formalism capabilities.",
@@ -1496,6 +1511,7 @@ def _build_research_domain_result(
         claim_evidence_ledger_refs=ledger_refs,
         claim_evidence_summary_refs=summary_refs,
         claim_coverage_gate_refs=gate_refs,
+        recommendation_claim_registry_refs=registry_refs,
     )
     candidate_id = f"CAND-{request.request_id}-SOS-DSDEVS"
     candidate = CandidateRecord(
@@ -1784,6 +1800,7 @@ def _write_dars_fixture_for_domain_result(
         "claim_evidence_ledger_refs": domain_result.investigation_data.claim_evidence_ledger_refs,
         "claim_evidence_summary_refs": domain_result.investigation_data.claim_evidence_summary_refs,
         "claim_coverage_gate_refs": domain_result.investigation_data.claim_coverage_gate_refs,
+        "recommendation_claim_registry_refs": domain_result.investigation_data.recommendation_claim_registry_refs,
         "critique_id": critique_id,
         "recommended_action_ids": [f"RECACT-{request.request_id}-SOURCE-VALIDATION"],
         "runtime_boundary_refs": [
@@ -1834,27 +1851,20 @@ def _write_chief_editor_research_review(
         for ref in package.evidence_refs
         if ref.startswith("runtime-boundary/source-connectors/")
     ]
-    source_validation_status = (
-        "claim_coverage_gate_present"
-        if domain_result.investigation_data.claim_coverage_gate_refs
-        else (
-            "claim_evidence_summary_present"
-            if domain_result.investigation_data.claim_evidence_summary_refs
-            else (
-                "claim_evidence_ledger_present"
-                if domain_result.investigation_data.claim_evidence_ledger_refs
-                else (
-                    "manual_pdf_quotes_present"
-                    if domain_result.investigation_data.source_quote_refs
-                    else (
-                        "manual_pdf_evidence_promoted"
-                        if domain_result.investigation_data.promoted_pdf_evidence_refs
-                        else ("fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed")
-                    )
-                )
-            )
-        )
-    )
+    if domain_result.investigation_data.claim_coverage_gate_refs:
+        source_validation_status = "claim_coverage_gate_present"
+    elif domain_result.investigation_data.recommendation_claim_registry_refs:
+        source_validation_status = "recommendation_claim_registry_present"
+    elif domain_result.investigation_data.claim_evidence_summary_refs:
+        source_validation_status = "claim_evidence_summary_present"
+    elif domain_result.investigation_data.claim_evidence_ledger_refs:
+        source_validation_status = "claim_evidence_ledger_present"
+    elif domain_result.investigation_data.source_quote_refs:
+        source_validation_status = "manual_pdf_quotes_present"
+    elif domain_result.investigation_data.promoted_pdf_evidence_refs:
+        source_validation_status = "manual_pdf_evidence_promoted"
+    else:
+        source_validation_status = "fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed"
     decision = {
         "schema_id": "hisys.chief_editor.research_recommendation_review",
         "schema_version": "0.1.0",
@@ -1873,7 +1883,10 @@ def _write_chief_editor_research_review(
         "claim_evidence_ledger_refs": domain_result.investigation_data.claim_evidence_ledger_refs,
         "claim_evidence_summary_refs": domain_result.investigation_data.claim_evidence_summary_refs,
         "claim_coverage_gate_refs": domain_result.investigation_data.claim_coverage_gate_refs,
+        "recommendation_claim_registry_refs": domain_result.investigation_data.recommendation_claim_registry_refs,
         "advisory_confidence_only": bool(domain_result.investigation_data.claim_evidence_summary_refs),
+        "feeds_live_k_coverage_gates": bool(domain_result.investigation_data.recommendation_claim_registry_refs),
+        "recommendation_claim_registry_conditional": bool(domain_result.investigation_data.recommendation_claim_registry_refs),
         "manuscript_language_gate": "conditional_only" if domain_result.investigation_data.claim_coverage_gate_refs else "source_validation_required",
         "conditional_manuscript_language_only": bool(domain_result.investigation_data.claim_coverage_gate_refs),
         "conditions": [
@@ -1885,6 +1898,7 @@ def _write_chief_editor_research_review(
             "Keep novelty claims conditional after claim-evidence ledger mapping.",
             "Keep confidence advisory after claim-evidence summary aggregation.",
             "Keep manuscript-facing claims conditional after claim coverage gating.",
+            "Run Live-K claim coverage gates before stronger manuscript-facing claims.",
         ],
         "required_next_evidence": [
             "DSDEVS source literature",

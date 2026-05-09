@@ -14,6 +14,7 @@ from hisys.connectors.claim_coverage_gate import ClaimCoverageGateBuilder
 from hisys.connectors.claim_evidence_ledger import ClaimEvidenceLedgerBuilder
 from hisys.connectors.claim_evidence_summary import ClaimEvidenceSummaryBuilder
 from hisys.connectors.open_access_pdf import OpenAccessPdfConnector
+from hisys.connectors.recommendation_claim_registry import RecommendationClaimRegistryBuilder
 from hisys.connectors.pdf_evidence_promotion import PdfEvidencePromotionLoader
 from hisys.connectors.pdf_quote_extractor import PdfQuoteExtractor
 
@@ -582,3 +583,62 @@ def test_investigate_domain_preserves_claim_coverage_gate_refs_as_conditional_ma
     assert chief_decision["conditional_manuscript_language_only"] is True
     assert chief_decision["status"] == "recommend_with_conditions"
     assert "Keep manuscript-facing claims conditional after claim coverage gating." in chief_decision["conditions"]
+
+
+def test_investigate_domain_preserves_recommendation_claim_registry_refs_as_conditional_lineage(
+    tmp_path: Path, capsys
+) -> None:
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    registry_result = RecommendationClaimRegistryBuilder(root=tmp_path).build(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        recommendation_text="Recommend DSDEVS and topology/behavior co-evolution evaluation scenarios.",
+        claim_texts=[
+            "Self-organizing Dynamic Structure DEVS is the recommended research direction.",
+            "Evaluation scenarios should demonstrate topology/behavior co-evolution.",
+        ],
+        yyyymmdd="20260509",
+    )
+
+    result = main(
+        [
+            "investigate-domain",
+            "--instance",
+            str(tmp_path),
+            "--request",
+            str(request_path),
+            "--date",
+            "20260509",
+            "--recommendation-claim-registry-ref",
+            registry_result.recommendation_claim_registry_refs[0],
+        ]
+    )
+
+    capsys.readouterr()
+    assert result == 0
+    boundary_dir = tmp_path / "runtime-boundary" / "domain-investigation" / "research" / "20260509"
+    data = json.loads((boundary_dir / "investigation-data-INV-HISYS-REQ-RESEARCH-GAP-001.json").read_text(encoding="utf-8"))
+    assert data["recommendation_claim_registry_refs"] == registry_result.recommendation_claim_registry_refs
+    assert registry_result.recommendation_claim_registry_refs[0] in data["evidence_packages"][0]["evidence_refs"]
+    dars_trace = json.loads(
+        (tmp_path / "runtime-boundary" / "dars" / "20260509" / "dars-trace-DARSTRACE-DARSREQ-HISYS-REQ-RESEARCH-GAP-001.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert registry_result.recommendation_claim_registry_refs[0] in dars_trace["recommendation_claim_registry_refs"]
+    chief_decision = json.loads(
+        (
+            tmp_path
+            / "runtime-boundary"
+            / "chief-editor"
+            / "research"
+            / "20260509"
+            / "research-recommendation-review-CEDEC-HISYS-REQ-RESEARCH-GAP-001.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert chief_decision["recommendation_claim_registry_refs"] == registry_result.recommendation_claim_registry_refs
+    assert chief_decision["source_validation_status"] == "recommendation_claim_registry_present"
+    assert chief_decision["recommendation_claim_registry_conditional"] is True
+    assert chief_decision["feeds_live_k_coverage_gates"] is True
+    assert chief_decision["status"] == "recommend_with_conditions"
+    assert "Run Live-K claim coverage gates before stronger manuscript-facing claims." in chief_decision["conditions"]
