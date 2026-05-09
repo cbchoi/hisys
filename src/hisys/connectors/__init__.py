@@ -3,6 +3,7 @@
 from .doi_metadata import DoiMetadataConnector, DoiMetadataEvidencePackage
 from .fixture_publisher import FixturePublisherConnector, FixturePublisherEvidencePackage
 from .open_access_pdf import OpenAccessPdfConnector, OpenAccessPdfEvidencePackage
+from .pdf_candidate_planner import PdfCandidatePlan, PdfCandidatePlanner
 from .live_source_config import (
     LiveSearchPolicy,
     LiveSourceConnectorSafetyError,
@@ -20,6 +21,8 @@ __all__ = [
     "FixturePublisherEvidencePackage",
     "OpenAccessPdfConnector",
     "OpenAccessPdfEvidencePackage",
+    "PdfCandidatePlan",
+    "PdfCandidatePlanner",
     "LiveSearchPolicy",
     "LiveSourceConnectorSafetyError",
     "SourceAccessRecord",
