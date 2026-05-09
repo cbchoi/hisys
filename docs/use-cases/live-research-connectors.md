@@ -330,3 +330,29 @@ Boundary rules:
 6. gate construction performs no live calls, no PDF parsing/OCR, and no source,
    quote, ledger, or summary mutation;
 7. DARS may critique coverage as advisory lineage only; Chief Editor manuscript-language gate remains conditional.
+
+## Live-L recommendation claim registry boundary
+
+Live-L records controlled required recommendation claims before Live-K coverage
+checks are run. The registry may derive stable, controlled claim IDs from an
+explicit recommendation text or accepted recommendation artifact, but it does
+not treat generated claim IDs as source evidence and does not approve stronger
+manuscript language.
+
+Boundary rules:
+
+1. recommendation claim registry construction requires explicit recommendation
+   text or an explicit recommendation artifact ref; prompts cannot invent hidden
+   claims or bypass the registry;
+2. registry artifacts are persisted as `recommendation_claim_registry_refs` under
+   `runtime-boundary/source-connectors/<YYYYMMDD>/`;
+3. each required recommendation claim receives controlled claim IDs and preserves
+   the source recommendation wording used to derive it;
+4. registry records feeds Live-K coverage gates by providing required recommendation claims, but Live-K still requires explicit
+   `claim_evidence_summary_refs` before coverage can be recorded;
+5. the registry does not prove novelty, does not approve publication-ready claims,
+   and does not make advisory confidence stronger;
+6. registry construction performs no live search, no network calls, no PDF
+   fetching, no OCR/scraping, and no source, quote, ledger, summary, or coverage
+   gate mutation;
+7. DARS may critique the registry as advisory lineage only; Chief Editor recommendation-claim registry remains conditional.

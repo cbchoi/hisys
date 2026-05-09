@@ -183,6 +183,22 @@ def test_live_k_claim_coverage_gate_boundary_is_documented():
     assert "Chief Editor manuscript-language gate remains conditional" in text
 
 
+def test_live_l_recommendation_claim_registry_boundary_is_documented():
+    """Recommendation claim registry must derive required claim IDs without approving publication language."""
+
+    live_doc = ROOT / "docs" / "use-cases" / "live-research-connectors.md"
+    text = live_doc.read_text(encoding="utf-8")
+
+    assert "Live-L recommendation claim registry boundary" in text
+    assert "recommendation_claim_registry_refs" in text
+    assert "required recommendation claims" in text
+    assert "controlled claim IDs" in text
+    assert "feeds Live-K coverage gates" in text
+    assert "does not prove novelty" in text
+    assert "does not approve publication-ready claims" in text
+    assert "Chief Editor recommendation-claim registry remains conditional" in text
+
+
 def test_live_k_claim_coverage_gate_status_and_traceability_are_documented():
     """README and traceability docs must mention implemented Live-K claim coverage gate."""
 
