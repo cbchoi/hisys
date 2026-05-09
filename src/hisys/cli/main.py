@@ -33,7 +33,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import ClaimEvidenceLedgerBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -273,6 +273,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="explicit promoted PDF source-evidence ref; repeat for multiple refs",
     )
 
+    claim_ledger = sub.add_parser(
+        "build-claim-evidence-ledger",
+        help="map explicit source quote refs to advisory claim evidence ledger records",
+    )
+    claim_ledger.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    claim_ledger.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    claim_ledger.add_argument("--request-id", required=True, help="request id for claim evidence ledger")
+    claim_ledger.add_argument("--claim-id", required=True, help="claim id being mapped")
+    claim_ledger.add_argument("--claim-text", required=True, help="claim text being mapped")
+    claim_ledger.add_argument("--relation", required=True, choices=["support", "contradict", "needs_evidence"])
+    claim_ledger.add_argument("--rationale", required=True, help="advisory mapping rationale")
+    claim_ledger.add_argument(
+        "--source-quote-ref",
+        action="append",
+        required=True,
+        help="explicit source quote ref; repeat for multiple refs",
+    )
+
     extract = sub.add_parser("extract", help="run fixture-backed extraction over collected observations")
     extract.add_argument("--instance", required=True, help="runtime instance root containing data/raw-observations/")
     extract.add_argument("--date", required=True, help="YYYYMMDD input/output partition")
@@ -417,6 +435,17 @@ def main(argv: list[str] | None = None) -> int:
             yyyymmdd=args.date,
             request_id=args.request_id,
             promoted_pdf_evidence_refs=args.promoted_pdf_evidence_ref,
+        )
+    if args.command == "build-claim-evidence-ledger":
+        return _cmd_build_claim_evidence_ledger(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            claim_id=args.claim_id,
+            claim_text=args.claim_text,
+            relation=args.relation,
+            rationale=args.rationale,
+            source_quote_refs=args.source_quote_ref,
         )
     if args.command == "extract":
         return _cmd_extract(
@@ -869,6 +898,68 @@ def _cmd_extract_pdf_quotes(
         encoding="utf-8",
     )
     print(f"pdf quote extraction: report={report_artifact}")
+    print("external_call_made: false")
+    return 0
+
+
+def _cmd_build_claim_evidence_ledger(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    claim_id: str,
+    claim_text: str,
+    relation: str,
+    rationale: str,
+    source_quote_refs: list[str],
+) -> int:
+    instance = InstanceRoot(instance_root)
+    result = ClaimEvidenceLedgerBuilder(root=instance.root).build(
+        request_id=request_id,
+        claim_id=claim_id,
+        claim_text=claim_text,
+        relation=relation,
+        rationale=rationale,
+        source_quote_refs=source_quote_refs,
+        yyyymmdd=yyyymmdd,
+    )
+    report = {
+        "schema_id": "hisys.claim_evidence_ledger.report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "status": "completed",
+        "claim_id": claim_id,
+        "relation": relation,
+        "claim_evidence_ledger_refs": result.claim_evidence_ledger_refs,
+        "ledger_count": len(result.claim_evidence_ledger_refs),
+        "external_call_made": result.external_call_made,
+        "mutation_performed": result.mutation_performed,
+    }
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_artifact = report_dir / "claim-evidence-ledger-report.json"
+    report_artifact.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "claim-evidence-ledger-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                f"# Claim evidence ledger report {request_id}",
+                "",
+                "- status: `completed`",
+                f"- claim_id: `{claim_id}`",
+                f"- relation: `{relation}`",
+                f"- ledger_count: {len(result.claim_evidence_ledger_refs)}",
+                "- external_call_made: false",
+                "- mutation_performed: false",
+                "",
+                "## Claim evidence ledger refs",
+                *[f"- {ref}" for ref in result.claim_evidence_ledger_refs],
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    print(f"claim evidence ledger: report={report_artifact}")
     print("external_call_made: false")
     return 0
 
