@@ -2,6 +2,7 @@
 
 from .doi_metadata import DoiMetadataConnector, DoiMetadataEvidencePackage
 from .claim_evidence_ledger import ClaimEvidenceLedgerBuilder, ClaimEvidenceLedgerRecord, ClaimEvidenceLedgerResult
+from .claim_evidence_summary import ClaimEvidenceSummaryBuilder, ClaimEvidenceSummaryRecord, ClaimEvidenceSummaryResult
 from .fixture_publisher import FixturePublisherConnector, FixturePublisherEvidencePackage
 from .open_access_pdf import OpenAccessPdfConnector, OpenAccessPdfEvidencePackage
 from .pdf_candidate_planner import PdfCandidatePlan, PdfCandidatePlanner
@@ -21,6 +22,9 @@ __all__ = [
     "ClaimEvidenceLedgerBuilder",
     "ClaimEvidenceLedgerRecord",
     "ClaimEvidenceLedgerResult",
+    "ClaimEvidenceSummaryBuilder",
+    "ClaimEvidenceSummaryRecord",
+    "ClaimEvidenceSummaryResult",
     "DoiMetadataConnector",
     "DoiMetadataEvidencePackage",
     "FixturePublisherConnector",
