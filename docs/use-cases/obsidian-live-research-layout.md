@@ -455,6 +455,16 @@ gates (`vault-live-preflight`, `vault-roundtrip-validate`, and `git status
 --short`) while recording `live_write_enabled=false` and
 `real_obsidian_vault_write_performed=false`.
 
+## Live-Obsidian-Config-K implementation status
+
+`hisys.config.obsidian_live.build_live_vault_write_gate_report` and `hisys
+vault-live-write-gate` evaluate final live-write preconditions without
+implementing a writer. The gate checks approval-package evidence, approval ref,
+clean-git status, and explicit enablement, but even the fully signaled path stays
+blocked with `reason_code=live_writer_not_implemented`,
+`implementation_boundary=gate_only_no_writer`, `live_write_enabled=false`, and
+`real_obsidian_vault_write_performed=false`.
+
 ## Non-goals
 
 This scaffold does not write files into the real Obsidian vault, download PDFs,

@@ -589,6 +589,63 @@ def write_live_vault_approval_package(*, instance_root: Path, yyyymmdd: str, pac
     return report_path
 
 
+def build_live_vault_write_gate_report(
+    *,
+    request_id: str,
+    approval_package: dict[str, Any],
+    approval_ref: str | None,
+    explicit_live_write_enable: bool,
+    clean_git_status: bool,
+) -> dict[str, Any]:
+    """Evaluate final live-vault write gates without implementing or performing writes."""
+
+    planned_writes = approval_package.get("planned_writes", [])
+    required_approvals = set(approval_package.get("required_approvals", []))
+    approved_for_future_live_write = bool(
+        approval_ref
+        and approval_package.get("status") == "approval_required"
+        and "human_live_vault_write_approval" in required_approvals
+        and "rollback_plan_acknowledgement" in required_approvals
+    )
+    if not clean_git_status:
+        reason_code = "git_status_not_clean"
+    elif not approved_for_future_live_write:
+        reason_code = "approval_package_not_satisfied"
+    elif not explicit_live_write_enable:
+        reason_code = "live_write_not_enabled"
+    else:
+        reason_code = "live_writer_not_implemented"
+
+    return {
+        "schema_id": "hisys.obsidian.live_vault_write_gate_report",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": request_id,
+        "status": "blocked",
+        "reason_code": reason_code,
+        "implementation_boundary": "gate_only_no_writer",
+        "approval_package_request_id": approval_package.get("request_id"),
+        "approval_ref": approval_ref,
+        "approved_for_future_live_write": approved_for_future_live_write,
+        "explicit_live_write_enable_requested": explicit_live_write_enable,
+        "clean_git_status": clean_git_status,
+        "planned_write_count": len(planned_writes),
+        "planned_writes_preview": planned_writes,
+        "live_write_enabled": False,
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def write_live_vault_write_gate_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"vault-live-write-gate-{report['request_id']}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"vault-live-write-gate-{report['request_id']}.md").write_text(_format_live_vault_write_gate_report(report), encoding="utf-8")
+    return report_path
+
+
 def validate_fixture_vault_roundtrip(
     *,
     plan: dict[str, Any],
@@ -887,6 +944,24 @@ def _format_vault_template_plan_report(report: dict[str, Any]) -> str:
     )
 
 
+def _format_live_vault_write_gate_report(report: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Obsidian Live Vault Write Gate Report",
+            "",
+            f"- Request: `{report['request_id']}`",
+            f"- Status: {report['status']}",
+            f"- Reason: {report['reason_code']}",
+            f"- Approved for future live write: {str(report['approved_for_future_live_write']).lower()}",
+            f"- Planned writes: {report['planned_write_count']}",
+            "- live_write_enabled: false",
+            "- real_obsidian_vault_write_performed: false",
+            "- implementation_boundary: gate_only_no_writer",
+            "",
+        ]
+    )
+
+
 def _format_live_vault_approval_package(package: dict[str, Any]) -> str:
     planned = "\n".join(f"- `{item['vault_relative_ref']}`" for item in package.get("planned_writes", [])) or "- none"
     approvals = "\n".join(f"- {approval}" for approval in package.get("required_approvals", [])) or "- none"
@@ -986,6 +1061,7 @@ __all__ = [
     "apply_vault_plan_to_fixture",
     "build_live_vault_approval_package",
     "build_live_vault_preflight_report",
+    "build_live_vault_write_gate_report",
     "build_topic_identity_transition_plan",
     "build_vault_plan",
     "build_vault_template_plan",
@@ -994,6 +1070,7 @@ __all__ = [
     "write_live_vault_approval_package",
     "write_vault_apply_report",
     "write_live_vault_preflight_report",
+    "write_live_vault_write_gate_report",
     "write_vault_plan_artifacts",
     "write_vault_roundtrip_report",
     "write_vault_template_plan_artifacts",

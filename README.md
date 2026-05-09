@@ -338,6 +338,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   live vault write without enabling one. The package lists planned vault-relative
   writes, required approvals, rollback strategy, and final gates while recording
   `live_write_enabled=false` and `real_obsidian_vault_write_performed=false`.
+- Increment **Live-Obsidian-Config-K live vault write gate** -
+  `hisys.config.obsidian_live.build_live_vault_write_gate_report` and `hisys
+  vault-live-write-gate` evaluate final live-write preconditions but intentionally
+  remain a gate-only boundary. They require approval package evidence, an
+  approval ref, clean-git status, and explicit live-write enablement, but still
+  return blocked with `implementation_boundary=gate_only_no_writer` and
+  `real_obsidian_vault_write_performed=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

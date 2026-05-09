@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_vault_plan_to_fixture, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_write_gate_report, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, load_source_registry, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_write_gate_report, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -448,6 +448,18 @@ def _build_parser() -> argparse.ArgumentParser:
     live_approval.add_argument("--operator-id", required=True, help="operator requesting approval package")
     live_approval.add_argument("--rationale", required=True, help="human-readable rationale")
 
+    live_write_gate = sub.add_parser(
+        "vault-live-write-gate",
+        help="evaluate final live vault write gates without implementing or performing writes",
+    )
+    live_write_gate.add_argument("--instance", required=True, help="runtime instance root for gate reports")
+    live_write_gate.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    live_write_gate.add_argument("--request-id", required=True, help="request id for write gate")
+    live_write_gate.add_argument("--approval-package", required=True, help="vault-live-approval-package JSON path")
+    live_write_gate.add_argument("--approval-ref", help="human approval reference outside prompt text")
+    live_write_gate.add_argument("--explicit-live-write-enable", action="store_true", help="still blocked until a writer is explicitly implemented")
+    live_write_gate.add_argument("--clean-git-status", action="store_true", help="operator/git precondition signal")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -707,6 +719,16 @@ def main(argv: list[str] | None = None) -> int:
             operator_id=args.operator_id,
             rationale=args.rationale,
         )
+    if args.command == "vault-live-write-gate":
+        return _cmd_vault_live_write_gate(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            approval_package_path=Path(args.approval_package),
+            approval_ref=args.approval_ref,
+            explicit_live_write_enable=args.explicit_live_write_enable,
+            clean_git_status=args.clean_git_status,
+        )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
             instance_root=Path(args.instance),
@@ -942,6 +964,35 @@ def _cmd_vault_live_approval_package(
     print("live_write_enabled: false")
     print("real_obsidian_vault_write_performed: false")
     return 0 if package["status"] == "approval_required" else 1
+
+
+def _cmd_vault_live_write_gate(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    approval_package_path: Path,
+    approval_ref: str | None,
+    explicit_live_write_enable: bool,
+    clean_git_status: bool,
+) -> int:
+    """Evaluate final live-write gates without live vault mutation."""
+
+    approval_package = json.loads(approval_package_path.read_text(encoding="utf-8"))
+    report = build_live_vault_write_gate_report(
+        request_id=request_id,
+        approval_package=approval_package,
+        approval_ref=approval_ref,
+        explicit_live_write_enable=explicit_live_write_enable,
+        clean_git_status=clean_git_status,
+    )
+    report_path = write_live_vault_write_gate_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
+    print(f"vault live write gate: {report['status']}")
+    print(f"reason={report['reason_code']}")
+    print(f"report={report_path}")
+    print("live_write_enabled: false")
+    print("real_obsidian_vault_write_performed: false")
+    return 1
 
 
 def _cmd_vault_topic_transition_plan(
