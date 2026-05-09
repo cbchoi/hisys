@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 from hisys.cli.main import main
+from hisys.connectors.open_access_pdf import OpenAccessPdfConnector
 
 
 def _write_domain_request(path: Path) -> None:
@@ -172,3 +173,44 @@ def test_investigate_domain_research_gap_fixture_generates_alternatives(tmp_path
     assert decision["human_approval_required"] is True
     assert decision["external_call_made"] is False
     assert decision["mutation_performed"] is False
+
+
+def test_investigate_domain_promotes_explicit_manual_pdf_evidence_refs(tmp_path: Path, capsys) -> None:
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    fixture = tmp_path / "manual-smoke.pdf"
+    fixture.write_bytes(b"%PDF-1.7\nApproved manual smoke bytes.\n%%EOF\n")
+    package = OpenAccessPdfConnector().collect_fixture(
+        request_id="HISYS-REQ-RESEARCH-GAP-001",
+        fixture_path=fixture,
+        source_url="https://mdpi.com/fixture/manual-smoke.pdf",
+        license_signal="open_access",
+        output_root=tmp_path,
+        yyyymmdd="20260509",
+    )
+
+    result = main(
+        [
+            "investigate-domain",
+            "--instance",
+            str(tmp_path),
+            "--request",
+            str(request_path),
+            "--date",
+            "20260509",
+            "--promote-pdf-source-access-ref",
+            package.access_ref,
+            "--promote-pdf-source-evidence-ref",
+            package.evidence_ref,
+        ]
+    )
+
+    capsys.readouterr()
+    assert result == 0
+    boundary_dir = tmp_path / "runtime-boundary" / "domain-investigation" / "research" / "20260509"
+    data_artifact = boundary_dir / "investigation-data-INV-HISYS-REQ-RESEARCH-GAP-001.json"
+    data = json.loads(data_artifact.read_text(encoding="utf-8"))
+    assert data["promoted_pdf_evidence_refs"] == [package.evidence_ref]
+    assert package.access_ref in data["source_governance_refs"]
+    assert package.evidence_ref in data["source_governance_refs"]
+    assert package.evidence_ref in data["evidence_packages"][0]["evidence_refs"]

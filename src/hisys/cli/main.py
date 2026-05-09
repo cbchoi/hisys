@@ -33,7 +33,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, load_source_registry
-from ..connectors import DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -191,6 +191,20 @@ def _build_parser() -> argparse.ArgumentParser:
     investigate_domain.add_argument("--instance", required=True, help="runtime instance root for outputs")
     investigate_domain.add_argument("--request", required=True, help="DomainInvestigationRequest JSON path")
     investigate_domain.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    investigate_domain.add_argument(
+        "--promote-pdf-source-access-ref",
+        dest="promote_pdf_source_access_refs",
+        action="append",
+        default=[],
+        help="explicit source-access ref for approved OA PDF evidence promotion; repeatable",
+    )
+    investigate_domain.add_argument(
+        "--promote-pdf-source-evidence-ref",
+        dest="promote_pdf_source_evidence_refs",
+        action="append",
+        default=[],
+        help="explicit source-evidence ref for approved OA PDF evidence promotion; repeatable",
+    )
 
     plan_sources = sub.add_parser(
         "plan-source-connectors",
@@ -342,6 +356,8 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             request_path=Path(args.request),
             yyyymmdd=args.date,
+            promote_pdf_source_access_refs=args.promote_pdf_source_access_refs,
+            promote_pdf_source_evidence_refs=args.promote_pdf_source_evidence_refs,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -834,7 +850,13 @@ def _format_source_connector_plan_report_markdown(report: dict) -> str:
     )
 
 
-def _cmd_investigate_domain(instance_root: Path, request_path: Path, yyyymmdd: str) -> int:
+def _cmd_investigate_domain(
+    instance_root: Path,
+    request_path: Path,
+    yyyymmdd: str,
+    promote_pdf_source_access_refs: list[str] | None = None,
+    promote_pdf_source_evidence_refs: list[str] | None = None,
+) -> int:
     """Persist the local MVP boundary for a domain investigation request."""
 
     instance = InstanceRoot(instance_root)
@@ -847,7 +869,14 @@ def _cmd_investigate_domain(instance_root: Path, request_path: Path, yyyymmdd: s
     request_markdown = boundary_dir / f"hisys-tool-request-{request.request_id}.md"
     request_markdown.write_text(_format_domain_request_markdown(request), encoding="utf-8")
 
-    domain_result = _build_research_domain_result(request, instance, boundary_dir, yyyymmdd)
+    promoted_pdf_evidence = None
+    if promote_pdf_source_access_refs or promote_pdf_source_evidence_refs:
+        promoted_pdf_evidence = PdfEvidencePromotionLoader(root=instance.root).promote(
+            source_access_refs=promote_pdf_source_access_refs or [],
+            source_evidence_refs=promote_pdf_source_evidence_refs or [],
+        )
+
+    domain_result = _build_research_domain_result(request, instance, boundary_dir, yyyymmdd, promoted_pdf_evidence=promoted_pdf_evidence)
     if domain_result is not None:
         domain_result = _write_dars_fixture_for_domain_result(
             instance=instance,
@@ -923,6 +952,7 @@ def _build_research_domain_result(
     instance: InstanceRoot,
     boundary_dir: Path,
     yyyymmdd: str,
+    promoted_pdf_evidence=None,
 ) -> DomainInvestigationResult | None:
     """Build the MVP deterministic research adapter result for research-gap requests."""
 
@@ -941,6 +971,11 @@ def _build_research_domain_result(
         yyyymmdd=yyyymmdd,
     )
     connector_refs = [connector_package.access_ref, connector_package.evidence_ref]
+    promoted_source_refs = []
+    promoted_evidence_refs = []
+    if promoted_pdf_evidence is not None:
+        promoted_source_refs = [*promoted_pdf_evidence.source_access_refs, *promoted_pdf_evidence.source_evidence_refs]
+        promoted_evidence_refs = promoted_pdf_evidence.promoted_pdf_evidence_refs
     evidence = DomainEvidencePackage(
         package_id=f"DEPKG-{request.request_id}-FORMALISM-GAP",
         domain="research",
@@ -952,7 +987,7 @@ def _build_research_domain_result(
             "self-organizing structure that jointly models local interaction, feedback, topology/behavior "
             "co-evolution, executable semantics, and analyzable structural constraints."
         ),
-        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs],
+        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs, *promoted_evidence_refs],
         source_refs=source_refs,
         claims=[
             "DSDEVS, graph rewriting, and ABM cover complementary but separated formalism capabilities.",
@@ -973,7 +1008,9 @@ def _build_research_domain_result(
         source_governance_refs=[
             str((boundary_dir / f"hisys-tool-request-{request.request_id}.json").relative_to(instance.root)),
             *connector_refs,
+            *promoted_source_refs,
         ],
+        promoted_pdf_evidence_refs=promoted_evidence_refs,
     )
     candidate_id = f"CAND-{request.request_id}-SOS-DSDEVS"
     candidate = CandidateRecord(
