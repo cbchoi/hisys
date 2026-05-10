@@ -361,6 +361,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   respect to live systems: `external_call_made=false`, `mutation_performed=false`,
   and `network_push_performed=false`; no prompt/LLM review is part of routine
   dashboard generation.
+- Increment **Live-W queue artifact hashing** -
+  Live autonomy admission, scheduler tick, queue-run, watchdog, ledger, and
+  status reports now include deterministic SHA-256 content identity for queue
+  JSON and per-entry JSON. Hashes are computed from canonical JSON with sorted
+  keys for valid queues, and from raw file bytes for malformed JSON, so operators
+  can identify unchanged/replayed queue work cheaply without source calls, vault
+  mutation, Git/network pushes, or prompt-based checks.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

@@ -12,6 +12,7 @@ HISYS-T-030, HISYS-T-031, HISYS-T-032.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -2166,6 +2167,27 @@ def _live_autonomy_finalize_queue_file(*, queue_path: Path, active_copy: Path | 
     return str(final_path)
 
 
+def _live_autonomy_content_hash(value: object) -> str:
+    canonical = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _live_autonomy_file_hash(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _live_autonomy_entry_hashes(queue: object) -> dict[str, str]:
+    if not isinstance(queue, dict) or not isinstance(queue.get("entries"), list):
+        return {}
+    hashes: dict[str, str] = {}
+    for index, entry in enumerate(queue["entries"], start=1):
+        if isinstance(entry, dict):
+            entry_id = str(entry.get("entry_id") or f"entry-{index:04d}").strip()
+            if entry_id:
+                hashes[entry_id] = _live_autonomy_content_hash(entry)
+    return hashes
+
+
 def _validate_live_autonomy_candidate_queue(queue: object) -> tuple[bool, str | None, str | None]:
     if not isinstance(queue, dict):
         return False, "queue_not_object", None
@@ -2259,6 +2281,8 @@ def _write_live_autonomy_status_report(*, instance: InstanceRoot, yyyymmdd: str,
                 f"- watchdog_attention_count: `{report['watchdog_summary']['attention_count']}`",
                 f"- ledger_completed_count: `{report['ledger_summary']['completed_count']}`",
                 f"- ledger_attention_count: `{report['ledger_summary']['attention_count']}`",
+                f"- hash_algorithm: `{report['hash_algorithm']}`",
+                f"- ledger_entry_hash_count: `{report['hash_summary']['ledger_entry_hash_count']}`",
                 f"- external_call_made: `{str(report['external_call_made']).lower()}`",
                 f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
                 f"- network_push_performed: `{str(report['network_push_performed']).lower()}`",
@@ -2292,9 +2316,18 @@ def _cmd_live_autonomy_status(*, instance_root: Path, yyyymmdd: str, ledger_dir:
 
     ledger_files = sorted(ledger_root.glob("*.json")) if ledger_root.exists() else []
     ledger_entries: list[dict[str, object]] = []
+    ledger_queue_hashes: list[str] = []
+    ledger_entry_hashes: dict[str, str] = {}
     for ledger_path in ledger_files:
         ledger = _live_autonomy_read_json_if_present(ledger_path)
         entries = ledger.get("entries", {}) if ledger else {}
+        if ledger and isinstance(ledger.get("queue_hash"), str):
+            ledger_queue_hashes.append(str(ledger["queue_hash"]))
+        entry_hash_map = ledger.get("entry_hashes", {}) if ledger else {}
+        if isinstance(entry_hash_map, dict):
+            for entry_id, entry_hash in entry_hash_map.items():
+                if isinstance(entry_id, str) and isinstance(entry_hash, str):
+                    ledger_entry_hashes[entry_id] = entry_hash
         if isinstance(entries, dict):
             for entry in entries.values():
                 if isinstance(entry, dict):
@@ -2325,6 +2358,8 @@ def _cmd_live_autonomy_status(*, instance_root: Path, yyyymmdd: str, ledger_dir:
         if not present
     ]
     attention_count = admission_counts["rejected_count"] + scheduler_counts["attention_count"] + watchdog_attention_count + ledger_attention_count
+    admission_hashes = admission.get("queue_hashes", []) if admission else []
+    scheduler_hashes = scheduler.get("queue_hashes", []) if scheduler else []
     status = "idle" if not admission and not scheduler and not watchdog_reports and not ledger_entries else ("attention_required" if attention_count else "ok")
     health_status = "attention_required" if attention_count else "ok"
     report = {
@@ -2336,6 +2371,13 @@ def _cmd_live_autonomy_status(*, instance_root: Path, yyyymmdd: str, ledger_dir:
         "date": yyyymmdd,
         "next_operator_action": "review_attention_artifacts" if attention_count else "sleep",
         "missing_source_reports": missing_sources,
+        "hash_algorithm": "sha256",
+        "hash_summary": {
+            "admission_queue_hashes": admission_hashes if isinstance(admission_hashes, list) else [],
+            "scheduler_queue_hashes": scheduler_hashes if isinstance(scheduler_hashes, list) else [],
+            "ledger_queue_hashes": ledger_queue_hashes,
+            "ledger_entry_hash_count": len(ledger_entry_hashes),
+        },
         "admission_summary": {
             **admission_counts,
             "report_ref": str(admission_path) if admission is not None else None,
@@ -2389,8 +2431,12 @@ def _cmd_live_autonomy_admit(
         status = "rejected"
         reason_code: str | None = None
         queue_id: str | None = candidate_path.stem
+        queue_hash = _live_autonomy_file_hash(candidate_path)
+        entry_hashes: dict[str, str] = {}
         try:
             candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+            queue_hash = _live_autonomy_content_hash(candidate)
+            entry_hashes = _live_autonomy_entry_hashes(candidate)
             accepted, reason_code, validated_queue_id = _validate_live_autonomy_candidate_queue(candidate)
             queue_id = validated_queue_id or candidate_path.stem
         except json.JSONDecodeError:
@@ -2411,6 +2457,9 @@ def _cmd_live_autonomy_admit(
             {
                 "candidate_path": str(candidate_path),
                 "queue_id": queue_id,
+                "hash_algorithm": "sha256",
+                "queue_hash": queue_hash,
+                "entry_hashes": entry_hashes,
                 "status": status,
                 "reason_code": reason_code,
                 "final_ref": str(final_ref) if final_ref is not None else None,
@@ -2433,6 +2482,8 @@ def _cmd_live_autonomy_admit(
         "processed_candidate_count": len(selected),
         "admitted_count": admitted_count,
         "rejected_count": rejected_count,
+        "hash_algorithm": "sha256",
+        "queue_hashes": [result["queue_hash"] for result in results if result.get("queue_hash")],
         "external_call_made": False,
         "mutation_performed": False,
         "network_push_performed": False,
@@ -2484,10 +2535,14 @@ def _cmd_live_autonomy_tick(
         queue_id = queue_path.stem
         lifecycle_active_ref = None
         lifecycle_final_ref = None
+        queue_hash = _live_autonomy_file_hash(queue_path)
+        entry_hashes: dict[str, str] = {}
         if queue_lifecycle:
             lifecycle_active_ref = _live_autonomy_copy_queue_to_active(queue_path=queue_path, active_dir=lifecycle_dirs["active"])
         try:
             queue_data = json.loads(queue_path.read_text(encoding="utf-8"))
+            queue_hash = _live_autonomy_content_hash(queue_data)
+            entry_hashes = _live_autonomy_entry_hashes(queue_data)
             queue_id = str(queue_data.get("queue_id") or queue_path.stem)
         except json.JSONDecodeError:
             if queue_lifecycle:
@@ -2500,6 +2555,9 @@ def _cmd_live_autonomy_tick(
                 {
                     "queue_path": str(queue_path),
                     "queue_id": queue_id,
+                    "hash_algorithm": "sha256",
+                    "queue_hash": queue_hash,
+                    "entry_hashes": entry_hashes,
                     "status": "blocked",
                     "reason_code": "queue_json_invalid",
                     "queue_run_report_ref": None,
@@ -2543,6 +2601,9 @@ def _cmd_live_autonomy_tick(
             {
                 "queue_path": str(queue_path),
                 "queue_id": queue_id,
+                "hash_algorithm": "sha256",
+                "queue_hash": queue_hash,
+                "entry_hashes": entry_hashes,
                 "status": "completed" if status_code == 0 else "attention_required",
                 "reason_code": None if status_code == 0 else "queue_run_attention_required",
                 "queue_run_report_ref": str(run_report_path.relative_to(instance.root)) if run_report_path.exists() else None,
@@ -2567,6 +2628,8 @@ def _cmd_live_autonomy_tick(
         "queue_lifecycle_dirs": {key: str(value) for key, value in lifecycle_dirs.items()} if queue_lifecycle else {},
         "discovered_queue_count": len(discovered),
         "processed_queue_count": len(selected),
+        "hash_algorithm": "sha256",
+        "queue_hashes": [result["queue_hash"] for result in queue_results if result.get("queue_hash")],
         "attention_count": attention_count,
         "next_scheduler_action": "sleep" if attention_count == 0 else "review_queue_results",
         "queue_results": queue_results,
@@ -2598,6 +2661,8 @@ def _cmd_live_autonomy_run(
 
     instance = InstanceRoot(instance_root)
     queue = json.loads(queue_path.read_text(encoding="utf-8"))
+    queue_hash = _live_autonomy_content_hash(queue)
+    entry_hashes = _live_autonomy_entry_hashes(queue)
     queue_id = str(queue.get("queue_id") or queue_path.stem)
     ledger_path = ledger_path or (instance.data_dir / "live-autonomy-ledgers" / yyyymmdd / f"{queue_id}.json")
     report_subdir = report_subdir or ""
@@ -2609,6 +2674,7 @@ def _cmd_live_autonomy_run(
     queue_dir = queue_path.parent
     for index, entry in enumerate(entries, start=1):
         entry_id = str(entry.get("entry_id") or f"entry-{index:04d}")
+        entry_hash = entry_hashes.get(entry_id)
         ledger_entry = ledger["entries"].get(entry_id, {})
         ledger_entry = _live_autonomy_mark_transition(ledger_entry, state="queued", yyyymmdd=yyyymmdd, reason_code=None)
         if ledger_entry.get("status") == "completed":
@@ -2616,6 +2682,7 @@ def _cmd_live_autonomy_run(
             results.append(
                 {
                     "entry_id": entry_id,
+                    "entry_hash": entry_hash,
                     "request_id": ledger_entry.get("request_id"),
                     "status": "skipped_completed",
                     "reason_code": "ledger_completed",
@@ -2635,6 +2702,7 @@ def _cmd_live_autonomy_run(
             results.append(
                 {
                     "entry_id": entry_id,
+                    "entry_hash": entry_hash,
                     "request_id": ledger_entry.get("request_id"),
                     "status": "skipped_non_retryable",
                     "reason_code": "non_retryable_blocked",
@@ -2654,6 +2722,7 @@ def _cmd_live_autonomy_run(
             results.append(
                 {
                     "entry_id": entry_id,
+                    "entry_hash": entry_hash,
                     "request_id": ledger_entry.get("request_id"),
                     "status": "skipped_retry_exhausted",
                     "reason_code": "retry_limit_exhausted",
@@ -2673,6 +2742,7 @@ def _cmd_live_autonomy_run(
         if not isinstance(request_ref, str) or not isinstance(doi, str) or not doi.strip():
             result = {
                 "entry_id": entry_id,
+                "entry_hash": entry_hash,
                 "status": "blocked",
                 "reason_code": "queue_entry_missing_request_or_doi",
                 "pipeline_report_ref": None,
@@ -2720,6 +2790,7 @@ def _cmd_live_autonomy_run(
         attempt_count = int(ledger_entry.get("attempt_count", 0)) + 1
         result = {
             "entry_id": entry_id,
+            "entry_hash": entry_hash,
             "request_id": entry_report.get("request_id"),
             "status": "completed" if status_code == 0 else "blocked",
             "reason_code": entry_report.get("reason_code"),
@@ -2745,6 +2816,9 @@ def _cmd_live_autonomy_run(
     skipped_non_retryable_count = sum(1 for result in results if result["status"] == "skipped_non_retryable")
     blocked_count = sum(1 for result in results if result["status"] == "blocked")
     retry_eligible_count = sum(1 for result in results if result.get("retry_eligible"))
+    ledger["hash_algorithm"] = "sha256"
+    ledger["queue_hash"] = queue_hash
+    ledger["entry_hashes"] = entry_hashes
     ledger["summary"] = {
         "entry_count": len(results),
         "completed_count": completed_count,
@@ -2759,6 +2833,9 @@ def _cmd_live_autonomy_run(
         "schema_id": "hisys.live_autonomy.watchdog_report",
         "schema_version": "0.1.0",
         "queue_id": queue_id,
+        "hash_algorithm": "sha256",
+        "queue_hash": queue_hash,
+        "entry_hashes": entry_hashes,
         "scheduler_ready": True,
         "health_status": "ok" if blocked_count == 0 and retry_eligible_count == 0 else "attention_required",
         "entry_count": len(results),
@@ -2776,6 +2853,9 @@ def _cmd_live_autonomy_run(
         "schema_id": "hisys.live_autonomy.queue_run_report",
         "schema_version": "0.1.0",
         "queue_id": queue.get("queue_id"),
+        "hash_algorithm": "sha256",
+        "queue_hash": queue_hash,
+        "entry_hashes": entry_hashes,
         "status": "completed" if blocked_count == 0 else "completed_with_blocks",
         "ledger_ref": str(ledger_path.relative_to(instance.root)) if ledger_path.is_relative_to(instance.root) else str(ledger_path),
         "watchdog_report_ref": str(watchdog_report_path.relative_to(instance.root)),
@@ -2857,6 +2937,7 @@ def _live_autonomy_ledger_entry_from_result(*, previous: dict[str, object], resu
     attempt_count = int(result.get("attempt_count") or previous.get("attempt_count") or 0)
     return {
         "entry_id": result.get("entry_id"),
+        "entry_hash": result.get("entry_hash") or previous.get("entry_hash"),
         "request_id": result.get("request_id") or previous.get("request_id"),
         "status": result.get("status"),
         "current_state": previous.get("current_state") or result.get("status"),

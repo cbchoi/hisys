@@ -10,7 +10,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from hisys.cli.main import main
+from hisys.cli.main import _live_autonomy_content_hash, main
 
 
 def _write_domain_request(path: Path) -> None:
@@ -936,6 +936,14 @@ def test_live_autonomy_run_skips_retry_exhausted_entries(tmp_path: Path, monkeyp
     assert watchdog["health_status"] == "ok"
 
 
+def test_live_autonomy_content_hash_is_stable_for_key_order() -> None:
+    left = {"queue_id": "LIVE-W", "entries": [{"entry_id": "a", "doi": "10.0000/example", "request_path": "requests/a.json"}]}
+    right = {"entries": [{"request_path": "requests/a.json", "doi": "10.0000/example", "entry_id": "a"}], "queue_id": "LIVE-W"}
+
+    assert _live_autonomy_content_hash(left) == _live_autonomy_content_hash(right)
+    assert len(_live_autonomy_content_hash(left)) == 64
+
+
 def test_live_autonomy_status_aggregates_compact_reports_and_ledgers(tmp_path: Path) -> None:
     instance = tmp_path / "instance"
     report_dir = instance / "reports" / "run-summaries" / "20260510"
@@ -945,6 +953,8 @@ def test_live_autonomy_status_aggregates_compact_reports_and_ledgers(tmp_path: P
             {
                 "schema_id": "hisys.live_autonomy.admission_report",
                 "status": "attention_required",
+                "hash_algorithm": "sha256",
+                "queue_hashes": ["hash-admission-001"],
                 "discovered_candidate_count": 3,
                 "processed_candidate_count": 3,
                 "admitted_count": 2,
@@ -958,6 +968,8 @@ def test_live_autonomy_status_aggregates_compact_reports_and_ledgers(tmp_path: P
             {
                 "schema_id": "hisys.live_autonomy.scheduler_tick_report",
                 "status": "attention_required",
+                "hash_algorithm": "sha256",
+                "queue_hashes": ["hash-scheduler-001"],
                 "discovered_queue_count": 2,
                 "processed_queue_count": 1,
                 "attention_count": 1,
@@ -978,6 +990,9 @@ def test_live_autonomy_status_aggregates_compact_reports_and_ledgers(tmp_path: P
         json.dumps(
             {
                 "queue_id": "queue-001",
+                "hash_algorithm": "sha256",
+                "queue_hash": "hash-ledger-001",
+                "entry_hashes": {"done": "entry-hash-done", "blocked": "entry-hash-blocked"},
                 "entries": {
                     "done": {"status": "completed"},
                     "blocked": {"status": "blocked"},
@@ -1004,6 +1019,11 @@ def test_live_autonomy_status_aggregates_compact_reports_and_ledgers(tmp_path: P
     assert dashboard["ledger_summary"]["entry_count"] == 3
     assert dashboard["ledger_summary"]["completed_count"] == 1
     assert dashboard["ledger_summary"]["attention_count"] == 2
+    assert dashboard["hash_algorithm"] == "sha256"
+    assert dashboard["hash_summary"]["admission_queue_hashes"] == ["hash-admission-001"]
+    assert dashboard["hash_summary"]["scheduler_queue_hashes"] == ["hash-scheduler-001"]
+    assert dashboard["hash_summary"]["ledger_queue_hashes"] == ["hash-ledger-001"]
+    assert dashboard["hash_summary"]["ledger_entry_hash_count"] == 2
     assert dashboard["external_call_made"] is False
     assert dashboard["mutation_performed"] is False
     assert dashboard["network_push_performed"] is False
@@ -1083,9 +1103,13 @@ def test_live_autonomy_admit_moves_valid_and_invalid_candidates(tmp_path: Path) 
     assert report["status"] == "attention_required"
     assert report["admitted_count"] == 1
     assert report["rejected_count"] == 3
+    assert report["hash_algorithm"] == "sha256"
+    assert len(report["queue_hashes"]) == 4
     assert report["external_call_made"] is False
     assert report["mutation_performed"] is False
     statuses = {Path(item["candidate_path"]).name: item for item in report["results"]}
+    assert len(statuses["valid.json"]["queue_hash"]) == 64
+    assert len(statuses["valid.json"]["entry_hashes"]["valid-001"]) == 64
     assert statuses["valid.json"]["status"] == "admitted"
     assert statuses["missing-request.json"]["reason_code"] == "queue_entry_missing_request"
     assert statuses["unsafe-request.json"]["reason_code"] == "queue_entry_request_path_unsafe"
