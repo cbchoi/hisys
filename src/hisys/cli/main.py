@@ -2167,6 +2167,9 @@ def _live_autonomy_finalize_queue_file(*, queue_path: Path, active_copy: Path | 
     return str(final_path)
 
 
+LIVE_AUTONOMY_REPLAY_CLASSIFICATIONS = ["new", "same_hash_replay", "changed_same_entry_id", "duplicate_queue_content"]
+
+
 def _live_autonomy_content_hash(value: object) -> str:
     canonical = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -2525,7 +2528,7 @@ def _cmd_live_autonomy_admit(
         )
     rejected_count = sum(1 for result in results if result["status"] == "rejected")
     admitted_count = sum(1 for result in results if result["status"] == "admitted")
-    replay_counts = {classification: sum(1 for result in results if result.get("replay_classification") == classification) for classification in ["new", "same_hash_replay", "changed_same_entry_id", "duplicate_queue_content"]}
+    replay_counts = {classification: sum(1 for result in results if result.get("replay_classification") == classification) for classification in LIVE_AUTONOMY_REPLAY_CLASSIFICATIONS}
     report = {
         "schema_id": "hisys.live_autonomy.admission_report",
         "schema_version": "0.1.0",

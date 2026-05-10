@@ -372,8 +372,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys live-autonomy-admit` now compares candidate queue and entry hashes with
   existing incoming/rejected handoff artifacts and records deterministic replay
   classifications: `new`, `same_hash_replay`, `changed_same_entry_id`, or
-  `duplicate_queue_content`. The classification is report-only and does not add
-  prompt checks, source calls, vault mutation, or Git/network pushes.
+  `duplicate_queue_content`. The classification is report-only and intentionally
+  scoped to local admission handoff artifacts (`incoming` and `rejected`); already
+  processed queues remain governed by the scheduler/ledger/status path. Malformed
+  JSON queues use raw-file hashes, so they match only byte-identical malformed
+  artifacts. It does not add prompt checks, source calls, vault mutation, or
+  Git/network pushes.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines
