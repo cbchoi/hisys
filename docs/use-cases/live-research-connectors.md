@@ -356,3 +356,26 @@ Boundary rules:
    fetching, no OCR/scraping, and no source, quote, ledger, summary, or coverage
    gate mutation;
 7. DARS may critique the registry as advisory lineage only; Chief Editor recommendation-claim registry remains conditional.
+
+## Browser-G DARS revision resolution boundary
+
+Browser-G consumes an advisory `DARS-REVIEW-*-BROWSER.json` that requires
+revision before final acceptance and turns the revision items into deterministic,
+reviewable resolution evidence. It is a local evidence-quality gate, not a final
+acceptance decision and not a live connector.
+
+Boundary rules:
+
+1. revision resolution requires an explicit DARS browser review ref;
+2. the DARS review must link back to a Chief Editor browser review whose basis
+   refs include the competitive matrix;
+3. every competitive row must have a normalized segment, either explicitly in the
+   matrix row or by conservative deterministic inference from row text;
+4. every high-strength competitive row must map to an independent corroboration
+   class: patent, technical paper, datasheet/specification, filing/annual report,
+   or distributor/spec page;
+5. `ready_for_final_acceptance_review` means the revision gates are complete, not
+   that Chief Editor has finally accepted or that any public/live action is
+   approved;
+6. the command writes only local revision-resolution and report artifacts, with
+   `external_call_made=false` and `mutation_performed=false`.

@@ -862,6 +862,14 @@ def _build_parser() -> argparse.ArgumentParser:
     browser_dars.add_argument("--date", required=True, help="YYYYMMDD review partition")
     browser_dars.add_argument("--chief-editor-review-ref", required=True, help="relative ref to CHIEF-REVIEW-*-BROWSER.json")
     browser_dars.add_argument("--producer-id", default="dars-browser-cli", help="DARS browser review producer id")
+    browser_revision = sub.add_parser(
+        "resolve-browser-dars-revisions",
+        help="convert advisory browser DARS findings into deterministic segment/corroboration resolution evidence",
+    )
+    browser_revision.add_argument("--instance", required=True, help="runtime instance root containing the browser DARS review")
+    browser_revision.add_argument("--date", required=True, help="YYYYMMDD review partition")
+    browser_revision.add_argument("--dars-review-ref", required=True, help="relative ref to DARS-REVIEW-*-BROWSER.json")
+    browser_revision.add_argument("--producer-id", default="browser-revision-cli", help="revision resolver producer id")
     return parser
 
 
@@ -1336,6 +1344,13 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             chief_editor_review_ref=args.chief_editor_review_ref,
+            producer_id=args.producer_id,
+        )
+    if args.command == "resolve-browser-dars-revisions":
+        return _cmd_resolve_browser_dars_revisions(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            dars_review_ref=args.dars_review_ref,
             producer_id=args.producer_id,
         )
     parser.error(f"unknown command: {args.command}")
@@ -6878,6 +6893,193 @@ def _render_browser_dars_review_md(review: dict[str, object]) -> str:
 def _browser_request_id_from_ref(ref: str) -> str:
     name = Path(ref).stem
     return name.removeprefix("CHIEF-REVIEW-").removesuffix("-BROWSER")
+
+
+
+def _cmd_resolve_browser_dars_revisions(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    dars_review_ref: str,
+    producer_id: str,
+) -> int:
+    instance = InstanceRoot(instance_root)
+    dars_path = instance.root / dars_review_ref
+    if not dars_path.exists():
+        print(f"browser dars review not found: {dars_review_ref}", file=sys.stderr)
+        return 1
+    dars_review = json.loads(dars_path.read_text(encoding="utf-8"))
+    if dars_review.get("decision") != "requires_revision_before_final_acceptance":
+        print("browser dars revision resolution: blocked reason=dars_review_not_revision_required")
+        return 2
+    chief_ref = str(dars_review.get("chief_editor_review_ref", ""))
+    chief_review = _load_json_ref(instance, chief_ref) if chief_ref else {}
+    basis_refs = chief_review.get("basis_refs", {}) if isinstance(chief_review.get("basis_refs"), dict) else {}
+    matrix_ref = str(basis_refs.get("competitive_matrix", ""))
+    matrix = _load_json_ref(instance, matrix_ref) if matrix_ref else {}
+    resolution = _build_browser_dars_revision_resolution(
+        request_id=str(dars_review.get("request_id") or _browser_request_id_from_ref(dars_review_ref)),
+        dars_review_ref=dars_review_ref,
+        chief_editor_review_ref=chief_ref,
+        competitive_matrix_ref=matrix_ref,
+        dars_review=dars_review,
+        matrix=matrix,
+        producer_id=producer_id,
+    )
+    resolution_ref = f"data/browser-dars-revision-resolutions/{yyyymmdd}/REVISION-{resolution['request_id']}-BROWSER.json"
+    resolution_path = instance.root / resolution_ref
+    resolution_path.parent.mkdir(parents=True, exist_ok=True)
+    resolution_path.write_text(json.dumps(resolution, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    resolution_path.with_suffix(".md").write_text(_render_browser_dars_revision_resolution_md(resolution), encoding="utf-8")
+    report_ref = f"reports/run-summaries/{yyyymmdd}/browser-dars-revision-resolution-report.json"
+    report = {
+        "schema_id": "hisys.browser_dars_revision_resolution.report",
+        "schema_version": "0.1.0",
+        "request_id": resolution["request_id"],
+        "dars_review_ref": dars_review_ref,
+        "revision_resolution_ref": resolution_ref,
+        "decision": resolution["decision"],
+        "segment_normalization_status": resolution["segment_normalization_status"],
+        "corroboration_mapping_status": resolution["corroboration_mapping_status"],
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    report_path = instance.root / report_ref
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_path.with_suffix(".md").write_text(_render_browser_dars_revision_report_md(report), encoding="utf-8")
+    print(f"browser dars revision resolution: report={report_path}")
+    print(f"decision: {resolution['decision']}")
+    print(f"segment_normalization_status: {resolution['segment_normalization_status']}")
+    print(f"corroboration_mapping_status: {resolution['corroboration_mapping_status']}")
+    print("external_call_made: false")
+    return 0
+
+
+
+def _load_json_ref(instance: InstanceRoot, ref: str) -> dict[str, object]:
+    path = instance.root / ref
+    if path.exists() and path.is_file():
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            return loaded
+    return {}
+
+
+
+def _build_browser_dars_revision_resolution(
+    *,
+    request_id: str,
+    dars_review_ref: str,
+    chief_editor_review_ref: str,
+    competitive_matrix_ref: str,
+    dars_review: dict[str, object],
+    matrix: dict[str, object],
+    producer_id: str,
+) -> dict[str, object]:
+    rows = [row for row in matrix.get("rows", []) if isinstance(row, dict)]
+    segment_rows: list[dict[str, object]] = []
+    corroboration_rows: list[dict[str, object]] = []
+    blockers: list[str] = []
+    independent_classes = {"patent", "technical_paper", "datasheet_or_specification", "filing_or_annual_report", "distributor_or_shop_page"}
+    for index, row in enumerate(rows, start=1):
+        row_label = str(row.get("company_or_source") or f"row-{index}")
+        segment = str(row.get("segment") or _infer_browser_segment(row)).strip()
+        if segment == "unknown":
+            blockers.append(f"Segment normalization missing for {row_label}.")
+        signal_strength = str(row.get("competitive_signal_strength", "")).lower()
+        corroborating_class = str(row.get("corroborating_evidence_class") or row.get("source_type") or "").strip()
+        if signal_strength == "high" and corroborating_class not in independent_classes:
+            blockers.append(f"High-strength row lacks independent corroboration class for {row_label}.")
+        segment_rows.append({
+            "row_index": index,
+            "company_or_source": row_label,
+            "normalized_segment": segment,
+            "basis": "explicit_row_segment" if row.get("segment") else "heuristic_from_row_text",
+        })
+        corroboration_rows.append({
+            "row_index": index,
+            "company_or_source": row_label,
+            "competitive_signal_strength": signal_strength or "unspecified",
+            "corroborating_evidence_class": corroborating_class or "missing",
+            "independent_corroboration_present": corroborating_class in independent_classes,
+            "evidence_refs": row.get("evidence_refs", []),
+        })
+    segment_complete = bool(rows) and not any(item["normalized_segment"] == "unknown" for item in segment_rows)
+    corroboration_complete = bool(rows) and not any(
+        item["competitive_signal_strength"] == "high" and not item["independent_corroboration_present"]
+        for item in corroboration_rows
+    )
+    ready = segment_complete and corroboration_complete and not blockers
+    return {
+        "schema_id": "hisys.browser_dars_revision_resolution",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "dars_review_ref": dars_review_ref,
+        "chief_editor_review_ref": chief_editor_review_ref,
+        "competitive_matrix_ref": competitive_matrix_ref,
+        "decision": "ready_for_final_acceptance_review" if ready else "revision_required_before_final_acceptance",
+        "segment_normalization_status": "complete" if segment_complete else "incomplete",
+        "corroboration_mapping_status": "complete" if corroboration_complete else "incomplete",
+        "segment_normalization_rows": segment_rows,
+        "corroboration_mapping_rows": corroboration_rows,
+        "resolved_dars_revision_items": dars_review.get("required_revisions", []),
+        "remaining_blockers": blockers,
+        "final_acceptance_allowed": ready,
+        "allowed_actions": "advisory_only",
+        "external_call_made": False,
+        "mutation_performed": False,
+        "producer_id": producer_id,
+    }
+
+
+
+def _infer_browser_segment(row: dict[str, object]) -> str:
+    text = f"{row.get('company_or_source', '')} {row.get('technology_signals', '')} {row.get('evidence_excerpt', '')}".lower()
+    if any(token in text for token in ["ct", "computed tomography"]):
+        return "ct"
+    if any(token in text for token in ["dental", "medical"]):
+        return "medical_dental"
+    if any(token in text for token in ["industrial", "ndt", "inspection"]):
+        return "industrial_ndt"
+    if any(token in text for token in ["xrf", "xrd", "analytical"]):
+        return "analytical_xrf_xrd"
+    if any(token in text for token in ["security", "irradiation"]):
+        return "security_irradiation"
+    return "unknown"
+
+
+
+def _render_browser_dars_revision_resolution_md(resolution: dict[str, object]) -> str:
+    return "\n".join([
+        f"# Browser DARS Revision Resolution {resolution['request_id']}",
+        "",
+        f"- decision: `{resolution['decision']}`",
+        f"- segment_normalization_status: `{resolution['segment_normalization_status']}`",
+        f"- corroboration_mapping_status: `{resolution['corroboration_mapping_status']}`",
+        f"- final_acceptance_allowed: `{str(resolution['final_acceptance_allowed']).lower()}`",
+        f"- external_call_made: `{str(resolution['external_call_made']).lower()}`",
+        f"- mutation_performed: `{str(resolution['mutation_performed']).lower()}`",
+        "",
+        "## Remaining Blockers",
+        "",
+        *[f"- {item}" for item in resolution.get("remaining_blockers", [])],
+        "",
+    ])
+
+
+
+def _render_browser_dars_revision_report_md(report: dict[str, object]) -> str:
+    return "\n".join([
+        "# Browser DARS Revision Resolution Report",
+        "",
+        f"- request_id: `{report['request_id']}`",
+        f"- decision: `{report['decision']}`",
+        f"- revision_resolution_ref: `{report['revision_resolution_ref']}`",
+        f"- external_call_made: `{str(report['external_call_made']).lower()}`",
+        f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
+        "",
+    ])
 
 
 

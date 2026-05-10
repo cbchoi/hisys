@@ -230,7 +230,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `data/dars-browser-reviews/<date>/DARS-REVIEW-*-BROWSER.json`; it makes no
   external DARS call, performs no mutation, and normally returns
   `requires_revision_before_final_acceptance` until segment normalization and
-  corroboration mapping are resolved.
+  corroboration mapping are resolved. `resolve-browser-dars-revisions` consumes
+  that advisory review plus the competitive matrix and writes
+  `data/browser-dars-revision-resolutions/<date>/REVISION-*-BROWSER.json`; it
+  deterministically checks normalized segment labels and independent
+  corroboration classes for high-strength rows, then marks the package
+  `ready_for_final_acceptance_review` only when both revision gates are complete.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector

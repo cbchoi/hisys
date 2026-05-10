@@ -1230,6 +1230,93 @@ def test_request_browser_dars_review_consumes_chief_editor_artifact_and_flags_ad
     assert chief_ref in handoff["evidence_bundle"]
 
 
+def test_resolve_browser_dars_revisions_marks_segment_and_corroboration_ready(tmp_path: Path, capsys):
+    date = "20260510"
+    request_id = "HISYS-REQ-BROWSER-REVISION-001"
+    matrix_ref = f"data/competitive-matrices/{date}/MATRIX-{request_id}-BROWSER.json"
+    chief_ref = f"data/chief-editor-reviews/{date}/CHIEF-REVIEW-{request_id}-BROWSER.json"
+    dars_ref = f"data/dars-browser-reviews/{date}/DARS-REVIEW-{request_id}-BROWSER.json"
+    (tmp_path / matrix_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / matrix_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_investigation.competitive_matrix",
+                "rows": [
+                    {
+                        "company_or_source": "DUNLEE | LMB Tube Technology",
+                        "technology_signals": "liquid metal bearing for CT tube cooling",
+                        "competitive_signal_strength": "high",
+                        "segment": "ct",
+                        "corroborating_evidence_class": "patent",
+                        "evidence_refs": ["EV-DUNLEE-PATENT"],
+                    },
+                    {
+                        "company_or_source": "Industrial X-ray Tubes - Varex Imaging",
+                        "technology_signals": "stable dose/resolution for NDT inspection",
+                        "competitive_signal_strength": "high",
+                        "segment": "industrial_ndt",
+                        "corroborating_evidence_class": "datasheet_or_specification",
+                        "evidence_refs": ["EV-VAREX-DATASHEET"],
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / chief_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / chief_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.chief_editor.browser_investigation_review",
+                "request_id": request_id,
+                "decision": "accept_for_devil_dars_adversarial_review",
+                "basis_refs": {"competitive_matrix": matrix_ref},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / dars_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / dars_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.dars.browser_investigation_review",
+                "request_id": request_id,
+                "chief_editor_review_ref": chief_ref,
+                "decision": "requires_revision_before_final_acceptance",
+                "required_revisions": [
+                    "Normalize conclusions by segment: CT, medical/dental, industrial/NDT, analytical XRF/XRD, and security/irradiation.",
+                    "Map every high-strength row to at least one corroborating evidence class: patent, datasheet/specification, distributor/spec page, filing, or paper.",
+                ],
+                "allowed_actions": "advisory_only",
+                "external_call_made": False,
+                "mutation_performed": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main([
+        "resolve-browser-dars-revisions",
+        "--instance", str(tmp_path),
+        "--date", date,
+        "--dars-review-ref", dars_ref,
+        "--producer-id", "revision-test",
+    ])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "ready_for_final_acceptance_review" in captured.out
+    revision_ref = f"data/browser-dars-revision-resolutions/{date}/REVISION-{request_id}-BROWSER.json"
+    revision = json.loads((tmp_path / revision_ref).read_text(encoding="utf-8"))
+    assert revision["decision"] == "ready_for_final_acceptance_review"
+    assert revision["segment_normalization_status"] == "complete"
+    assert revision["corroboration_mapping_status"] == "complete"
+    assert revision["final_acceptance_allowed"] is True
+    assert revision["external_call_made"] is False
+    assert revision["mutation_performed"] is False
+    assert revision["remaining_blockers"] == []
+
+
 def test_request_dars_critique_command_records_advisory_result(tmp_path: Path, capsys):
     _prepare_flagged_conflict_memo(tmp_path, capsys)
     assert main([
