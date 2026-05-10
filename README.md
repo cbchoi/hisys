@@ -164,6 +164,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   external calls, or performing mutations. Research-domain plans now include the
   disabled-by-default `general_web_search` connector so Live-Z can plan broad
   topic search while keeping routine execution blocked until approved.
+- Increment **Search-A fixture-backed general web search evidence connector** -
+  `hisys.connectors.general_web_search.GeneralWebSearchConnector` collects
+  injected JSON search-result fixtures into `SourceAccessRecord` and
+  `SourceEvidenceItem` artifacts. `hisys smoke-source-connector --connector-id
+  general_web_search --transport-fixture-search <json>` validates the approved
+  manual path with fixture transport only; without fixture transport it blocks
+  with `search_fixture_transport_required`, so CI performs no live provider
+  search.
 - Increment **Live-B2 fixture publisher evidence connector** -
   `hisys.connectors.fixture_publisher` reads local static publisher-shaped HTML
   fixtures only, extracts title/quoted evidence, writes `SourceAccessRecord` and

@@ -35,7 +35,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_git_sync_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, execute_obsidian_git_sync_live, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_git_live_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
-from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, GeneralWebSearchConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -423,6 +423,8 @@ def _build_parser() -> argparse.ArgumentParser:
     smoke_source.add_argument("--connector-id", required=True, help="source connector id to smoke")
     smoke_source.add_argument("--doi", help="DOI to retrieve for DOI metadata smoke")
     smoke_source.add_argument("--source-url", help="source URL for PDF smoke gating")
+    smoke_source.add_argument("--query", help="topic/search query for governed general web search smoke")
+    smoke_source.add_argument("--transport-fixture-search", help="local JSON fixture used as injected transport for tested search smoke")
     smoke_source.add_argument(
         "--license-signal",
         choices=["open_access", "closed", "unknown", "not_applicable"],
@@ -959,6 +961,8 @@ def main(argv: list[str] | None = None) -> int:
             connector_id=args.connector_id,
             doi=args.doi,
             source_url=args.source_url,
+            query=args.query,
+            transport_fixture_search=Path(args.transport_fixture_search) if args.transport_fixture_search else None,
             license_signal=args.license_signal,
             approval_ref=args.approval_ref,
             transport_fixture_pdf=Path(args.transport_fixture_pdf) if args.transport_fixture_pdf else None,
@@ -3189,6 +3193,8 @@ def _cmd_smoke_source_connector(
     connector_id: str,
     doi: str | None,
     source_url: str | None,
+    query: str | None,
+    transport_fixture_search: Path | None,
     license_signal: str,
     approval_ref: str | None,
     transport_fixture_pdf: Path | None,
@@ -3276,6 +3282,44 @@ def _cmd_smoke_source_connector(
         )
         _write_source_connector_smoke_report(instance, yyyymmdd, report)
         return 2
+    if connector_id == "general_web_search":
+        if not query:
+            raise ValueError("query is required for general_web_search")
+        if transport_fixture_search is None:
+            report = _source_connector_smoke_report(
+                request_id=request_id,
+                connector_id=connector_id,
+                mode="manual_live",
+                status="blocked",
+                reason_code="search_fixture_transport_required",
+                dispatch_ref=dispatch_ref,
+                source_evidence_refs=[],
+                external_call_made=False,
+            )
+            _write_source_connector_smoke_report(instance, yyyymmdd, report)
+            return 2
+        package = GeneralWebSearchConnector().collect_fixture(
+            request_id=request_id,
+            query=query,
+            fixture_path=transport_fixture_search,
+            output_root=instance.root,
+            yyyymmdd=yyyymmdd,
+        )
+        report = _source_connector_smoke_report(
+            request_id=request_id,
+            connector_id=connector_id,
+            mode="manual_live",
+            status="completed",
+            reason_code="manual_search_smoke_completed",
+            dispatch_ref=dispatch_ref,
+            source_access_refs=[package.access_ref],
+            source_evidence_refs=[package.evidence_ref],
+            external_call_made=True,
+            transport_kind="fixture_injected",
+        )
+        _write_source_connector_smoke_report(instance, yyyymmdd, report)
+        print(f"source connector smoke: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'source-connector-smoke-report.json'}")
+        return 0
     if connector_id == "open_access_pdf_fetch":
         if not source_url:
             raise ValueError("source-url is required for open_access_pdf_fetch")
@@ -3333,6 +3377,8 @@ def _cmd_smoke_source_connector(
 def _source_connector_requested_domain(*, connector_id: str, source_url: str | None) -> str:
     if connector_id == "doi_metadata_search":
         return "api.crossref.org"
+    if connector_id == "general_web_search":
+        return "search.local.fixture"
     if source_url:
         return urlparse(source_url).netloc or "unknown"
     return "unknown"

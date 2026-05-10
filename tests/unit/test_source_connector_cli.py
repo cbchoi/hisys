@@ -130,6 +130,114 @@ def test_smoke_source_connector_dry_run_blocks_without_external_call(tmp_path: P
     assert report["source_evidence_refs"] == []
 
 
+def test_smoke_general_web_search_with_fixture_transport_writes_evidence(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_SEARCH_SMOKE", "1")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1),
+        encoding="utf-8",
+    )
+    search_fixture = tmp_path / "search-results.json"
+    search_fixture.write_text(
+        json.dumps(
+            {
+                "results": [
+                    {
+                        "title": "Executable digital twin search result",
+                        "url": "https://search.local.fixture/results/digital-twin",
+                        "snippet": "Executable digital twins need governed evidence capture and source provenance.",
+                    }
+                ]
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "smoke-source-connector",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-SEARCH-A-001",
+            "--connector-id",
+            "general_web_search",
+            "--query",
+            "digital twin executable governance",
+            "--approval-ref",
+            "APPROVAL-SEARCH-A-001",
+            "--transport-fixture-search",
+            str(search_fixture),
+        ]
+    )
+
+    assert result == 0
+    report_artifact = tmp_path / "reports" / "run-summaries" / "20260510" / "source-connector-smoke-report.json"
+    report = json.loads(report_artifact.read_text(encoding="utf-8"))
+    assert report["connector_id"] == "general_web_search"
+    assert report["status"] == "completed"
+    assert report["reason_code"] == "manual_search_smoke_completed"
+    assert report["transport_kind"] == "fixture_injected"
+    assert report["external_call_made"] is True
+    assert report["mutation_performed"] is False
+    assert len(report["source_access_refs"]) == 1
+    assert len(report["source_evidence_refs"]) == 1
+    access = json.loads((tmp_path / report["source_access_refs"][0]).read_text(encoding="utf-8"))
+    evidence = json.loads((tmp_path / report["source_evidence_refs"][0]).read_text(encoding="utf-8"))
+    assert access["connector_id"] == "general_web_search"
+    assert access["source_url"] == "search://digital twin executable governance"
+    assert access["external_call_made"] is True
+    assert evidence["quoted_text"] == "Executable digital twins need governed evidence capture and source provenance."
+
+
+def test_smoke_general_web_search_manual_live_requires_fixture_transport(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_SEARCH_SMOKE", "1")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "smoke-source-connector",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-SEARCH-A-002",
+            "--connector-id",
+            "general_web_search",
+            "--query",
+            "digital twin executable governance",
+            "--approval-ref",
+            "APPROVAL-SEARCH-A-002",
+        ]
+    )
+
+    assert result == 2
+    report_artifact = tmp_path / "reports" / "run-summaries" / "20260510" / "source-connector-smoke-report.json"
+    report = json.loads(report_artifact.read_text(encoding="utf-8"))
+    assert report["status"] == "blocked"
+    assert report["reason_code"] == "search_fixture_transport_required"
+    assert report["external_call_made"] is False
+
+
 def test_smoke_source_connector_requires_env_for_manual_live(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("HISYS_ALLOW_LIVE_SMOKE", raising=False)
 
@@ -233,9 +341,7 @@ def test_smoke_source_connector_pdf_manual_live_uses_fixture_transport_after_gat
         Path("examples/instance/config/source-connectors.yaml")
         .read_text(encoding="utf-8")
         .replace("live_network_enabled: false", "live_network_enabled: true", 1)
-        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1)
-        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1)
-        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1),
+        .replace("open_access_pdf_fetch:\n    connector_id: open_access_pdf_fetch\n    connector_type: pdf_fetch\n    enabled: false\n    mode: read_only\n    external_call_allowed: false", "open_access_pdf_fetch:\n    connector_id: open_access_pdf_fetch\n    connector_type: pdf_fetch\n    enabled: true\n    mode: read_only\n    external_call_allowed: true", 1),
         encoding="utf-8",
     )
     fixture = tmp_path / "manual-smoke.pdf"

@@ -4,6 +4,7 @@ from .doi_metadata import DoiMetadataConnector, DoiMetadataEvidencePackage
 from .claim_coverage_gate import ClaimCoverageGateBuilder, ClaimCoverageGateRecord, ClaimCoverageGateResult
 from .claim_evidence_ledger import ClaimEvidenceLedgerBuilder, ClaimEvidenceLedgerRecord, ClaimEvidenceLedgerResult
 from .claim_evidence_summary import ClaimEvidenceSummaryBuilder, ClaimEvidenceSummaryRecord, ClaimEvidenceSummaryResult
+from .general_web_search import GeneralWebSearchConnector, GeneralWebSearchEvidencePackage
 from .fixture_publisher import FixturePublisherConnector, FixturePublisherEvidencePackage
 from .open_access_pdf import OpenAccessPdfConnector, OpenAccessPdfEvidencePackage
 from .pdf_candidate_planner import PdfCandidatePlan, PdfCandidatePlanner
@@ -39,6 +40,8 @@ __all__ = [
     "DoiMetadataEvidencePackage",
     "FixturePublisherConnector",
     "FixturePublisherEvidencePackage",
+    "GeneralWebSearchConnector",
+    "GeneralWebSearchEvidencePackage",
     "OpenAccessPdfConnector",
     "OpenAccessPdfEvidencePackage",
     "PdfCandidatePlan",
