@@ -20,7 +20,7 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from .. import __version__
@@ -458,6 +458,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="derive a scoped browser domain allowlist from the orchestrator-selected source URLs and persist the decision",
     )
     browser_investigate.add_argument("--browser-fixture-html", action="append", default=[], help="local HTML fixture paired by order with --source-url for deterministic tests")
+    browser_investigate.add_argument("--follow-links", action="store_true", help="follow bounded same-domain technology/product detail links discovered from source pages")
+    browser_investigate.add_argument("--max-follow-links-per-source", type=int, default=0, help="maximum discovered links to follow per source URL when --follow-links is set")
 
     plan_pdf = sub.add_parser(
         "plan-pdf-candidates",
@@ -1022,6 +1024,8 @@ def main(argv: list[str] | None = None) -> int:
             source_urls=args.source_url,
             orchestrator_decide_domains=args.orchestrator_decide_domains,
             browser_fixture_html=[Path(item) for item in args.browser_fixture_html],
+            follow_links=args.follow_links,
+            max_follow_links_per_source=args.max_follow_links_per_source,
         )
     if args.command == "search-topic":
         return _cmd_search_topic(
@@ -3528,6 +3532,8 @@ def _cmd_browser_investigate_topic(
     source_urls: list[str],
     orchestrator_decide_domains: bool,
     browser_fixture_html: list[Path],
+    follow_links: bool,
+    max_follow_links_per_source: int,
 ) -> int:
     """Collect approved pages through Playwright and write actual-data investigation artifacts."""
 
@@ -3613,10 +3619,13 @@ def _cmd_browser_investigate_topic(
             return 2
 
     packages = []
+    followed_source_urls: list[str] = []
+    next_page_index = 1
     try:
         for index, source_url in enumerate(source_urls):
             connector_runtime = PlaywrightBrowserConnector()
-            page_request_id = f"{request_id}-PAGE-{index + 1:03d}"
+            page_request_id = f"{request_id}-PAGE-{next_page_index:03d}"
+            next_page_index += 1
             if browser_fixture_html:
                 package = connector_runtime.collect_fixture(
                     request_id=page_request_id,
@@ -3633,6 +3642,38 @@ def _cmd_browser_investigate_topic(
                     yyyymmdd=yyyymmdd,
                 )
             packages.append(package)
+            if follow_links and not browser_fixture_html and max_follow_links_per_source > 0:
+                links_to_follow = _select_browser_follow_links(
+                    source_url=source_url,
+                    discovered_links=package.discovered_links,
+                    max_links=max_follow_links_per_source,
+                )
+                for follow_url in links_to_follow:
+                    if follow_url in source_urls or follow_url in followed_source_urls:
+                        continue
+                    follow_domain = urlparse(follow_url).netloc or "unknown"
+                    decision = gate.evaluate(
+                        yyyymmdd=yyyymmdd,
+                        request_id=request_id,
+                        registry=registry,
+                        connector_id=connector_id,
+                        approval_ref=approval_ref,
+                        requested_domain=follow_domain,
+                        requested_actions=["read"],
+                    )
+                    if decision.decision != "allowed":
+                        continue
+                    followed_source_urls.append(follow_url)
+                    follow_request_id = f"{request_id}-PAGE-{next_page_index:03d}"
+                    next_page_index += 1
+                    packages.append(
+                        connector_runtime.collect_live(
+                            request_id=follow_request_id,
+                            source_url=follow_url,
+                            output_root=instance.root,
+                            yyyymmdd=yyyymmdd,
+                        )
+                    )
     except PlaywrightUnavailableError:
         report = _browser_investigation_report(
             request_id=request_id,
@@ -3706,6 +3747,15 @@ def _cmd_browser_investigate_topic(
         json.dumps(evidence_package.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    matrix = _build_browser_competitive_matrix(
+        request_id=request_id,
+        topic=topic,
+        evidence_package=evidence_package,
+    )
+    matrix_ref = f"data/competitive-matrices/{yyyymmdd}/MATRIX-{request_id}-BROWSER.json"
+    matrix_path = instance.root / matrix_ref
+    matrix_path.parent.mkdir(parents=True, exist_ok=True)
+    matrix_path.write_text(json.dumps(matrix, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     memo_ref = f"data/investigation-memos/{yyyymmdd}/MEM-{request_id}-BROWSER.md"
     memo_path = instance.root / memo_ref
     memo_path.parent.mkdir(parents=True, exist_ok=True)
@@ -3715,6 +3765,7 @@ def _cmd_browser_investigate_topic(
             topic=topic,
             user_opinion=user_opinion,
             evidence_package=evidence_package,
+            competitive_matrix=matrix,
         ),
         encoding="utf-8",
     )
@@ -3735,8 +3786,10 @@ def _cmd_browser_investigate_topic(
         resolved_allowed_domains=resolved_allowed_domains,
         orchestrator_domain_decision_ref=orchestrator_domain_decision_ref,
         evidence_package_ref=evidence_ref,
+        competitive_matrix_ref=matrix_ref,
         memo_ref=memo_ref,
         external_call_made=any(kind == "playwright_live" for kind in transport_kinds),
+        followed_source_urls=followed_source_urls,
     )
     _write_browser_investigation_report(instance, yyyymmdd, report)
     print(f"browser investigation: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'browser-investigation-report.json'}")
@@ -3827,6 +3880,8 @@ def _browser_investigation_report(
     evidence_package_ref: str | None,
     memo_ref: str | None,
     external_call_made: bool,
+    followed_source_urls: list[str] | None = None,
+    competitive_matrix_ref: str | None = None,
 ) -> dict[str, object]:
     return {
         "schema_id": "hisys.browser_investigation.report",
@@ -3838,6 +3893,7 @@ def _browser_investigation_report(
         "status": status,
         "reason_code": reason_code,
         "source_urls": source_urls,
+        "followed_source_urls": followed_source_urls or [],
         "pages_collected": len(source_access_refs),
         "source_access_refs": source_access_refs,
         "source_evidence_refs": source_evidence_refs,
@@ -3846,6 +3902,7 @@ def _browser_investigation_report(
         "resolved_allowed_domains": resolved_allowed_domains,
         "orchestrator_domain_decision_ref": orchestrator_domain_decision_ref,
         "evidence_package_ref": evidence_package_ref,
+        "competitive_matrix_ref": competitive_matrix_ref,
         "memo_ref": memo_ref,
         "external_call_made": external_call_made,
         "mutation_performed": False,
@@ -3877,18 +3934,148 @@ def _write_browser_investigation_report(instance: InstanceRoot, yyyymmdd: str, r
     return json_path
 
 
+def _select_browser_follow_links(
+    *,
+    source_url: str,
+    discovered_links: list[tuple[str, str]],
+    max_links: int,
+) -> list[str]:
+    source_domain = urlparse(source_url).netloc
+    selected: list[str] = []
+    keywords = (
+        "x-ray",
+        "xray",
+        "tube",
+        "technology",
+        "product",
+        "ct",
+        "lmb",
+        "bearing",
+        "microfocus",
+        "nanofocus",
+        "nano",
+        "industrial",
+        "medical",
+        "analytical",
+    )
+    for label, href in discovered_links:
+        absolute = urljoin(source_url, href)
+        parsed = urlparse(absolute)
+        source_parsed = urlparse(source_url)
+        if parsed.scheme not in {"http", "https"} or parsed.netloc != source_domain:
+            continue
+        if parsed.path == source_parsed.path and parsed.fragment:
+            continue
+        haystack = f"{label} {parsed.path}".lower()
+        if any(skip in haystack for skip in ["contact", "inquiry", "login", "register", "language", "privacy", "terms"]):
+            continue
+        if not any(keyword in haystack for keyword in keywords):
+            continue
+        if absolute not in selected:
+            selected.append(absolute)
+        if len(selected) >= max_links:
+            break
+    return selected
+
+
+def _build_browser_competitive_matrix(
+    *,
+    request_id: str,
+    topic: str,
+    evidence_package: EvidencePackage,
+) -> dict[str, object]:
+    rows = []
+    for item in evidence_package.evidence:
+        signals = _browser_technology_signals(item.quoted_text or "")
+        if not signals["technology_signals"]:
+            continue
+        rows.append(
+            {
+                "company_or_source": item.title,
+                "url": item.url,
+                "segment_signals": signals["segment_signals"],
+                "technology_signals": signals["technology_signals"],
+                "competitive_signal_strength": signals["competitive_signal_strength"],
+                "evidence_refs": [item.evidence_id],
+                "evidence_excerpt": (item.quoted_text or "")[:500],
+            }
+        )
+    return {
+        "schema_id": "hisys.browser_investigation.competitive_matrix",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "topic": topic,
+        "rows": rows,
+        "limitations": [
+            "Matrix is heuristic and based on captured browser-visible text only.",
+            "Rows should be corroborated with product datasheets, patents, filings, or papers before final decisions.",
+        ],
+    }
+
+
+def _browser_technology_signals(text: str) -> dict[str, str]:
+    lower = text.lower()
+    segment_terms = {
+        "CT": ["ct", "computed tomography"],
+        "industrial inspection/NDT": ["ndt", "inspection", "industrial", "security", "customs", "borders"],
+        "medical/dental": ["medical", "dental", "veterinary"],
+        "analytical XRF/XRD": ["analytical", "x-ray fluorescence", "xrf", "x-ray diffraction", "xrd"],
+        "irradiation/security": ["irradiation", "security", "threat detection"],
+    }
+    technology_terms = {
+        "liquid metal bearing": ["liquid metal bearing", "coolglide", "lmb"],
+        "nano/micro focus": ["nano focus", "nanofocus", "microfocus", "micro focus", "ultra-high-resolution"],
+        "rotating anode": ["rotating anode"],
+        "stationary anode": ["stationary anode"],
+        "high-power tube": ["high-power", "high power"],
+        "stable dose/resolution": ["stable dose", "dependable resolution", "spectral purity"],
+        "customized tube design": ["customized", "custom", "specific demands"],
+        "compact/lightweight generator fit": ["small and light-weight", "small and lightweight", "light-weight"],
+    }
+    segments = [name for name, terms in segment_terms.items() if any(term in lower for term in terms)]
+    technologies = [name for name, terms in technology_terms.items() if any(term in lower for term in terms)]
+    strength = "low"
+    if len(technologies) >= 2 or any(term in lower for term in ["gold standard", "100,000", "benchmark", "only manufacturer", "5 decades", "30 years"]):
+        strength = "high"
+    elif technologies:
+        strength = "medium"
+    return {
+        "segment_signals": ", ".join(segments),
+        "technology_signals": ", ".join(technologies),
+        "competitive_signal_strength": strength,
+    }
+
+
 def _render_browser_investigation_memo(
     *,
     request_id: str,
     topic: str,
     user_opinion: str,
     evidence_package: EvidencePackage,
+    competitive_matrix: dict[str, object] | None = None,
 ) -> str:
     rows = ["| Title | URL | Evidence excerpt |", "|---|---|---|"]
     for item in evidence_package.evidence:
         excerpt = (item.quoted_text or "").replace("|", "\\|")[:300]
         rows.append(f"| {item.title} | {item.url or ''} | {excerpt} |")
     claims = [f"- {claim.text}" for claim in evidence_package.claims]
+    matrix_rows = ["| Company/source | Segment signals | Technology signals | Strength | Evidence refs |", "|---|---|---|---|---|"]
+    for row in (competitive_matrix or {}).get("rows", []):
+        if not isinstance(row, dict):
+            continue
+        matrix_rows.append(
+            "| "
+            + " | ".join(
+                [
+                    str(row.get("company_or_source", "")).replace("|", "\\|"),
+                    str(row.get("segment_signals", "")).replace("|", "\\|"),
+                    str(row.get("technology_signals", "")).replace("|", "\\|"),
+                    str(row.get("competitive_signal_strength", "")).replace("|", "\\|"),
+                    ", ".join(str(item) for item in row.get("evidence_refs", [])),
+                ]
+            )
+            + " |"
+        )
     return "\n".join(
         [
             "# Browser Investigation Memo",
@@ -3906,6 +4093,10 @@ def _render_browser_investigation_memo(
             "## Evidence-Backed Claims",
             "",
             *claims,
+            "",
+            "## Competitive Technology Matrix",
+            "",
+            *matrix_rows,
             "",
             "## Limitations",
             "",

@@ -550,6 +550,83 @@ def test_browser_investigate_topic_orchestrator_decides_domains(tmp_path: Path, 
 
 
 
+def test_browser_investigate_topic_follows_detail_links_and_writes_competitive_matrix(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
+
+    from hisys.connectors import playwright_browser
+
+    class FakePlaywrightSyncTransport:
+        def fetch(self, url: str):
+            if url.endswith("/company"):
+                return (
+                    200,
+                    "Acme X-ray Overview",
+                    "Acme makes x-ray tube systems for CT and inspection.",
+                    [("Technology details", "https://company.local.fixture/detail")],
+                )
+            return (
+                200,
+                "Acme Liquid Metal Bearing Detail",
+                "Acme CoolGlide liquid metal bearing CT x-ray tube technology improves lifetime and heat handling.",
+                [],
+            )
+
+    monkeypatch.setattr(playwright_browser, "PlaywrightSyncTransport", FakePlaywrightSyncTransport)
+    config_path = tmp_path / "source-connectors-orchestrator-domains.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: false\n    mode: read_only\n    external_call_allowed: false\n    requires_human_approval: true",
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: true\n    mode: read_only\n    external_call_allowed: true\n    domain_decision_policy: orchestrator_decided\n    requires_human_approval: true",
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "browser-investigate-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-BROWSER-MATRIX-001",
+            "--topic",
+            "find competitive x-ray tube technology companies",
+            "--approval-ref",
+            "APPROVAL-BROWSER-MATRIX-001",
+            "--orchestrator-decide-domains",
+            "--follow-links",
+            "--max-follow-links-per-source",
+            "1",
+            "--source-url",
+            "https://company.local.fixture/company",
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260510" / "browser-investigation-report.json").read_text(encoding="utf-8"))
+    assert report["pages_collected"] == 2
+    assert len(set(report["source_access_refs"])) == 2
+    assert report["followed_source_urls"] == ["https://company.local.fixture/detail"]
+    assert report["competitive_matrix_ref"] == "data/competitive-matrices/20260510/MATRIX-HISYS-REQ-BROWSER-MATRIX-001-BROWSER.json"
+
+    matrix = json.loads((tmp_path / report["competitive_matrix_ref"]).read_text(encoding="utf-8"))
+    assert matrix["topic"] == "find competitive x-ray tube technology companies"
+    assert matrix["rows"][0]["company_or_source"] == "Acme Liquid Metal Bearing Detail"
+    assert "liquid metal bearing" in matrix["rows"][0]["technology_signals"]
+    assert "CT" in matrix["rows"][0]["segment_signals"]
+    assert matrix["rows"][0]["evidence_refs"] == ["EV-HISYS-REQ-BROWSER-MATRIX-001-BROWSER-002"]
+
+    memo = (tmp_path / report["memo_ref"]).read_text(encoding="utf-8")
+    assert "## Competitive Technology Matrix" in memo
+    assert "liquid metal bearing" in memo
+
+
 def test_browser_investigate_topic_without_fixture_uses_playwright_live_transport(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
 

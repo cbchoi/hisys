@@ -210,7 +210,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `domain_decision_policy: orchestrator_decided`; Hisys then derives the scoped
   allowlist from the orchestrator-selected URLs, writes an
   `orchestrator-domain-decision` boundary record, and still preserves approval,
-  read-only action, forbidden-action, provenance, and no-mutation gates.
+  read-only action, forbidden-action, provenance, and no-mutation gates. Use
+  `--follow-links --max-follow-links-per-source <N>` to let Hisys follow bounded
+  same-domain, keyword-relevant product/technology detail links from each source
+  page; each followed URL is rechecked by the dispatch gate and the run writes a
+  heuristic competitive matrix under `data/competitive-matrices/<date>/` plus a
+  memo section for operator review.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector

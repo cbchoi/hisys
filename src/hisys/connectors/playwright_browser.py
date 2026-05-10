@@ -33,6 +33,7 @@ class PlaywrightBrowserEvidencePackage:
     access_ref: str
     evidence_ref: str
     transport_kind: str
+    discovered_links: list[tuple[str, str]]
 
 
 class PlaywrightBrowserConnector:
@@ -55,13 +56,14 @@ class PlaywrightBrowserConnector:
         """Collect a local HTML fixture using the same evidence shape as browser visits."""
 
         html = fixture_html.read_text(encoding="utf-8")
-        title, text = _extract_html_title_and_text(html)
+        title, text, links = _extract_html_title_text_and_links(html, source_url)
         return self._persist_page(
             request_id=request_id,
             source_url=source_url,
             http_status=200,
             title=title or fixture_html.stem,
             visible_text=text,
+            discovered_links=links,
             output_root=output_root,
             yyyymmdd=yyyymmdd,
             transport_kind="playwright_fixture",
@@ -78,13 +80,19 @@ class PlaywrightBrowserConnector:
         """Collect one URL through injected transport or Playwright sync runtime."""
 
         transport = self._transport or PlaywrightSyncTransport()
-        http_status, title, visible_text = transport.fetch(source_url)
+        fetched = transport.fetch(source_url)
+        if len(fetched) == 3:
+            http_status, title, visible_text = fetched
+            discovered_links: list[tuple[str, str]] = []
+        else:
+            http_status, title, visible_text, discovered_links = fetched
         return self._persist_page(
             request_id=request_id,
             source_url=source_url,
             http_status=http_status,
             title=title,
             visible_text=visible_text,
+            discovered_links=discovered_links,
             output_root=output_root,
             yyyymmdd=yyyymmdd,
             transport_kind="playwright_live",
@@ -98,6 +106,7 @@ class PlaywrightBrowserConnector:
         http_status: int,
         title: str,
         visible_text: str,
+        discovered_links: list[tuple[str, str]],
         output_root: Path,
         yyyymmdd: str,
         transport_kind: str,
@@ -147,6 +156,7 @@ class PlaywrightBrowserConnector:
             access_ref=access_ref,
             evidence_ref=evidence_ref,
             transport_kind=transport_kind,
+            discovered_links=discovered_links,
         )
 
 
@@ -170,8 +180,11 @@ class PlaywrightSyncTransport:
                     response = page.goto(url, wait_until="domcontentloaded", timeout=20000)
                     title = page.title()
                     text = page.locator("body").inner_text(timeout=10000)
+                    links = page.locator("a[href]").evaluate_all(
+                        "els => els.map(a => [a.innerText || a.getAttribute('aria-label') || '', a.href]).filter(x => x[1])"
+                    )
                     status = int(response.status) if response is not None else 200
-                    return status, title, text
+                    return status, title, text, [(str(label).strip(), str(href)) for label, href in links]
                 finally:
                     browser.close()
         except Exception as exc:  # pragma: no cover - environment dependent
@@ -183,20 +196,31 @@ class _VisibleTextParser(HTMLParser):
         super().__init__()
         self.title_parts: list[str] = []
         self.text_parts: list[str] = []
+        self.links: list[tuple[str, str]] = []
         self._in_title = False
         self._ignored_depth = 0
+        self._current_href: str | None = None
+        self._current_link_parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in {"script", "style", "noscript"}:
             self._ignored_depth += 1
         if tag == "title":
             self._in_title = True
+        if tag == "a":
+            attrs_dict = dict(attrs)
+            self._current_href = attrs_dict.get("href")
+            self._current_link_parts = []
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style", "noscript"} and self._ignored_depth:
             self._ignored_depth -= 1
         if tag == "title":
             self._in_title = False
+        if tag == "a" and self._current_href:
+            self.links.append((_normalize_visible_text(" ".join(self._current_link_parts)), self._current_href))
+            self._current_href = None
+            self._current_link_parts = []
 
     def handle_data(self, data: str) -> None:
         if self._ignored_depth:
@@ -205,12 +229,30 @@ class _VisibleTextParser(HTMLParser):
             self.title_parts.append(data)
         else:
             self.text_parts.append(data)
+        if self._current_href is not None:
+            self._current_link_parts.append(data)
 
 
 def _extract_html_title_and_text(html: str) -> tuple[str, str]:
+    title, text, _links = _extract_html_title_text_and_links(html, "")
+    return title, text
+
+
+def _extract_html_title_text_and_links(html: str, base_url: str) -> tuple[str, str, list[tuple[str, str]]]:
     parser = _VisibleTextParser()
     parser.feed(html)
-    return _normalize_visible_text(" ".join(parser.title_parts)), _normalize_visible_text(" ".join(parser.text_parts))
+    links: list[tuple[str, str]] = []
+    for label, href in parser.links:
+        if href.startswith("#") or href.lower().startswith(("mailto:", "tel:", "javascript:")):
+            continue
+        links.append((label, _urljoin(base_url, href)))
+    return _normalize_visible_text(" ".join(parser.title_parts)), _normalize_visible_text(" ".join(parser.text_parts)), links
+
+
+def _urljoin(base_url: str, href: str) -> str:
+    from urllib.parse import urljoin
+
+    return urljoin(base_url, href)
 
 
 def _normalize_visible_text(text: str) -> str:
