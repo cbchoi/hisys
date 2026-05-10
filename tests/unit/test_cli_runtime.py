@@ -1532,6 +1532,206 @@ def test_final_browser_acceptance_review_accepts_ready_revision_resolution(tmp_p
     assert final_review["action_taken"] == "none"
 
 
+def test_review_browser_investigation_blocks_when_sufficiency_not_ready(tmp_path: Path, capsys):
+    date = "20260510"
+    request_id = "HISYS-REQ-BROWSER-NEG-REVIEW-001"
+    report_ref = f"reports/run-summaries/{date}/browser-investigation-report.json"
+    sufficiency_ref = f"data/evidence-sufficiency/{date}/SUFF-{request_id}-BROWSER.json"
+    (tmp_path / report_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / sufficiency_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / report_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_investigation.report",
+                "request_id": request_id,
+                "status": "completed",
+                "evidence_sufficiency_ref": sufficiency_ref,
+                "mutation_performed": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / sufficiency_ref).write_text(
+        json.dumps(
+            {
+                "review_readiness": "insufficient_for_fair_chief_editor_and_devil_review",
+                "chief_editor_decision_allowed": False,
+                "devil_review_allowed": False,
+                "blockers": ["Need at least three distinct source/company domains before fair comparative review."],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main([
+        "review-browser-investigation",
+        "--instance", str(tmp_path),
+        "--date", date,
+        "--browser-investigation-report-ref", report_ref,
+    ])
+
+    captured = capsys.readouterr()
+    assert result == 2
+    assert "evidence_sufficiency_gate_not_ready" in captured.out
+    chief_ref = f"data/chief-editor-reviews/{date}/CHIEF-REVIEW-{request_id}-BROWSER.json"
+    assert not (tmp_path / chief_ref).exists()
+
+
+def test_resolve_browser_dars_revisions_blocks_missing_segment_normalization(tmp_path: Path, capsys):
+    date = "20260510"
+    request_id = "HISYS-REQ-BROWSER-NEG-SEGMENT-001"
+    matrix_ref = f"data/competitive-matrices/{date}/MATRIX-{request_id}-BROWSER.json"
+    chief_ref = f"data/chief-editor-reviews/{date}/CHIEF-REVIEW-{request_id}-BROWSER.json"
+    dars_ref = f"data/dars-browser-reviews/{date}/DARS-REVIEW-{request_id}-BROWSER.json"
+    (tmp_path / matrix_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / matrix_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_investigation.competitive_matrix",
+                "rows": [
+                    {
+                        "company_or_source": "Unsegmented vendor page",
+                        "technology_signals": "proprietary tube platform",
+                        "competitive_signal_strength": "medium",
+                        "evidence_refs": ["EV-UNSEGMENTED"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / chief_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / chief_ref).write_text(
+        json.dumps({"request_id": request_id, "basis_refs": {"competitive_matrix": matrix_ref}}),
+        encoding="utf-8",
+    )
+    (tmp_path / dars_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / dars_ref).write_text(
+        json.dumps(
+            {
+                "request_id": request_id,
+                "chief_editor_review_ref": chief_ref,
+                "decision": "requires_revision_before_final_acceptance",
+                "required_revisions": ["Normalize conclusions by segment."],
+                "external_call_made": False,
+                "mutation_performed": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(["resolve-browser-dars-revisions", "--instance", str(tmp_path), "--date", date, "--dars-review-ref", dars_ref])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "revision_required_before_final_acceptance" in captured.out
+    revision_ref = f"data/browser-dars-revision-resolutions/{date}/REVISION-{request_id}-BROWSER.json"
+    revision = json.loads((tmp_path / revision_ref).read_text(encoding="utf-8"))
+    assert revision["decision"] == "revision_required_before_final_acceptance"
+    assert revision["segment_normalization_status"] == "incomplete"
+    assert revision["corroboration_mapping_status"] == "complete"
+    assert revision["final_acceptance_allowed"] is False
+    assert any("Segment normalization missing" in item for item in revision["remaining_blockers"])
+    assert revision["external_call_made"] is False
+    assert revision["mutation_performed"] is False
+
+
+def test_resolve_browser_dars_revisions_blocks_missing_high_strength_corroboration(tmp_path: Path, capsys):
+    date = "20260510"
+    request_id = "HISYS-REQ-BROWSER-NEG-CORR-001"
+    matrix_ref = f"data/competitive-matrices/{date}/MATRIX-{request_id}-BROWSER.json"
+    chief_ref = f"data/chief-editor-reviews/{date}/CHIEF-REVIEW-{request_id}-BROWSER.json"
+    dars_ref = f"data/dars-browser-reviews/{date}/DARS-REVIEW-{request_id}-BROWSER.json"
+    (tmp_path / matrix_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / matrix_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_investigation.competitive_matrix",
+                "rows": [
+                    {
+                        "company_or_source": "Vendor-only CoolGlide page",
+                        "technology_signals": "liquid metal bearing for CT tube cooling",
+                        "competitive_signal_strength": "high",
+                        "segment": "ct",
+                        "source_type": "company_product_page",
+                        "evidence_refs": ["EV-VENDOR-PAGE"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / chief_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / chief_ref).write_text(
+        json.dumps({"request_id": request_id, "basis_refs": {"competitive_matrix": matrix_ref}}),
+        encoding="utf-8",
+    )
+    (tmp_path / dars_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / dars_ref).write_text(
+        json.dumps(
+            {
+                "request_id": request_id,
+                "chief_editor_review_ref": chief_ref,
+                "decision": "requires_revision_before_final_acceptance",
+                "required_revisions": ["Map high-strength rows to independent corroboration."],
+                "external_call_made": False,
+                "mutation_performed": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(["resolve-browser-dars-revisions", "--instance", str(tmp_path), "--date", date, "--dars-review-ref", dars_ref])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "corroboration_mapping_status: incomplete" in captured.out
+    revision_ref = f"data/browser-dars-revision-resolutions/{date}/REVISION-{request_id}-BROWSER.json"
+    revision = json.loads((tmp_path / revision_ref).read_text(encoding="utf-8"))
+    assert revision["decision"] == "revision_required_before_final_acceptance"
+    assert revision["segment_normalization_status"] == "complete"
+    assert revision["corroboration_mapping_status"] == "incomplete"
+    assert revision["final_acceptance_allowed"] is False
+    assert any("lacks independent corroboration" in item for item in revision["remaining_blockers"])
+    assert revision["corroboration_mapping_rows"][0]["independent_corroboration_present"] is False
+
+
+def test_final_browser_acceptance_review_blocks_unready_revision_resolution(tmp_path: Path, capsys):
+    date = "20260510"
+    request_id = "HISYS-REQ-BROWSER-NEG-FINAL-001"
+    revision_ref = f"data/browser-dars-revision-resolutions/{date}/REVISION-{request_id}-BROWSER.json"
+    (tmp_path / revision_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / revision_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_dars_revision_resolution",
+                "request_id": request_id,
+                "decision": "revision_required_before_final_acceptance",
+                "segment_normalization_status": "complete",
+                "corroboration_mapping_status": "incomplete",
+                "remaining_blockers": ["High-strength row lacks independent corroboration class for Vendor-only page."],
+                "final_acceptance_allowed": False,
+                "external_call_made": False,
+                "mutation_performed": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main([
+        "final-review-browser-investigation",
+        "--instance", str(tmp_path),
+        "--date", date,
+        "--revision-resolution-ref", revision_ref,
+    ])
+
+    captured = capsys.readouterr()
+    assert result == 2
+    assert "revision_resolution_not_ready" in captured.out
+    final_ref = f"data/chief-editor-final-browser-reviews/{date}/FINAL-CHIEF-REVIEW-{request_id}-BROWSER.json"
+    assert not (tmp_path / final_ref).exists()
+
+
 def test_request_dars_critique_command_records_advisory_result(tmp_path: Path, capsys):
     _prepare_flagged_conflict_memo(tmp_path, capsys)
     assert main([
