@@ -828,6 +828,7 @@ def main(argv: list[str] | None = None) -> int:
             max_items=args.max_items,
             ledger_path=Path(args.ledger) if args.ledger else None,
             max_retries=args.max_retries,
+            report_subdir=None,
         )
     if args.command == "live-autonomy-tick":
         return _cmd_live_autonomy_tick(
@@ -1941,6 +1942,8 @@ def _resolve_live_ideation_standing_approval(
     if not required.issubset(capabilities):
         return {"status": "blocked", "reason_code": "standing_approval_missing_capability", "approval_ref": approval_ref}
     expires_on = policy.get("expires_on")
+    if expires_on is not None and (not isinstance(expires_on, str) or len(expires_on) != 8 or not expires_on.isdigit()):
+        return {"status": "blocked", "reason_code": "standing_approval_expiry_invalid", "approval_ref": approval_ref}
     if isinstance(expires_on, str) and expires_on and expires_on < yyyymmdd:
         return {"status": "blocked", "reason_code": "standing_approval_expired", "approval_ref": approval_ref}
     allowed_domains = policy.get("allowed_domains") or []
@@ -2060,6 +2063,11 @@ def _write_live_autonomy_scheduler_tick_report(*, instance: InstanceRoot, yyyymm
     return report_path
 
 
+def _live_autonomy_safe_report_segment(queue_id: str) -> str:
+    cleaned = "".join(ch if ch.isalnum() or ch in {"-", "_", "."} else "_" for ch in queue_id).strip("._/")
+    return cleaned or "queue"
+
+
 def _cmd_live_autonomy_tick(
     *,
     instance_root: Path,
@@ -2103,6 +2111,7 @@ def _cmd_live_autonomy_tick(
             )
             continue
         ledger_path = (ledger_dir / f"{queue_id}.json") if ledger_dir else None
+        report_subdir = _live_autonomy_safe_report_segment(queue_id)
         status_code = _cmd_live_autonomy_run(
             instance_root=instance.root,
             queue_path=queue_path,
@@ -2118,8 +2127,9 @@ def _cmd_live_autonomy_tick(
             max_items=max_items,
             ledger_path=ledger_path,
             max_retries=max_retries,
+            report_subdir=report_subdir,
         )
-        run_report_path = instance.reports_dir / "run-summaries" / yyyymmdd / "live-autonomy-run-report.json"
+        run_report_path = instance.reports_dir / "run-summaries" / yyyymmdd / report_subdir / "live-autonomy-run-report.json"
         run_report = json.loads(run_report_path.read_text(encoding="utf-8")) if run_report_path.exists() else {}
         queue_results.append(
             {
@@ -2169,6 +2179,7 @@ def _cmd_live_autonomy_run(
     max_items: int | None,
     ledger_path: Path | None,
     max_retries: int,
+    report_subdir: str | None,
 ) -> int:
     """Run a standing-approved queue of autonomous live ideation persistence jobs."""
 
@@ -2176,6 +2187,7 @@ def _cmd_live_autonomy_run(
     queue = json.loads(queue_path.read_text(encoding="utf-8"))
     queue_id = str(queue.get("queue_id") or queue_path.stem)
     ledger_path = ledger_path or (instance.data_dir / "live-autonomy-ledgers" / yyyymmdd / f"{queue_id}.json")
+    report_subdir = report_subdir or ""
     ledger = _load_live_autonomy_ledger(ledger_path=ledger_path, queue_id=queue_id, yyyymmdd=yyyymmdd)
     entries = list(queue.get("entries") or [])
     if max_items is not None:
@@ -2194,6 +2206,25 @@ def _cmd_live_autonomy_run(
                     "request_id": ledger_entry.get("request_id"),
                     "status": "skipped_completed",
                     "reason_code": "ledger_completed",
+                    "pipeline_report_ref": ledger_entry.get("pipeline_report_ref"),
+                    "vault_refs": ledger_entry.get("vault_refs", []),
+                    "attempt_count": int(ledger_entry.get("attempt_count", 0)),
+                    "retry_eligible": False,
+                    "external_call_made": False,
+                    "mutation_performed": False,
+                    "network_push_performed": False,
+                }
+            )
+            ledger["entries"][entry_id] = ledger_entry
+            continue
+        if ledger_entry.get("status") == "blocked" and ledger_entry.get("retry_eligible") is False:
+            ledger_entry = _live_autonomy_mark_transition(ledger_entry, state="skipped_non_retryable", yyyymmdd=yyyymmdd, reason_code="non_retryable_blocked")
+            results.append(
+                {
+                    "entry_id": entry_id,
+                    "request_id": ledger_entry.get("request_id"),
+                    "status": "skipped_non_retryable",
+                    "reason_code": "non_retryable_blocked",
                     "pipeline_report_ref": ledger_entry.get("pipeline_report_ref"),
                     "vault_refs": ledger_entry.get("vault_refs", []),
                     "attempt_count": int(ledger_entry.get("attempt_count", 0)),
@@ -2232,7 +2263,7 @@ def _cmd_live_autonomy_run(
                 "status": "blocked",
                 "reason_code": "queue_entry_missing_request_or_doi",
                 "pipeline_report_ref": None,
-                "attempt_count": int(ledger_entry.get("attempt_count", 0)),
+                "attempt_count": int(ledger_entry.get("attempt_count", 0)) + 1,
                 "retry_eligible": False,
                 "external_call_made": False,
                 "mutation_performed": False,
@@ -2298,6 +2329,7 @@ def _cmd_live_autonomy_run(
     completed_count = sum(1 for result in results if result["status"] == "completed")
     skipped_completed_count = sum(1 for result in results if result["status"] == "skipped_completed")
     skipped_retry_exhausted_count = sum(1 for result in results if result["status"] == "skipped_retry_exhausted")
+    skipped_non_retryable_count = sum(1 for result in results if result["status"] == "skipped_non_retryable")
     blocked_count = sum(1 for result in results if result["status"] == "blocked")
     retry_eligible_count = sum(1 for result in results if result.get("retry_eligible"))
     ledger["summary"] = {
@@ -2306,6 +2338,7 @@ def _cmd_live_autonomy_run(
         "blocked_count": blocked_count,
         "skipped_completed_count": skipped_completed_count,
         "skipped_retry_exhausted_count": skipped_retry_exhausted_count,
+        "skipped_non_retryable_count": skipped_non_retryable_count,
         "retry_eligible_count": retry_eligible_count,
     }
     _write_live_autonomy_ledger(ledger_path=ledger_path, ledger=ledger)
@@ -2320,11 +2353,12 @@ def _cmd_live_autonomy_run(
         "blocked_count": blocked_count,
         "skipped_completed_count": skipped_completed_count,
         "skipped_retry_exhausted_count": skipped_retry_exhausted_count,
+        "skipped_non_retryable_count": skipped_non_retryable_count,
         "retry_eligible_count": retry_eligible_count,
         "ledger_ref": str(ledger_path.relative_to(instance.root)) if ledger_path.is_relative_to(instance.root) else str(ledger_path),
         "next_scheduler_action": "sleep" if blocked_count == 0 and retry_eligible_count == 0 else "review_or_retry_eligible_entries",
     }
-    watchdog_report_path = _write_live_autonomy_watchdog_report(instance=instance, yyyymmdd=yyyymmdd, report=watchdog_report)
+    watchdog_report_path = _write_live_autonomy_watchdog_report(instance=instance, yyyymmdd=yyyymmdd, report=watchdog_report, report_subdir=report_subdir)
     batch_report = {
         "schema_id": "hisys.live_autonomy.queue_run_report",
         "schema_version": "0.1.0",
@@ -2337,6 +2371,7 @@ def _cmd_live_autonomy_run(
         "blocked_count": blocked_count,
         "skipped_completed_count": skipped_completed_count,
         "skipped_retry_exhausted_count": skipped_retry_exhausted_count,
+        "skipped_non_retryable_count": skipped_non_retryable_count,
         "retry_eligible_count": retry_eligible_count,
         "max_retries": max_retries,
         "standing_approval_policy_ref": str(standing_approval_policy),
@@ -2345,7 +2380,7 @@ def _cmd_live_autonomy_run(
         "network_push_performed": any(result["network_push_performed"] for result in results),
         "results": results,
     }
-    report_path = _write_live_autonomy_run_report(instance=instance, yyyymmdd=yyyymmdd, report=batch_report)
+    report_path = _write_live_autonomy_run_report(instance=instance, yyyymmdd=yyyymmdd, report=batch_report, report_subdir=report_subdir)
     print(f"live autonomy run: status={batch_report['status']} completed={completed_count} blocked={blocked_count} report={report_path}")
     return 0 if blocked_count == 0 else 2
 
@@ -2381,6 +2416,7 @@ def _live_autonomy_reason_retryable(reason_code: object) -> bool:
         "standing_approval_ref_mismatch",
         "standing_approval_not_approved",
         "standing_approval_missing_capability",
+        "standing_approval_expiry_invalid",
         "standing_approval_expired",
         "standing_approval_domain_not_allowed",
         "standing_approval_vault_root_not_allowed",
@@ -2423,8 +2459,10 @@ def _live_autonomy_ledger_entry_from_result(*, previous: dict[str, object], resu
     }
 
 
-def _write_live_autonomy_watchdog_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+def _write_live_autonomy_watchdog_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object], report_subdir: str = "") -> Path:
     report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    if report_subdir:
+        report_dir = report_dir / report_subdir
     report_dir.mkdir(parents=True, exist_ok=True)
     report_path = report_dir / "live-autonomy-watchdog-report.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -2447,8 +2485,10 @@ def _write_live_autonomy_watchdog_report(*, instance: InstanceRoot, yyyymmdd: st
     return report_path
 
 
-def _write_live_autonomy_run_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+def _write_live_autonomy_run_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object], report_subdir: str = "") -> Path:
     report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    if report_subdir:
+        report_dir = report_dir / report_subdir
     report_dir.mkdir(parents=True, exist_ok=True)
     report_path = report_dir / "live-autonomy-run-report.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -2465,6 +2505,7 @@ def _write_live_autonomy_run_report(*, instance: InstanceRoot, yyyymmdd: str, re
                 f"- blocked_count: `{report['blocked_count']}`",
                 f"- skipped_completed_count: `{report['skipped_completed_count']}`",
                 f"- skipped_retry_exhausted_count: `{report['skipped_retry_exhausted_count']}`",
+                f"- skipped_non_retryable_count: `{report.get('skipped_non_retryable_count', 0)}`",
                 f"- retry_eligible_count: `{report['retry_eligible_count']}`",
                 f"- ledger_ref: `{report['ledger_ref']}`",
                 f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",

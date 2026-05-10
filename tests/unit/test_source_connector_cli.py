@@ -675,6 +675,56 @@ def test_live_ideation_persist_blocks_standing_approval_outside_scope(tmp_path: 
     assert report["standing_approval_applied"] is False
 
 
+def test_live_ideation_persist_blocks_invalid_standing_approval_expiry(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(Path("examples/instance/config/source-connectors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    policy_path = tmp_path / "standing-approval.json"
+    policy_path.write_text(
+        json.dumps(
+            {
+                "status": "approved",
+                "approval_ref": "STANDING-LIVE-IDEATION-001",
+                "expires_on": "2026-12-31",
+                "capabilities": ["live_source_access", "live_vault_write", "obsidian_git_push"],
+                "allowed_domains": ["research"],
+                "allowed_vault_roots": [str(tmp_path / "vault")],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "live-ideation-persist",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--request",
+            str(request_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--doi",
+            "10.0000/hisys.fixture.formalism",
+            "--vault-root",
+            str(tmp_path / "vault"),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--standing-approval-policy",
+            str(policy_path),
+        ]
+    )
+
+    assert result == 2
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-ideation-persist-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "blocked"
+    assert report["reason_code"] == "standing_approval_expiry_invalid"
+    assert report["external_call_made"] is False
+
+
 def test_live_autonomy_run_executes_standing_approved_queue(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
     request_path = tmp_path / "domain-request.json"
@@ -972,3 +1022,78 @@ def test_live_autonomy_tick_runs_queue_and_reports_attention(tmp_path: Path, mon
     watchdog = json.loads((tmp_path / "instance" / report["queue_results"][0]["watchdog_report_ref"]).read_text(encoding="utf-8"))
     assert watchdog["scheduler_ready"] is True
     assert watchdog["health_status"] == "attention_required"
+
+    second_result = main(
+        [
+            "live-autonomy-tick",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--queue-dir",
+            str(queue_dir),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--vault-root",
+            str(tmp_path / "vault"),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--standing-approval-policy",
+            str(policy_path),
+        ]
+    )
+    assert second_result == 0
+    second_report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-scheduler-tick-report.json").read_text(encoding="utf-8"))
+    assert second_report["status"] == "completed"
+    assert second_report["queue_results"][0]["blocked_count"] == 0
+    second_run_report = json.loads((tmp_path / "instance" / second_report["queue_results"][0]["queue_run_report_ref"]).read_text(encoding="utf-8"))
+    assert second_run_report["skipped_non_retryable_count"] == 1
+    assert second_run_report["results"][0]["status"] == "skipped_non_retryable"
+
+
+def test_live_autonomy_tick_namespaces_multiple_queue_reports(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    queue_dir = tmp_path / "queues"
+    queue_dir.mkdir()
+    for queue_id in ["LIVE-SCHEDULER-Q-A", "LIVE-SCHEDULER-Q-B"]:
+        (queue_dir / f"{queue_id}.json").write_text(
+            json.dumps({"queue_id": queue_id, "entries": [{"entry_id": f"{queue_id}-missing", "doi": "10.0000/hisys.fixture.formalism"}]}),
+            encoding="utf-8",
+        )
+    config_path = tmp_path / "source-connectors.yaml"
+    config_path.write_text(Path("examples/instance/config/source-connectors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    policy_path = tmp_path / "standing-approval.json"
+    policy_path.write_text(json.dumps({"status": "approved", "approval_ref": "STANDING-LIVE-SCHEDULER"}), encoding="utf-8")
+
+    result = main(
+        [
+            "live-autonomy-tick",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--queue-dir",
+            str(queue_dir),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--vault-root",
+            str(tmp_path / "vault"),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--standing-approval-policy",
+            str(policy_path),
+            "--max-queues",
+            "2",
+        ]
+    )
+
+    assert result == 2
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-scheduler-tick-report.json").read_text(encoding="utf-8"))
+    refs = [item["queue_run_report_ref"] for item in report["queue_results"]]
+    assert len(refs) == 2
+    assert len(set(refs)) == 2
+    for ref in refs:
+        assert (tmp_path / "instance" / ref).exists()
+        run_report = json.loads((tmp_path / "instance" / ref).read_text(encoding="utf-8"))
+        assert run_report["blocked_count"] == 1
+        assert run_report["results"][0]["reason_code"] == "queue_entry_missing_request_or_doi"

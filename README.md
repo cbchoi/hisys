@@ -325,7 +325,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `live-autonomy-scheduler-tick-report.json|md`. An empty queue directory is an
   explicit idle success with `next_scheduler_action=sleep`; queue runs that need
   operator attention are summarized with queue report/watchdog refs and exit code
-  `2` for external schedulers.
+  `2` for external schedulers. The hardened scheduler keeps overhead deterministic:
+  per-queue reports are namespaced under `run-summaries/<YYYYMMDD>/<queue_id>/`,
+  malformed non-retryable queue entries become terminal `skipped_non_retryable`
+  on later ticks instead of re-blocking forever, and standing approval expiry
+  dates are validated as `YYYYMMDD` before any live action.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines
