@@ -962,6 +962,11 @@ def test_live_autonomy_admit_moves_valid_and_invalid_candidates(tmp_path: Path) 
         json.dumps({"queue_id": "LIVE-U-MISSING", "entries": [{"entry_id": "bad-001", "doi": "10.0000/hisys.fixture.formalism"}]}),
         encoding="utf-8",
     )
+    unsafe_request = candidate_dir / "unsafe-request.json"
+    unsafe_request.write_text(
+        json.dumps({"queue_id": "LIVE-U-UNSAFE", "entries": [{"entry_id": "unsafe-001", "doi": "10.0000/hisys.fixture.formalism", "request_path": "../requests/unsafe.json"}]}),
+        encoding="utf-8",
+    )
     invalid_json = candidate_dir / "invalid.json"
     invalid_json.write_text("{not-json", encoding="utf-8")
 
@@ -981,21 +986,23 @@ def test_live_autonomy_admit_moves_valid_and_invalid_candidates(tmp_path: Path) 
         ]
     )
 
-    assert result == 2
+    assert result == 0
     assert not list(candidate_dir.glob("*.json"))
     assert (incoming_dir / "valid.json").exists()
     assert (rejected_dir / "missing-request.json").exists()
+    assert (rejected_dir / "unsafe-request.json").exists()
     assert (rejected_dir / "invalid.json").exists()
     report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-admission-report.json").read_text(encoding="utf-8"))
     assert report["schema_id"] == "hisys.live_autonomy.admission_report"
     assert report["status"] == "attention_required"
     assert report["admitted_count"] == 1
-    assert report["rejected_count"] == 2
+    assert report["rejected_count"] == 3
     assert report["external_call_made"] is False
     assert report["mutation_performed"] is False
     statuses = {Path(item["candidate_path"]).name: item for item in report["results"]}
     assert statuses["valid.json"]["status"] == "admitted"
     assert statuses["missing-request.json"]["reason_code"] == "queue_entry_missing_request"
+    assert statuses["unsafe-request.json"]["reason_code"] == "queue_entry_request_path_unsafe"
     assert statuses["invalid.json"]["reason_code"] == "queue_json_invalid"
 
 

@@ -343,11 +343,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `hisys live-autonomy-admit` validates candidate queue JSON files before they
   reach the scheduler incoming directory. The admission step performs only cheap
   deterministic checks: valid JSON object, safe optional `queue_id`, non-empty
-  `entries`, unique entry IDs, and required `doi` plus `request_path` fields. It
-  moves accepted candidate files to `--incoming-dir`, rejected files to
-  `--rejected-dir`, writes `live-autonomy-admission-report.json|md`, and records
+  `entries`, unique entry IDs, required `doi`, and required safe relative
+  `request_path` fields. It moves accepted candidate files to `--incoming-dir`,
+  rejected files to `--rejected-dir`, writes
+  `live-autonomy-admission-report.json|md`, and records
   `external_call_made=false`, `mutation_performed=false`, and
-  `network_push_performed=false`.
+  `network_push_performed=false`. Candidate rejection remains a normal admission
+  outcome: the report status records `attention_required`, but the command exits
+  `0` unless an unexpected process error occurs, avoiding scheduler paging for
+  routine malformed candidates.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

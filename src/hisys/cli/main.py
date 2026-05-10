@@ -2174,8 +2174,12 @@ def _validate_live_autonomy_candidate_queue(queue: object) -> tuple[bool, str | 
         entry_ids.add(entry_id)
         if not isinstance(entry.get("doi"), str) or not entry["doi"].strip():
             return False, "queue_entry_missing_doi", queue_id
-        if not isinstance(entry.get("request_path"), str) or not entry["request_path"].strip():
+        request_path = entry.get("request_path")
+        if not isinstance(request_path, str) or not request_path.strip():
             return False, "queue_entry_missing_request", queue_id
+        request_ref = Path(request_path)
+        if request_ref.is_absolute() or ".." in request_ref.parts:
+            return False, "queue_entry_request_path_unsafe", queue_id
     return True, None, queue_id
 
 
@@ -2231,8 +2235,14 @@ def _cmd_live_autonomy_admit(
             accepted = False
             reason_code = "queue_json_invalid"
         destination = incoming_dir if accepted else rejected_dir
-        final_ref = _live_autonomy_unique_path(destination, candidate_path.name)
-        shutil.move(str(candidate_path), str(final_ref))
+        try:
+            final_ref = _live_autonomy_unique_path(destination, candidate_path.name)
+            shutil.move(str(candidate_path), str(final_ref))
+        except RuntimeError:
+            accepted = False
+            status = "rejected"
+            reason_code = "lifecycle_path_exhausted"
+            final_ref = None
         if accepted:
             status = "admitted"
         results.append(
@@ -2241,7 +2251,7 @@ def _cmd_live_autonomy_admit(
                 "queue_id": queue_id,
                 "status": status,
                 "reason_code": reason_code,
-                "final_ref": str(final_ref),
+                "final_ref": str(final_ref) if final_ref is not None else None,
                 "external_call_made": False,
                 "mutation_performed": False,
                 "network_push_performed": False,
@@ -2268,7 +2278,7 @@ def _cmd_live_autonomy_admit(
     }
     report_path = _write_live_autonomy_admission_report(instance=instance, yyyymmdd=yyyymmdd, report=report)
     print(f"live autonomy admit: status={report['status']} admitted={admitted_count} rejected={rejected_count} report={report_path}")
-    return 0 if rejected_count == 0 else 2
+    return 0
 
 
 def _cmd_live_autonomy_tick(
