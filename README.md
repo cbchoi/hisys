@@ -199,7 +199,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   under `data/investigation-memos/<date>/`. This is the first end-to-end path
   from browser acquisition to memo-ready evidence for research and investment
   source collection, while preserving read-only, approval, env-gate, domain
-  allowlist, citation, hash, and no-mutation boundaries.
+  allowlist, citation, hash, and no-mutation boundaries. Actual non-fixture
+  runs install the optional browser stack with `uv run --extra browser python -m
+  playwright install chromium`, enable a scoped `playwright_read_only` config
+  (`enabled: true`, `external_call_allowed: true`, `live_network_enabled: true`,
+  explicit `allowed_domains`), then run `browser-investigate-topic` without
+  `--browser-fixture-html`. Fixture HTML is only for deterministic test/staging
+  parity; omitting it forces the Playwright browser runtime path.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector

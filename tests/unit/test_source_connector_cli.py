@@ -467,7 +467,8 @@ def test_browser_investigate_topic_collects_fixture_pages_and_writes_actual_data
     assert report["connector_id"] == "playwright_read_only"
     assert report["pages_collected"] == 2
     assert report["mutation_performed"] is False
-    assert report["external_call_made"] is True
+    assert report["external_call_made"] is False
+    assert report["transport_kinds"] == ["playwright_fixture", "playwright_fixture"]
     assert report["evidence_package_ref"] == "data/evidence-packages/20260510/EPKG-HISYS-REQ-BROWSER-INV-001-BROWSER.json"
     assert report["memo_ref"] == "data/investigation-memos/20260510/MEM-HISYS-REQ-BROWSER-INV-001-BROWSER.md"
     assert len(report["source_access_refs"]) == 2
@@ -490,6 +491,62 @@ def test_browser_investigate_topic_collects_fixture_pages_and_writes_actual_data
     assert "Canon Electron Tubes" in memo
     assert "Actual Browser Evidence Table" in memo
     assert "not snippets" in memo
+
+
+def test_browser_investigate_topic_without_fixture_uses_playwright_live_transport(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
+
+    from hisys.connectors import playwright_browser
+
+    class FakePlaywrightSyncTransport:
+        def fetch(self, url: str) -> tuple[int, str, str]:
+            return (
+                200,
+                "Actual Browser Company Page",
+                "Actual Playwright browser text says the company has CT x-ray tube heat management and focal spot technology.",
+            )
+
+    monkeypatch.setattr(playwright_browser, "PlaywrightSyncTransport", FakePlaywrightSyncTransport)
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: false\n    mode: read_only\n    external_call_allowed: false",
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: true\n    mode: read_only\n    external_call_allowed: true",
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "browser-investigate-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-BROWSER-LIVE-001",
+            "--topic",
+            "actual browser data investigation",
+            "--approval-ref",
+            "APPROVAL-BROWSER-LIVE-001",
+            "--source-url",
+            "https://company.local.fixture/live-xray-page",
+        ]
+    )
+
+    assert result == 0
+    report_path = tmp_path / "reports" / "run-summaries" / "20260510" / "browser-investigation-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["external_call_made"] is True
+    assert report["transport_kinds"] == ["playwright_live"]
+    package = json.loads((tmp_path / report["evidence_package_ref"]).read_text(encoding="utf-8"))
+    assert package["evidence"][0]["title"] == "Actual Browser Company Page"
+    assert "Actual Playwright browser text" in package["claims"][0]["text"]
 
 
 def test_smoke_playwright_read_only_with_fixture_page_writes_page_evidence(tmp_path: Path, monkeypatch) -> None:

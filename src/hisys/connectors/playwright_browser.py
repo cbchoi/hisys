@@ -32,6 +32,7 @@ class PlaywrightBrowserEvidencePackage:
     evidence_items: list[SourceEvidenceItem]
     access_ref: str
     evidence_ref: str
+    transport_kind: str
 
 
 class PlaywrightBrowserConnector:
@@ -145,6 +146,7 @@ class PlaywrightBrowserConnector:
             evidence_items=[evidence],
             access_ref=access_ref,
             evidence_ref=evidence_ref,
+            transport_kind=transport_kind,
         )
 
 
@@ -160,17 +162,20 @@ class PlaywrightSyncTransport:
             from playwright.sync_api import sync_playwright
         except Exception as exc:  # pragma: no cover - environment dependent
             raise PlaywrightUnavailableError("playwright is not installed; use --browser-fixture-html or install playwright browsers") from exc
-        with sync_playwright() as playwright:  # pragma: no cover - environment dependent
-            browser = playwright.chromium.launch(headless=True)
-            try:
-                page = browser.new_page()
-                response = page.goto(url, wait_until="domcontentloaded", timeout=20000)
-                title = page.title()
-                text = page.locator("body").inner_text(timeout=10000)
-                status = int(response.status) if response is not None else 200
-                return status, title, text
-            finally:
-                browser.close()
+        try:
+            with sync_playwright() as playwright:  # pragma: no cover - environment dependent
+                browser = playwright.chromium.launch(headless=True)
+                try:
+                    page = browser.new_page()
+                    response = page.goto(url, wait_until="domcontentloaded", timeout=20000)
+                    title = page.title()
+                    text = page.locator("body").inner_text(timeout=10000)
+                    status = int(response.status) if response is not None else 200
+                    return status, title, text
+                finally:
+                    browser.close()
+        except Exception as exc:  # pragma: no cover - environment dependent
+            raise PlaywrightUnavailableError(f"playwright read-only navigation failed for {url}") from exc
 
 
 class _VisibleTextParser(HTMLParser):

@@ -3539,6 +3539,7 @@ def _cmd_browser_investigate_topic(
             source_urls=source_urls,
             source_access_refs=[],
             source_evidence_refs=[],
+            transport_kinds=[],
             evidence_package_ref=None,
             memo_ref=None,
             external_call_made=False,
@@ -3571,6 +3572,7 @@ def _cmd_browser_investigate_topic(
                 source_urls=source_urls,
                 source_access_refs=[],
                 source_evidence_refs=[],
+                transport_kinds=[],
                 evidence_package_ref=None,
                 memo_ref=None,
                 external_call_made=False,
@@ -3609,6 +3611,7 @@ def _cmd_browser_investigate_topic(
             source_urls=source_urls,
             source_access_refs=[],
             source_evidence_refs=[],
+            transport_kinds=[],
             evidence_package_ref=None,
             memo_ref=None,
             external_call_made=False,
@@ -3682,6 +3685,7 @@ def _cmd_browser_investigate_topic(
     )
     source_access_refs = [package.access_ref for package in packages]
     source_evidence_refs = [package.evidence_ref for package in packages]
+    transport_kinds = [package.transport_kind for package in packages]
     report = _browser_investigation_report(
         request_id=request_id,
         topic=topic,
@@ -3691,9 +3695,10 @@ def _cmd_browser_investigate_topic(
         source_urls=source_urls,
         source_access_refs=source_access_refs,
         source_evidence_refs=source_evidence_refs,
+        transport_kinds=transport_kinds,
         evidence_package_ref=evidence_ref,
         memo_ref=memo_ref,
-        external_call_made=True,
+        external_call_made=any(kind == "playwright_live" for kind in transport_kinds),
     )
     _write_browser_investigation_report(instance, yyyymmdd, report)
     print(f"browser investigation: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'browser-investigation-report.json'}")
@@ -3710,6 +3715,7 @@ def _browser_investigation_report(
     source_urls: list[str],
     source_access_refs: list[str],
     source_evidence_refs: list[str],
+    transport_kinds: list[str],
     evidence_package_ref: str | None,
     memo_ref: str | None,
     external_call_made: bool,
@@ -3727,6 +3733,7 @@ def _browser_investigation_report(
         "pages_collected": len(source_access_refs),
         "source_access_refs": source_access_refs,
         "source_evidence_refs": source_evidence_refs,
+        "transport_kinds": transport_kinds,
         "evidence_package_ref": evidence_package_ref,
         "memo_ref": memo_ref,
         "external_call_made": external_call_made,
