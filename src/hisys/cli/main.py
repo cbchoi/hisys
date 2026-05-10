@@ -3756,6 +3756,30 @@ def _cmd_browser_investigate_topic(
     matrix_path = instance.root / matrix_ref
     matrix_path.parent.mkdir(parents=True, exist_ok=True)
     matrix_path.write_text(json.dumps(matrix, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    source_candidates = _build_browser_source_candidates(
+        request_id=request_id,
+        topic=topic,
+        source_urls=source_urls,
+        followed_source_urls=followed_source_urls,
+        evidence_package=evidence_package,
+        competitive_matrix=matrix,
+    )
+    source_candidates_ref = f"data/source-candidates/{yyyymmdd}/SRC-CANDIDATES-{request_id}-BROWSER.json"
+    source_candidates_path = instance.root / source_candidates_ref
+    source_candidates_path.parent.mkdir(parents=True, exist_ok=True)
+    source_candidates_path.write_text(json.dumps(source_candidates, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    sufficiency = _build_browser_evidence_sufficiency_assessment(
+        request_id=request_id,
+        topic=topic,
+        source_urls=source_urls,
+        followed_source_urls=followed_source_urls,
+        evidence_package=evidence_package,
+        competitive_matrix=matrix,
+    )
+    sufficiency_ref = f"data/evidence-sufficiency/{yyyymmdd}/SUFF-{request_id}-BROWSER.json"
+    sufficiency_path = instance.root / sufficiency_ref
+    sufficiency_path.parent.mkdir(parents=True, exist_ok=True)
+    sufficiency_path.write_text(json.dumps(sufficiency, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     memo_ref = f"data/investigation-memos/{yyyymmdd}/MEM-{request_id}-BROWSER.md"
     memo_path = instance.root / memo_ref
     memo_path.parent.mkdir(parents=True, exist_ok=True)
@@ -3766,6 +3790,7 @@ def _cmd_browser_investigate_topic(
             user_opinion=user_opinion,
             evidence_package=evidence_package,
             competitive_matrix=matrix,
+            evidence_sufficiency=sufficiency,
         ),
         encoding="utf-8",
     )
@@ -3786,7 +3811,9 @@ def _cmd_browser_investigate_topic(
         resolved_allowed_domains=resolved_allowed_domains,
         orchestrator_domain_decision_ref=orchestrator_domain_decision_ref,
         evidence_package_ref=evidence_ref,
+        source_candidates_ref=source_candidates_ref,
         competitive_matrix_ref=matrix_ref,
+        evidence_sufficiency_ref=sufficiency_ref,
         memo_ref=memo_ref,
         external_call_made=any(kind == "playwright_live" for kind in transport_kinds),
         followed_source_urls=followed_source_urls,
@@ -3881,7 +3908,9 @@ def _browser_investigation_report(
     memo_ref: str | None,
     external_call_made: bool,
     followed_source_urls: list[str] | None = None,
+    source_candidates_ref: str | None = None,
     competitive_matrix_ref: str | None = None,
+    evidence_sufficiency_ref: str | None = None,
 ) -> dict[str, object]:
     return {
         "schema_id": "hisys.browser_investigation.report",
@@ -3902,7 +3931,9 @@ def _browser_investigation_report(
         "resolved_allowed_domains": resolved_allowed_domains,
         "orchestrator_domain_decision_ref": orchestrator_domain_decision_ref,
         "evidence_package_ref": evidence_package_ref,
+        "source_candidates_ref": source_candidates_ref,
         "competitive_matrix_ref": competitive_matrix_ref,
+        "evidence_sufficiency_ref": evidence_sufficiency_ref,
         "memo_ref": memo_ref,
         "external_call_made": external_call_made,
         "mutation_performed": False,
@@ -3976,6 +4007,164 @@ def _select_browser_follow_links(
         if len(selected) >= max_links:
             break
     return selected
+
+
+def _build_browser_source_candidates(
+    *,
+    request_id: str,
+    topic: str,
+    source_urls: list[str],
+    followed_source_urls: list[str],
+    evidence_package: EvidencePackage,
+    competitive_matrix: dict[str, object],
+) -> dict[str, object]:
+    matrix_by_url = {
+        str(row.get("url")): row
+        for row in competitive_matrix.get("rows", [])
+        if isinstance(row, dict) and row.get("url")
+    }
+    candidates: list[dict[str, object]] = []
+    for item in evidence_package.evidence:
+        url = item.url or ""
+        signals = matrix_by_url.get(url, {})
+        source_type = _classify_browser_source_type(url=url, title=item.title, text=item.quoted_text or "")
+        usefulness_score = _score_browser_source_usefulness(source_type=source_type, signals=signals, text=item.quoted_text or "")
+        candidates.append(
+            {
+                "url": url,
+                "title": item.title,
+                "domain": urlparse(url).netloc,
+                "source_type": source_type,
+                "usefulness_score": usefulness_score,
+                "usefulness_reason": _browser_source_usefulness_reason(source_type=source_type, signals=signals),
+                "evidence_role": _browser_source_evidence_role(source_type),
+                "evidence_refs": [item.evidence_id],
+                "selected_for_browser_read": url in source_urls,
+                "discovered_by_follow_link": url in followed_source_urls,
+            }
+        )
+    return {
+        "schema_id": "hisys.browser_investigation.source_candidates",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "topic": topic,
+        "risk_classification": "evidence_quality_source_discovery_not_cybersecurity",
+        "candidate_count": len(candidates),
+        "candidates": candidates,
+        "next_source_classes_to_add": [
+            "public datasheets/specification PDFs",
+            "patent records",
+            "filings or annual reports where applicable",
+            "independent technical papers or standards references",
+            "credible distributor/specification pages for corroboration",
+        ],
+        "notes": [
+            "Populating useful public URLs is an evidence-quality/source-discovery task, not a cybersecurity risk by itself.",
+            "Browser reads remain governed and read-only; final review should wait until source coverage is sufficient for the decision purpose.",
+        ],
+    }
+
+
+def _classify_browser_source_type(*, url: str, title: str, text: str) -> str:
+    location = f"{url} {title}".lower()
+    haystack = f"{location} {text}".lower()
+    if "patent" in location:
+        return "patent"
+    if any(term in location for term in ["annual report", "10-k", "investor relations", "sec filing"]):
+        return "filing_or_annual_report"
+    if any(term in location for term in ["doi", "journal", "conference", "abstract", "paper"]):
+        return "technical_paper"
+    if any(term in location for term in ["datasheet", "data sheet", "specification", ".pdf"]):
+        return "datasheet_or_specification"
+    if any(term in location for term in ["distributor", "shop", "store"]):
+        return "distributor_or_shop_page"
+    if any(term in haystack for term in ["product", "technology", "solution", "tube", "ct", "x-ray", "xray"]):
+        return "official_company_or_product_page"
+    return "public_web_page"
+
+
+def _score_browser_source_usefulness(*, source_type: str, signals: dict[str, object], text: str) -> str:
+    if source_type in {"patent", "filing_or_annual_report", "technical_paper", "datasheet_or_specification"}:
+        return "high"
+    if signals.get("technology_signals") or any(term in text.lower() for term in ["technology", "tube", "ct", "x-ray", "xray"]):
+        return "high"
+    if source_type == "official_company_or_product_page":
+        return "medium"
+    return "low"
+
+
+def _browser_source_usefulness_reason(*, source_type: str, signals: dict[str, object]) -> str:
+    signal_text = str(signals.get("technology_signals", ""))
+    if signal_text:
+        return f"Contains technology detail signals: {signal_text}."
+    if source_type in {"patent", "technical_paper", "datasheet_or_specification"}:
+        return f"Provides corroborating {source_type.replace('_', ' ')} evidence for technical comparison."
+    if source_type == "filing_or_annual_report":
+        return "Provides commercial or market corroboration for company-level assessment."
+    return "Useful as a public source candidate, but needs corroborating technical evidence."
+
+
+def _browser_source_evidence_role(source_type: str) -> str:
+    roles = {
+        "official_company_or_product_page": "primary vendor technology claim",
+        "datasheet_or_specification": "technical specification corroboration",
+        "patent": "innovation/IP corroboration",
+        "technical_paper": "independent technical corroboration",
+        "filing_or_annual_report": "commercial/market corroboration",
+        "distributor_or_shop_page": "third-party product/specification corroboration",
+    }
+    return roles.get(source_type, "supporting public web evidence")
+
+
+def _build_browser_evidence_sufficiency_assessment(
+    *,
+    request_id: str,
+    topic: str,
+    source_urls: list[str],
+    followed_source_urls: list[str],
+    evidence_package: EvidencePackage,
+    competitive_matrix: dict[str, object],
+) -> dict[str, object]:
+    all_domains = sorted({urlparse(item.url or "").netloc for item in evidence_package.evidence if item.url})
+    source_types = [
+        _classify_browser_source_type(url=item.url or "", title=item.title, text=item.quoted_text or "")
+        for item in evidence_package.evidence
+    ]
+    matrix_rows = [row for row in competitive_matrix.get("rows", []) if isinstance(row, dict)]
+    blockers: list[str] = []
+    if len(all_domains) < 3:
+        blockers.append("Need at least three distinct source/company domains before fair comparative review.")
+    if len(matrix_rows) < 3:
+        blockers.append("Need at least three comparable technology-signal rows before fair comparative review.")
+    if not any(source_type in {"patent", "technical_paper", "datasheet_or_specification", "filing_or_annual_report", "distributor_or_shop_page"} for source_type in source_types):
+        blockers.append("Need independent corroboration beyond company/product pages, such as datasheets, patents, filings, papers, or distributor/spec pages.")
+    if len(followed_source_urls) < max(1, min(len(source_urls), 3)):
+        blockers.append("Need more second-level detail URLs to reduce shallow-page bias.")
+    ready = not blockers
+    return {
+        "schema_id": "hisys.browser_investigation.evidence_sufficiency",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "topic": topic,
+        "review_readiness": "ready_for_fair_chief_editor_and_devil_review" if ready else "insufficient_for_fair_chief_editor_and_devil_review",
+        "chief_editor_decision_allowed": ready,
+        "devil_review_allowed": ready,
+        "risk_classification": "evidence_quality_decision_fairness_not_cybersecurity",
+        "observed_counts": {
+            "source_url_count": len(source_urls),
+            "followed_source_url_count": len(followed_source_urls),
+            "distinct_domain_count": len(all_domains),
+            "matrix_row_count": len(matrix_rows),
+        },
+        "source_types_seen": sorted(set(source_types)),
+        "blockers": blockers,
+        "missing_evidence_plan": [
+            "Collect independent corroborating sources: public datasheets/specification PDFs, patents, filings, papers, or credible distributor/spec pages.",
+            "Populate and score a broader URL candidate list before asking Chief Editor or Devil/DARS to decide.",
+            "Follow product/detail links for each major vendor and record why each URL is useful.",
+            "Only run final review after evidence covers technical specifications, IP/innovation, and commercial/market signals for the decision purpose.",
+        ] if blockers else [],
+    }
 
 
 def _build_browser_competitive_matrix(
@@ -4053,6 +4242,7 @@ def _render_browser_investigation_memo(
     user_opinion: str,
     evidence_package: EvidencePackage,
     competitive_matrix: dict[str, object] | None = None,
+    evidence_sufficiency: dict[str, object] | None = None,
 ) -> str:
     rows = ["| Title | URL | Evidence excerpt |", "|---|---|---|"]
     for item in evidence_package.evidence:
@@ -4076,6 +4266,20 @@ def _render_browser_investigation_memo(
             )
             + " |"
         )
+    sufficiency_lines: list[str] = []
+    if evidence_sufficiency:
+        sufficiency_lines = [
+            "## Evidence Sufficiency for Review",
+            "",
+            f"- review_readiness: `{evidence_sufficiency.get('review_readiness')}`",
+            f"- risk_classification: `{evidence_sufficiency.get('risk_classification')}`",
+            f"- chief_editor_decision_allowed: `{evidence_sufficiency.get('chief_editor_decision_allowed')}`",
+            f"- devil_review_allowed: `{evidence_sufficiency.get('devil_review_allowed')}`",
+            "",
+        ]
+        blockers = evidence_sufficiency.get("blockers", [])
+        if blockers:
+            sufficiency_lines.extend(["Blockers:", "", *[f"- {item}" for item in blockers], ""])
     return "\n".join(
         [
             "# Browser Investigation Memo",
@@ -4098,6 +4302,7 @@ def _render_browser_investigation_memo(
             "",
             *matrix_rows,
             "",
+            *sufficiency_lines,
             "## Limitations",
             "",
             *[f"- {item}" for item in evidence_package.limitations],

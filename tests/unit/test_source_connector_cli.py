@@ -627,6 +627,134 @@ def test_browser_investigate_topic_follows_detail_links_and_writes_competitive_m
     assert "liquid metal bearing" in memo
 
 
+def test_browser_investigate_topic_populates_useful_url_candidates_not_cybersecurity_risk(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
+
+    from hisys.connectors import playwright_browser
+
+    class FakePlaywrightSyncTransport:
+        def fetch(self, url: str):
+            if url.endswith("/company"):
+                return (
+                    200,
+                    "Acme X-ray Overview",
+                    "Acme makes x-ray tube systems for CT and industrial inspection.",
+                    [("Technology details", "https://company.local.fixture/detail")],
+                )
+            return (
+                200,
+                "Acme Liquid Metal Bearing Detail",
+                "Acme CoolGlide liquid metal bearing CT x-ray tube technology improves lifetime and heat handling.",
+                [],
+            )
+
+    monkeypatch.setattr(playwright_browser, "PlaywrightSyncTransport", FakePlaywrightSyncTransport)
+    config_path = tmp_path / "source-connectors-orchestrator-domains.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: false\n    mode: read_only\n    external_call_allowed: false\n    requires_human_approval: true",
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: true\n    mode: read_only\n    external_call_allowed: true\n    domain_decision_policy: orchestrator_decided\n    requires_human_approval: true",
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "browser-investigate-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-BROWSER-SOURCES-001",
+            "--topic",
+            "populate useful URLs for competitive x-ray tube technology investigation",
+            "--approval-ref",
+            "APPROVAL-BROWSER-SOURCES-001",
+            "--orchestrator-decide-domains",
+            "--follow-links",
+            "--max-follow-links-per-source",
+            "1",
+            "--source-url",
+            "https://company.local.fixture/company",
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260510" / "browser-investigation-report.json").read_text(encoding="utf-8"))
+    assert report["source_candidates_ref"] == "data/source-candidates/20260510/SRC-CANDIDATES-HISYS-REQ-BROWSER-SOURCES-001-BROWSER.json"
+    candidates = json.loads((tmp_path / report["source_candidates_ref"]).read_text(encoding="utf-8"))
+    assert candidates["risk_classification"] == "evidence_quality_source_discovery_not_cybersecurity"
+    assert candidates["candidate_count"] == 2
+    assert candidates["candidates"][1]["url"] == "https://company.local.fixture/detail"
+    assert candidates["candidates"][1]["usefulness_score"] == "high"
+    assert "technology detail" in candidates["candidates"][1]["usefulness_reason"].lower()
+
+
+def test_browser_investigate_topic_writes_insufficient_evidence_gate_for_unfair_review(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
+
+    from hisys.connectors import playwright_browser
+
+    class FakePlaywrightSyncTransport:
+        def fetch(self, url: str):
+            return (
+                200,
+                "Single Vendor X-ray Tube Page",
+                "Single vendor page claims competitive x-ray tube technology for CT with no independent corroboration or comparable specifications.",
+                [],
+            )
+
+    monkeypatch.setattr(playwright_browser, "PlaywrightSyncTransport", FakePlaywrightSyncTransport)
+    config_path = tmp_path / "source-connectors-orchestrator-domains.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: false\n    mode: read_only\n    external_call_allowed: false\n    requires_human_approval: true",
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: true\n    mode: read_only\n    external_call_allowed: true\n    domain_decision_policy: orchestrator_decided\n    requires_human_approval: true",
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "browser-investigate-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-BROWSER-SUFFICIENCY-001",
+            "--topic",
+            "find competitive x-ray tube technology companies",
+            "--approval-ref",
+            "APPROVAL-BROWSER-SUFFICIENCY-001",
+            "--orchestrator-decide-domains",
+            "--source-url",
+            "https://single-vendor.local.fixture/company",
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260510" / "browser-investigation-report.json").read_text(encoding="utf-8"))
+    assert report["evidence_sufficiency_ref"] == "data/evidence-sufficiency/20260510/SUFF-HISYS-REQ-BROWSER-SUFFICIENCY-001-BROWSER.json"
+    sufficiency = json.loads((tmp_path / report["evidence_sufficiency_ref"]).read_text(encoding="utf-8"))
+    assert sufficiency["review_readiness"] == "insufficient_for_fair_chief_editor_and_devil_review"
+    assert sufficiency["chief_editor_decision_allowed"] is False
+    assert sufficiency["devil_review_allowed"] is False
+    assert "independent corroboration" in "\n".join(sufficiency["blockers"])
+    assert "Collect independent corroborating sources" in "\n".join(sufficiency["missing_evidence_plan"])
+
+
 def test_browser_investigate_topic_without_fixture_uses_playwright_live_transport(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
 

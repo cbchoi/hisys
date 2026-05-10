@@ -214,8 +214,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `--follow-links --max-follow-links-per-source <N>` to let Hisys follow bounded
   same-domain, keyword-relevant product/technology detail links from each source
   page; each followed URL is rechecked by the dispatch gate and the run writes a
-  heuristic competitive matrix under `data/competitive-matrices/<date>/` plus a
-  memo section for operator review.
+  source-candidate list under `data/source-candidates/<date>/`, a heuristic
+  competitive matrix under `data/competitive-matrices/<date>/`, and an evidence
+  sufficiency assessment under `data/evidence-sufficiency/<date>/`. Source
+  candidate population is classified as evidence-quality/source discovery, not a
+  cybersecurity risk; Chief Editor / Devil review should remain blocked until the
+  sufficiency artifact says the evidence is fair enough for review.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector
