@@ -79,6 +79,16 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   default agents from this config, records `agent_plan_source`,
   `disabled_optional_agent_refs`, and `blocked_agent_refs` in the run report,
   and still rejects disabled explicit external connectors before execution.
+- Increment **HISYS-T-033 Orchestrator-to-Investigator harness source plan** -
+  `hisys investigate-memo --orchestrator-harness <json>` lets the orchestrator
+  pass a governed harness containing planned `source_ids`, optional `agent_types`,
+  `user_opinion`, and rationale. The Investigator accepts harness-selected
+  registry sources without requiring duplicate CLI `--source` flags, records
+  `agent_plan_source=orchestrator_harness`, `harness_source_refs`,
+  `orchestrator_harness_ref`, and `user_opinion` in the run report, and writes
+  Orchestrator Harness/User Opinion sections in the memo. This loosens restricted
+  autonomy by moving source selection to the orchestrator harness while preserving
+  registry validation and disabled-connector blocking before execution.
 - Increment **Hisys MVP A1 domain-general schema boundary** -
   `hisys.schemas.domain_investigation` defines the local/Hermes-facing
   `DomainInvestigationRequest`, read-only source refs, safety constraints,

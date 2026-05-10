@@ -96,6 +96,9 @@ class InvestigationMemoReport:
     agent_plan_source: str = "legacy"
     disabled_optional_agent_refs: list[str] | None = None
     blocked_agent_refs: list[str] | None = None
+    orchestrator_harness_ref: str | None = None
+    harness_source_refs: list[str] | None = None
+    user_opinion: str | None = None
 
 
 @dataclass(frozen=True)
@@ -111,6 +114,43 @@ class GuidelineProfile:
     required_sections: list[str]
     decision_frame: str
     safety_note: str | None = None
+
+
+def _load_orchestrator_harness(path: Path) -> dict[str, object]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("orchestrator harness must be a JSON object")
+    if data.get("schema_id") not in {None, "hisys.investigator.orchestrator_harness"}:
+        raise ValueError("orchestrator harness schema_id is not supported")
+    return data
+
+
+def _string_list_from_harness(data: dict[str, object], key: str) -> list[str]:
+    value = data.get(key, [])
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+        raise ValueError(f"orchestrator harness {key} must be a list of non-empty strings")
+    return [item.strip() for item in value]
+
+
+def _optional_string_from_harness(data: dict[str, object], key: str) -> str | None:
+    value = data.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"orchestrator harness {key} must be a string when present")
+    return value.strip() or None
+
+
+def _ordered_unique(values: Iterable[str]) -> list[str]:
+    seen: set[str] = set()
+    unique: list[str] = []
+    for value in values:
+        if value not in seen:
+            unique.append(value)
+            seen.add(value)
+    return unique
 
 
 def _record_json(record: object) -> str:
@@ -159,8 +199,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--source",
         dest="sources",
         action="append",
-        required=True,
-        help="source_id to investigate; repeat for multiple sources",
+        required=False,
+        default=[],
+        help="source_id to investigate; repeat for multiple sources; optional when --orchestrator-harness supplies source_ids",
     )
     investigate_memo.add_argument("--date", required=True, help="YYYYMMDD output partition")
     investigate_memo.add_argument("--topic", required=True, help="research topic for the memo template")
@@ -184,6 +225,10 @@ def _build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         help="research agent type to dispatch; repeat for multiple agents (fixture, fixture_contradiction)",
+    )
+    investigate_memo.add_argument(
+        "--orchestrator-harness",
+        help="optional governed orchestrator-authored JSON harness with source_ids, agent_types, user_opinion, and rationale for Investigator",
     )
 
     investigate_domain = sub.add_parser(
@@ -791,6 +836,7 @@ def main(argv: list[str] | None = None) -> int:
             collector_id=args.collector_id,
             purpose=args.purpose,
             agent_types=args.agents,
+            orchestrator_harness_path=Path(args.orchestrator_harness) if args.orchestrator_harness else None,
         )
     if args.command == "investigate-domain":
         return _cmd_investigate_domain(
@@ -4607,6 +4653,7 @@ def _cmd_investigate_memo(
     collector_id: str,
     purpose: str = "auto",
     agent_types: list[str] | None = None,
+    orchestrator_harness_path: Path | None = None,
 ) -> int:
     """Run a template-driven Investigator research-to-memo path.
 
@@ -4615,6 +4662,27 @@ def _cmd_investigate_memo(
     """
 
     registry = load_source_registry(InstanceRoot(config_root))
+    harness_data: dict[str, object] | None = None
+    harness_source_ids: list[str] = []
+    harness_agent_types: list[str] = []
+    user_opinion: str | None = None
+    if orchestrator_harness_path is not None:
+        try:
+            harness_data = _load_orchestrator_harness(orchestrator_harness_path)
+            harness_source_ids = _string_list_from_harness(harness_data, "source_ids")
+            harness_agent_types = _string_list_from_harness(harness_data, "agent_types")
+            user_opinion = _optional_string_from_harness(harness_data, "user_opinion")
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            print(f"orchestrator harness invalid: {exc}", file=sys.stderr)
+            return 1
+    source_ids = _ordered_unique([*harness_source_ids, *source_ids])
+    if not source_ids:
+        print("no sources supplied; use --source or --orchestrator-harness source_ids", file=sys.stderr)
+        return 1
+    missing_sources = [source_id for source_id in source_ids if source_id not in registry.entries]
+    if missing_sources:
+        print(f"orchestrator/requested sources not in registry: {', '.join(missing_sources)}", file=sys.stderr)
+        return 1
     instance = InstanceRoot(output_root)
     collect_runtime = InvestigatorRuntime(
         registry=registry,
@@ -4638,11 +4706,13 @@ def _cmd_investigate_memo(
     for signal in signals:
         _write_investigation_signal(instance, signal, yyyymmdd)
     agent_config = load_investigator_agent_config(config_root / "config" / "investigator-agents.yaml")
+    effective_agent_types = agent_types or harness_agent_types or None
+    agent_plan_source_override = "orchestrator_harness" if orchestrator_harness_path is not None and not agent_types else None
     try:
         agent_plan = select_configured_agent_plan(
             agent_config,
             guideline_profile_id=guideline.profile_id,
-            explicit_agent_types=agent_types,
+            explicit_agent_types=effective_agent_types,
         )
     except AgentConnectorSafetyError as exc:
         print(f"investigator agent connector blocked: {exc}", file=sys.stderr)
@@ -4671,6 +4741,8 @@ def _cmd_investigate_memo(
         producer_id=collector_id,
         guideline=guideline,
         merged_evidence=merged_evidence,
+        harness_source_refs=harness_source_ids,
+        user_opinion=user_opinion,
     )
     memo_paths = _write_investigation_memo(instance, memo, yyyymmdd)
     report = InvestigationMemoReport(
@@ -4700,9 +4772,12 @@ def _cmd_investigate_memo(
         limitations=merged_evidence.limitations if merged_evidence else [],
         open_questions=merged_evidence.open_questions if merged_evidence else [],
         guideline_profile_id=guideline.profile_id,
-        agent_plan_source=agent_plan.source,
+        agent_plan_source=agent_plan_source_override or agent_plan.source,
         disabled_optional_agent_refs=agent_plan.disabled_optional_agents,
         blocked_agent_refs=agent_plan.blocked_agents,
+        orchestrator_harness_ref=str(orchestrator_harness_path) if orchestrator_harness_path else None,
+        harness_source_refs=harness_source_ids or None,
+        user_opinion=user_opinion,
     )
     report_path = _write_investigation_report(instance, report, yyyymmdd)
     print(f"investigation memo run: report={report_path}")
@@ -4751,6 +4826,8 @@ def _investigation_memo(
     producer_id: str,
     guideline: GuidelineProfile,
     merged_evidence: object | None = None,
+    harness_source_refs: list[str] | None = None,
+    user_opinion: str | None = None,
 ) -> ZettelMemo:
     source_refs = sorted({obs.source_id for obs in observations})
     signal_refs = [signal.signal_id for signal in signals]
@@ -4764,6 +4841,8 @@ def _investigation_memo(
         signals=signals,
         guideline=guideline,
         merged_evidence=merged_evidence,
+        harness_source_refs=harness_source_refs,
+        user_opinion=user_opinion,
     )
     return ZettelMemo(
         memo_id=make_id(IdNamespace.MEMO),
@@ -4874,6 +4953,8 @@ def _format_investigation_memo_body(
     signals: list[ExtractedSignal],
     guideline: GuidelineProfile,
     merged_evidence: object | None = None,
+    harness_source_refs: list[str] | None = None,
+    user_opinion: str | None = None,
 ) -> str:
     query_set = [
         f"{topic} operations evidence",
@@ -4894,6 +4975,8 @@ def _format_investigation_memo_body(
         for signal in signals
     ]
     agent_evidence = []
+    harness_lines = [f"- `{source_ref}`" for source_ref in (harness_source_refs or [])]
+    user_opinion_lines = [f"- {user_opinion}"] if user_opinion else ["- none supplied"]
     guideline_lines = _format_guideline_profile(guideline)
     agent_limitations = []
     agent_open_questions = []
@@ -4919,6 +5002,12 @@ def _format_investigation_memo_body(
             f"- Topic: {topic}",
             f"- Goal: {goal}",
             "- Scope: runtime-local fixture investigation; live web/network research is disabled until harness rules approve it.",
+            "",
+            "## Orchestrator Harness",
+            *(harness_lines or ["- no orchestrator harness supplied; CLI/default source selection used"]),
+            "",
+            "## User Opinion",
+            *user_opinion_lines,
             "",
             "## Query Set",
             *[f"- {query}" for query in query_set],

@@ -311,6 +311,107 @@ def test_investigate_memo_preserves_explicit_agent_override_for_general_topic(tm
     assert report["disabled_optional_agent_refs"] == []
 
 
+def test_investigate_memo_accepts_orchestrator_harness_source_plan_and_user_opinion(tmp_path: Path):
+    harness = tmp_path / "orchestrator-harness.json"
+    harness.write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.investigator.orchestrator_harness",
+                "schema_version": "0.1.0",
+                "harness_id": "ORCH-HARNESS-001",
+                "source_ids": ["SRC-WEB-RSS-001", "SRC-HERMES-TOOL-001"],
+                "agent_types": ["fixture", "fixture_contradiction"],
+                "user_opinion": "I suspect the Hermes tool evidence is more relevant than the RSS fixture.",
+                "rationale": "Select richer fixture sources for investigator assessment.",
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "investigate-memo",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--date",
+            "20260508",
+            "--topic",
+            "autonomous investigator source planning",
+            "--goal",
+            "Assess whether orchestrator-selected sources and user opinion guide investigation.",
+            "--perspective",
+            "PERSP-OPS-001",
+            "--orchestrator-harness",
+            str(harness),
+        ]
+    )
+
+    assert result == 0
+    report_path = tmp_path / "instance" / "reports" / "run-summaries" / "20260508" / "investigation-memo-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["agent_plan_source"] == "orchestrator_harness"
+    assert report["orchestrator_harness_ref"] == str(harness)
+    assert report["harness_source_refs"] == ["SRC-WEB-RSS-001", "SRC-HERMES-TOOL-001"]
+    assert report["source_refs"] == ["SRC-HERMES-TOOL-001", "SRC-WEB-RSS-001"]
+    assert report["agent_ids"] == ["fixture-research-agent", "fixture-contradiction-agent"]
+    assert report["user_opinion"] == "I suspect the Hermes tool evidence is more relevant than the RSS fixture."
+    memo_text = next((tmp_path / "instance" / "data" / "investigation-memos" / "20260508").glob("*.md")).read_text(encoding="utf-8")
+    assert "## Orchestrator Harness" in memo_text
+    assert "SRC-HERMES-TOOL-001" in memo_text
+    assert "## User Opinion" in memo_text
+    assert "more relevant than the RSS fixture" in memo_text
+
+
+def test_investigate_memo_blocks_disabled_harness_external_connector(tmp_path: Path, capsys):
+    harness = tmp_path / "unsafe-orchestrator-harness.json"
+    harness.write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.investigator.orchestrator_harness",
+                "schema_version": "0.1.0",
+                "harness_id": "ORCH-HARNESS-UNSAFE-001",
+                "source_ids": ["SRC-HW-MOCK-001"],
+                "agent_types": ["publisher_web_search"],
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "investigate-memo",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--config-from",
+            str(EXAMPLE_INSTANCE),
+            "--date",
+            "20260508",
+            "--topic",
+            "formalism gap",
+            "--goal",
+            "Find research gaps.",
+            "--perspective",
+            "PERSP-OPS-001",
+            "--orchestrator-harness",
+            str(harness),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "investigator agent connector blocked" in captured.err
+    assert "publisher_web_search" in captured.err
+    assert not (tmp_path / "instance" / "data" / "evidence-packages" / "20260508").exists()
+
+
 def test_investigate_memo_blocks_disabled_explicit_external_connector(tmp_path: Path, capsys):
     result = main(
         [
