@@ -572,11 +572,17 @@ current implementation adds plan builders for this lifecycle:
   fixture executor that write runtime-boundary JSON/Markdown evidence. The overall
   `vault-obsidian-milestone-status` report now includes `Obsidian-Git-Management`
   as a completed milestone.
+- `execute_obsidian_git_sync_live` and `vault-git-live-sync`: live sync execution
+  for an already Git-managed vault. The command requires a matching `approval_ref`,
+  explicit live Git enablement, clean/scoped Git status confirmation, and the
+  real-vault opt-in flag for `/home/cbchoi/obsidian`; it stages only approved
+  memo/runtime-boundary refs, commits, pushes to the configured remote, and records
+  runtime-boundary evidence including `network_push_performed`.
 
-Live execution remains out of scope until fixture Git execution, approval gates,
-and runtime-boundary evidence are accepted. A live executor must reuse the same
-plan structure and add credential resolution from an external secret store without
-persisting raw credentials.
+Live execution now remains constrained to approved Git sync plans; credential
+refs are still not resolved or persisted by Hisys, and raw credentials remain
+rejected. Future initialization live execution must reuse the same approval, status,
+and runtime-boundary evidence pattern.
 
 ## Non-goals
 

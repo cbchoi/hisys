@@ -12,6 +12,7 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 _SCHEMA_VERSION = "0.1.0"
 _SAFE_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$")
@@ -805,6 +806,84 @@ def write_obsidian_git_fixture_execution_report(*, instance_root: Path, yyyymmdd
     return report_path
 
 
+def execute_obsidian_git_sync_live(
+    *,
+    plan: dict[str, Any],
+    vault_root: Path,
+    approval_ref: str | None,
+    explicit_live_git_enable: bool,
+    allow_real_obsidian_vault: bool,
+    clean_git_status: bool,
+) -> dict[str, Any]:
+    """Execute an approved Obsidian Git sync plan against the target vault and remote."""
+
+    report = _base_obsidian_git_live_execution_report(
+        plan=plan,
+        operation="sync",
+        vault_root=vault_root,
+        approval_ref=approval_ref,
+        explicit_live_git_enable=explicit_live_git_enable,
+        allow_real_obsidian_vault=allow_real_obsidian_vault,
+        clean_git_status=clean_git_status,
+    )
+    blocked = _obsidian_git_live_sync_blocker(
+        plan=plan,
+        vault_root=vault_root,
+        approval_ref=approval_ref,
+        explicit_live_git_enable=explicit_live_git_enable,
+        allow_real_obsidian_vault=allow_real_obsidian_vault,
+        clean_git_status=clean_git_status,
+    )
+    if blocked:
+        return {**report, "status": "blocked", "reason_code": blocked}
+
+    push_op = _push_operation(plan)
+    refs = [str(ref) for ref in [*plan.get("memo_refs", []), *plan.get("runtime_boundary_refs", [])]]
+    _validate_refs(refs)
+    missing_refs = [ref for ref in refs if not (vault_root / ref).exists()]
+    if missing_refs:
+        return {**report, "status": "blocked", "reason_code": "approved_ref_missing_from_vault", "missing_refs": missing_refs}
+
+    status_before = _run_git(["status", "--short"], cwd=vault_root).stdout.splitlines()
+    _run_git(["add", *refs], cwd=vault_root)
+    commit_created = _commit_if_needed(fixture_vault_root=vault_root, message=str(plan.get("commit_message") or "chore(obsidian): sync approved vault refs"))
+    branch = str(plan.get("branch") or push_op.get("branch") or "main")
+    remote_name = str(plan.get("remote_name") or push_op.get("remote_name") or "origin")
+    remote_url = _run_git(["remote", "get-url", remote_name], cwd=vault_root).stdout.strip()
+    _run_git(["push", remote_name, branch], cwd=vault_root)
+    pushed_commit = _run_git(["rev-parse", "HEAD"], cwd=vault_root).stdout.strip()
+    status_after = _run_git(["status", "--short"], cwd=vault_root).stdout.splitlines()
+    network_push_performed = not _is_local_git_remote_url(remote_url)
+    return {
+        **report,
+        "status": "applied",
+        "reason_code": None,
+        "branch": branch,
+        "remote_name": remote_name,
+        "remote_url_redacted": _redact_git_remote_url(remote_url),
+        "approved_refs": refs,
+        "commit_created": commit_created,
+        "pushed_commit": pushed_commit,
+        "git_status_before": status_before,
+        "git_status_after": status_after,
+        "operation_count": int(plan.get("planned_operation_count", 0)),
+        "target_vault_git_mutation_performed": True,
+        "real_obsidian_vault_write_performed": _is_real_obsidian_vault(vault_root),
+        "network_push_performed": network_push_performed,
+        "external_call_made": network_push_performed,
+        "mutation_performed": True,
+    }
+
+
+def write_obsidian_git_live_execution_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"obsidian-git-live-execution-{report['operation']}-{report['request_id']}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"obsidian-git-live-execution-{report['operation']}-{report['request_id']}.md").write_text(_format_obsidian_git_live_execution_report(report), encoding="utf-8")
+    return report_path
+
+
 def _base_obsidian_git_fixture_execution_report(
     *,
     plan: dict[str, Any],
@@ -829,6 +908,73 @@ def _base_obsidian_git_fixture_execution_report(
         "external_call_made": False,
         "mutation_performed": False,
     }
+
+
+def _base_obsidian_git_live_execution_report(
+    *,
+    plan: dict[str, Any],
+    operation: str,
+    vault_root: Path,
+    approval_ref: str | None,
+    explicit_live_git_enable: bool,
+    allow_real_obsidian_vault: bool,
+    clean_git_status: bool,
+) -> dict[str, Any]:
+    return {
+        "schema_id": "hisys.obsidian.git_live_execution_report",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": str(plan.get("request_id", "unknown")),
+        "operation": operation,
+        "vault_root": str(vault_root),
+        "credential_ref": plan.get("credential_ref"),
+        "credential_ref_resolved": False,
+        "approval_ref": approval_ref,
+        "explicit_live_git_enable": explicit_live_git_enable,
+        "allow_real_obsidian_vault": allow_real_obsidian_vault,
+        "clean_git_status": clean_git_status,
+        "target_vault_git_mutation_performed": False,
+        "real_obsidian_vault_write_performed": False,
+        "network_push_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def _obsidian_git_live_sync_blocker(
+    *,
+    plan: dict[str, Any],
+    vault_root: Path,
+    approval_ref: str | None,
+    explicit_live_git_enable: bool,
+    allow_real_obsidian_vault: bool,
+    clean_git_status: bool,
+) -> str | None:
+    if plan.get("schema_id") != "hisys.obsidian.git_sync_plan" or plan.get("status") != "planned_after_vault_write":
+        return "sync_plan_required"
+    if plan.get("status") == "blocked":
+        return str(plan.get("reason_code") or "plan_blocked")
+    push_op = _push_operation(plan)
+    if not approval_ref or approval_ref != push_op.get("approval_ref"):
+        return "approval_ref_mismatch"
+    if not explicit_live_git_enable:
+        return "live_git_not_enabled"
+    if _is_real_obsidian_vault(vault_root) and not allow_real_obsidian_vault:
+        return "real_obsidian_vault_requires_explicit_flag"
+    if not (vault_root / ".git").exists():
+        return "git_repo_required"
+    if not clean_git_status:
+        return "clean_git_status_confirmation_required"
+    refs = [str(ref) for ref in [*plan.get("memo_refs", []), *plan.get("runtime_boundary_refs", [])]]
+    if not refs:
+        return "refs_required"
+    try:
+        _validate_refs(refs)
+    except ValueError:
+        return "unsafe_vault_ref"
+    remote_name = str(plan.get("remote_name") or push_op.get("remote_name") or "origin")
+    if _run_git(["remote", "get-url", remote_name], cwd=vault_root, check=False).returncode != 0:
+        return "git_remote_required"
+    return None
 
 
 def _obsidian_git_fixture_execution_blocker(*, plan: dict[str, Any], fixture_vault_root: Path, fixture_remote_root: Path, fixture_git_only: bool) -> str | None:
@@ -909,6 +1055,44 @@ def _format_obsidian_git_fixture_execution_report(report: dict[str, Any]) -> str
             "",
         ]
     )
+
+
+def _format_obsidian_git_live_execution_report(report: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Obsidian Git Live Execution Report",
+            "",
+            f"- Request: `{report['request_id']}`",
+            f"- Operation: `{report['operation']}`",
+            f"- Status: {report['status']}",
+            f"- Reason: {report.get('reason_code')}",
+            f"- target_vault_git_mutation_performed: {str(report['target_vault_git_mutation_performed']).lower()}",
+            f"- real_obsidian_vault_write_performed: {str(report['real_obsidian_vault_write_performed']).lower()}",
+            f"- network_push_performed: {str(report['network_push_performed']).lower()}",
+            f"- external_call_made: {str(report['external_call_made']).lower()}",
+            f"- pushed_commit: {report.get('pushed_commit')}",
+            "",
+        ]
+    )
+
+
+def _is_local_git_remote_url(remote_url: str) -> bool:
+    parsed = urlparse(remote_url)
+    if parsed.scheme in {"file", ""} and not re.match(r"^[A-Za-z0-9_.-]+@", remote_url):
+        return True
+    return False
+
+
+def _redact_git_remote_url(remote_url: str) -> str:
+    if re.search(r"(?:ghp|github_pat|sk|xox[baprs]|hf)_[A-Za-z0-9_-]+", remote_url):
+        return "[REDACTED]"
+    if "@" in remote_url and "://" in remote_url:
+        parsed = urlparse(remote_url)
+        if parsed.username or parsed.password:
+            host = parsed.hostname or "remote"
+            path = parsed.path or ""
+            return f"{parsed.scheme}://[REDACTED]@{host}{path}"
+    return remote_url
 
 
 def _git_credential_issue(credential_ref: str) -> str | None:
@@ -2190,6 +2374,7 @@ __all__ = [
     "build_obsidian_milestone_status_report",
     "execute_obsidian_git_initialization_in_fixture",
     "execute_obsidian_git_sync_in_fixture",
+    "execute_obsidian_git_sync_live",
     "build_topic_gatekeeper_approval_package",
     "build_topic_gatekeeper_decision",
     "build_topic_gatekeeper_status_report",
@@ -2212,6 +2397,7 @@ __all__ = [
     "write_live_vault_write_gate_report",
     "write_obsidian_evidence_promotion_plan",
     "write_obsidian_git_fixture_execution_report",
+    "write_obsidian_git_live_execution_report",
     "write_obsidian_milestone_status_report",
     "write_topic_gatekeeper_decision",
     "write_vault_plan_artifacts",

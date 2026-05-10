@@ -408,6 +408,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   CLI and mark Obsidian Git Management complete in the overall Obsidian milestone
   report while preserving `real_obsidian_vault_write_performed=false` and
   `external_call_made=false` for finalization evidence.
+- Increment **Obsidian Git Management-D live sync** -
+  `execute_obsidian_git_sync_live` and `vault-git-live-sync` execute an approved
+  sync plan against a Git-managed vault only after explicit `approval_ref`,
+  `--explicit-live-git-enable`, clean/scoped Git status confirmation, and the
+  real-vault opt-in flag when the target is `/home/cbchoi/obsidian`. The executor
+  stages only approved memo/runtime-boundary refs, commits, pushes to the
+  configured remote, and writes runtime-boundary evidence with network push state.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

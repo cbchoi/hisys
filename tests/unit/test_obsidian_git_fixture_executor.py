@@ -14,6 +14,7 @@ from hisys.config.obsidian_live import (
     build_obsidian_git_sync_plan,
     execute_obsidian_git_initialization_in_fixture,
     execute_obsidian_git_sync_in_fixture,
+    execute_obsidian_git_sync_live,
 )
 
 
@@ -190,3 +191,89 @@ def test_fixture_git_executor_cli_writes_runtime_boundary_report(tmp_path: Path,
     assert report["status"] == "applied"
     assert report["external_call_made"] is False
     assert report["real_obsidian_vault_write_performed"] is False
+
+
+def test_live_git_sync_executes_against_approved_local_remote_with_gates(tmp_path: Path) -> None:
+    vault_root = tmp_path / "live-like-vault"
+    remote_root = tmp_path / "live-like-remote.git"
+    init_report = execute_obsidian_git_initialization_in_fixture(
+        plan=_init_plan(vault_root, remote_root),
+        fixture_vault_root=vault_root,
+        fixture_remote_root=remote_root,
+        fixture_git_only=True,
+    )
+    assert init_report["status"] == "applied"
+
+    approved_ref = "runtime-boundary/live-git/approved.json"
+    approved_path = vault_root / approved_ref
+    approved_path.parent.mkdir(parents=True, exist_ok=True)
+    approved_path.write_text('{"approved":true}\n', encoding="utf-8")
+    plan = build_obsidian_git_sync_plan(
+        request_id="REQ-GIT-LIVE-SYNC",
+        vault_root=vault_root,
+        memo_refs=[],
+        runtime_boundary_refs=[approved_ref],
+        commit_message="chore(obsidian): live sync approved ref",
+        remote_name="origin",
+        branch="main",
+        credential_ref="op:sysailab/obsidian-git/deploy-key",
+        approval_ref="APPROVAL-GIT-LIVE-SYNC",
+    )
+
+    report = execute_obsidian_git_sync_live(
+        plan=plan,
+        vault_root=vault_root,
+        approval_ref="APPROVAL-GIT-LIVE-SYNC",
+        explicit_live_git_enable=True,
+        allow_real_obsidian_vault=False,
+        clean_git_status=True,
+    )
+
+    assert report["schema_id"] == "hisys.obsidian.git_live_execution_report"
+    assert report["status"] == "applied"
+    assert report["approved_refs"] == [approved_ref]
+    assert report["target_vault_git_mutation_performed"] is True
+    assert report["network_push_performed"] is False
+    assert report["external_call_made"] is False
+    assert report["credential_ref_resolved"] is False
+    assert report["pushed_commit"] == _git("rev-parse", "refs/heads/main", git_dir=remote_root)
+
+
+def test_live_git_sync_blocks_without_explicit_live_enable(tmp_path: Path) -> None:
+    vault_root = tmp_path / "live-like-vault"
+    remote_root = tmp_path / "live-like-remote.git"
+    init_report = execute_obsidian_git_initialization_in_fixture(
+        plan=_init_plan(vault_root, remote_root),
+        fixture_vault_root=vault_root,
+        fixture_remote_root=remote_root,
+        fixture_git_only=True,
+    )
+    assert init_report["status"] == "applied"
+    approved_ref = "runtime-boundary/live-git/approved.json"
+    (vault_root / approved_ref).parent.mkdir(parents=True, exist_ok=True)
+    (vault_root / approved_ref).write_text('{"approved":true}\n', encoding="utf-8")
+    plan = build_obsidian_git_sync_plan(
+        request_id="REQ-GIT-LIVE-BLOCK",
+        vault_root=vault_root,
+        memo_refs=[],
+        runtime_boundary_refs=[approved_ref],
+        commit_message="chore(obsidian): live sync approved ref",
+        remote_name="origin",
+        branch="main",
+        credential_ref="op:sysailab/obsidian-git/deploy-key",
+        approval_ref="APPROVAL-GIT-LIVE-SYNC",
+    )
+
+    report = execute_obsidian_git_sync_live(
+        plan=plan,
+        vault_root=vault_root,
+        approval_ref="APPROVAL-GIT-LIVE-SYNC",
+        explicit_live_git_enable=False,
+        allow_real_obsidian_vault=False,
+        clean_git_status=True,
+    )
+
+    assert report["status"] == "blocked"
+    assert report["reason_code"] == "live_git_not_enabled"
+    assert report["target_vault_git_mutation_performed"] is False
+    assert report["network_push_performed"] is False

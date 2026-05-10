@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, execute_obsidian_git_sync_live, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_git_live_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -550,6 +550,19 @@ def _build_parser() -> argparse.ArgumentParser:
     git_fixture_sync.add_argument("--fixture-remote-root", required=True, help="local bare fixture Git remote path")
     git_fixture_sync.add_argument("--fixture-git-only", action="store_true", help="required; refuses live/non-fixture Git execution")
 
+    git_live_sync = sub.add_parser(
+        "vault-git-live-sync",
+        help="execute an approved Obsidian Git sync plan against the configured vault remote",
+    )
+    git_live_sync.add_argument("--instance", required=True, help="runtime instance root for Git live execution report")
+    git_live_sync.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    git_live_sync.add_argument("--plan", required=True, help="obsidian git sync plan JSON path")
+    git_live_sync.add_argument("--vault-root", required=True, help="approved vault root to mutate and push")
+    git_live_sync.add_argument("--approval-ref", help="required approval ref; must match the sync plan push approval")
+    git_live_sync.add_argument("--explicit-live-git-enable", action="store_true", help="required explicit live Git mutation/push switch")
+    git_live_sync.add_argument("--allow-real-obsidian-vault", action="store_true", help="required only for /home/cbchoi/obsidian")
+    git_live_sync.add_argument("--clean-git-status", action="store_true", help="operator-confirmed clean/scoped git status signal")
+
     topic_transition = sub.add_parser(
         "vault-topic-transition-plan",
         help="plan non-destructive topic merge/split transitions without writing the vault",
@@ -890,6 +903,17 @@ def main(argv: list[str] | None = None) -> int:
             fixture_vault_root=Path(args.fixture_vault_root),
             fixture_remote_root=Path(args.fixture_remote_root),
             fixture_git_only=args.fixture_git_only,
+        )
+    if args.command == "vault-git-live-sync":
+        return _cmd_vault_git_live_sync(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            plan_path=Path(args.plan),
+            vault_root=Path(args.vault_root),
+            approval_ref=args.approval_ref,
+            explicit_live_git_enable=args.explicit_live_git_enable,
+            allow_real_obsidian_vault=args.allow_real_obsidian_vault,
+            clean_git_status=args.clean_git_status,
         )
     if args.command == "vault-topic-transition-plan":
         return _cmd_vault_topic_transition_plan(
@@ -1335,6 +1359,37 @@ def _cmd_vault_git_fixture_sync(
     report_path = write_obsidian_git_fixture_execution_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
     print(f"obsidian git fixture sync: {report['status']}")
     print(f"fixture_remote_push_performed: {str(report['fixture_remote_push_performed']).lower()}")
+    print(f"external_call_made: {str(report['external_call_made']).lower()}")
+    print(f"report={report_path}")
+    return 0 if report["status"] == "applied" else 1
+
+
+def _cmd_vault_git_live_sync(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    plan_path: Path,
+    vault_root: Path,
+    approval_ref: str | None,
+    explicit_live_git_enable: bool,
+    allow_real_obsidian_vault: bool,
+    clean_git_status: bool,
+) -> int:
+    """Execute a Git sync plan against a live vault and configured remote."""
+
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    report = execute_obsidian_git_sync_live(
+        plan=plan,
+        vault_root=vault_root,
+        approval_ref=approval_ref,
+        explicit_live_git_enable=explicit_live_git_enable,
+        allow_real_obsidian_vault=allow_real_obsidian_vault,
+        clean_git_status=clean_git_status,
+    )
+    report_path = write_obsidian_git_live_execution_report(instance_root=instance_root, yyyymmdd=yyyymmdd, report=report)
+    print(f"obsidian git live sync: {report['status']}")
+    print(f"target_vault_git_mutation_performed: {str(report['target_vault_git_mutation_performed']).lower()}")
+    print(f"network_push_performed: {str(report['network_push_performed']).lower()}")
     print(f"external_call_made: {str(report['external_call_made']).lower()}")
     print(f"report={report_path}")
     return 0 if report["status"] == "applied" else 1
