@@ -1447,8 +1447,17 @@ def build_obsidian_milestone_status_report(*, request_id: str) -> dict[str, Any]
             "milestone": "Obsidian-Evidence-Promotion",
             "status": "complete",
             "capabilities": [
-                "canonical source/evidence/claim/decision index promotion plan",
-                "fixture-only projection rehearsal",
+                "explicit evidence promotion plan",
+                "fixture rehearsal projection only",
+            ],
+        },
+        {
+            "milestone": "Obsidian-Git-Management",
+            "status": "complete",
+            "capabilities": [
+                "credential-ref-only initialization and sync plans",
+                "fixture-only Git initialization and sync executor",
+                "runtime-boundary Git execution evidence",
             ],
         },
     ]

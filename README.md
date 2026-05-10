@@ -384,8 +384,9 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
 - Increment **Obsidian Milestone Status** -
   `hisys.config.obsidian_live.build_obsidian_milestone_status_report` and `hisys
   vault-obsidian-milestone-status` record the Obsidian milestone complete across
-  Live-Obsidian-Config, Topic-Gatekeeper, and Obsidian Evidence Promotion with
-  zero open milestones and no real Obsidian vault write.
+  Live-Obsidian-Config, Topic-Gatekeeper, Obsidian Evidence Promotion, and
+  Obsidian Git Management with zero open milestones and no real Obsidian vault
+  write.
 - Increment **Obsidian Git Management-A** -
   `hisys.config.obsidian_live.build_obsidian_git_initialization_plan` and
   `build_obsidian_git_sync_plan` capture the corrected lifecycle: Hisys should
@@ -401,6 +402,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   fixture executor: it requires `fixture_git_only`, refuses the real Obsidian
   vault, uses only local fixture Git remotes, never resolves credential refs, and
   records initialization/sync push evidence with `external_call_made=false`.
+- Increment **Obsidian Git Management-C finalization** -
+  `vault-git-fixture-init`, `vault-git-fixture-sync`, and
+  `vault-obsidian-milestone-status` expose the fixture Git executor through the
+  CLI and mark Obsidian Git Management complete in the overall Obsidian milestone
+  report while preserving `real_obsidian_vault_write_performed=false` and
+  `external_call_made=false` for finalization evidence.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys

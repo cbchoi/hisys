@@ -18,11 +18,12 @@ def test_obsidian_milestone_status_marks_live_gatekeeper_and_promotion_complete(
     assert report["status"] == "complete"
     assert report["obsidian_milestone_complete"] is True
     assert report["open_milestone_count"] == 0
-    assert report["completed_milestone_count"] == 3
+    assert report["completed_milestone_count"] == 4
     assert [item["milestone"] for item in report["milestones"]] == [
         "Live-Obsidian-Config",
         "Topic-Gatekeeper",
         "Obsidian-Evidence-Promotion",
+        "Obsidian-Git-Management",
     ]
     assert report["real_obsidian_vault_write_performed"] is False
     assert report["external_call_made"] is False

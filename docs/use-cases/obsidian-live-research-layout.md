@@ -529,7 +529,8 @@ explicit fixture root and still records `real_obsidian_vault_write_performed=fal
 
 `hisys.config.obsidian_live.build_obsidian_milestone_status_report` and `hisys
 vault-obsidian-milestone-status` record the Obsidian milestone complete across
-Live-Obsidian-Config, Topic-Gatekeeper, and Obsidian Evidence Promotion. The
+Live-Obsidian-Config, Topic-Gatekeeper, Obsidian Evidence Promotion, and Obsidian
+Git Management. The
 status artifact records `open_milestone_count=0`, `obsidian_milestone_complete=true`,
 `external_call_made=false`, `mutation_performed=false`, and
 `real_obsidian_vault_write_performed=false`.
@@ -567,6 +568,10 @@ current implementation adds plan builders for this lifecycle:
   initialize/push only to local fixture Git remotes, never resolve credential refs,
   and record fixture push evidence with `real_obsidian_vault_write_performed=false`
   and `external_call_made=false`.
+- `vault-git-fixture-init` and `vault-git-fixture-sync`: CLI entry points for the
+  fixture executor that write runtime-boundary JSON/Markdown evidence. The overall
+  `vault-obsidian-milestone-status` report now includes `Obsidian-Git-Management`
+  as a completed milestone.
 
 Live execution remains out of scope until fixture Git execution, approval gates,
 and runtime-boundary evidence are accepted. A live executor must reuse the same

@@ -5,6 +5,7 @@ Traceability: Live-Obsidian-Git-C, HISYS-CON-010..012, HISYS-CON-022..023.
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -156,3 +157,36 @@ def test_fixture_git_sync_blocks_refs_missing_from_fixture_vault(tmp_path: Path)
     assert report["reason_code"] == "approved_ref_missing_from_fixture_vault"
     assert report["missing_refs"] == ["missing.md"]
     assert report["fixture_remote_push_performed"] is False
+
+
+def test_fixture_git_executor_cli_writes_runtime_boundary_report(tmp_path: Path, capsys) -> None:
+    from hisys.cli.main import main
+
+    instance = tmp_path / "instance"
+    vault_root = tmp_path / "fixture-vault"
+    remote_root = tmp_path / "fixture-remote.git"
+    plan = _init_plan(vault_root, remote_root)
+    plan_path = tmp_path / "init-plan.json"
+    plan_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "vault-git-fixture-init",
+            "--instance", str(instance),
+            "--date", "20260510",
+            "--plan", str(plan_path),
+            "--fixture-vault-root", str(vault_root),
+            "--fixture-remote-root", str(remote_root),
+            "--fixture-git-only",
+        ]
+    )
+
+    assert exit_code == 0
+    captured = capsys.readouterr().out
+    assert "obsidian git fixture init: applied" in captured
+    assert "fixture_remote_push_performed: true" in captured
+    report_path = instance / "runtime-boundary" / "obsidian-live" / "20260510" / "obsidian-git-fixture-execution-initialization-REQ-GIT-FIXTURE-INIT.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["status"] == "applied"
+    assert report["external_call_made"] is False
+    assert report["real_obsidian_vault_write_performed"] is False
