@@ -537,6 +537,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help="optional runtime-boundary recommendation artifact ref",
     )
 
+    search_topic = sub.add_parser(
+        "search-topic",
+        help="approved governed topic search that writes source evidence and an Investigator harness",
+    )
+    search_topic.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    search_topic.add_argument("--config", required=True, help="source connector config YAML")
+    search_topic.add_argument("--date", required=True, help="YYYYMMDD source connector partition")
+    search_topic.add_argument("--request-id", required=True, help="stable request id")
+    search_topic.add_argument("--topic", required=True, help="topic/search query")
+    search_topic.add_argument("--user-opinion", default="", help="optional user opinion to preserve in the Investigator harness")
+    search_topic.add_argument("--approval-ref", help="manual/standing approval reference")
+    search_topic.add_argument("--transport-fixture-search", help="local JSON fixture used as injected search transport for tests/smoke")
+
     vault_plan = sub.add_parser(
         "vault-plan",
         help="plan an Obsidian live-research topic/investigation layout without writing the vault",
@@ -967,6 +980,17 @@ def main(argv: list[str] | None = None) -> int:
             approval_ref=args.approval_ref,
             transport_fixture_pdf=Path(args.transport_fixture_pdf) if args.transport_fixture_pdf else None,
             dry_run=args.dry_run,
+        )
+    if args.command == "search-topic":
+        return _cmd_search_topic(
+            instance_root=Path(args.instance),
+            config_path=Path(args.config),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            topic=args.topic,
+            user_opinion=args.user_opinion,
+            approval_ref=args.approval_ref,
+            transport_fixture_search=Path(args.transport_fixture_search) if args.transport_fixture_search else None,
         )
     if args.command == "plan-pdf-candidates":
         return _cmd_plan_pdf_candidates(
@@ -3182,6 +3206,173 @@ def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_
     print(f"planned_connectors: {len(planned)}")
     print("external_call_made: false")
     return 0
+
+
+def _cmd_search_topic(
+    *,
+    instance_root: Path,
+    config_path: Path,
+    yyyymmdd: str,
+    request_id: str,
+    topic: str,
+    user_opinion: str,
+    approval_ref: str | None,
+    transport_fixture_search: Path | None,
+) -> int:
+    """Run governed topic search and emit an Investigator harness."""
+
+    instance = InstanceRoot(instance_root)
+    registry = load_source_connector_registry(config_path)
+    connector_id = "general_web_search"
+    connector = registry.connectors[connector_id]
+    env_name = connector.manual_smoke_env_var or "HISYS_ALLOW_LIVE_SEARCH_SMOKE"
+    dispatch_ref = f"runtime-boundary/source-connectors/{yyyymmdd}/connector-dispatch-{request_id}-{connector_id}.json"
+    if os.environ.get(env_name) != "1":
+        report = _search_topic_report(
+            request_id=request_id,
+            topic=topic,
+            status="blocked",
+            reason_code="manual_smoke_env_missing",
+            dispatch_ref=None,
+            source_access_refs=[],
+            source_evidence_refs=[],
+            investigator_harness_ref=None,
+            external_call_made=False,
+        )
+        _write_search_topic_report(instance, yyyymmdd, report)
+        print("search topic: status=blocked reason=manual_smoke_env_missing")
+        return 2
+    decision = SourceConnectorDispatchGate(instance=instance).evaluate(
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        registry=registry,
+        connector_id=connector_id,
+        approval_ref=approval_ref,
+        requested_domain="search.local.fixture",
+        requested_actions=["read"],
+    )
+    if decision.decision != "allowed":
+        report = _search_topic_report(
+            request_id=request_id,
+            topic=topic,
+            status="blocked",
+            reason_code=decision.reason_code,
+            dispatch_ref=dispatch_ref,
+            source_access_refs=[],
+            source_evidence_refs=[],
+            investigator_harness_ref=None,
+            external_call_made=False,
+        )
+        _write_search_topic_report(instance, yyyymmdd, report)
+        return 2
+    if transport_fixture_search is None:
+        report = _search_topic_report(
+            request_id=request_id,
+            topic=topic,
+            status="blocked",
+            reason_code="search_fixture_transport_required",
+            dispatch_ref=dispatch_ref,
+            source_access_refs=[],
+            source_evidence_refs=[],
+            investigator_harness_ref=None,
+            external_call_made=False,
+        )
+        _write_search_topic_report(instance, yyyymmdd, report)
+        return 2
+    package = GeneralWebSearchConnector().collect_fixture(
+        request_id=request_id,
+        query=topic,
+        fixture_path=transport_fixture_search,
+        output_root=instance.root,
+        yyyymmdd=yyyymmdd,
+    )
+    harness_ref = f"runtime-boundary/source-connectors/{yyyymmdd}/orchestrator-harness-{request_id}.json"
+    harness = {
+        "schema_id": "hisys.investigator.orchestrator_harness",
+        "schema_version": "0.1.0",
+        "harness_id": f"ORCH-HARNESS-{request_id}",
+        "source_ids": [connector_id],
+        "agent_types": ["fixture"],
+        "topic": topic,
+        "user_opinion": user_opinion,
+        "rationale": "Governed general web search produced bounded source evidence for Investigator follow-up.",
+        "source_access_refs": [package.access_ref],
+        "source_evidence_refs": [package.evidence_ref],
+        "external_call_made": True,
+        "mutation_performed": False,
+    }
+    harness_path = instance.root / harness_ref
+    harness_path.parent.mkdir(parents=True, exist_ok=True)
+    harness_path.write_text(json.dumps(harness, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report = _search_topic_report(
+        request_id=request_id,
+        topic=topic,
+        status="completed",
+        reason_code="search_topic_completed",
+        dispatch_ref=dispatch_ref,
+        source_access_refs=[package.access_ref],
+        source_evidence_refs=[package.evidence_ref],
+        investigator_harness_ref=harness_ref,
+        external_call_made=True,
+    )
+    _write_search_topic_report(instance, yyyymmdd, report)
+    print(f"search topic: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'search-topic-report.json'}")
+    return 0
+
+
+def _search_topic_report(
+    *,
+    request_id: str,
+    topic: str,
+    status: str,
+    reason_code: str | None,
+    dispatch_ref: str | None,
+    source_access_refs: list[str],
+    source_evidence_refs: list[str],
+    investigator_harness_ref: str | None,
+    external_call_made: bool,
+) -> dict[str, object]:
+    return {
+        "schema_id": "hisys.search_topic.report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "topic": topic,
+        "connector_id": "general_web_search",
+        "status": status,
+        "reason_code": reason_code,
+        "dispatch_ref": dispatch_ref,
+        "source_access_refs": source_access_refs,
+        "source_evidence_refs": source_evidence_refs,
+        "investigator_harness_ref": investigator_harness_ref,
+        "external_call_made": external_call_made,
+        "mutation_performed": False,
+    }
+
+
+def _write_search_topic_report(instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_artifact = report_dir / "search-topic-report.json"
+    report_artifact.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "search-topic-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                "# Search Topic Report",
+                "",
+                f"- request_id: `{report['request_id']}`",
+                f"- topic: `{report['topic']}`",
+                f"- status: `{report['status']}`",
+                f"- connector_id: `{report['connector_id']}`",
+                f"- investigator_harness_ref: `{report.get('investigator_harness_ref')}`",
+                f"- external_call_made: `{report['external_call_made']}`",
+                f"- mutation_performed: `{report['mutation_performed']}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return report_artifact
 
 
 def _cmd_smoke_source_connector(

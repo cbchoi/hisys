@@ -172,6 +172,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   manual path with fixture transport only; without fixture transport it blocks
   with `search_fixture_transport_required`, so CI performs no live provider
   search.
+- Increment **Search-B governed topic search command** -
+  `hisys search-topic` gives Ralph/Hisys a direct bounded search path for any
+  topic: it gates `general_web_search`, consumes approved fixture/fake search
+  transport, writes `search-topic-report.{json,md}`, source access/evidence
+  records, and an `orchestrator-harness-<request_id>.json` containing the topic,
+  selected source id, user opinion, and evidence refs for `investigate-memo
+  --orchestrator-harness`. Missing approval/env/fixture transport blocks before
+  provider access, preserving read-only/no-mutation boundaries.
 - Increment **Live-B2 fixture publisher evidence connector** -
   `hisys.connectors.fixture_publisher` reads local static publisher-shaped HTML
   fixtures only, extracts title/quoted evidence, writes `SourceAccessRecord` and

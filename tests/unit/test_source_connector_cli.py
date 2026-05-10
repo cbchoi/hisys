@@ -199,6 +199,73 @@ def test_smoke_general_web_search_with_fixture_transport_writes_evidence(tmp_pat
     assert evidence["quoted_text"] == "Executable digital twins need governed evidence capture and source provenance."
 
 
+def test_search_topic_writes_search_report_and_investigator_harness(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_SEARCH_SMOKE", "1")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1),
+        encoding="utf-8",
+    )
+    search_fixture = tmp_path / "search-results.json"
+    search_fixture.write_text(
+        json.dumps(
+            {
+                "results": [
+                    {
+                        "title": "General topic search result",
+                        "url": "https://search.local.fixture/results/topic",
+                        "snippet": "General web search can produce bounded evidence for any user topic.",
+                    }
+                ]
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "search-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-SEARCH-B-001",
+            "--topic",
+            "any topic governance",
+            "--user-opinion",
+            "I think bounded search should feed the investigator harness.",
+            "--approval-ref",
+            "APPROVAL-SEARCH-B-001",
+            "--transport-fixture-search",
+            str(search_fixture),
+        ]
+    )
+
+    assert result == 0
+    report_artifact = tmp_path / "reports" / "run-summaries" / "20260510" / "search-topic-report.json"
+    harness_artifact = tmp_path / "runtime-boundary" / "source-connectors" / "20260510" / "orchestrator-harness-HISYS-REQ-SEARCH-B-001.json"
+    report = json.loads(report_artifact.read_text(encoding="utf-8"))
+    harness = json.loads(harness_artifact.read_text(encoding="utf-8"))
+    assert report["status"] == "completed"
+    assert report["connector_id"] == "general_web_search"
+    assert report["topic"] == "any topic governance"
+    assert report["external_call_made"] is True
+    assert report["mutation_performed"] is False
+    assert report["investigator_harness_ref"] == str(harness_artifact.relative_to(tmp_path))
+    assert report["source_evidence_refs"]
+    assert harness["source_ids"] == ["general_web_search"]
+    assert harness["user_opinion"] == "I think bounded search should feed the investigator harness."
+    assert harness["source_evidence_refs"] == report["source_evidence_refs"]
+
+
 def test_smoke_general_web_search_manual_live_requires_fixture_transport(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("HISYS_ALLOW_LIVE_SEARCH_SMOKE", "1")
     config_path = tmp_path / "source-connectors-enabled.yaml"
