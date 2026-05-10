@@ -854,6 +854,14 @@ def _build_parser() -> argparse.ArgumentParser:
     dars.add_argument("--source-execution-id", required=True, help="connector execution id used as handoff evidence")
     dars.add_argument("--critique-text", help="optional fixture critique text; omitted means loopback placeholder until DARS exists")
     dars.add_argument("--producer-id", default="dars-fixture-cli", help="DARS fixture producer id")
+    browser_dars = sub.add_parser(
+        "request-browser-dars-review",
+        help="run advisory DARS/Devil review over a Chief Editor browser-investigation review artifact",
+    )
+    browser_dars.add_argument("--instance", required=True, help="runtime instance root containing Chief Editor browser review")
+    browser_dars.add_argument("--date", required=True, help="YYYYMMDD review partition")
+    browser_dars.add_argument("--chief-editor-review-ref", required=True, help="relative ref to CHIEF-REVIEW-*-BROWSER.json")
+    browser_dars.add_argument("--producer-id", default="dars-browser-cli", help="DARS browser review producer id")
     return parser
 
 
@@ -1321,6 +1329,13 @@ def main(argv: list[str] | None = None) -> int:
             yyyymmdd=args.date,
             source_execution_id=args.source_execution_id,
             critique_text=args.critique_text,
+            producer_id=args.producer_id,
+        )
+    if args.command == "request-browser-dars-review":
+        return _cmd_request_browser_dars_review(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            chief_editor_review_ref=args.chief_editor_review_ref,
             producer_id=args.producer_id,
         )
     parser.error(f"unknown command: {args.command}")
@@ -6682,6 +6697,187 @@ def _cmd_execute_alert_actions(*, instance_root: Path, yyyymmdd: str, connector_
     print(f"blocked: {len(report.blocked_refs)}")
     print(f"skipped_plans: {len(report.skipped_plan_refs)}")
     return 0
+
+
+
+def _cmd_request_browser_dars_review(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    chief_editor_review_ref: str,
+    producer_id: str,
+) -> int:
+    instance = InstanceRoot(instance_root)
+    chief_path = instance.root / chief_editor_review_ref
+    if not chief_path.exists():
+        print(f"chief editor review not found: {chief_editor_review_ref}", file=sys.stderr)
+        return 1
+    chief_review = json.loads(chief_path.read_text(encoding="utf-8"))
+    request_id = str(chief_review.get("request_id") or _browser_request_id_from_ref(chief_editor_review_ref))
+    if chief_review.get("decision") != "accept_for_devil_dars_adversarial_review":
+        print("browser dars review: blocked reason=chief_editor_not_accepted_for_dars")
+        return 2
+    basis_refs = chief_review.get("basis_refs", {}) if isinstance(chief_review.get("basis_refs"), dict) else {}
+    sufficiency_ref = str(basis_refs.get("evidence_sufficiency", ""))
+    if sufficiency_ref:
+        sufficiency_path = instance.root / sufficiency_ref
+        if sufficiency_path.exists():
+            sufficiency = json.loads(sufficiency_path.read_text(encoding="utf-8"))
+            if not sufficiency.get("devil_review_allowed"):
+                print("browser dars review: blocked reason=evidence_sufficiency_gate_not_ready")
+                return 2
+    matrix_ref = str(basis_refs.get("competitive_matrix", ""))
+    matrix = {}
+    if matrix_ref and (instance.root / matrix_ref).exists():
+        matrix = json.loads((instance.root / matrix_ref).read_text(encoding="utf-8"))
+    review = _build_browser_dars_review(
+        request_id=request_id,
+        chief_editor_review_ref=chief_editor_review_ref,
+        chief_review=chief_review,
+        matrix=matrix,
+        producer_id=producer_id,
+    )
+    handoff_ref = f"data/agent-handoffs/{yyyymmdd}/HANDOFF-DARS-{request_id}-BROWSER.json"
+    handoff = {
+        "schema_id": "hisys.agent_handoff_package",
+        "schema_version": "0.1.0",
+        "handoff_id": f"HANDOFF-DARS-{request_id}-BROWSER",
+        "target_agent_system": "DARS",
+        "task": "adversarial_browser_investigation_review",
+        "context": "Challenge Chief Editor browser-investigation readiness and preliminary competitive technology signals.",
+        "evidence_bundle": [chief_editor_review_ref, *[str(v) for v in basis_refs.values() if v]],
+        "constraints": [
+            "advisory_only",
+            "no live external action",
+            "external_call_made=false",
+            "do not mutate evidence, Chief Editor review, or final decision",
+        ],
+        "expected_output": "adversarial findings, rebuttal targets, required revisions, and final-review recommendation",
+        "allowed_actions": "advisory_only",
+        "approval_state": "not_required",
+        "result_refs": [f"data/dars-browser-reviews/{yyyymmdd}/DARS-REVIEW-{request_id}-BROWSER.json"],
+        "status": "linked",
+        "producer_id": producer_id,
+    }
+    handoff_path = instance.root / handoff_ref
+    handoff_path.parent.mkdir(parents=True, exist_ok=True)
+    handoff_path.write_text(json.dumps(handoff, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (handoff_path.with_suffix(".md")).write_text(_render_browser_dars_handoff_md(handoff), encoding="utf-8")
+    review_ref = f"data/dars-browser-reviews/{yyyymmdd}/DARS-REVIEW-{request_id}-BROWSER.json"
+    review["handoff_ref"] = handoff_ref
+    review_path = instance.root / review_ref
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps(review, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    review_path.with_suffix(".md").write_text(_render_browser_dars_review_md(review), encoding="utf-8")
+    report_ref = f"reports/run-summaries/{yyyymmdd}/browser-dars-review-report.json"
+    report = {
+        "schema_id": "hisys.browser_dars_review.report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "chief_editor_review_ref": chief_editor_review_ref,
+        "handoff_ref": handoff_ref,
+        "dars_review_ref": review_ref,
+        "decision": review["decision"],
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    report_path = instance.root / report_ref
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"browser dars review: report={report_path}")
+    print(f"decision: {review['decision']}")
+    print("external_call_made: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
+def _build_browser_dars_review(
+    *,
+    request_id: str,
+    chief_editor_review_ref: str,
+    chief_review: dict[str, object],
+    matrix: dict[str, object],
+    producer_id: str,
+) -> dict[str, object]:
+    rows = [row for row in matrix.get("rows", []) if isinstance(row, dict)]
+    questions = [str(item) for item in chief_review.get("chief_editor_questions_for_devil_dars", [])]
+    findings: list[str] = []
+    rows_text = "\n".join(
+        f"{row.get('company_or_source', '')} {row.get('technology_signals', '')} {row.get('evidence_excerpt', '')}"
+        for row in rows
+    ).lower()
+    if "dunlee" in rows_text or any("dunlee" in item.lower() for item in questions):
+        findings.append("Dunlee LMB claims need explicit patent/spec cross-reference; current signal is strong but should not alone decide overall competitiveness.")
+    if "varex" in rows_text or any("varex" in item.lower() for item in questions):
+        findings.append("Varex breadth may reflect catalog scope rather than superior tube technology; compare product-spec rows against COMET and distributor evidence.")
+    if "malvern" in rows_text or any("malvern" in item.lower() for item in questions):
+        findings.append("Malvern Panalytical evidence may be instrument-integrated analytical XRF/XRD tubes, so segment scope must be separated from general x-ray tube manufacturing.")
+    if "canon" in rows_text or any("canon" in item.lower() for item in questions):
+        findings.append("Canon ETD signals appear medical/dental and stationary-anode focused; avoid ranking it against industrial/NDT vendors without segment normalization.")
+    if not findings:
+        findings.append("No company-specific adversarial finding generated; require human review of matrix rows before final acceptance.")
+    revisions = [
+        "Normalize conclusions by segment: CT, medical/dental, industrial/NDT, analytical XRF/XRD, and security/irradiation.",
+        "Map every high-strength row to at least one corroborating evidence class: patent, datasheet/specification, distributor/spec page, filing, or paper.",
+        "Downgrade any claim supported only by vendor marketing text to preliminary signal, not accepted conclusion.",
+    ]
+    return {
+        "schema_id": "hisys.dars.browser_investigation_review",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "chief_editor_review_ref": chief_editor_review_ref,
+        "decision": "requires_revision_before_final_acceptance",
+        "allowed_actions": "advisory_only",
+        "external_call_made": False,
+        "mutation_performed": False,
+        "risk_classification": "evidence_quality_adversarial_review_not_cybersecurity",
+        "dars_backend": "deterministic_local_advisory",
+        "adversarial_findings": findings,
+        "required_revisions": revisions,
+        "questions_reviewed": questions,
+        "matrix_rows_reviewed": len(rows),
+        "producer_id": producer_id,
+    }
+
+
+def _render_browser_dars_handoff_md(handoff: dict[str, object]) -> str:
+    return "\n".join([
+        f"# DARS handoff {handoff['handoff_id']}",
+        "",
+        f"- target_agent_system: {handoff['target_agent_system']}",
+        f"- task: {handoff['task']}",
+        f"- allowed_actions: {handoff['allowed_actions']}",
+        f"- status: {handoff['status']}",
+        f"- evidence_bundle: {', '.join(str(item) for item in handoff['evidence_bundle'])}",
+        "",
+    ])
+
+
+def _render_browser_dars_review_md(review: dict[str, object]) -> str:
+    findings = [str(item) for item in review.get("adversarial_findings", [])]
+    revisions = [str(item) for item in review.get("required_revisions", [])]
+    return "\n".join([
+        f"# DARS Browser Review {review['request_id']}",
+        "",
+        f"- decision: `{review['decision']}`",
+        f"- allowed_actions: `{review['allowed_actions']}`",
+        f"- external_call_made: `{str(review['external_call_made']).lower()}`",
+        f"- mutation_performed: `{str(review['mutation_performed']).lower()}`",
+        "",
+        "## Adversarial Findings",
+        "",
+        *[f"- {item}" for item in findings],
+        "",
+        "## Required Revisions",
+        "",
+        *[f"- {item}" for item in revisions],
+        "",
+    ])
+
+
+def _browser_request_id_from_ref(ref: str) -> str:
+    name = Path(ref).stem
+    return name.removeprefix("CHIEF-REVIEW-").removesuffix("-BROWSER")
 
 
 

@@ -1147,6 +1147,89 @@ def test_execute_alert_actions_command_records_disabled_connector_block(tmp_path
 
 
 
+def test_request_browser_dars_review_consumes_chief_editor_artifact_and_flags_adversarial_questions(tmp_path: Path, capsys):
+    date = "20260510"
+    request_id = "HISYS-REQ-BROWSER-DARS-001"
+    matrix_ref = f"data/competitive-matrices/{date}/MATRIX-{request_id}-BROWSER.json"
+    sufficiency_ref = f"data/evidence-sufficiency/{date}/SUFF-{request_id}-BROWSER.json"
+    chief_ref = f"data/chief-editor-reviews/{date}/CHIEF-REVIEW-{request_id}-BROWSER.json"
+    (tmp_path / matrix_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / matrix_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_investigation.competitive_matrix",
+                "rows": [
+                    {
+                        "company_or_source": "DUNLEE | LMB Tube Technology",
+                        "technology_signals": "liquid metal bearing",
+                        "competitive_signal_strength": "high",
+                        "evidence_refs": ["EV-DUNLEE"],
+                    },
+                    {
+                        "company_or_source": "Industrial X-ray Tubes - Varex Imaging",
+                        "technology_signals": "stable dose/resolution, customized tube design",
+                        "competitive_signal_strength": "high",
+                        "evidence_refs": ["EV-VAREX"],
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / sufficiency_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / sufficiency_ref).write_text(
+        json.dumps(
+            {
+                "review_readiness": "ready_for_fair_chief_editor_and_devil_review",
+                "chief_editor_decision_allowed": True,
+                "devil_review_allowed": True,
+                "blockers": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / chief_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / chief_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.chief_editor.browser_investigation_review",
+                "request_id": request_id,
+                "decision": "accept_for_devil_dars_adversarial_review",
+                "basis_refs": {"competitive_matrix": matrix_ref, "evidence_sufficiency": sufficiency_ref},
+                "chief_editor_questions_for_devil_dars": [
+                    "Are Dunlee liquid-metal-bearing claims independently supported?",
+                    "Are Varex breadth claims comparable to COMET or just marketing scope?",
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main([
+        "request-browser-dars-review",
+        "--instance", str(tmp_path),
+        "--date", date,
+        "--chief-editor-review-ref", chief_ref,
+        "--producer-id", "dars-browser-test",
+    ])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "browser dars review" in captured.out
+    review_ref = f"data/dars-browser-reviews/{date}/DARS-REVIEW-{request_id}-BROWSER.json"
+    review = json.loads((tmp_path / review_ref).read_text(encoding="utf-8"))
+    assert review["decision"] == "requires_revision_before_final_acceptance"
+    assert review["allowed_actions"] == "advisory_only"
+    assert review["external_call_made"] is False
+    assert review["chief_editor_review_ref"] == chief_ref
+    assert "Dunlee" in "\n".join(review["adversarial_findings"])
+    handoff_ref = f"data/agent-handoffs/{date}/HANDOFF-DARS-{request_id}-BROWSER.json"
+    handoff = json.loads((tmp_path / handoff_ref).read_text(encoding="utf-8"))
+    assert handoff["target_agent_system"] == "DARS"
+    assert handoff["allowed_actions"] == "advisory_only"
+    assert chief_ref in handoff["evidence_bundle"]
+
+
 def test_request_dars_critique_command_records_advisory_result(tmp_path: Path, capsys):
     _prepare_flagged_conflict_memo(tmp_path, capsys)
     assert main([

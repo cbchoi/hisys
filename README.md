@@ -224,7 +224,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   concrete independent/corroborating candidates (patents, datasheets, papers,
   filings, or distributor/spec pages) into the source-candidate artifact without
   fetching them; the sufficiency plan then tells the operator to promote those
-  URLs through governed source reads before final review.
+  URLs through governed source reads before final review. After Chief Editor has
+  accepted the package for adversarial review, `request-browser-dars-review`
+  records an advisory-only DARS/Devil handoff plus
+  `data/dars-browser-reviews/<date>/DARS-REVIEW-*-BROWSER.json`; it makes no
+  external DARS call, performs no mutation, and normally returns
+  `requires_revision_before_final_acceptance` until segment normalization and
+  corroboration mapping are resolved.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector
