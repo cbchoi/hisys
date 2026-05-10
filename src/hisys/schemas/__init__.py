@@ -16,6 +16,14 @@ from .alert import AlertDecisionRecord
 from .handoff import AgentHandoffPackage
 from .hermes_trace import HermesCollectionTrace
 from .audit import AuditEvent
+from .browser_acceptance import (
+    BrowserDarsCorroborationMappingRow,
+    BrowserDarsRevisionResolution,
+    BrowserDarsRevisionResolutionReport,
+    BrowserDarsSegmentNormalizationRow,
+    FinalBrowserAcceptanceReview,
+    FinalBrowserAcceptanceReviewReport,
+)
 from .domain_investigation import (
     AlternativeDecisionSet,
     CandidateRecord,
@@ -44,6 +52,12 @@ __all__ = [
     "AgentHandoffPackage",
     "HermesCollectionTrace",
     "AuditEvent",
+    "BrowserDarsCorroborationMappingRow",
+    "BrowserDarsRevisionResolution",
+    "BrowserDarsRevisionResolutionReport",
+    "BrowserDarsSegmentNormalizationRow",
+    "FinalBrowserAcceptanceReview",
+    "FinalBrowserAcceptanceReviewReport",
     "AlternativeDecisionSet",
     "CandidateRecord",
     "DomainEvidencePackage",

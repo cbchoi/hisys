@@ -245,7 +245,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   writes `data/chief-editor-final-browser-reviews/<date>/FINAL-CHIEF-REVIEW-*-BROWSER.json`
   with `decision=accept_for_human_reviewed_use`, while preserving
   `publication_or_live_action_approved=false`, `action_taken=none`, and no
-  external calls or mutations.
+  external calls or mutations. The Browser-G and Browser-H JSON artifacts are
+  now formalized as Pydantic schemas in `hisys.schemas.browser_acceptance`, and
+  the CLI validates the revision-resolution and final-acceptance artifacts plus
+  their run-summary reports before writing them.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector

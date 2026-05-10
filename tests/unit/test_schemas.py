@@ -16,7 +16,11 @@ from hisys.schemas import (
     AgentHandoffPackage,
     AlertDecisionRecord,
     AuditEvent,
+    BrowserDarsRevisionResolution,
+    BrowserDarsRevisionResolutionReport,
     ExtractedSignal,
+    FinalBrowserAcceptanceReview,
+    FinalBrowserAcceptanceReviewReport,
     HermesCollectionTrace,
     PerspectiveProfile,
     ProvenanceBundle,
@@ -207,6 +211,113 @@ def test_hermes_trace_delegated_requires_preapproval():
             approval_state="preapproved",
             producer_id="t",
         )
+
+
+def test_browser_dars_revision_resolution_schema_enforces_ready_gates():
+    payload = {
+        "schema_id": "hisys.browser_dars_revision_resolution",
+        "schema_version": "0.1.0",
+        "request_id": "HISYS-REQ-BROWSER-SCHEMA-001",
+        "dars_review_ref": "data/dars-browser-reviews/20260510/DARS-REVIEW-HISYS-REQ-BROWSER-SCHEMA-001-BROWSER.json",
+        "chief_editor_review_ref": "data/chief-editor-reviews/20260510/CHIEF-REVIEW-HISYS-REQ-BROWSER-SCHEMA-001-BROWSER.json",
+        "competitive_matrix_ref": "data/competitive-matrices/20260510/MATRIX-HISYS-REQ-BROWSER-SCHEMA-001-BROWSER.json",
+        "decision": "ready_for_final_acceptance_review",
+        "segment_normalization_status": "complete",
+        "corroboration_mapping_status": "complete",
+        "segment_normalization_rows": [
+            {
+                "row_index": 1,
+                "company_or_source": "DUNLEE | LMB Tube Technology",
+                "normalized_segment": "ct",
+                "basis": "explicit_row_segment",
+            }
+        ],
+        "corroboration_mapping_rows": [
+            {
+                "row_index": 1,
+                "company_or_source": "DUNLEE | LMB Tube Technology",
+                "competitive_signal_strength": "high",
+                "corroborating_evidence_class": "patent",
+                "independent_corroboration_present": True,
+                "evidence_refs": ["EV-DUNLEE-PATENT"],
+            }
+        ],
+        "resolved_dars_revision_items": ["Normalize conclusions by segment."],
+        "remaining_blockers": [],
+        "final_acceptance_allowed": True,
+        "allowed_actions": "advisory_only",
+        "external_call_made": False,
+        "mutation_performed": False,
+        "producer_id": "schema-test",
+    }
+
+    rec = BrowserDarsRevisionResolution.model_validate(payload)
+
+    assert rec.decision == "ready_for_final_acceptance_review"
+    assert rec.final_acceptance_allowed is True
+    BrowserDarsRevisionResolutionReport.model_validate(
+        {
+            "schema_id": "hisys.browser_dars_revision_resolution.report",
+            "schema_version": "0.1.0",
+            "request_id": rec.request_id,
+            "dars_review_ref": rec.dars_review_ref,
+            "revision_resolution_ref": "data/browser-dars-revision-resolutions/20260510/REVISION-HISYS-REQ-BROWSER-SCHEMA-001-BROWSER.json",
+            "decision": rec.decision,
+            "segment_normalization_status": rec.segment_normalization_status,
+            "corroboration_mapping_status": rec.corroboration_mapping_status,
+            "external_call_made": False,
+            "mutation_performed": False,
+        }
+    )
+    bad = {**payload, "remaining_blockers": ["still blocked"]}
+    with pytest.raises(ValidationError):
+        BrowserDarsRevisionResolution.model_validate(bad)
+
+
+def test_final_browser_acceptance_schema_preserves_human_review_boundary():
+    payload = {
+        "schema_id": "hisys.chief_editor.final_browser_acceptance_review",
+        "schema_version": "0.1.0",
+        "request_id": "HISYS-REQ-BROWSER-SCHEMA-002",
+        "revision_resolution_ref": "data/browser-dars-revision-resolutions/20260510/REVISION-HISYS-REQ-BROWSER-SCHEMA-002-BROWSER.json",
+        "dars_review_ref": "data/dars-browser-reviews/20260510/DARS-REVIEW-HISYS-REQ-BROWSER-SCHEMA-002-BROWSER.json",
+        "chief_editor_review_ref": "data/chief-editor-reviews/20260510/CHIEF-REVIEW-HISYS-REQ-BROWSER-SCHEMA-002-BROWSER.json",
+        "competitive_matrix_ref": "data/competitive-matrices/20260510/MATRIX-HISYS-REQ-BROWSER-SCHEMA-002-BROWSER.json",
+        "decision": "accept_for_human_reviewed_use",
+        "accepted_conditions": [
+            "segment_normalization_complete",
+            "independent_corroboration_mapping_complete",
+        ],
+        "acceptance_scope": "browser_investigation_evidence_package_for_human_reviewed_use",
+        "dars_role": "advisory_only_non_executable",
+        "publication_or_live_action_approved": False,
+        "human_approval_required_for_consequential_use": True,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "action_taken": "none",
+        "producer_id": "schema-test",
+    }
+
+    rec = FinalBrowserAcceptanceReview.model_validate(payload)
+
+    assert rec.decision == "accept_for_human_reviewed_use"
+    assert rec.publication_or_live_action_approved is False
+    FinalBrowserAcceptanceReviewReport.model_validate(
+        {
+            "schema_id": "hisys.chief_editor.final_browser_acceptance_review.report",
+            "schema_version": "0.1.0",
+            "request_id": rec.request_id,
+            "revision_resolution_ref": rec.revision_resolution_ref,
+            "final_review_ref": "data/chief-editor-final-browser-reviews/20260510/FINAL-CHIEF-REVIEW-HISYS-REQ-BROWSER-SCHEMA-002-BROWSER.json",
+            "decision": rec.decision,
+            "publication_or_live_action_approved": False,
+            "external_call_made": False,
+            "mutation_performed": False,
+        }
+    )
+    bad = {**payload, "publication_or_live_action_approved": True}
+    with pytest.raises(ValidationError):
+        FinalBrowserAcceptanceReview.model_validate(bad)
 
 
 def test_audit_event_minimum_fields():

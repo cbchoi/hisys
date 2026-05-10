@@ -380,7 +380,10 @@ Boundary rules:
    advisory DARS review -> deterministic revision resolution -> final Chief Editor
    browser acceptance for human-reviewed use;
 6. the readiness review writes only local artifacts and records
-   `external_call_made=false`, `mutation_performed=false`, and `action_taken=none`.
+   `external_call_made=false`, `mutation_performed=false`, and `action_taken=none`;
+7. Browser-G and Browser-H artifacts plus run-summary reports are formal
+   Pydantic contracts in `hisys.schemas.browser_acceptance`, and the CLI validates
+   those contracts immediately before writing artifacts.
 
 ## Browser-G DARS revision resolution boundary
 
@@ -403,7 +406,10 @@ Boundary rules:
    that Chief Editor has finally accepted or that any public/live action is
    approved;
 6. the command writes only local revision-resolution and report artifacts, with
-   `external_call_made=false` and `mutation_performed=false`.
+   `external_call_made=false` and `mutation_performed=false`;
+7. the formal `BrowserDarsRevisionResolution` schema enforces complete gates/no
+   blockers for readiness and rejects high-strength rows without independent
+   corroboration when `corroboration_mapping_status=complete`.
 
 ## Browser-H final Chief Editor browser acceptance boundary
 
@@ -425,4 +431,7 @@ Boundary rules:
 5. consequential/public/live use still requires separate human approval;
 6. the command writes only local final-review and report artifacts, with
    `publication_or_live_action_approved=false`, `action_taken=none`,
-   `external_call_made=false`, and `mutation_performed=false`.
+   `external_call_made=false`, and `mutation_performed=false`;
+7. the formal `FinalBrowserAcceptanceReview` schema fixes the decision/scope,
+   requires both accepted Browser-G conditions, and rejects publication/live
+   approval, external calls, mutations, or any action other than `none`.

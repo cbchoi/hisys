@@ -59,10 +59,14 @@ from ..investigator.agent_config import (
 from ..registry import SourceRegistry
 from ..schemas import (
     AlternativeDecisionSet,
+    BrowserDarsRevisionResolution,
+    BrowserDarsRevisionResolutionReport,
     CandidateRecord,
     DomainEvidencePackage,
     DomainInvestigationRequest,
     DomainInvestigationResult,
+    FinalBrowserAcceptanceReview,
+    FinalBrowserAcceptanceReviewReport,
     HisysToolResult,
     InvestigationDataPackage,
     ExtractedSignal,
@@ -7082,7 +7086,7 @@ def _cmd_resolve_browser_dars_revisions(
     basis_refs = chief_review.get("basis_refs", {}) if isinstance(chief_review.get("basis_refs"), dict) else {}
     matrix_ref = str(basis_refs.get("competitive_matrix", ""))
     matrix = _load_json_ref(instance, matrix_ref) if matrix_ref else {}
-    resolution = _build_browser_dars_revision_resolution(
+    resolution = BrowserDarsRevisionResolution.model_validate(_build_browser_dars_revision_resolution(
         request_id=str(dars_review.get("request_id") or _browser_request_id_from_ref(dars_review_ref)),
         dars_review_ref=dars_review_ref,
         chief_editor_review_ref=chief_ref,
@@ -7090,14 +7094,14 @@ def _cmd_resolve_browser_dars_revisions(
         dars_review=dars_review,
         matrix=matrix,
         producer_id=producer_id,
-    )
+    )).model_dump(mode="json")
     resolution_ref = f"data/browser-dars-revision-resolutions/{yyyymmdd}/REVISION-{resolution['request_id']}-BROWSER.json"
     resolution_path = instance.root / resolution_ref
     resolution_path.parent.mkdir(parents=True, exist_ok=True)
     resolution_path.write_text(json.dumps(resolution, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     resolution_path.with_suffix(".md").write_text(_render_browser_dars_revision_resolution_md(resolution), encoding="utf-8")
     report_ref = f"reports/run-summaries/{yyyymmdd}/browser-dars-revision-resolution-report.json"
-    report = {
+    report = BrowserDarsRevisionResolutionReport.model_validate({
         "schema_id": "hisys.browser_dars_revision_resolution.report",
         "schema_version": "0.1.0",
         "request_id": resolution["request_id"],
@@ -7108,7 +7112,7 @@ def _cmd_resolve_browser_dars_revisions(
         "corroboration_mapping_status": resolution["corroboration_mapping_status"],
         "external_call_made": False,
         "mutation_performed": False,
-    }
+    }).model_dump(mode="json")
     report_path = instance.root / report_ref
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -7264,19 +7268,19 @@ def _cmd_final_review_browser_investigation(
     if not _browser_revision_ready_for_final_review(revision):
         print("final browser review: blocked reason=revision_resolution_not_ready")
         return 2
-    final_review = _build_final_browser_acceptance_review(
+    final_review = FinalBrowserAcceptanceReview.model_validate(_build_final_browser_acceptance_review(
         request_id=str(revision.get("request_id") or _browser_request_id_from_ref(revision_resolution_ref)),
         revision_resolution_ref=revision_resolution_ref,
         revision=revision,
         producer_id=producer_id,
-    )
+    )).model_dump(mode="json")
     final_ref = f"data/chief-editor-final-browser-reviews/{yyyymmdd}/FINAL-CHIEF-REVIEW-{final_review['request_id']}-BROWSER.json"
     final_path = instance.root / final_ref
     final_path.parent.mkdir(parents=True, exist_ok=True)
     final_path.write_text(json.dumps(final_review, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     final_path.with_suffix(".md").write_text(_render_final_browser_acceptance_review_md(final_review), encoding="utf-8")
     report_ref = f"reports/run-summaries/{yyyymmdd}/final-browser-acceptance-review-report.json"
-    report = {
+    report = FinalBrowserAcceptanceReviewReport.model_validate({
         "schema_id": "hisys.chief_editor.final_browser_acceptance_review.report",
         "schema_version": "0.1.0",
         "request_id": final_review["request_id"],
@@ -7286,7 +7290,7 @@ def _cmd_final_review_browser_investigation(
         "publication_or_live_action_approved": False,
         "external_call_made": False,
         "mutation_performed": False,
-    }
+    }).model_dump(mode="json")
     report_path = instance.root / report_ref
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
