@@ -2188,6 +2188,49 @@ def _live_autonomy_entry_hashes(queue: object) -> dict[str, str]:
     return hashes
 
 
+def _live_autonomy_queue_hash_index(paths: Iterable[Path]) -> dict[str, object]:
+    queue_hashes: dict[str, set[str]] = {}
+    entry_hashes: dict[str, set[str]] = {}
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            queue = json.loads(path.read_text(encoding="utf-8"))
+            queue_hash = _live_autonomy_content_hash(queue)
+            queue_id = str(queue.get("queue_id") or path.stem) if isinstance(queue, dict) else path.stem
+            current_entry_hashes = _live_autonomy_entry_hashes(queue)
+        except json.JSONDecodeError:
+            queue_hash = _live_autonomy_file_hash(path)
+            queue_id = path.stem
+            current_entry_hashes = {}
+        queue_hashes.setdefault(queue_hash, set()).add(queue_id)
+        for entry_id, entry_hash in current_entry_hashes.items():
+            entry_hashes.setdefault(entry_id, set()).add(entry_hash)
+    return {"queue_hashes": queue_hashes, "entry_hashes": entry_hashes}
+
+
+def _live_autonomy_replay_classification(
+    *,
+    queue_id: str | None,
+    queue_hash: str,
+    entry_hashes: dict[str, str],
+    prior_index: dict[str, object],
+) -> str:
+    prior_queue_hashes = prior_index.get("queue_hashes", {})
+    prior_entry_hashes = prior_index.get("entry_hashes", {})
+    matching_queue_ids = prior_queue_hashes.get(queue_hash, set()) if isinstance(prior_queue_hashes, dict) else set()
+    if isinstance(matching_queue_ids, set) and queue_id and queue_id in matching_queue_ids:
+        return "same_hash_replay"
+    if isinstance(matching_queue_ids, set) and matching_queue_ids:
+        return "duplicate_queue_content"
+    if isinstance(prior_entry_hashes, dict):
+        for entry_id, entry_hash in entry_hashes.items():
+            prior_hashes = prior_entry_hashes.get(entry_id, set())
+            if isinstance(prior_hashes, set) and prior_hashes and entry_hash not in prior_hashes:
+                return "changed_same_entry_id"
+    return "new"
+
+
 def _validate_live_autonomy_candidate_queue(queue: object) -> tuple[bool, str | None, str | None]:
     if not isinstance(queue, dict):
         return False, "queue_not_object", None
@@ -2424,6 +2467,11 @@ def _cmd_live_autonomy_admit(
     """Validate candidate queue files before admitting them to incoming."""
 
     instance = InstanceRoot(instance_root)
+    prior_paths = []
+    for existing_dir in (incoming_dir, rejected_dir):
+        if existing_dir.exists():
+            prior_paths.extend(path for path in existing_dir.glob(candidate_glob) if path.is_file())
+    prior_index = _live_autonomy_queue_hash_index(prior_paths)
     discovered = sorted(path for path in candidate_dir.glob(candidate_glob) if path.is_file()) if candidate_dir.exists() else []
     selected = discovered[: max(0, max_candidates)]
     results: list[dict[str, object]] = []
@@ -2442,6 +2490,12 @@ def _cmd_live_autonomy_admit(
         except json.JSONDecodeError:
             accepted = False
             reason_code = "queue_json_invalid"
+        replay_classification = _live_autonomy_replay_classification(
+            queue_id=queue_id,
+            queue_hash=queue_hash,
+            entry_hashes=entry_hashes,
+            prior_index=prior_index,
+        )
         destination = incoming_dir if accepted else rejected_dir
         try:
             final_ref = _live_autonomy_unique_path(destination, candidate_path.name)
@@ -2460,6 +2514,7 @@ def _cmd_live_autonomy_admit(
                 "hash_algorithm": "sha256",
                 "queue_hash": queue_hash,
                 "entry_hashes": entry_hashes,
+                "replay_classification": replay_classification,
                 "status": status,
                 "reason_code": reason_code,
                 "final_ref": str(final_ref) if final_ref is not None else None,
@@ -2470,6 +2525,7 @@ def _cmd_live_autonomy_admit(
         )
     rejected_count = sum(1 for result in results if result["status"] == "rejected")
     admitted_count = sum(1 for result in results if result["status"] == "admitted")
+    replay_counts = {classification: sum(1 for result in results if result.get("replay_classification") == classification) for classification in ["new", "same_hash_replay", "changed_same_entry_id", "duplicate_queue_content"]}
     report = {
         "schema_id": "hisys.live_autonomy.admission_report",
         "schema_version": "0.1.0",
@@ -2484,6 +2540,7 @@ def _cmd_live_autonomy_admit(
         "rejected_count": rejected_count,
         "hash_algorithm": "sha256",
         "queue_hashes": [result["queue_hash"] for result in results if result.get("queue_hash")],
+        "replay_classification_counts": replay_counts,
         "external_call_made": False,
         "mutation_performed": False,
         "network_push_performed": False,

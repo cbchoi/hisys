@@ -10,7 +10,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from hisys.cli.main import _live_autonomy_content_hash, main
+from hisys.cli.main import _live_autonomy_content_hash, _live_autonomy_replay_classification, main
 
 
 def _write_domain_request(path: Path) -> None:
@@ -944,6 +944,18 @@ def test_live_autonomy_content_hash_is_stable_for_key_order() -> None:
     assert len(_live_autonomy_content_hash(left)) == 64
 
 
+def test_live_autonomy_replay_classification_from_hash_index() -> None:
+    prior = {
+        "queue_hashes": {"queue-hash-1": {"QUEUE-1"}},
+        "entry_hashes": {"entry-1": {"entry-hash-old"}},
+    }
+
+    assert _live_autonomy_replay_classification(queue_id="QUEUE-NEW", queue_hash="queue-hash-new", entry_hashes={"entry-2": "entry-hash-new"}, prior_index=prior) == "new"
+    assert _live_autonomy_replay_classification(queue_id="QUEUE-1", queue_hash="queue-hash-1", entry_hashes={}, prior_index=prior) == "same_hash_replay"
+    assert _live_autonomy_replay_classification(queue_id="QUEUE-2", queue_hash="queue-hash-1", entry_hashes={}, prior_index=prior) == "duplicate_queue_content"
+    assert _live_autonomy_replay_classification(queue_id="QUEUE-3", queue_hash="queue-hash-3", entry_hashes={"entry-1": "entry-hash-new"}, prior_index=prior) == "changed_same_entry_id"
+
+
 def test_live_autonomy_status_aggregates_compact_reports_and_ledgers(tmp_path: Path) -> None:
     instance = tmp_path / "instance"
     report_dir = instance / "reports" / "run-summaries" / "20260510"
@@ -1110,6 +1122,8 @@ def test_live_autonomy_admit_moves_valid_and_invalid_candidates(tmp_path: Path) 
     statuses = {Path(item["candidate_path"]).name: item for item in report["results"]}
     assert len(statuses["valid.json"]["queue_hash"]) == 64
     assert len(statuses["valid.json"]["entry_hashes"]["valid-001"]) == 64
+    assert statuses["valid.json"]["replay_classification"] == "new"
+    assert report["replay_classification_counts"]["new"] == 4
     assert statuses["valid.json"]["status"] == "admitted"
     assert statuses["missing-request.json"]["reason_code"] == "queue_entry_missing_request"
     assert statuses["unsafe-request.json"]["reason_code"] == "queue_entry_request_path_unsafe"

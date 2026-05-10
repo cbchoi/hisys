@@ -368,6 +368,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   keys for valid queues, and from raw file bytes for malformed JSON, so operators
   can identify unchanged/replayed queue work cheaply without source calls, vault
   mutation, Git/network pushes, or prompt-based checks.
+- Increment **Live-X duplicate/replay classification** -
+  `hisys live-autonomy-admit` now compares candidate queue and entry hashes with
+  existing incoming/rejected handoff artifacts and records deterministic replay
+  classifications: `new`, `same_hash_replay`, `changed_same_entry_id`, or
+  `duplicate_queue_content`. The classification is report-only and does not add
+  prompt checks, source calls, vault mutation, or Git/network pushes.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines
