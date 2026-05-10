@@ -936,6 +936,92 @@ def test_live_autonomy_run_skips_retry_exhausted_entries(tmp_path: Path, monkeyp
     assert watchdog["health_status"] == "ok"
 
 
+def test_live_autonomy_status_aggregates_compact_reports_and_ledgers(tmp_path: Path) -> None:
+    instance = tmp_path / "instance"
+    report_dir = instance / "reports" / "run-summaries" / "20260510"
+    report_dir.mkdir(parents=True)
+    (report_dir / "live-autonomy-admission-report.json").write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.live_autonomy.admission_report",
+                "status": "attention_required",
+                "discovered_candidate_count": 3,
+                "processed_candidate_count": 3,
+                "admitted_count": 2,
+                "rejected_count": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (report_dir / "live-autonomy-scheduler-tick-report.json").write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.live_autonomy.scheduler_tick_report",
+                "status": "attention_required",
+                "discovered_queue_count": 2,
+                "processed_queue_count": 1,
+                "attention_count": 1,
+                "next_scheduler_action": "review_queue_results",
+            }
+        ),
+        encoding="utf-8",
+    )
+    queue_report_dir = report_dir / "queue-001"
+    queue_report_dir.mkdir()
+    (queue_report_dir / "live-autonomy-watchdog-report.json").write_text(
+        json.dumps({"schema_id": "hisys.live_autonomy.watchdog_report", "health_status": "attention_required", "retry_eligible_count": 1}),
+        encoding="utf-8",
+    )
+    ledger_dir = instance / "data" / "live-autonomy-ledgers" / "20260510"
+    ledger_dir.mkdir(parents=True)
+    (ledger_dir / "queue-001.json").write_text(
+        json.dumps(
+            {
+                "queue_id": "queue-001",
+                "entries": {
+                    "done": {"status": "completed"},
+                    "blocked": {"status": "blocked"},
+                    "terminal": {"status": "skipped_non_retryable"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(["live-autonomy-status", "--instance", str(instance), "--date", "20260510"])
+
+    assert result == 0
+    dashboard = json.loads((report_dir / "live-autonomy-status-report.json").read_text(encoding="utf-8"))
+    assert dashboard["schema_id"] == "hisys.live_autonomy.status_dashboard"
+    assert dashboard["status"] == "attention_required"
+    assert dashboard["health_status"] == "attention_required"
+    assert dashboard["next_operator_action"] == "review_attention_artifacts"
+    assert dashboard["admission_summary"]["rejected_count"] == 1
+    assert dashboard["scheduler_summary"]["attention_count"] == 1
+    assert dashboard["watchdog_summary"]["report_count"] == 1
+    assert dashboard["watchdog_summary"]["attention_count"] == 1
+    assert dashboard["watchdog_summary"]["retry_eligible_count"] == 1
+    assert dashboard["ledger_summary"]["entry_count"] == 3
+    assert dashboard["ledger_summary"]["completed_count"] == 1
+    assert dashboard["ledger_summary"]["attention_count"] == 2
+    assert dashboard["external_call_made"] is False
+    assert dashboard["mutation_performed"] is False
+    assert dashboard["network_push_performed"] is False
+
+
+def test_live_autonomy_status_reports_idle_with_missing_artifacts(tmp_path: Path) -> None:
+    instance = tmp_path / "instance"
+    result = main(["live-autonomy-status", "--instance", str(instance), "--date", "20260510"])
+
+    assert result == 0
+    dashboard = json.loads((instance / "reports" / "run-summaries" / "20260510" / "live-autonomy-status-report.json").read_text(encoding="utf-8"))
+    assert dashboard["status"] == "idle"
+    assert dashboard["health_status"] == "ok"
+    assert dashboard["next_operator_action"] == "sleep"
+    assert dashboard["missing_source_reports"] == ["admission_report", "scheduler_tick_report"]
+    assert dashboard["ledger_summary"]["entry_count"] == 0
+
+
 def test_live_autonomy_admit_moves_valid_and_invalid_candidates(tmp_path: Path) -> None:
     candidate_dir = tmp_path / "candidates"
     incoming_dir = tmp_path / "incoming"

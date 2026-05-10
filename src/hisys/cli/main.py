@@ -349,6 +349,14 @@ def _build_parser() -> argparse.ArgumentParser:
     live_admission.add_argument("--date", required=True, help="YYYYMMDD output partition")
     live_admission.add_argument("--max-candidates", type=int, default=10, help="maximum candidate queue files to validate in this admission tick")
 
+    live_status = sub.add_parser(
+        "live-autonomy-status",
+        help="write a compact operator dashboard from existing live-autonomy reports and ledgers",
+    )
+    live_status.add_argument("--instance", required=True, help="runtime instance root containing reports and ledgers")
+    live_status.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    live_status.add_argument("--ledger-dir", help="optional ledger directory; defaults to data/live-autonomy-ledgers/<date>")
+
     plan_sources = sub.add_parser(
         "plan-source-connectors",
         help="dry-run plan governed source connectors for a domain investigation request",
@@ -881,6 +889,12 @@ def main(argv: list[str] | None = None) -> int:
             rejected_dir=Path(args.rejected_dir),
             yyyymmdd=args.date,
             max_candidates=args.max_candidates,
+        )
+    if args.command == "live-autonomy-status":
+        return _cmd_live_autonomy_status(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            ledger_dir=Path(args.ledger_dir) if args.ledger_dir else None,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -2205,6 +2219,154 @@ def _write_live_autonomy_admission_report(*, instance: InstanceRoot, yyyymmdd: s
         encoding="utf-8",
     )
     return report_path
+
+
+def _live_autonomy_read_json_if_present(path: Path) -> dict[str, object] | None:
+    if not path.exists() or not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _live_autonomy_compact_counts(report: dict[str, object] | None, keys: list[str]) -> dict[str, int]:
+    if report is None:
+        return {key: 0 for key in keys}
+    counts: dict[str, int] = {}
+    for key in keys:
+        value = report.get(key, 0)
+        counts[key] = int(value) if isinstance(value, int) else 0
+    return counts
+
+
+def _write_live_autonomy_status_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "live-autonomy-status-report.json"
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    (report_dir / "live-autonomy-status-report.md").write_text(
+        "\n".join(
+            [
+                "# Live Autonomy Status Dashboard",
+                "",
+                f"- status: `{report['status']}`",
+                f"- health_status: `{report['health_status']}`",
+                f"- next_operator_action: `{report['next_operator_action']}`",
+                f"- admission_rejected_count: `{report['admission_summary']['rejected_count']}`",
+                f"- scheduler_attention_count: `{report['scheduler_summary']['attention_count']}`",
+                f"- watchdog_attention_count: `{report['watchdog_summary']['attention_count']}`",
+                f"- ledger_completed_count: `{report['ledger_summary']['completed_count']}`",
+                f"- ledger_attention_count: `{report['ledger_summary']['attention_count']}`",
+                f"- external_call_made: `{str(report['external_call_made']).lower()}`",
+                f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
+                f"- network_push_performed: `{str(report['network_push_performed']).lower()}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _cmd_live_autonomy_status(*, instance_root: Path, yyyymmdd: str, ledger_dir: Path | None) -> int:
+    """Write a compact operator status dashboard from existing reports and ledgers."""
+
+    instance = InstanceRoot(instance_root)
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    ledger_root = ledger_dir or (instance.data_dir / "live-autonomy-ledgers" / yyyymmdd)
+    admission_path = report_dir / "live-autonomy-admission-report.json"
+    scheduler_path = report_dir / "live-autonomy-scheduler-tick-report.json"
+    admission = _live_autonomy_read_json_if_present(admission_path)
+    scheduler = _live_autonomy_read_json_if_present(scheduler_path)
+
+    watchdog_reports: list[dict[str, object]] = []
+    watchdog_refs: list[str] = []
+    if report_dir.exists():
+        for watchdog_path in sorted(report_dir.rglob("live-autonomy-watchdog-report.json")):
+            watchdog = _live_autonomy_read_json_if_present(watchdog_path)
+            if watchdog is not None:
+                watchdog_reports.append(watchdog)
+                watchdog_refs.append(str(watchdog_path))
+
+    ledger_files = sorted(ledger_root.glob("*.json")) if ledger_root.exists() else []
+    ledger_entries: list[dict[str, object]] = []
+    for ledger_path in ledger_files:
+        ledger = _live_autonomy_read_json_if_present(ledger_path)
+        entries = ledger.get("entries", {}) if ledger else {}
+        if isinstance(entries, dict):
+            for entry in entries.values():
+                if isinstance(entry, dict):
+                    ledger_entries.append(entry)
+
+    admission_counts = _live_autonomy_compact_counts(
+        admission,
+        ["discovered_candidate_count", "processed_candidate_count", "admitted_count", "rejected_count"],
+    )
+    scheduler_counts = _live_autonomy_compact_counts(
+        scheduler,
+        ["discovered_queue_count", "processed_queue_count", "attention_count"],
+    )
+    watchdog_attention_count = sum(1 for item in watchdog_reports if item.get("health_status") == "attention_required")
+    retry_eligible_count = sum(int(item.get("retry_eligible_count", 0)) for item in watchdog_reports if isinstance(item.get("retry_eligible_count", 0), int))
+    ledger_completed_count = sum(1 for entry in ledger_entries if entry.get("status") in {"completed", "skipped_completed"})
+    ledger_attention_count = sum(
+        1
+        for entry in ledger_entries
+        if entry.get("status") in {"blocked", "skipped_retry_exhausted", "skipped_non_retryable"}
+    )
+    missing_sources = [
+        name
+        for name, present in {
+            "admission_report": admission is not None,
+            "scheduler_tick_report": scheduler is not None,
+        }.items()
+        if not present
+    ]
+    attention_count = admission_counts["rejected_count"] + scheduler_counts["attention_count"] + watchdog_attention_count + ledger_attention_count
+    status = "idle" if not admission and not scheduler and not watchdog_reports and not ledger_entries else ("attention_required" if attention_count else "ok")
+    health_status = "attention_required" if attention_count else "ok"
+    report = {
+        "schema_id": "hisys.live_autonomy.status_dashboard",
+        "schema_version": "0.1.0",
+        "status": status,
+        "health_status": health_status,
+        "scheduler_ready": True,
+        "date": yyyymmdd,
+        "next_operator_action": "review_attention_artifacts" if attention_count else "sleep",
+        "missing_source_reports": missing_sources,
+        "admission_summary": {
+            **admission_counts,
+            "report_ref": str(admission_path) if admission is not None else None,
+            "status": admission.get("status") if admission else "missing",
+        },
+        "scheduler_summary": {
+            **scheduler_counts,
+            "report_ref": str(scheduler_path) if scheduler is not None else None,
+            "status": scheduler.get("status") if scheduler else "missing",
+            "next_scheduler_action": scheduler.get("next_scheduler_action") if scheduler else None,
+        },
+        "watchdog_summary": {
+            "report_count": len(watchdog_reports),
+            "attention_count": watchdog_attention_count,
+            "retry_eligible_count": retry_eligible_count,
+            "report_refs": watchdog_refs,
+        },
+        "ledger_summary": {
+            "ledger_dir": str(ledger_root),
+            "ledger_file_count": len(ledger_files),
+            "entry_count": len(ledger_entries),
+            "completed_count": ledger_completed_count,
+            "attention_count": ledger_attention_count,
+        },
+        "external_call_made": False,
+        "mutation_performed": False,
+        "network_push_performed": False,
+    }
+    report_path = _write_live_autonomy_status_report(instance=instance, yyyymmdd=yyyymmdd, report=report)
+    print(f"live autonomy status: status={status} health={health_status} attention={attention_count} report={report_path}")
+    return 0
 
 
 def _cmd_live_autonomy_admit(

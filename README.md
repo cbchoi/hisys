@@ -352,6 +352,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   outcome: the report status records `attention_required`, but the command exits
   `0` unless an unexpected process error occurs, avoiding scheduler paging for
   routine malformed candidates.
+- Increment **Live-V compact operator status dashboard** -
+  `hisys live-autonomy-status` writes `live-autonomy-status-report.json|md` by
+  aggregating only existing admission reports, scheduler tick reports, watchdog
+  reports, and queue ledgers. It records compact counts for admitted/rejected
+  candidates, processed queues, watchdog attention, retry-eligible entries,
+  completed ledger entries, and ledger attention entries. It is read-only with
+  respect to live systems: `external_call_made=false`, `mutation_performed=false`,
+  and `network_push_performed=false`; no prompt/LLM review is part of routine
+  dashboard generation.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines
