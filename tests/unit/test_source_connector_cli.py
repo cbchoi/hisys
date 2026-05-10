@@ -680,6 +680,10 @@ def test_browser_investigate_topic_populates_useful_url_candidates_not_cybersecu
             "--follow-links",
             "--max-follow-links-per-source",
             "1",
+            "--orchestrator-corroborating-url",
+            "https://patents.google.com/patent/US20230343543A1/en",
+            "--orchestrator-corroborating-url",
+            "https://www.philips.com/c-dam/dunlee/downloads/5218134_Dunlee_Datasheet_CT4000.pdf",
             "--source-url",
             "https://company.local.fixture/company",
         ]
@@ -690,10 +694,15 @@ def test_browser_investigate_topic_populates_useful_url_candidates_not_cybersecu
     assert report["source_candidates_ref"] == "data/source-candidates/20260510/SRC-CANDIDATES-HISYS-REQ-BROWSER-SOURCES-001-BROWSER.json"
     candidates = json.loads((tmp_path / report["source_candidates_ref"]).read_text(encoding="utf-8"))
     assert candidates["risk_classification"] == "evidence_quality_source_discovery_not_cybersecurity"
-    assert candidates["candidate_count"] == 2
+    assert candidates["candidate_count"] == 4
     assert candidates["candidates"][1]["url"] == "https://company.local.fixture/detail"
     assert candidates["candidates"][1]["usefulness_score"] == "high"
     assert "technology detail" in candidates["candidates"][1]["usefulness_reason"].lower()
+    orchestrator_candidates = [item for item in candidates["candidates"] if item["orchestrator_provided"]]
+    assert [item["source_type"] for item in orchestrator_candidates] == ["patent", "datasheet_or_specification"]
+    assert all(item["evidence_refs"] == [] for item in orchestrator_candidates)
+    assert "orchestrator_provided_corroborating_candidate_count" in candidates
+    assert candidates["orchestrator_provided_corroborating_candidate_count"] == 2
 
 
 def test_browser_investigate_topic_writes_insufficient_evidence_gate_for_unfair_review(tmp_path: Path, monkeypatch) -> None:

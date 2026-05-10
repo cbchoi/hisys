@@ -460,6 +460,12 @@ def _build_parser() -> argparse.ArgumentParser:
     browser_investigate.add_argument("--browser-fixture-html", action="append", default=[], help="local HTML fixture paired by order with --source-url for deterministic tests")
     browser_investigate.add_argument("--follow-links", action="store_true", help="follow bounded same-domain technology/product detail links discovered from source pages")
     browser_investigate.add_argument("--max-follow-links-per-source", type=int, default=0, help="maximum discovered links to follow per source URL when --follow-links is set")
+    browser_investigate.add_argument(
+        "--orchestrator-corroborating-url",
+        action="append",
+        default=[],
+        help="orchestrator-provided candidate URL for independent corroboration; recorded but not fetched unless separately promoted as a source URL",
+    )
 
     plan_pdf = sub.add_parser(
         "plan-pdf-candidates",
@@ -1026,6 +1032,7 @@ def main(argv: list[str] | None = None) -> int:
             browser_fixture_html=[Path(item) for item in args.browser_fixture_html],
             follow_links=args.follow_links,
             max_follow_links_per_source=args.max_follow_links_per_source,
+            orchestrator_corroborating_urls=args.orchestrator_corroborating_url,
         )
     if args.command == "search-topic":
         return _cmd_search_topic(
@@ -3534,6 +3541,7 @@ def _cmd_browser_investigate_topic(
     browser_fixture_html: list[Path],
     follow_links: bool,
     max_follow_links_per_source: int,
+    orchestrator_corroborating_urls: list[str],
 ) -> int:
     """Collect approved pages through Playwright and write actual-data investigation artifacts."""
 
@@ -3761,6 +3769,7 @@ def _cmd_browser_investigate_topic(
         topic=topic,
         source_urls=source_urls,
         followed_source_urls=followed_source_urls,
+        orchestrator_corroborating_urls=orchestrator_corroborating_urls,
         evidence_package=evidence_package,
         competitive_matrix=matrix,
     )
@@ -3773,6 +3782,7 @@ def _cmd_browser_investigate_topic(
         topic=topic,
         source_urls=source_urls,
         followed_source_urls=followed_source_urls,
+        orchestrator_corroborating_urls=orchestrator_corroborating_urls,
         evidence_package=evidence_package,
         competitive_matrix=matrix,
     )
@@ -4015,6 +4025,7 @@ def _build_browser_source_candidates(
     topic: str,
     source_urls: list[str],
     followed_source_urls: list[str],
+    orchestrator_corroborating_urls: list[str],
     evidence_package: EvidencePackage,
     competitive_matrix: dict[str, object],
 ) -> dict[str, object]:
@@ -4041,6 +4052,28 @@ def _build_browser_source_candidates(
                 "evidence_refs": [item.evidence_id],
                 "selected_for_browser_read": url in source_urls,
                 "discovered_by_follow_link": url in followed_source_urls,
+                "orchestrator_provided": False,
+                "read_status": "collected",
+            }
+        )
+    for url in orchestrator_corroborating_urls:
+        if url in {candidate["url"] for candidate in candidates}:
+            continue
+        source_type = _classify_browser_source_type(url=url, title="", text="")
+        candidates.append(
+            {
+                "url": url,
+                "title": "orchestrator-provided corroborating candidate",
+                "domain": urlparse(url).netloc,
+                "source_type": source_type,
+                "usefulness_score": _score_browser_source_usefulness(source_type=source_type, signals={}, text=url),
+                "usefulness_reason": _browser_source_usefulness_reason(source_type=source_type, signals={}),
+                "evidence_role": _browser_source_evidence_role(source_type),
+                "evidence_refs": [],
+                "selected_for_browser_read": False,
+                "discovered_by_follow_link": False,
+                "orchestrator_provided": True,
+                "read_status": "candidate_only_not_fetched",
             }
         )
     return {
@@ -4050,6 +4083,7 @@ def _build_browser_source_candidates(
         "topic": topic,
         "risk_classification": "evidence_quality_source_discovery_not_cybersecurity",
         "candidate_count": len(candidates),
+        "orchestrator_provided_corroborating_candidate_count": len([item for item in candidates if item.get("orchestrator_provided")]),
         "candidates": candidates,
         "next_source_classes_to_add": [
             "public datasheets/specification PDFs",
@@ -4076,7 +4110,7 @@ def _classify_browser_source_type(*, url: str, title: str, text: str) -> str:
         return "technical_paper"
     if any(term in location for term in ["datasheet", "data sheet", "specification", ".pdf"]):
         return "datasheet_or_specification"
-    if any(term in location for term in ["distributor", "shop", "store"]):
+    if any(term in location for term in ["distributor", "shop", "store", "environmental-expert.com", "pxsinc.com", "gbmfrs.com"]):
         return "distributor_or_shop_page"
     if any(term in haystack for term in ["product", "technology", "solution", "tube", "ct", "x-ray", "xray"]):
         return "official_company_or_product_page"
@@ -4122,6 +4156,7 @@ def _build_browser_evidence_sufficiency_assessment(
     topic: str,
     source_urls: list[str],
     followed_source_urls: list[str],
+    orchestrator_corroborating_urls: list[str],
     evidence_package: EvidencePackage,
     competitive_matrix: dict[str, object],
 ) -> dict[str, object]:
@@ -4153,12 +4188,14 @@ def _build_browser_evidence_sufficiency_assessment(
         "observed_counts": {
             "source_url_count": len(source_urls),
             "followed_source_url_count": len(followed_source_urls),
+            "orchestrator_provided_corroborating_candidate_count": len(orchestrator_corroborating_urls),
             "distinct_domain_count": len(all_domains),
             "matrix_row_count": len(matrix_rows),
         },
         "source_types_seen": sorted(set(source_types)),
         "blockers": blockers,
         "missing_evidence_plan": [
+            "Promote orchestrator-provided corroborating URL candidates to governed browser/source reads after approval: " + ", ".join(orchestrator_corroborating_urls) if orchestrator_corroborating_urls else "Ask orchestrator to provide concrete corroborating URL candidates before Chief Editor / Devil review.",
             "Collect independent corroborating sources: public datasheets/specification PDFs, patents, filings, papers, or credible distributor/spec pages.",
             "Populate and score a broader URL candidate list before asking Chief Editor or Devil/DARS to decide.",
             "Follow product/detail links for each major vendor and record why each URL is useful.",

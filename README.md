@@ -219,7 +219,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   sufficiency assessment under `data/evidence-sufficiency/<date>/`. Source
   candidate population is classified as evidence-quality/source discovery, not a
   cybersecurity risk; Chief Editor / Devil review should remain blocked until the
-  sufficiency artifact says the evidence is fair enough for review.
+  sufficiency artifact says the evidence is fair enough for review. Use
+  `--orchestrator-corroborating-url <URL>` to have the orchestrator populate
+  concrete independent/corroborating candidates (patents, datasheets, papers,
+  filings, or distributor/spec pages) into the source-candidate artifact without
+  fetching them; the sufficiency plan then tells the operator to promote those
+  URLs through governed source reads before final review.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector
