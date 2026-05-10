@@ -285,6 +285,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   a local fixture Git remote; real `/home/cbchoi/obsidian` use remains behind
   `--allow-real-obsidian-vault` and records `real_obsidian_vault_write_performed`
   plus `network_push_performed` in `live-ideation-persist-report.json`.
+- Increment **Live-O standing autonomous approval envelope** -
+  `hisys live-ideation-persist --standing-approval-policy` lets a prior approved
+  policy substitute for repeated per-run CLI approval flags inside a scoped
+  operating envelope. The policy must be `status=approved`, contain an
+  `approval_ref`, include the `live_source_access`, `live_vault_write`, and
+  `obsidian_git_push` capabilities, and match allowed domain, vault root, remote,
+  branch, credential-ref, and expiry controls. Reports record
+  `standing_approval_applied`; out-of-scope requests block before source access,
+  vault mutation, or Git push.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

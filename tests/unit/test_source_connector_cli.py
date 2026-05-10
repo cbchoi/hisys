@@ -545,3 +545,131 @@ def test_live_ideation_persist_blocks_before_vault_write_without_write_enable(tm
     assert report["status"] == "blocked"
     assert report["reason_code"] == "live_apply_gate_not_satisfied"
     assert report["mutation_performed"] is False
+
+
+def test_live_ideation_persist_accepts_standing_approval_policy(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    metadata_fixture = tmp_path / "crossref.json"
+    metadata_fixture.write_text(json.dumps({"message": {"DOI": "10.0000/hisys.fixture.formalism"}}), encoding="utf-8")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "  doi_metadata_search:\n    connector_id: doi_metadata_search\n    connector_type: metadata_search\n    enabled: false\n    mode: read_only\n    external_call_allowed: false",
+            "  doi_metadata_search:\n    connector_id: doi_metadata_search\n    connector_type: metadata_search\n    enabled: true\n    mode: read_only\n    external_call_allowed: true",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    vault_root = tmp_path / "vault"
+    remote_root = tmp_path / "remote.git"
+    vault_root.mkdir()
+    subprocess.run(["git", "init", "--bare", str(remote_root)], check=True, capture_output=True, text=True)
+    subprocess.run(["git", "init", "-b", "main"], cwd=vault_root, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "config", "user.email", "hisys-test@example.invalid"], cwd=vault_root, check=True)
+    subprocess.run(["git", "config", "user.name", "Hisys Test"], cwd=vault_root, check=True)
+    subprocess.run(["git", "remote", "add", "origin", str(remote_root)], cwd=vault_root, check=True)
+    policy_path = tmp_path / "standing-approval.json"
+    policy_path.write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.live_ideation.standing_approval_policy",
+                "status": "approved",
+                "approval_ref": "STANDING-LIVE-IDEATION-001",
+                "expires_on": "20261231",
+                "capabilities": ["live_source_access", "live_vault_write", "obsidian_git_push"],
+                "allowed_domains": ["research"],
+                "allowed_vault_roots": [str(vault_root)],
+                "allowed_remote_names": ["origin"],
+                "allowed_branches": ["main"],
+                "allowed_credential_refs": ["env:HISYS_OBSIDIAN_GIT_SSH_KEY"],
+                "clean_git_status_required": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "live-ideation-persist",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--request",
+            str(request_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--doi",
+            "10.0000/hisys.fixture.formalism",
+            "--vault-root",
+            str(vault_root),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--metadata-fixture",
+            str(metadata_fixture),
+            "--standing-approval-policy",
+            str(policy_path),
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-ideation-persist-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "completed"
+    assert report["approval_ref"] == "STANDING-LIVE-IDEATION-001"
+    assert report["standing_approval_applied"] is True
+    assert report["mutation_performed"] is True
+    assert (vault_root / report["vault_refs"][0]).exists()
+
+
+def test_live_ideation_persist_blocks_standing_approval_outside_scope(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(Path("examples/instance/config/source-connectors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    policy_path = tmp_path / "standing-approval.json"
+    policy_path.write_text(
+        json.dumps(
+            {
+                "status": "approved",
+                "approval_ref": "STANDING-LIVE-IDEATION-001",
+                "capabilities": ["live_source_access", "live_vault_write", "obsidian_git_push"],
+                "allowed_domains": ["research"],
+                "allowed_vault_roots": [str(tmp_path / "other-vault")],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "live-ideation-persist",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--request",
+            str(request_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--doi",
+            "10.0000/hisys.fixture.formalism",
+            "--vault-root",
+            str(tmp_path / "vault"),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--standing-approval-policy",
+            str(policy_path),
+        ]
+    )
+
+    assert result == 2
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-ideation-persist-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "blocked"
+    assert report["reason_code"] == "standing_approval_vault_root_not_allowed"
+    assert report["standing_approval_applied"] is False

@@ -277,7 +277,7 @@ def _build_parser() -> argparse.ArgumentParser:
     live_pipeline.add_argument("--config", required=True, help="source-connectors.yaml path")
     live_pipeline.add_argument("--date", required=True, help="YYYYMMDD output partition")
     live_pipeline.add_argument("--doi", required=True, help="approved DOI for read-only metadata retrieval")
-    live_pipeline.add_argument("--approval-ref", required=True, help="approval ref authorizing all pipeline stages")
+    live_pipeline.add_argument("--approval-ref", help="approval ref authorizing all pipeline stages; optional when a standing approval policy supplies it")
     live_pipeline.add_argument("--vault-root", required=True, help="target Obsidian vault root")
     live_pipeline.add_argument("--remote-name", default="origin", help="Git remote name for vault sync")
     live_pipeline.add_argument("--branch", default="main", help="Git branch for vault sync")
@@ -289,6 +289,7 @@ def _build_parser() -> argparse.ArgumentParser:
     live_pipeline.add_argument("--allow-real-obsidian-vault", action="store_true", help="allow /home/cbchoi/obsidian as target vault")
     live_pipeline.add_argument("--clean-git-status", action="store_true", help="operator confirms target vault Git status is clean except approved refs")
     live_pipeline.add_argument("--metadata-fixture", help="local Crossref-style JSON fixture for tests/harnesses")
+    live_pipeline.add_argument("--standing-approval-policy", help="approved standing autonomous operating-envelope policy JSON")
 
     plan_sources = sub.add_parser(
         "plan-source-connectors",
@@ -769,6 +770,7 @@ def main(argv: list[str] | None = None) -> int:
             allow_real_obsidian_vault=args.allow_real_obsidian_vault,
             clean_git_status=args.clean_git_status,
             metadata_fixture=Path(args.metadata_fixture) if args.metadata_fixture else None,
+            standing_approval_policy=Path(args.standing_approval_policy) if args.standing_approval_policy else None,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -1663,7 +1665,7 @@ def _cmd_live_ideation_persist(
     config_path: Path,
     yyyymmdd: str,
     doi: str,
-    approval_ref: str,
+    approval_ref: str | None,
     vault_root: Path,
     remote_name: str,
     branch: str,
@@ -1675,11 +1677,41 @@ def _cmd_live_ideation_persist(
     allow_real_obsidian_vault: bool,
     clean_git_status: bool,
     metadata_fixture: Path | None,
+    standing_approval_policy: Path | None = None,
 ) -> int:
     """Run approved live ideation through vault persistence and Git sync."""
 
     instance = InstanceRoot(instance_root)
     request = DomainInvestigationRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
+    policy = _resolve_live_ideation_standing_approval(
+        policy_path=standing_approval_policy,
+        request=request,
+        yyyymmdd=yyyymmdd,
+        vault_root=vault_root,
+        remote_name=remote_name,
+        branch=branch,
+        credential_ref=credential_ref,
+        explicit_approval_ref=approval_ref,
+    )
+    if policy["status"] != "approved":
+        pipeline_report = _live_ideation_persist_report(
+            request_id=request.request_id,
+            approval_ref=str(approval_ref or policy.get("approval_ref") or ""),
+            status="blocked",
+            reason_code=str(policy["reason_code"]),
+            standing_approval_policy_ref=str(standing_approval_policy) if standing_approval_policy else None,
+            standing_approval_applied=False,
+        )
+        report_path = _write_live_ideation_persist_report(instance=instance, yyyymmdd=yyyymmdd, report=pipeline_report)
+        print(f"live ideation persist: status=blocked report={report_path}")
+        return 2
+    approval_ref = str(policy["approval_ref"])
+    standing_approval_applied = bool(policy["standing_approval_applied"])
+    explicit_live_source_enable = explicit_live_source_enable or standing_approval_applied
+    explicit_live_write_enable = explicit_live_write_enable or standing_approval_applied
+    explicit_live_git_enable = explicit_live_git_enable or standing_approval_applied
+    allow_real_obsidian_vault = allow_real_obsidian_vault or bool(policy["allow_real_obsidian_vault"])
+    clean_git_status = clean_git_status or bool(policy["clean_git_status_required"])
     run_status = _cmd_live_ideation_run(
         instance_root=instance.root,
         request_path=request_path,
@@ -1699,6 +1731,8 @@ def _cmd_live_ideation_persist(
             status="blocked",
             reason_code="live_ideation_stage_failed",
             ideation_report_ref=str(ideation_report_path.relative_to(instance.root)) if ideation_report_path.exists() else None,
+            standing_approval_policy_ref=str(standing_approval_policy) if standing_approval_policy else None,
+            standing_approval_applied=standing_approval_applied,
         )
         report_path = _write_live_ideation_persist_report(instance=instance, yyyymmdd=yyyymmdd, report=pipeline_report)
         print(f"live ideation persist: status=blocked report={report_path}")
@@ -1744,6 +1778,8 @@ def _cmd_live_ideation_persist(
             ideation_report_ref=str(ideation_report_path.relative_to(instance.root)),
             vault_apply_report_ref=str(apply_report_path.relative_to(instance.root)),
             vault_refs=[vault_ref],
+            standing_approval_policy_ref=str(standing_approval_policy) if standing_approval_policy else None,
+            standing_approval_applied=standing_approval_applied,
         )
         report_path = _write_live_ideation_persist_report(instance=instance, yyyymmdd=yyyymmdd, report=pipeline_report)
         print(f"live ideation persist: status=blocked report={report_path}")
@@ -1785,12 +1821,74 @@ def _cmd_live_ideation_persist(
         real_obsidian_vault_write_performed=bool(apply_report.get("real_obsidian_vault_write_performed")),
         network_push_performed=bool(git_report.get("network_push_performed")),
         mutation_performed=bool(apply_report.get("mutation_performed")) or bool(git_report.get("mutation_performed")),
+        standing_approval_policy_ref=str(standing_approval_policy) if standing_approval_policy else None,
+        standing_approval_applied=standing_approval_applied,
     )
     report_path = _write_live_ideation_persist_report(instance=instance, yyyymmdd=yyyymmdd, report=pipeline_report)
     print(f"live ideation persist: status={status} report={report_path}")
     print(f"real_obsidian_vault_write_performed: {str(pipeline_report['real_obsidian_vault_write_performed']).lower()}")
     print(f"network_push_performed: {str(pipeline_report['network_push_performed']).lower()}")
     return 0 if status == "completed" else 2
+
+
+def _resolve_live_ideation_standing_approval(
+    *,
+    policy_path: Path | None,
+    request: DomainInvestigationRequest,
+    yyyymmdd: str,
+    vault_root: Path,
+    remote_name: str,
+    branch: str,
+    credential_ref: str,
+    explicit_approval_ref: str | None,
+) -> dict[str, object]:
+    if policy_path is None:
+        if not explicit_approval_ref:
+            return {"status": "blocked", "reason_code": "approval_ref_required", "approval_ref": None}
+        return {
+            "status": "approved",
+            "approval_ref": explicit_approval_ref,
+            "standing_approval_applied": False,
+            "allow_real_obsidian_vault": False,
+            "clean_git_status_required": False,
+        }
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    approval_ref = policy.get("approval_ref")
+    if not isinstance(approval_ref, str) or not approval_ref.strip():
+        return {"status": "blocked", "reason_code": "standing_approval_ref_required", "approval_ref": approval_ref}
+    if explicit_approval_ref and explicit_approval_ref != approval_ref:
+        return {"status": "blocked", "reason_code": "standing_approval_ref_mismatch", "approval_ref": approval_ref}
+    if policy.get("status") != "approved":
+        return {"status": "blocked", "reason_code": "standing_approval_not_approved", "approval_ref": approval_ref}
+    capabilities = set(policy.get("capabilities") or [])
+    required = {"live_source_access", "live_vault_write", "obsidian_git_push"}
+    if not required.issubset(capabilities):
+        return {"status": "blocked", "reason_code": "standing_approval_missing_capability", "approval_ref": approval_ref}
+    expires_on = policy.get("expires_on")
+    if isinstance(expires_on, str) and expires_on and expires_on < yyyymmdd:
+        return {"status": "blocked", "reason_code": "standing_approval_expired", "approval_ref": approval_ref}
+    allowed_domains = policy.get("allowed_domains") or []
+    if allowed_domains and request.domain not in allowed_domains:
+        return {"status": "blocked", "reason_code": "standing_approval_domain_not_allowed", "approval_ref": approval_ref}
+    allowed_vault_roots = {str(Path(root)) for root in policy.get("allowed_vault_roots") or []}
+    if allowed_vault_roots and str(vault_root) not in allowed_vault_roots:
+        return {"status": "blocked", "reason_code": "standing_approval_vault_root_not_allowed", "approval_ref": approval_ref}
+    allowed_remote_names = set(policy.get("allowed_remote_names") or [])
+    if allowed_remote_names and remote_name not in allowed_remote_names:
+        return {"status": "blocked", "reason_code": "standing_approval_remote_not_allowed", "approval_ref": approval_ref}
+    allowed_branches = set(policy.get("allowed_branches") or [])
+    if allowed_branches and branch not in allowed_branches:
+        return {"status": "blocked", "reason_code": "standing_approval_branch_not_allowed", "approval_ref": approval_ref}
+    allowed_credential_refs = set(policy.get("allowed_credential_refs") or [])
+    if allowed_credential_refs and credential_ref not in allowed_credential_refs:
+        return {"status": "blocked", "reason_code": "standing_approval_credential_ref_not_allowed", "approval_ref": approval_ref}
+    return {
+        "status": "approved",
+        "approval_ref": approval_ref,
+        "standing_approval_applied": True,
+        "allow_real_obsidian_vault": bool(policy.get("allow_real_obsidian_vault", False)),
+        "clean_git_status_required": bool(policy.get("clean_git_status_required", True)),
+    }
 
 
 def _live_ideation_persist_report(
@@ -1809,6 +1907,8 @@ def _live_ideation_persist_report(
     real_obsidian_vault_write_performed: bool = False,
     network_push_performed: bool = False,
     mutation_performed: bool = False,
+    standing_approval_policy_ref: str | None = None,
+    standing_approval_applied: bool = False,
 ) -> dict[str, object]:
     return {
         "schema_id": "hisys.live_ideation.persist_report",
@@ -1827,6 +1927,8 @@ def _live_ideation_persist_report(
         "real_obsidian_vault_write_performed": real_obsidian_vault_write_performed,
         "network_push_performed": network_push_performed,
         "mutation_performed": mutation_performed,
+        "standing_approval_policy_ref": standing_approval_policy_ref,
+        "standing_approval_applied": standing_approval_applied,
         "dars_chief_editor_pipeline_invoked": status == "completed",
         "human_review_required": True,
     }
@@ -1848,6 +1950,7 @@ def _write_live_ideation_persist_report(*, instance: InstanceRoot, yyyymmdd: str
                 f"- real_obsidian_vault_write_performed: `{str(report['real_obsidian_vault_write_performed']).lower()}`",
                 f"- network_push_performed: `{str(report['network_push_performed']).lower()}`",
                 f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
+                f"- standing_approval_applied: `{str(report['standing_approval_applied']).lower()}`",
                 "",
             ]
         ),
