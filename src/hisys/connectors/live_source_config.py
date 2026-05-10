@@ -47,6 +47,7 @@ class SourceConnectorConfig(BaseModel):
     enabled: bool = False
     mode: str = "dry_run"
     external_call_allowed: bool = False
+    domain_decision_policy: Literal["static_allowlist", "orchestrator_decided"] = "static_allowlist"
     requires_human_approval: bool = True
     approval_policy_ref: str | None = None
     allowed_domains: list[str] = Field(default_factory=list)
@@ -104,7 +105,12 @@ class SourceConnectorRegistry(BaseModel):
                 raise LiveSourceConnectorSafetyError("live_network_enabled must be true before enabled external connectors")
             if connector.external_call_allowed and connector.requires_human_approval and not connector.approval_policy_ref:
                 raise LiveSourceConnectorSafetyError("external connectors requiring approval need approval_policy_ref")
-            if connector.external_call_allowed and self.policy.require_allowlist and not connector.allowed_domains:
+            if (
+                connector.external_call_allowed
+                and self.policy.require_allowlist
+                and not connector.allowed_domains
+                and connector.domain_decision_policy != "orchestrator_decided"
+            ):
                 raise LiveSourceConnectorSafetyError("external connectors require allowed_domains")
             forbidden = set(connector.forbidden_actions)
             missing_forbidden = {"login", "credential_use", "form_submit", "upload", "purchase", "post"} - forbidden

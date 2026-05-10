@@ -493,6 +493,63 @@ def test_browser_investigate_topic_collects_fixture_pages_and_writes_actual_data
     assert "not snippets" in memo
 
 
+def test_browser_investigate_topic_orchestrator_decides_domains(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
+
+    from hisys.connectors import playwright_browser
+
+    class FakePlaywrightSyncTransport:
+        def fetch(self, url: str) -> tuple[int, str, str]:
+            return (200, "Orchestrator Domain Page", "Orchestrator-selected domain browser evidence.")
+
+    monkeypatch.setattr(playwright_browser, "PlaywrightSyncTransport", FakePlaywrightSyncTransport)
+    config_path = tmp_path / "source-connectors-orchestrator-domains.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: false\n    mode: read_only\n    external_call_allowed: false\n    requires_human_approval: true",
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: true\n    mode: read_only\n    external_call_allowed: true\n    domain_decision_policy: orchestrator_decided\n    requires_human_approval: true",
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "browser-investigate-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-BROWSER-DOMAINS-001",
+            "--topic",
+            "orchestrator chooses browser source domains",
+            "--approval-ref",
+            "APPROVAL-BROWSER-DOMAINS-001",
+            "--orchestrator-decide-domains",
+            "--source-url",
+            "https://orchestrator-domain.local.example/company/page",
+        ]
+    )
+
+    assert result == 0
+    report_path = tmp_path / "reports" / "run-summaries" / "20260510" / "browser-investigation-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["resolved_allowed_domains"] == ["orchestrator-domain.local.example"]
+    assert report["domain_decision_policy"] == "orchestrator_decided"
+    decision_ref = report["orchestrator_domain_decision_ref"]
+    assert decision_ref == "runtime-boundary/source-connectors/20260510/orchestrator-domain-decision-HISYS-REQ-BROWSER-DOMAINS-001-playwright_read_only.json"
+    decision = json.loads((tmp_path / decision_ref).read_text(encoding="utf-8"))
+    assert decision["decided_domains"] == ["orchestrator-domain.local.example"]
+    assert decision["approval_ref"] == "APPROVAL-BROWSER-DOMAINS-001"
+    assert decision["forbidden_actions_preserved"] == ["login", "credential_use", "form_submit", "upload", "purchase", "post", "mutation", "access_control_bypass"]
+
+
+
 def test_browser_investigate_topic_without_fixture_uses_playwright_live_transport(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
 

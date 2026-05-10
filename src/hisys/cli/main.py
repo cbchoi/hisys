@@ -452,6 +452,11 @@ def _build_parser() -> argparse.ArgumentParser:
     browser_investigate.add_argument("--user-opinion", default="", help="operator context to carry into memo")
     browser_investigate.add_argument("--approval-ref", required=True, help="approval ref for read-only browser source access")
     browser_investigate.add_argument("--source-url", action="append", required=True, help="approved URL to visit; repeat for multiple pages")
+    browser_investigate.add_argument(
+        "--orchestrator-decide-domains",
+        action="store_true",
+        help="derive a scoped browser domain allowlist from the orchestrator-selected source URLs and persist the decision",
+    )
     browser_investigate.add_argument("--browser-fixture-html", action="append", default=[], help="local HTML fixture paired by order with --source-url for deterministic tests")
 
     plan_pdf = sub.add_parser(
@@ -1015,6 +1020,7 @@ def main(argv: list[str] | None = None) -> int:
             user_opinion=args.user_opinion,
             approval_ref=args.approval_ref,
             source_urls=args.source_url,
+            orchestrator_decide_domains=args.orchestrator_decide_domains,
             browser_fixture_html=[Path(item) for item in args.browser_fixture_html],
         )
     if args.command == "search-topic":
@@ -3520,6 +3526,7 @@ def _cmd_browser_investigate_topic(
     user_opinion: str,
     approval_ref: str,
     source_urls: list[str],
+    orchestrator_decide_domains: bool,
     browser_fixture_html: list[Path],
 ) -> int:
     """Collect approved pages through Playwright and write actual-data investigation artifacts."""
@@ -3528,6 +3535,25 @@ def _cmd_browser_investigate_topic(
     registry = load_source_connector_registry(config_path)
     connector_id = "playwright_read_only"
     connector = registry.connectors[connector_id]
+    orchestrator_domain_decision_ref: str | None = None
+    resolved_allowed_domains = list(connector.allowed_domains)
+    if orchestrator_decide_domains:
+        resolved_allowed_domains = _domains_from_source_urls(source_urls)
+        orchestrator_domain_decision_ref = _write_orchestrator_domain_decision(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            request_id=request_id,
+            connector_id=connector_id,
+            approval_ref=approval_ref,
+            source_urls=source_urls,
+            decided_domains=resolved_allowed_domains,
+            forbidden_actions=connector.forbidden_actions,
+            domain_decision_policy=connector.domain_decision_policy,
+        )
+        connector = connector.model_copy(update={"allowed_domains": resolved_allowed_domains})
+        connectors = dict(registry.connectors)
+        connectors[connector_id] = connector
+        registry = registry.model_copy(update={"connectors": connectors})
     env_name = connector.manual_smoke_env_var or "HISYS_ALLOW_BROWSER_SMOKE"
     if os.environ.get(env_name) != "1":
         report = _browser_investigation_report(
@@ -3540,6 +3566,9 @@ def _cmd_browser_investigate_topic(
             source_access_refs=[],
             source_evidence_refs=[],
             transport_kinds=[],
+            domain_decision_policy=connector.domain_decision_policy,
+            resolved_allowed_domains=resolved_allowed_domains,
+            orchestrator_domain_decision_ref=orchestrator_domain_decision_ref,
             evidence_package_ref=None,
             memo_ref=None,
             external_call_made=False,
@@ -3573,6 +3602,9 @@ def _cmd_browser_investigate_topic(
                 source_access_refs=[],
                 source_evidence_refs=[],
                 transport_kinds=[],
+                domain_decision_policy=connector.domain_decision_policy,
+                resolved_allowed_domains=resolved_allowed_domains,
+                orchestrator_domain_decision_ref=orchestrator_domain_decision_ref,
                 evidence_package_ref=None,
                 memo_ref=None,
                 external_call_made=False,
@@ -3612,6 +3644,9 @@ def _cmd_browser_investigate_topic(
             source_access_refs=[],
             source_evidence_refs=[],
             transport_kinds=[],
+            domain_decision_policy=connector.domain_decision_policy,
+            resolved_allowed_domains=resolved_allowed_domains,
+            orchestrator_domain_decision_ref=orchestrator_domain_decision_ref,
             evidence_package_ref=None,
             memo_ref=None,
             external_call_made=False,
@@ -3696,6 +3731,9 @@ def _cmd_browser_investigate_topic(
         source_access_refs=source_access_refs,
         source_evidence_refs=source_evidence_refs,
         transport_kinds=transport_kinds,
+        domain_decision_policy=connector.domain_decision_policy,
+        resolved_allowed_domains=resolved_allowed_domains,
+        orchestrator_domain_decision_ref=orchestrator_domain_decision_ref,
         evidence_package_ref=evidence_ref,
         memo_ref=memo_ref,
         external_call_made=any(kind == "playwright_live" for kind in transport_kinds),
@@ -3703,6 +3741,73 @@ def _cmd_browser_investigate_topic(
     _write_browser_investigation_report(instance, yyyymmdd, report)
     print(f"browser investigation: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'browser-investigation-report.json'}")
     return 0
+
+
+def _domains_from_source_urls(source_urls: list[str]) -> list[str]:
+    domains: list[str] = []
+    for source_url in source_urls:
+        domain = urlparse(source_url).netloc
+        if not domain:
+            raise ValueError(f"source URL has no domain: {source_url}")
+        if domain not in domains:
+            domains.append(domain)
+    return domains
+
+
+def _write_orchestrator_domain_decision(
+    *,
+    instance: InstanceRoot,
+    yyyymmdd: str,
+    request_id: str,
+    connector_id: str,
+    approval_ref: str,
+    source_urls: list[str],
+    decided_domains: list[str],
+    forbidden_actions: list[str],
+    domain_decision_policy: str,
+) -> str:
+    decision_ref = (
+        f"runtime-boundary/source-connectors/{yyyymmdd}/"
+        f"orchestrator-domain-decision-{request_id}-{connector_id}.json"
+    )
+    payload = {
+        "schema_id": "hisys.browser_investigation.orchestrator_domain_decision",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "connector_id": connector_id,
+        "approval_ref": approval_ref,
+        "domain_decision_policy": domain_decision_policy,
+        "decision_basis": "orchestrator_selected_source_urls",
+        "source_urls": source_urls,
+        "decided_domains": decided_domains,
+        "requested_actions": ["read"],
+        "forbidden_actions_preserved": list(forbidden_actions),
+        "external_call_made": False,
+        "mutation_performed": False,
+        "policy_refs": ["docs/use-cases/live-research-connectors.md"],
+    }
+    path = instance.root / decision_ref
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    md_path = path.with_suffix(".md")
+    md_path.write_text(
+        "\n".join(
+            [
+                f"# Orchestrator domain decision {request_id}",
+                "",
+                f"- connector_id: `{connector_id}`",
+                f"- approval_ref: `{approval_ref}`",
+                f"- domain_decision_policy: `{domain_decision_policy}`",
+                f"- decided_domains: `{', '.join(decided_domains)}`",
+                "- requested_actions: `read`",
+                "- mutation_performed: `False`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return decision_ref
+
 
 
 def _browser_investigation_report(
@@ -3716,6 +3821,9 @@ def _browser_investigation_report(
     source_access_refs: list[str],
     source_evidence_refs: list[str],
     transport_kinds: list[str],
+    domain_decision_policy: str,
+    resolved_allowed_domains: list[str],
+    orchestrator_domain_decision_ref: str | None,
     evidence_package_ref: str | None,
     memo_ref: str | None,
     external_call_made: bool,
@@ -3734,6 +3842,9 @@ def _browser_investigation_report(
         "source_access_refs": source_access_refs,
         "source_evidence_refs": source_evidence_refs,
         "transport_kinds": transport_kinds,
+        "domain_decision_policy": domain_decision_policy,
+        "resolved_allowed_domains": resolved_allowed_domains,
+        "orchestrator_domain_decision_ref": orchestrator_domain_decision_ref,
         "evidence_package_ref": evidence_package_ref,
         "memo_ref": memo_ref,
         "external_call_made": external_call_made,

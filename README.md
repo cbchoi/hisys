@@ -205,7 +205,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   (`enabled: true`, `external_call_allowed: true`, `live_network_enabled: true`,
   explicit `allowed_domains`), then run `browser-investigate-topic` without
   `--browser-fixture-html`. Fixture HTML is only for deterministic test/staging
-  parity; omitting it forces the Playwright browser runtime path.
+  parity; omitting it forces the Playwright browser runtime path. Domain scope
+  can be delegated to the orchestrator with `--orchestrator-decide-domains` and
+  `domain_decision_policy: orchestrator_decided`; Hisys then derives the scoped
+  allowlist from the orchestrator-selected URLs, writes an
+  `orchestrator-domain-decision` boundary record, and still preserves approval,
+  read-only action, forbidden-action, provenance, and no-mutation gates.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector
