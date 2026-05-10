@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -330,6 +331,11 @@ def _build_parser() -> argparse.ArgumentParser:
     live_scheduler.add_argument("--max-items", type=int, help="optional maximum queue entries to execute per queue")
     live_scheduler.add_argument("--ledger-dir", help="optional directory for per-queue ledgers; defaults under instance data")
     live_scheduler.add_argument("--max-retries", type=int, default=3, help="maximum retry attempts for retryable blocked entries")
+    live_scheduler.add_argument("--queue-lifecycle", action="store_true", help="move queue files through incoming/active/done/attention/rejected handoff directories")
+    live_scheduler.add_argument("--active-dir", help="queue lifecycle active directory; defaults to sibling active directory")
+    live_scheduler.add_argument("--done-dir", help="queue lifecycle done directory; defaults to sibling done directory")
+    live_scheduler.add_argument("--attention-dir", help="queue lifecycle attention directory; defaults to sibling attention directory")
+    live_scheduler.add_argument("--rejected-dir", help="queue lifecycle rejected directory; defaults to sibling rejected directory")
 
     plan_sources = sub.add_parser(
         "plan-source-connectors",
@@ -848,6 +854,11 @@ def main(argv: list[str] | None = None) -> int:
             max_items=args.max_items,
             ledger_dir=Path(args.ledger_dir) if args.ledger_dir else None,
             max_retries=args.max_retries,
+            queue_lifecycle=args.queue_lifecycle,
+            active_dir=Path(args.active_dir) if args.active_dir else None,
+            done_dir=Path(args.done_dir) if args.done_dir else None,
+            attention_dir=Path(args.attention_dir) if args.attention_dir else None,
+            rejected_dir=Path(args.rejected_dir) if args.rejected_dir else None,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -2068,6 +2079,57 @@ def _live_autonomy_safe_report_segment(queue_id: str) -> str:
     return cleaned or "queue"
 
 
+def _live_autonomy_lifecycle_dirs(
+    *,
+    queue_dir: Path,
+    active_dir: Path | None,
+    done_dir: Path | None,
+    attention_dir: Path | None,
+    rejected_dir: Path | None,
+) -> dict[str, Path]:
+    parent = queue_dir.parent
+    return {
+        "incoming": queue_dir,
+        "active": active_dir or (parent / "active"),
+        "done": done_dir or (parent / "done"),
+        "attention": attention_dir or (parent / "attention"),
+        "rejected": rejected_dir or (parent / "rejected"),
+    }
+
+
+def _live_autonomy_unique_path(directory: Path, filename: str) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    candidate = directory / filename
+    if not candidate.exists():
+        return candidate
+    stem = candidate.stem
+    suffix = candidate.suffix
+    for index in range(1, 10000):
+        candidate = directory / f"{stem}-{index:04d}{suffix}"
+        if not candidate.exists():
+            return candidate
+    raise RuntimeError("unable to allocate unique queue lifecycle path")
+
+
+def _live_autonomy_copy_queue_to_active(*, queue_path: Path, active_dir: Path) -> str:
+    active_path = _live_autonomy_unique_path(active_dir, queue_path.name)
+    shutil.copy2(queue_path, active_path)
+    return str(active_path)
+
+
+def _live_autonomy_finalize_queue_file(*, queue_path: Path, active_copy: Path | None, destination_dir: Path) -> str:
+    final_path = _live_autonomy_unique_path(destination_dir, queue_path.name)
+    if queue_path.exists():
+        shutil.move(str(queue_path), str(final_path))
+    elif active_copy is not None and active_copy.exists():
+        shutil.copy2(active_copy, final_path)
+    else:
+        final_path.write_text("", encoding="utf-8")
+    if active_copy is not None and active_copy.exists():
+        active_copy.unlink()
+    return str(final_path)
+
+
 def _cmd_live_autonomy_tick(
     *,
     instance_root: Path,
@@ -2086,19 +2148,41 @@ def _cmd_live_autonomy_tick(
     max_items: int | None,
     ledger_dir: Path | None,
     max_retries: int,
+    queue_lifecycle: bool,
+    active_dir: Path | None,
+    done_dir: Path | None,
+    attention_dir: Path | None,
+    rejected_dir: Path | None,
 ) -> int:
     """Run one cron-ready scheduler tick over discovered live autonomy queues."""
 
     instance = InstanceRoot(instance_root)
+    lifecycle_dirs = _live_autonomy_lifecycle_dirs(
+        queue_dir=queue_dir,
+        active_dir=active_dir,
+        done_dir=done_dir,
+        attention_dir=attention_dir,
+        rejected_dir=rejected_dir,
+    )
     discovered = sorted(path for path in queue_dir.glob(queue_glob) if path.is_file()) if queue_dir.exists() else []
     selected = discovered[: max(0, max_queues)]
     queue_results: list[dict[str, object]] = []
     for queue_path in selected:
         queue_id = queue_path.stem
+        lifecycle_active_ref = None
+        lifecycle_final_ref = None
+        if queue_lifecycle:
+            lifecycle_active_ref = _live_autonomy_copy_queue_to_active(queue_path=queue_path, active_dir=lifecycle_dirs["active"])
         try:
             queue_data = json.loads(queue_path.read_text(encoding="utf-8"))
             queue_id = str(queue_data.get("queue_id") or queue_path.stem)
         except json.JSONDecodeError:
+            if queue_lifecycle:
+                lifecycle_final_ref = _live_autonomy_finalize_queue_file(
+                    queue_path=queue_path,
+                    active_copy=Path(lifecycle_active_ref) if lifecycle_active_ref else None,
+                    destination_dir=lifecycle_dirs["rejected"],
+                )
             queue_results.append(
                 {
                     "queue_path": str(queue_path),
@@ -2107,6 +2191,9 @@ def _cmd_live_autonomy_tick(
                     "reason_code": "queue_json_invalid",
                     "queue_run_report_ref": None,
                     "watchdog_report_ref": None,
+                    "lifecycle_active_ref": lifecycle_active_ref,
+                    "lifecycle_final_ref": lifecycle_final_ref,
+                    "lifecycle_state": "rejected" if queue_lifecycle else None,
                 }
             )
             continue
@@ -2131,6 +2218,14 @@ def _cmd_live_autonomy_tick(
         )
         run_report_path = instance.reports_dir / "run-summaries" / yyyymmdd / report_subdir / "live-autonomy-run-report.json"
         run_report = json.loads(run_report_path.read_text(encoding="utf-8")) if run_report_path.exists() else {}
+        lifecycle_state = None
+        if queue_lifecycle:
+            lifecycle_state = "done" if status_code == 0 else "attention"
+            lifecycle_final_ref = _live_autonomy_finalize_queue_file(
+                queue_path=queue_path,
+                active_copy=Path(lifecycle_active_ref) if lifecycle_active_ref else None,
+                destination_dir=lifecycle_dirs[lifecycle_state],
+            )
         queue_results.append(
             {
                 "queue_path": str(queue_path),
@@ -2142,6 +2237,9 @@ def _cmd_live_autonomy_tick(
                 "completed_count": run_report.get("completed_count", 0),
                 "blocked_count": run_report.get("blocked_count", 0),
                 "retry_eligible_count": run_report.get("retry_eligible_count", 0),
+                "lifecycle_active_ref": lifecycle_active_ref,
+                "lifecycle_final_ref": lifecycle_final_ref,
+                "lifecycle_state": lifecycle_state,
             }
         )
     attention_count = sum(1 for result in queue_results if result["status"] != "completed")
@@ -2152,6 +2250,8 @@ def _cmd_live_autonomy_tick(
         "scheduler_ready": True,
         "queue_dir": str(queue_dir),
         "queue_glob": queue_glob,
+        "queue_lifecycle_enabled": queue_lifecycle,
+        "queue_lifecycle_dirs": {key: str(value) for key, value in lifecycle_dirs.items()} if queue_lifecycle else {},
         "discovered_queue_count": len(discovered),
         "processed_queue_count": len(selected),
         "attention_count": attention_count,

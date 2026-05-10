@@ -330,6 +330,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   malformed non-retryable queue entries become terminal `skipped_non_retryable`
   on later ticks instead of re-blocking forever, and standing approval expiry
   dates are validated as `YYYYMMDD` before any live action.
+- Increment **Live-T queue lifecycle handoff** -
+  `hisys live-autonomy-tick --queue-lifecycle` treats `--queue-dir` as an
+  incoming handoff directory and deterministically moves queue files through
+  sibling `active/`, `done/`, `attention/`, and `rejected/` directories. The
+  scheduler copies a queue into `active/` before processing, removes the active
+  copy at finalization, moves successful queue files to `done/`, attention-needed
+  queue files to `attention/`, and invalid JSON queue files to `rejected/`. Tick
+  reports include lifecycle enablement, lifecycle dirs, per-queue active/final
+  refs, and final lifecycle state without adding prompt-based checks.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

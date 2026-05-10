@@ -973,6 +973,60 @@ def test_live_autonomy_tick_reports_idle_when_no_queues(tmp_path: Path) -> None:
     assert report["next_scheduler_action"] == "sleep"
 
 
+def test_live_autonomy_tick_lifecycle_moves_invalid_and_attention_queues(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    queue_root = tmp_path / "queue-lifecycle"
+    incoming = queue_root / "incoming"
+    incoming.mkdir(parents=True)
+    invalid_queue = incoming / "invalid.json"
+    invalid_queue.write_text("{not-json", encoding="utf-8")
+    attention_queue = incoming / "attention.json"
+    attention_queue.write_text(
+        json.dumps({"queue_id": "LIVE-T-ATTENTION", "entries": [{"entry_id": "missing-input", "doi": "10.0000/hisys.fixture.formalism"}]}),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "source-connectors.yaml"
+    config_path.write_text(Path("examples/instance/config/source-connectors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    policy_path = tmp_path / "standing-approval.json"
+    policy_path.write_text(json.dumps({"status": "approved", "approval_ref": "STANDING-LIVE-SCHEDULER"}), encoding="utf-8")
+
+    result = main(
+        [
+            "live-autonomy-tick",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--queue-dir",
+            str(incoming),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--vault-root",
+            str(tmp_path / "vault"),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--standing-approval-policy",
+            str(policy_path),
+            "--max-queues",
+            "2",
+            "--queue-lifecycle",
+        ]
+    )
+
+    assert result == 2
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-scheduler-tick-report.json").read_text(encoding="utf-8"))
+    assert report["queue_lifecycle_enabled"] is True
+    assert report["processed_queue_count"] == 2
+    assert not invalid_queue.exists()
+    assert not attention_queue.exists()
+    assert not list((queue_root / "active").glob("*.json"))
+    assert (queue_root / "rejected" / "invalid.json").exists()
+    assert (queue_root / "attention" / "attention.json").exists()
+    states = {item["queue_id"]: item["lifecycle_state"] for item in report["queue_results"]}
+    assert states["invalid"] == "rejected"
+    assert states["LIVE-T-ATTENTION"] == "attention"
+
+
 def test_live_autonomy_tick_runs_queue_and_reports_attention(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
     queue_dir = tmp_path / "queues"
