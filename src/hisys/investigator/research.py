@@ -20,6 +20,7 @@ AgentType = Literal[
     "formalism_gap_analysis",
     "investment_decision_support",
     "local_pdf",
+    "playwright_read_only",
     "selenium_read_only",
     "delegated_llm",
 ]

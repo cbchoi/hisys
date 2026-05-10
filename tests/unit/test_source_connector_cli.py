@@ -402,6 +402,96 @@ def test_smoke_general_web_search_manual_live_requires_fixture_transport(tmp_pat
     assert report["external_call_made"] is False
 
 
+def test_browser_investigate_topic_collects_fixture_pages_and_writes_actual_data_memo(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: false\n    mode: read_only\n    external_call_allowed: false",
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: true\n    mode: read_only\n    external_call_allowed: true",
+        ),
+        encoding="utf-8",
+    )
+    varex = tmp_path / "varex.html"
+    varex.write_text(
+        "<html><head><title>Varex X-ray Tube Technology</title></head><body>"
+        "<h1>Varex Imaging X-ray Tubes</h1>"
+        "<p>Varex offers medical CT and industrial x-ray tube technology, including rotating anode designs and high heat capacity.</p>"
+        "</body></html>",
+        encoding="utf-8",
+    )
+    canon = tmp_path / "canon.html"
+    canon.write_text(
+        "<html><head><title>Canon Electron Tubes</title></head><body>"
+        "<h1>Canon Electron Tubes and Devices</h1>"
+        "<p>Canon develops microfocus and high-power x-ray tubes for inspection, medical imaging, and analytical instruments.</p>"
+        "</body></html>",
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "browser-investigate-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-BROWSER-INV-001",
+            "--topic",
+            "which company has competitive technologies in x-ray tube industry",
+            "--user-opinion",
+            "Compare companies by actual page evidence, not snippets.",
+            "--approval-ref",
+            "APPROVAL-BROWSER-INV-001",
+            "--source-url",
+            "https://company.local.fixture/varex/xray-tubes",
+            "--browser-fixture-html",
+            str(varex),
+            "--source-url",
+            "https://company.local.fixture/canon/xray-tubes",
+            "--browser-fixture-html",
+            str(canon),
+        ]
+    )
+
+    assert result == 0
+    report_path = tmp_path / "reports" / "run-summaries" / "20260510" / "browser-investigation-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["status"] == "completed"
+    assert report["connector_id"] == "playwright_read_only"
+    assert report["pages_collected"] == 2
+    assert report["mutation_performed"] is False
+    assert report["external_call_made"] is True
+    assert report["evidence_package_ref"] == "data/evidence-packages/20260510/EPKG-HISYS-REQ-BROWSER-INV-001-BROWSER.json"
+    assert report["memo_ref"] == "data/investigation-memos/20260510/MEM-HISYS-REQ-BROWSER-INV-001-BROWSER.md"
+    assert len(report["source_access_refs"]) == 2
+    assert len(report["source_evidence_refs"]) == 2
+
+    package = json.loads((tmp_path / report["evidence_package_ref"]).read_text(encoding="utf-8"))
+    assert package["agent_type"] == "playwright_read_only"
+    assert package["external_side_effects"] is False
+    assert len(package["evidence"]) == 2
+    assert {item["title"] for item in package["evidence"]} == {
+        "Varex X-ray Tube Technology",
+        "Canon Electron Tubes",
+    }
+    assert any("rotating anode" in claim["text"] for claim in package["claims"])
+    assert any("microfocus" in claim["text"] for claim in package["claims"])
+
+    memo = (tmp_path / report["memo_ref"]).read_text(encoding="utf-8")
+    assert "# Browser Investigation Memo" in memo
+    assert "Varex X-ray Tube Technology" in memo
+    assert "Canon Electron Tubes" in memo
+    assert "Actual Browser Evidence Table" in memo
+    assert "not snippets" in memo
+
+
 def test_smoke_playwright_read_only_with_fixture_page_writes_page_evidence(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
     config_path = tmp_path / "source-connectors-enabled.yaml"

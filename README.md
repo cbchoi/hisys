@@ -189,6 +189,17 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   validates approval, connector enabled state, read-only action, and provider
   domain allowlist before provider access. Search remains read-only and still
   forbids login, form submission, upload, purchase, post, and mutation.
+- Increment **Browser-B actual browser investigation command** -
+  `hisys browser-investigate-topic` turns approved company/publisher URLs into
+  actual-data investigation artifacts. It gates each URL through
+  `playwright_read_only`, collects page title/visible text with Playwright or
+  deterministic `--browser-fixture-html` pages, writes source access/evidence
+  records, creates an Investigator `EvidencePackage` under
+  `data/evidence-packages/<date>/`, and renders a browser investigation memo
+  under `data/investigation-memos/<date>/`. This is the first end-to-end path
+  from browser acquisition to memo-ready evidence for research and investment
+  source collection, while preserving read-only, approval, env-gate, domain
+  allowlist, citation, hash, and no-mutation boundaries.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector

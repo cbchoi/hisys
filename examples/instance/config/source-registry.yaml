@@ -38,6 +38,26 @@ sources:
     compliance_review_ref: WEB-COMPL-SRC-WEB-RSS-001
     producer_id: example-instance
 
+  - source_id: SRC-BROWSER-PLAYWRIGHT-001
+    source_type: web_news
+    display_name: Governed Playwright browser page source
+    owner: research
+    lifecycle_state: experimental
+    reliability_class: B
+    reliability_evidence:
+      - HISYS-BROWSER-B-001
+    access_method: manual
+    cadence: manual
+    rate_limit: 6/min
+    usage_constraints:
+      - citation_required
+      - content_hash_required
+      - no_full_text_storage
+      - read_only_browser
+      - approval_required
+    retention_rule: P30D
+    compliance_review_ref: WEB-COMPL-SRC-BROWSER-PLAYWRIGHT-001
+    producer_id: example-instance
   - source_id: SRC-GENERAL-WEB-SEARCH-001
     source_type: web_news
     display_name: Governed general web search source

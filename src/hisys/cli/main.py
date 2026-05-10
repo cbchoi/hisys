@@ -42,7 +42,10 @@ from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, Memo
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..investigator import (
+    ClaimRecord,
     CollectionReport,
+    EvidenceItem,
+    EvidencePackage,
     InvestigatorRuntime,
     ResearchTask,
     create_research_agent,
@@ -436,6 +439,20 @@ def _build_parser() -> argparse.ArgumentParser:
     smoke_source.add_argument("--transport-fixture-pdf", help="local PDF fixture used as injected transport for tested manual PDF smoke")
     smoke_source.add_argument("--browser-fixture-html", help="local HTML fixture used as injected page for tested Playwright browser smoke")
     smoke_source.add_argument("--dry-run", action="store_true", help="write blocked/dry-run evidence only; no external call")
+
+    browser_investigate = sub.add_parser(
+        "browser-investigate-topic",
+        help="collect approved company/publisher pages with governed Playwright and write actual-data evidence/memo",
+    )
+    browser_investigate.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    browser_investigate.add_argument("--config", required=True, help="source-connectors.yaml path")
+    browser_investigate.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    browser_investigate.add_argument("--request-id", required=True, help="request id for browser investigation")
+    browser_investigate.add_argument("--topic", required=True, help="topic/question being investigated")
+    browser_investigate.add_argument("--user-opinion", default="", help="operator context to carry into memo")
+    browser_investigate.add_argument("--approval-ref", required=True, help="approval ref for read-only browser source access")
+    browser_investigate.add_argument("--source-url", action="append", required=True, help="approved URL to visit; repeat for multiple pages")
+    browser_investigate.add_argument("--browser-fixture-html", action="append", default=[], help="local HTML fixture paired by order with --source-url for deterministic tests")
 
     plan_pdf = sub.add_parser(
         "plan-pdf-candidates",
@@ -987,6 +1004,18 @@ def main(argv: list[str] | None = None) -> int:
             transport_fixture_pdf=Path(args.transport_fixture_pdf) if args.transport_fixture_pdf else None,
             browser_fixture_html=Path(args.browser_fixture_html) if args.browser_fixture_html else None,
             dry_run=args.dry_run,
+        )
+    if args.command == "browser-investigate-topic":
+        return _cmd_browser_investigate_topic(
+            instance_root=Path(args.instance),
+            config_path=Path(args.config),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            topic=args.topic,
+            user_opinion=args.user_opinion,
+            approval_ref=args.approval_ref,
+            source_urls=args.source_url,
+            browser_fixture_html=[Path(item) for item in args.browser_fixture_html],
         )
     if args.command == "search-topic":
         return _cmd_search_topic(
@@ -3479,6 +3508,293 @@ def _write_search_topic_report(instance: InstanceRoot, yyyymmdd: str, report: di
         encoding="utf-8",
     )
     return report_artifact
+
+
+def _cmd_browser_investigate_topic(
+    *,
+    instance_root: Path,
+    config_path: Path,
+    yyyymmdd: str,
+    request_id: str,
+    topic: str,
+    user_opinion: str,
+    approval_ref: str,
+    source_urls: list[str],
+    browser_fixture_html: list[Path],
+) -> int:
+    """Collect approved pages through Playwright and write actual-data investigation artifacts."""
+
+    instance = InstanceRoot(instance_root)
+    registry = load_source_connector_registry(config_path)
+    connector_id = "playwright_read_only"
+    connector = registry.connectors[connector_id]
+    env_name = connector.manual_smoke_env_var or "HISYS_ALLOW_BROWSER_SMOKE"
+    if os.environ.get(env_name) != "1":
+        report = _browser_investigation_report(
+            request_id=request_id,
+            topic=topic,
+            user_opinion=user_opinion,
+            status="blocked",
+            reason_code="manual_browser_env_missing",
+            source_urls=source_urls,
+            source_access_refs=[],
+            source_evidence_refs=[],
+            evidence_package_ref=None,
+            memo_ref=None,
+            external_call_made=False,
+        )
+        _write_browser_investigation_report(instance, yyyymmdd, report)
+        print("browser investigation: status=blocked reason=manual_browser_env_missing")
+        return 2
+    if browser_fixture_html and len(browser_fixture_html) != len(source_urls):
+        raise ValueError("--browser-fixture-html count must match --source-url count when provided")
+
+    gate = SourceConnectorDispatchGate(instance=instance)
+    for source_url in source_urls:
+        domain = urlparse(source_url).netloc or "unknown"
+        decision = gate.evaluate(
+            yyyymmdd=yyyymmdd,
+            request_id=request_id,
+            registry=registry,
+            connector_id=connector_id,
+            approval_ref=approval_ref,
+            requested_domain=domain,
+            requested_actions=["read"],
+        )
+        if decision.decision != "allowed":
+            report = _browser_investigation_report(
+                request_id=request_id,
+                topic=topic,
+                user_opinion=user_opinion,
+                status="blocked",
+                reason_code=decision.reason_code,
+                source_urls=source_urls,
+                source_access_refs=[],
+                source_evidence_refs=[],
+                evidence_package_ref=None,
+                memo_ref=None,
+                external_call_made=False,
+            )
+            _write_browser_investigation_report(instance, yyyymmdd, report)
+            return 2
+
+    packages = []
+    try:
+        for index, source_url in enumerate(source_urls):
+            connector_runtime = PlaywrightBrowserConnector()
+            page_request_id = f"{request_id}-PAGE-{index + 1:03d}"
+            if browser_fixture_html:
+                package = connector_runtime.collect_fixture(
+                    request_id=page_request_id,
+                    source_url=source_url,
+                    fixture_html=browser_fixture_html[index],
+                    output_root=instance.root,
+                    yyyymmdd=yyyymmdd,
+                )
+            else:
+                package = connector_runtime.collect_live(
+                    request_id=page_request_id,
+                    source_url=source_url,
+                    output_root=instance.root,
+                    yyyymmdd=yyyymmdd,
+                )
+            packages.append(package)
+    except PlaywrightUnavailableError:
+        report = _browser_investigation_report(
+            request_id=request_id,
+            topic=topic,
+            user_opinion=user_opinion,
+            status="blocked",
+            reason_code="browser_fixture_or_playwright_required",
+            source_urls=source_urls,
+            source_access_refs=[],
+            source_evidence_refs=[],
+            evidence_package_ref=None,
+            memo_ref=None,
+            external_call_made=False,
+        )
+        _write_browser_investigation_report(instance, yyyymmdd, report)
+        return 2
+
+    evidence_items: list[EvidenceItem] = []
+    claims: list[ClaimRecord] = []
+    for index, page_package in enumerate(packages, start=1):
+        source_evidence = page_package.evidence_items[0]
+        title = page_package.access_record.title
+        evidence_id = f"EV-{request_id}-BROWSER-{index:03d}"
+        evidence_items.append(
+            EvidenceItem(
+                evidence_id=evidence_id,
+                task_id=f"TASK-{request_id}-BROWSER",
+                agent_id="playwright-browser-investigator",
+                source_id="SRC-BROWSER-PLAYWRIGHT-001",
+                url=page_package.access_record.source_url,
+                title=title,
+                quoted_text=source_evidence.quoted_text,
+                excerpt_ref=page_package.evidence_ref,
+                retrieved_at=f"{yyyymmdd}T00:00:00Z",
+                content_hash=f"sha256:{page_package.access_record.sha256}",
+            )
+        )
+        snippet = (source_evidence.quoted_text or "")[:240]
+        claims.append(
+            ClaimRecord(
+                claim_id=f"CLAIM-{request_id}-BROWSER-{index:03d}",
+                text=f"Browser evidence from {title} says: {snippet}",
+                confidence=0.65,
+                evidence_refs=[evidence_id],
+                limitations=["Single-page browser evidence; corroborate before final decision."],
+            )
+        )
+    evidence_package = EvidencePackage(
+        package_id=f"EPKG-{request_id}-BROWSER",
+        task_id=f"TASK-{request_id}-BROWSER",
+        agent_id="playwright-browser-investigator",
+        agent_type="playwright_read_only",
+        claims=claims,
+        evidence=evidence_items,
+        limitations=[
+            "Browser acquisition is read-only and source-limited to approved URLs.",
+            "Fixture-backed runs validate extraction shape; live runs require Playwright runtime and allowlisted domains.",
+        ],
+        open_questions=["Which additional primary sources, patents, papers, or filings should corroborate these page claims?"],
+        external_side_effects=False,
+        actions_taken=["read_page_visible_text" for _ in packages],
+    )
+    evidence_dir = instance.root / "data" / "evidence-packages" / yyyymmdd
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    evidence_ref = f"data/evidence-packages/{yyyymmdd}/{evidence_package.package_id}.json"
+    (instance.root / evidence_ref).write_text(
+        json.dumps(evidence_package.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    memo_ref = f"data/investigation-memos/{yyyymmdd}/MEM-{request_id}-BROWSER.md"
+    memo_path = instance.root / memo_ref
+    memo_path.parent.mkdir(parents=True, exist_ok=True)
+    memo_path.write_text(
+        _render_browser_investigation_memo(
+            request_id=request_id,
+            topic=topic,
+            user_opinion=user_opinion,
+            evidence_package=evidence_package,
+        ),
+        encoding="utf-8",
+    )
+    source_access_refs = [package.access_ref for package in packages]
+    source_evidence_refs = [package.evidence_ref for package in packages]
+    report = _browser_investigation_report(
+        request_id=request_id,
+        topic=topic,
+        user_opinion=user_opinion,
+        status="completed",
+        reason_code="browser_investigation_completed",
+        source_urls=source_urls,
+        source_access_refs=source_access_refs,
+        source_evidence_refs=source_evidence_refs,
+        evidence_package_ref=evidence_ref,
+        memo_ref=memo_ref,
+        external_call_made=True,
+    )
+    _write_browser_investigation_report(instance, yyyymmdd, report)
+    print(f"browser investigation: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'browser-investigation-report.json'}")
+    return 0
+
+
+def _browser_investigation_report(
+    *,
+    request_id: str,
+    topic: str,
+    user_opinion: str,
+    status: str,
+    reason_code: str | None,
+    source_urls: list[str],
+    source_access_refs: list[str],
+    source_evidence_refs: list[str],
+    evidence_package_ref: str | None,
+    memo_ref: str | None,
+    external_call_made: bool,
+) -> dict[str, object]:
+    return {
+        "schema_id": "hisys.browser_investigation.report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "topic": topic,
+        "user_opinion": user_opinion,
+        "connector_id": "playwright_read_only",
+        "status": status,
+        "reason_code": reason_code,
+        "source_urls": source_urls,
+        "pages_collected": len(source_access_refs),
+        "source_access_refs": source_access_refs,
+        "source_evidence_refs": source_evidence_refs,
+        "evidence_package_ref": evidence_package_ref,
+        "memo_ref": memo_ref,
+        "external_call_made": external_call_made,
+        "mutation_performed": False,
+    }
+
+
+def _write_browser_investigation_report(instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    json_path = report_dir / "browser-investigation-report.json"
+    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    md_path = report_dir / "browser-investigation-report.md"
+    md_path.write_text(
+        "\n".join(
+            [
+                "# Browser Investigation Report",
+                "",
+                f"- request_id: `{report['request_id']}`",
+                f"- connector_id: `{report['connector_id']}`",
+                f"- status: `{report['status']}`",
+                f"- pages_collected: `{report['pages_collected']}`",
+                f"- external_call_made: `{report['external_call_made']}`",
+                f"- mutation_performed: `{report['mutation_performed']}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return json_path
+
+
+def _render_browser_investigation_memo(
+    *,
+    request_id: str,
+    topic: str,
+    user_opinion: str,
+    evidence_package: EvidencePackage,
+) -> str:
+    rows = ["| Title | URL | Evidence excerpt |", "|---|---|---|"]
+    for item in evidence_package.evidence:
+        excerpt = (item.quoted_text or "").replace("|", "\\|")[:300]
+        rows.append(f"| {item.title} | {item.url or ''} | {excerpt} |")
+    claims = [f"- {claim.text}" for claim in evidence_package.claims]
+    return "\n".join(
+        [
+            "# Browser Investigation Memo",
+            "",
+            f"- request_id: `{request_id}`",
+            f"- topic: {topic}",
+            f"- user_opinion: {user_opinion}",
+            "- acquisition: governed Playwright read-only browser evidence",
+            "- safety: no login, form submit, upload, purchase, post, mutation, or access-control bypass",
+            "",
+            "## Actual Browser Evidence Table",
+            "",
+            *rows,
+            "",
+            "## Evidence-Backed Claims",
+            "",
+            *claims,
+            "",
+            "## Limitations",
+            "",
+            *[f"- {item}" for item in evidence_package.limitations],
+            "",
+        ]
+    ) + "\n"
 
 
 def _cmd_smoke_source_connector(
