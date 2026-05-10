@@ -402,6 +402,108 @@ def test_smoke_general_web_search_manual_live_requires_fixture_transport(tmp_pat
     assert report["external_call_made"] is False
 
 
+def test_smoke_playwright_read_only_with_fixture_page_writes_page_evidence(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: false\n    mode: read_only\n    external_call_allowed: false",
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: true\n    mode: read_only\n    external_call_allowed: true",
+        ),
+        encoding="utf-8",
+    )
+    fixture_html = tmp_path / "company-page.html"
+    fixture_html.write_text(
+        "<html><head><title>Acme X-ray Tubes</title></head>"
+        "<body><main><h1>Acme X-ray Tubes</h1>"
+        "<p>Acme develops rotating anode x-ray tube technology for CT imaging and industrial inspection.</p>"
+        "</main></body></html>",
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "smoke-source-connector",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-BROWSER-A-001",
+            "--connector-id",
+            "playwright_read_only",
+            "--source-url",
+            "https://company.local.fixture/products/xray-tubes",
+            "--approval-ref",
+            "APPROVAL-BROWSER-A-001",
+            "--browser-fixture-html",
+            str(fixture_html),
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260510" / "source-connector-smoke-report.json").read_text(encoding="utf-8"))
+    assert report["connector_id"] == "playwright_read_only"
+    assert report["status"] == "completed"
+    assert report["reason_code"] == "manual_browser_smoke_completed"
+    assert report["transport_kind"] == "playwright_fixture"
+    assert report["external_call_made"] is True
+    assert report["mutation_performed"] is False
+    access = json.loads((tmp_path / report["source_access_refs"][0]).read_text(encoding="utf-8"))
+    evidence = json.loads((tmp_path / report["source_evidence_refs"][0]).read_text(encoding="utf-8"))
+    assert access["connector_id"] == "playwright_read_only"
+    assert access["source_url"] == "https://company.local.fixture/products/xray-tubes"
+    assert access["title"] == "Acme X-ray Tubes"
+    assert access["external_call_made"] is True
+    assert "rotating anode x-ray tube technology" in evidence["quoted_text"]
+    assert evidence["claim_type"] == "source_evidence"
+
+
+def test_smoke_playwright_read_only_blocks_without_browser_fixture_or_runtime(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: false\n    mode: read_only\n    external_call_allowed: false",
+            "playwright_read_only:\n    connector_id: playwright_read_only\n    connector_type: playwright_read_only\n    enabled: true\n    mode: read_only\n    external_call_allowed: true",
+        ),
+        encoding="utf-8",
+    )
+    result = main(
+        [
+            "smoke-source-connector",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-BROWSER-A-002",
+            "--connector-id",
+            "playwright_read_only",
+            "--source-url",
+            "https://company.local.fixture/products/xray-tubes",
+            "--approval-ref",
+            "APPROVAL-BROWSER-A-002",
+        ]
+    )
+
+    assert result == 2
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260510" / "source-connector-smoke-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "blocked"
+    assert report["reason_code"] == "browser_fixture_or_playwright_required"
+    assert report["external_call_made"] is False
+
+
 def test_smoke_source_connector_requires_env_for_manual_live(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("HISYS_ALLOW_LIVE_SMOKE", raising=False)
 

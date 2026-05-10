@@ -7,6 +7,7 @@ from .claim_evidence_summary import ClaimEvidenceSummaryBuilder, ClaimEvidenceSu
 from .general_web_search import GeneralWebSearchConnector, GeneralWebSearchEvidencePackage
 from .fixture_publisher import FixturePublisherConnector, FixturePublisherEvidencePackage
 from .open_access_pdf import OpenAccessPdfConnector, OpenAccessPdfEvidencePackage
+from .playwright_browser import PlaywrightBrowserConnector, PlaywrightBrowserEvidencePackage, PlaywrightUnavailableError
 from .pdf_candidate_planner import PdfCandidatePlan, PdfCandidatePlanner
 from .pdf_evidence_promotion import PdfEvidencePromotionLoader, PromotedPdfEvidence
 from .pdf_quote_extractor import PdfQuoteExtractionResult, PdfQuoteExtractor, SourceQuoteRecord
@@ -44,6 +45,9 @@ __all__ = [
     "GeneralWebSearchEvidencePackage",
     "OpenAccessPdfConnector",
     "OpenAccessPdfEvidencePackage",
+    "PlaywrightBrowserConnector",
+    "PlaywrightBrowserEvidencePackage",
+    "PlaywrightUnavailableError",
     "PdfCandidatePlan",
     "PdfCandidatePlanner",
     "PdfEvidencePromotionLoader",

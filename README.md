@@ -189,6 +189,16 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   validates approval, connector enabled state, read-only action, and provider
   domain allowlist before provider access. Search remains read-only and still
   forbids login, form submission, upload, purchase, post, and mutation.
+- Increment **Browser-A governed Playwright page collector** -
+  `playwright_read_only` adds the first browser-based actual-data acquisition
+  path for company and publisher pages. `hisys smoke-source-connector
+  --connector-id playwright_read_only --source-url ...` can use a local
+  `--browser-fixture-html` fixture in tests or Playwright's Chromium runtime in
+  approved manual runs. The collector captures page title, visible text excerpt,
+  source URL, status, content hash, and source/evidence records while keeping the
+  browser read-only: no login, upload, post, purchase, mutation, or
+  access-control bypass. Baseline config remains disabled by default and gated by
+  `HISYS_ALLOW_BROWSER_SMOKE`, approval refs, and domain allowlists.
 - Increment **Live-B2 fixture publisher evidence connector** -
   `hisys.connectors.fixture_publisher` reads local static publisher-shaped HTML
   fixtures only, extracts title/quoted evidence, writes `SourceAccessRecord` and

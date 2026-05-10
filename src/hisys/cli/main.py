@@ -36,7 +36,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_git_sync_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, execute_obsidian_git_sync_live, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_git_live_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
-from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, GeneralWebSearchConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, GeneralWebSearchConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, PlaywrightBrowserConnector, PlaywrightUnavailableError, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -434,6 +434,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     smoke_source.add_argument("--approval-ref", help="manual approval ref required for live smoke")
     smoke_source.add_argument("--transport-fixture-pdf", help="local PDF fixture used as injected transport for tested manual PDF smoke")
+    smoke_source.add_argument("--browser-fixture-html", help="local HTML fixture used as injected page for tested Playwright browser smoke")
     smoke_source.add_argument("--dry-run", action="store_true", help="write blocked/dry-run evidence only; no external call")
 
     plan_pdf = sub.add_parser(
@@ -984,6 +985,7 @@ def main(argv: list[str] | None = None) -> int:
             license_signal=args.license_signal,
             approval_ref=args.approval_ref,
             transport_fixture_pdf=Path(args.transport_fixture_pdf) if args.transport_fixture_pdf else None,
+            browser_fixture_html=Path(args.browser_fixture_html) if args.browser_fixture_html else None,
             dry_run=args.dry_run,
         )
     if args.command == "search-topic":
@@ -3493,6 +3495,7 @@ def _cmd_smoke_source_connector(
     license_signal: str,
     approval_ref: str | None,
     transport_fixture_pdf: Path | None,
+    browser_fixture_html: Path | None,
     dry_run: bool,
 ) -> int:
     """Write dry-run/manual smoke source connector evidence."""
@@ -3611,6 +3614,55 @@ def _cmd_smoke_source_connector(
             source_evidence_refs=[package.evidence_ref],
             external_call_made=True,
             transport_kind="fixture_injected",
+        )
+        _write_source_connector_smoke_report(instance, yyyymmdd, report)
+        print(f"source connector smoke: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'source-connector-smoke-report.json'}")
+        return 0
+    if connector_id == "playwright_read_only":
+        if not source_url:
+            raise ValueError("source-url is required for playwright_read_only")
+        try:
+            if browser_fixture_html is not None:
+                package = PlaywrightBrowserConnector().collect_fixture(
+                    request_id=request_id,
+                    source_url=source_url,
+                    fixture_html=browser_fixture_html,
+                    output_root=instance.root,
+                    yyyymmdd=yyyymmdd,
+                )
+                transport_kind = "playwright_fixture"
+            else:
+                package = PlaywrightBrowserConnector().collect_live(
+                    request_id=request_id,
+                    source_url=source_url,
+                    output_root=instance.root,
+                    yyyymmdd=yyyymmdd,
+                )
+                transport_kind = "playwright_live"
+        except PlaywrightUnavailableError:
+            report = _source_connector_smoke_report(
+                request_id=request_id,
+                connector_id=connector_id,
+                mode="manual_live",
+                status="blocked",
+                reason_code="browser_fixture_or_playwright_required",
+                dispatch_ref=dispatch_ref,
+                source_evidence_refs=[],
+                external_call_made=False,
+            )
+            _write_source_connector_smoke_report(instance, yyyymmdd, report)
+            return 2
+        report = _source_connector_smoke_report(
+            request_id=request_id,
+            connector_id=connector_id,
+            mode="manual_live",
+            status="completed",
+            reason_code="manual_browser_smoke_completed",
+            dispatch_ref=dispatch_ref,
+            source_access_refs=[package.access_ref],
+            source_evidence_refs=[package.evidence_ref],
+            external_call_made=True,
+            transport_kind=transport_kind,
         )
         _write_source_connector_smoke_report(instance, yyyymmdd, report)
         print(f"source connector smoke: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'source-connector-smoke-report.json'}")

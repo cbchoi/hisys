@@ -39,6 +39,7 @@ class SourceConnectorConfig(BaseModel):
         "metadata_search",
         "pdf_fetch",
         "local_file",
+        "playwright_read_only",
         "selenium_read_only",
         "fixture",
         "llm_read_only",

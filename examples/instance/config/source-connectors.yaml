@@ -112,6 +112,28 @@ connectors:
     allowed_domains: []
     forbidden_actions: *forbidden_live_actions
     output_schema: EvidencePackage
+  playwright_read_only:
+    connector_id: playwright_read_only
+    connector_type: playwright_read_only
+    enabled: false
+    mode: read_only
+    external_call_allowed: false
+    requires_human_approval: true
+    approval_policy_ref: POLICY-LIVE-RESEARCH-001
+    allowed_domains:
+      - company.local.fixture
+      - publisher.local.fixture
+      - arxiv.org
+      - doi.org
+      - mdpi.com
+      - sciencedirect.com
+      - springer.com
+      - ieee.org
+    forbidden_actions: *forbidden_live_actions
+    output_schema: EvidencePackage
+    manual_smoke_only: true
+    manual_smoke_env_var: HISYS_ALLOW_BROWSER_SMOKE
+    smoke_test_in_ci: false
   selenium_read_only:
     connector_id: selenium_read_only
     connector_type: selenium_read_only
