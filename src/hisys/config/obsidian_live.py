@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -679,6 +680,235 @@ def build_obsidian_git_sync_plan(
         "mutation_performed": False,
         "external_call_made": False,
     }
+
+
+def execute_obsidian_git_initialization_in_fixture(
+    *,
+    plan: dict[str, Any],
+    fixture_vault_root: Path,
+    fixture_remote_root: Path,
+    fixture_git_only: bool,
+) -> dict[str, Any]:
+    """Execute an Obsidian Git initialization plan against local fixture Git repos only."""
+
+    report = _base_obsidian_git_fixture_execution_report(
+        plan=plan,
+        operation="initialization",
+        fixture_vault_root=fixture_vault_root,
+        fixture_remote_root=fixture_remote_root,
+        fixture_git_only=fixture_git_only,
+    )
+    blocked = _obsidian_git_fixture_execution_blocker(plan=plan, fixture_vault_root=fixture_vault_root, fixture_remote_root=fixture_remote_root, fixture_git_only=fixture_git_only)
+    if blocked:
+        return {**report, "status": "blocked", "reason_code": blocked}
+    if plan.get("schema_id") != "hisys.obsidian.git_initialization_plan" or plan.get("status") != "planned_requires_operator_credentials":
+        return {**report, "status": "blocked", "reason_code": "initialization_plan_required"}
+    push_op = _push_operation(plan)
+    if not push_op.get("approval_ref"):
+        return {**report, "status": "blocked", "reason_code": "approval_ref_required"}
+
+    branch = str(plan.get("default_branch") or push_op.get("branch") or "main")
+    fixture_remote_root.parent.mkdir(parents=True, exist_ok=True)
+    if not fixture_remote_root.exists():
+        _run_git(["init", "--bare", str(fixture_remote_root)])
+    fixture_vault_root.mkdir(parents=True, exist_ok=True)
+    _ensure_git_repo(fixture_vault_root=fixture_vault_root, branch=branch)
+    _run_git(["config", "user.email", "hisys-fixture@example.invalid"], cwd=fixture_vault_root)
+    _run_git(["config", "user.name", "Hisys Fixture Executor"], cwd=fixture_vault_root)
+    _ensure_origin(fixture_vault_root=fixture_vault_root, fixture_remote_root=fixture_remote_root)
+    (fixture_vault_root / ".gitignore").write_text(_lightweight_obsidian_gitignore(), encoding="utf-8")
+    _run_git(["add", ".gitignore"], cwd=fixture_vault_root)
+    _commit_if_needed(fixture_vault_root=fixture_vault_root, message="chore(obsidian): initialize fixture vault git policy")
+    _run_git(["push", "-u", "origin", branch], cwd=fixture_vault_root)
+    pushed_commit = _run_git(["rev-parse", "HEAD"], cwd=fixture_vault_root).stdout.strip()
+    return {
+        **report,
+        "status": "applied",
+        "reason_code": None,
+        "branch": branch,
+        "approved_refs": [".gitignore"],
+        "pushed_commit": pushed_commit,
+        "operation_count": int(plan.get("planned_operation_count", 0)),
+        "target_vault_git_mutation_performed": True,
+        "fixture_remote_push_performed": True,
+        "mutation_performed": True,
+    }
+
+
+def execute_obsidian_git_sync_in_fixture(
+    *,
+    plan: dict[str, Any],
+    fixture_vault_root: Path,
+    fixture_remote_root: Path,
+    fixture_git_only: bool,
+) -> dict[str, Any]:
+    """Execute an Obsidian Git sync plan against local fixture Git repos only."""
+
+    report = _base_obsidian_git_fixture_execution_report(
+        plan=plan,
+        operation="sync",
+        fixture_vault_root=fixture_vault_root,
+        fixture_remote_root=fixture_remote_root,
+        fixture_git_only=fixture_git_only,
+    )
+    blocked = _obsidian_git_fixture_execution_blocker(plan=plan, fixture_vault_root=fixture_vault_root, fixture_remote_root=fixture_remote_root, fixture_git_only=fixture_git_only)
+    if blocked:
+        return {**report, "status": "blocked", "reason_code": blocked}
+    if plan.get("schema_id") != "hisys.obsidian.git_sync_plan" or plan.get("status") != "planned_after_vault_write":
+        return {**report, "status": "blocked", "reason_code": "sync_plan_required"}
+    push_op = _push_operation(plan)
+    if not push_op.get("approval_ref"):
+        return {**report, "status": "blocked", "reason_code": "approval_ref_required"}
+    if not (fixture_vault_root / ".git").exists():
+        return {**report, "status": "blocked", "reason_code": "fixture_git_repo_required"}
+    if not fixture_remote_root.exists():
+        return {**report, "status": "blocked", "reason_code": "fixture_remote_required"}
+
+    refs = [str(ref) for ref in [*plan.get("memo_refs", []), *plan.get("runtime_boundary_refs", [])]]
+    try:
+        _validate_refs(refs)
+    except ValueError:
+        return {**report, "status": "blocked", "reason_code": "unsafe_vault_ref"}
+    missing_refs = [ref for ref in refs if not (fixture_vault_root / ref).exists()]
+    if missing_refs:
+        return {**report, "status": "blocked", "reason_code": "approved_ref_missing_from_fixture_vault", "missing_refs": missing_refs}
+
+    _run_git(["config", "user.email", "hisys-fixture@example.invalid"], cwd=fixture_vault_root)
+    _run_git(["config", "user.name", "Hisys Fixture Executor"], cwd=fixture_vault_root)
+    _ensure_origin(fixture_vault_root=fixture_vault_root, fixture_remote_root=fixture_remote_root)
+    _run_git(["add", *refs], cwd=fixture_vault_root)
+    commit_created = _commit_if_needed(fixture_vault_root=fixture_vault_root, message=str(plan.get("commit_message") or "chore(obsidian): sync fixture vault"))
+    branch = str(plan.get("branch") or push_op.get("branch") or "main")
+    _run_git(["push", "origin", branch], cwd=fixture_vault_root)
+    pushed_commit = _run_git(["rev-parse", "HEAD"], cwd=fixture_vault_root).stdout.strip()
+    return {
+        **report,
+        "status": "applied",
+        "reason_code": None,
+        "branch": branch,
+        "approved_refs": refs,
+        "commit_created": commit_created,
+        "pushed_commit": pushed_commit,
+        "operation_count": int(plan.get("planned_operation_count", 0)),
+        "target_vault_git_mutation_performed": True,
+        "fixture_remote_push_performed": True,
+        "mutation_performed": True,
+    }
+
+
+def write_obsidian_git_fixture_execution_report(*, instance_root: Path, yyyymmdd: str, report: dict[str, Any]) -> Path:
+    report_dir = instance_root / "runtime-boundary" / "obsidian-live" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"obsidian-git-fixture-execution-{report['operation']}-{report['request_id']}.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (report_dir / f"obsidian-git-fixture-execution-{report['operation']}-{report['request_id']}.md").write_text(_format_obsidian_git_fixture_execution_report(report), encoding="utf-8")
+    return report_path
+
+
+def _base_obsidian_git_fixture_execution_report(
+    *,
+    plan: dict[str, Any],
+    operation: str,
+    fixture_vault_root: Path,
+    fixture_remote_root: Path,
+    fixture_git_only: bool,
+) -> dict[str, Any]:
+    return {
+        "schema_id": "hisys.obsidian.git_fixture_execution_report",
+        "schema_version": _SCHEMA_VERSION,
+        "request_id": str(plan.get("request_id", "unknown")),
+        "operation": operation,
+        "fixture_git_only": fixture_git_only,
+        "fixture_vault_root": str(fixture_vault_root),
+        "fixture_remote_root": str(fixture_remote_root),
+        "credential_ref": plan.get("credential_ref"),
+        "credential_ref_resolved": False,
+        "target_vault_git_mutation_performed": False,
+        "fixture_remote_push_performed": False,
+        "real_obsidian_vault_write_performed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
+def _obsidian_git_fixture_execution_blocker(*, plan: dict[str, Any], fixture_vault_root: Path, fixture_remote_root: Path, fixture_git_only: bool) -> str | None:
+    if not fixture_git_only:
+        return "fixture_git_only_required"
+    if _is_real_obsidian_vault(fixture_vault_root) or _is_real_obsidian_vault(fixture_remote_root):
+        return "real_obsidian_vault_blocked"
+    if plan.get("status") == "blocked":
+        return str(plan.get("reason_code") or "plan_blocked")
+    for operation in plan.get("planned_operations", []):
+        if operation.get("requires_approval") and not operation.get("approval_ref"):
+            return "approval_ref_required"
+    return None
+
+
+def _push_operation(plan: dict[str, Any]) -> dict[str, Any]:
+    for operation in plan.get("planned_operations", []):
+        if operation.get("operation") in {"initial_commit_and_push", "push_commit_to_remote"}:
+            return operation
+    return {}
+
+
+def _ensure_git_repo(*, fixture_vault_root: Path, branch: str) -> None:
+    if not (fixture_vault_root / ".git").exists():
+        _run_git(["init", "-b", branch], cwd=fixture_vault_root)
+
+
+def _ensure_origin(*, fixture_vault_root: Path, fixture_remote_root: Path) -> None:
+    remote_url = str(fixture_remote_root)
+    remotes = _run_git(["remote"], cwd=fixture_vault_root).stdout.splitlines()
+    if "origin" not in remotes:
+        _run_git(["remote", "add", "origin", remote_url], cwd=fixture_vault_root)
+    else:
+        _run_git(["remote", "set-url", "origin", remote_url], cwd=fixture_vault_root)
+
+
+def _commit_if_needed(*, fixture_vault_root: Path, message: str) -> bool:
+    staged = _run_git(["diff", "--cached", "--quiet"], cwd=fixture_vault_root, check=False)
+    if staged.returncode == 0:
+        return False
+    _run_git(["commit", "-m", message], cwd=fixture_vault_root)
+    return True
+
+
+def _run_git(args: list[str], *, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True, check=check)
+
+
+def _lightweight_obsidian_gitignore() -> str:
+    return "\n".join(
+        [
+            "# Hisys lightweight Obsidian vault policy",
+            ".obsidian/workspace*",
+            "attachments/",
+            "*.pdf",
+            "*.zip",
+            "*.tmp",
+            ".DS_Store",
+            "",
+        ]
+    )
+
+
+def _format_obsidian_git_fixture_execution_report(report: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Obsidian Git Fixture Execution Report",
+            "",
+            f"- Request: `{report['request_id']}`",
+            f"- Operation: `{report['operation']}`",
+            f"- Status: {report['status']}",
+            f"- Reason: {report.get('reason_code')}",
+            f"- fixture_git_only: {str(report['fixture_git_only']).lower()}",
+            f"- target_vault_git_mutation_performed: {str(report['target_vault_git_mutation_performed']).lower()}",
+            f"- fixture_remote_push_performed: {str(report['fixture_remote_push_performed']).lower()}",
+            f"- real_obsidian_vault_write_performed: {str(report['real_obsidian_vault_write_performed']).lower()}",
+            f"- external_call_made: {str(report['external_call_made']).lower()}",
+            "",
+        ]
+    )
 
 
 def _git_credential_issue(credential_ref: str) -> str | None:
@@ -1945,10 +2175,12 @@ __all__ = [
     "build_live_vault_preflight_report",
     "build_live_vault_transaction_plan",
     "build_live_vault_write_gate_report",
+    "build_obsidian_evidence_promotion_plan",
     "build_obsidian_git_initialization_plan",
     "build_obsidian_git_sync_plan",
-    "build_obsidian_evidence_promotion_plan",
     "build_obsidian_milestone_status_report",
+    "execute_obsidian_git_initialization_in_fixture",
+    "execute_obsidian_git_sync_in_fixture",
     "build_topic_gatekeeper_approval_package",
     "build_topic_gatekeeper_decision",
     "build_topic_gatekeeper_status_report",
@@ -1970,6 +2202,7 @@ __all__ = [
     "write_live_vault_transaction_rehearsal_report",
     "write_live_vault_write_gate_report",
     "write_obsidian_evidence_promotion_plan",
+    "write_obsidian_git_fixture_execution_report",
     "write_obsidian_milestone_status_report",
     "write_topic_gatekeeper_decision",
     "write_vault_plan_artifacts",

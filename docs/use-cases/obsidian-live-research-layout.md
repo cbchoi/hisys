@@ -561,10 +561,17 @@ current implementation adds plan builders for this lifecycle:
 - `build_obsidian_git_sync_plan`: operation-phase memo/runtime-boundary commit/push
   plan, with approved vault refs, approval ref, credential ref, explicit operation
   approval markers, and no raw credential persistence.
+- `execute_obsidian_git_initialization_in_fixture` and
+  `execute_obsidian_git_sync_in_fixture`: fixture-only executors for the planned
+  lifecycle. They require `fixture_git_only`, refuse the real Obsidian vault,
+  initialize/push only to local fixture Git remotes, never resolve credential refs,
+  and record fixture push evidence with `real_obsidian_vault_write_performed=false`
+  and `external_call_made=false`.
 
-These builders are still plan-only: they record `mutation_performed=false` and
-`external_call_made=false`. The next increment should turn the plan into a gated
-executor tested against fixture Git remotes before any live Obsidian push.
+Live execution remains out of scope until fixture Git execution, approval gates,
+and runtime-boundary evidence are accepted. A live executor must reuse the same
+plan structure and add credential resolution from an external secret store without
+persisting raw credentials.
 
 ## Non-goals
 

@@ -395,6 +395,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   memo/runtime-boundary ref, commit it, push to the configured remote, and record
   Git status/push evidence. This increment is still plan-only: it rejects raw
   credential values and records no mutation or external calls.
+- Increment **Obsidian Git Management-B fixture executor** -
+  `execute_obsidian_git_initialization_in_fixture` and
+  `execute_obsidian_git_sync_in_fixture` turn the Git plans into a gated local
+  fixture executor: it requires `fixture_git_only`, refuses the real Obsidian
+  vault, uses only local fixture Git remotes, never resolves credential refs, and
+  records initialization/sync push evidence with `external_call_made=false`.
 - Increment **I5 foundation** (Extraction pipeline) - fixture-backed extractor
   converts `RawObservation` evidence into `ExtractedSignal` interpretation
   records and persists signal JSON under the local runtime instance; `hisys
