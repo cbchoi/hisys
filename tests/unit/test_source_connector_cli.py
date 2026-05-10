@@ -261,7 +261,7 @@ def test_search_topic_writes_search_report_and_investigator_harness(tmp_path: Pa
     assert report["mutation_performed"] is False
     assert report["investigator_harness_ref"] == str(harness_artifact.relative_to(tmp_path))
     assert report["source_evidence_refs"]
-    assert harness["source_ids"] == ["general_web_search"]
+    assert harness["source_ids"] == ["SRC-GENERAL-WEB-SEARCH-001"]
     assert harness["user_opinion"] == "I think bounded search should feed the investigator harness."
     assert harness["source_evidence_refs"] == report["source_evidence_refs"]
 

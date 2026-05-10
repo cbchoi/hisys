@@ -38,6 +38,25 @@ sources:
     compliance_review_ref: WEB-COMPL-SRC-WEB-RSS-001
     producer_id: example-instance
 
+  - source_id: SRC-GENERAL-WEB-SEARCH-001
+    source_type: web_news
+    display_name: Governed general web search source
+    owner: research
+    lifecycle_state: experimental
+    reliability_class: B
+    reliability_evidence:
+      - HISYS-SEARCH-C-001
+    access_method: api
+    cadence: PT1H
+    rate_limit: 6/min
+    usage_constraints:
+      - citation_required
+      - no_full_text_storage
+      - governed_search_only
+    retention_rule: P30D
+    compliance_review_ref: WEB-COMPL-SRC-GENERAL-WEB-SEARCH-001
+    producer_id: example-instance
+
   - source_id: SRC-HERMES-TOOL-001
     source_type: hermes_tool
     display_name: Hermes preapproved tool collection fixture

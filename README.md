@@ -177,8 +177,8 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   topic: it gates `general_web_search`, consumes approved fixture/fake search
   transport, writes `search-topic-report.{json,md}`, source access/evidence
   records, and an `orchestrator-harness-<request_id>.json` containing the topic,
-  selected source id, user opinion, and evidence refs for `investigate-memo
-  --orchestrator-harness`. Missing approval/env/fixture transport blocks before
+  selected registry source id `SRC-GENERAL-WEB-SEARCH-001`, user opinion, and
+  evidence refs for `investigate-memo --orchestrator-harness`. Missing approval/env/fixture transport blocks before
   provider access, preserving read-only/no-mutation boundaries.
 - Increment **Search-C approved provider-backed search adapter** -
   `hisys search-topic` now supports a deployable provider path with

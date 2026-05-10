@@ -3333,7 +3333,7 @@ def _cmd_search_topic(
         "schema_id": "hisys.investigator.orchestrator_harness",
         "schema_version": "0.1.0",
         "harness_id": f"ORCH-HARNESS-{request_id}",
-        "source_ids": [connector_id],
+        "source_ids": ["SRC-GENERAL-WEB-SEARCH-001"],
         "agent_types": ["fixture"],
         "topic": topic,
         "user_opinion": user_opinion,
