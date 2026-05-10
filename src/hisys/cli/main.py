@@ -291,6 +291,23 @@ def _build_parser() -> argparse.ArgumentParser:
     live_pipeline.add_argument("--metadata-fixture", help="local Crossref-style JSON fixture for tests/harnesses")
     live_pipeline.add_argument("--standing-approval-policy", help="approved standing autonomous operating-envelope policy JSON")
 
+    live_autonomy = sub.add_parser(
+        "live-autonomy-run",
+        help="run a standing-approved queue of live ideation persistence jobs",
+    )
+    live_autonomy.add_argument("--instance", required=True, help="runtime instance root for batch outputs")
+    live_autonomy.add_argument("--queue", required=True, help="JSON queue with approved live ideation persistence entries")
+    live_autonomy.add_argument("--config", required=True, help="source-connectors.yaml path")
+    live_autonomy.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    live_autonomy.add_argument("--vault-root", required=True, help="target Obsidian vault root")
+    live_autonomy.add_argument("--credential-ref", required=True, help="credential reference only; raw credentials are rejected")
+    live_autonomy.add_argument("--standing-approval-policy", required=True, help="approved standing autonomous operating-envelope policy JSON")
+    live_autonomy.add_argument("--remote-name", default="origin", help="Git remote name for vault sync")
+    live_autonomy.add_argument("--branch", default="main", help="Git branch for vault sync")
+    live_autonomy.add_argument("--allow-real-obsidian-vault", action="store_true", help="allow /home/cbchoi/obsidian as target vault if policy allows it")
+    live_autonomy.add_argument("--clean-git-status", action="store_true", help="operator confirms target vault Git status is clean before batch execution")
+    live_autonomy.add_argument("--max-items", type=int, help="optional maximum queue entries to execute")
+
     plan_sources = sub.add_parser(
         "plan-source-connectors",
         help="dry-run plan governed source connectors for a domain investigation request",
@@ -771,6 +788,21 @@ def main(argv: list[str] | None = None) -> int:
             clean_git_status=args.clean_git_status,
             metadata_fixture=Path(args.metadata_fixture) if args.metadata_fixture else None,
             standing_approval_policy=Path(args.standing_approval_policy) if args.standing_approval_policy else None,
+        )
+    if args.command == "live-autonomy-run":
+        return _cmd_live_autonomy_run(
+            instance_root=Path(args.instance),
+            queue_path=Path(args.queue),
+            config_path=Path(args.config),
+            yyyymmdd=args.date,
+            vault_root=Path(args.vault_root),
+            credential_ref=args.credential_ref,
+            standing_approval_policy=Path(args.standing_approval_policy),
+            remote_name=args.remote_name,
+            branch=args.branch,
+            allow_real_obsidian_vault=args.allow_real_obsidian_vault,
+            clean_git_status=args.clean_git_status,
+            max_items=args.max_items,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -1951,6 +1983,134 @@ def _write_live_ideation_persist_report(*, instance: InstanceRoot, yyyymmdd: str
                 f"- network_push_performed: `{str(report['network_push_performed']).lower()}`",
                 f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
                 f"- standing_approval_applied: `{str(report['standing_approval_applied']).lower()}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _cmd_live_autonomy_run(
+    *,
+    instance_root: Path,
+    queue_path: Path,
+    config_path: Path,
+    yyyymmdd: str,
+    vault_root: Path,
+    credential_ref: str,
+    standing_approval_policy: Path,
+    remote_name: str,
+    branch: str,
+    allow_real_obsidian_vault: bool,
+    clean_git_status: bool,
+    max_items: int | None,
+) -> int:
+    """Run a standing-approved queue of autonomous live ideation persistence jobs."""
+
+    instance = InstanceRoot(instance_root)
+    queue = json.loads(queue_path.read_text(encoding="utf-8"))
+    entries = list(queue.get("entries") or [])
+    if max_items is not None:
+        entries = entries[:max(0, max_items)]
+    results: list[dict[str, object]] = []
+    queue_dir = queue_path.parent
+    for index, entry in enumerate(entries, start=1):
+        entry_id = str(entry.get("entry_id") or f"entry-{index:04d}")
+        request_ref = entry.get("request_path")
+        doi = entry.get("doi")
+        if not isinstance(request_ref, str) or not isinstance(doi, str) or not doi.strip():
+            results.append(
+                {
+                    "entry_id": entry_id,
+                    "status": "blocked",
+                    "reason_code": "queue_entry_missing_request_or_doi",
+                    "pipeline_report_ref": None,
+                }
+            )
+            continue
+        request_path = Path(request_ref)
+        if not request_path.is_absolute():
+            request_path = queue_dir / request_path
+        metadata_fixture = entry.get("metadata_fixture")
+        metadata_fixture_path = Path(metadata_fixture) if isinstance(metadata_fixture, str) and metadata_fixture else None
+        if metadata_fixture_path is not None and not metadata_fixture_path.is_absolute():
+            metadata_fixture_path = queue_dir / metadata_fixture_path
+        entry_instance_root = instance.data_dir / "autonomy-runs" / yyyymmdd / entry_id
+        status_code = _cmd_live_ideation_persist(
+            instance_root=entry_instance_root,
+            request_path=request_path,
+            config_path=config_path,
+            yyyymmdd=yyyymmdd,
+            doi=doi,
+            approval_ref=None,
+            vault_root=vault_root,
+            remote_name=remote_name,
+            branch=branch,
+            credential_ref=credential_ref,
+            commit_message=entry.get("commit_message") if isinstance(entry.get("commit_message"), str) else None,
+            explicit_live_source_enable=False,
+            explicit_live_write_enable=False,
+            explicit_live_git_enable=False,
+            allow_real_obsidian_vault=allow_real_obsidian_vault,
+            clean_git_status=clean_git_status,
+            metadata_fixture=metadata_fixture_path,
+            standing_approval_policy=standing_approval_policy,
+        )
+        report_path = entry_instance_root / "reports" / "run-summaries" / yyyymmdd / "live-ideation-persist-report.json"
+        entry_report = json.loads(report_path.read_text(encoding="utf-8")) if report_path.exists() else {}
+        results.append(
+            {
+                "entry_id": entry_id,
+                "request_id": entry_report.get("request_id"),
+                "status": "completed" if status_code == 0 else "blocked",
+                "reason_code": entry_report.get("reason_code"),
+                "pipeline_report_ref": str(report_path.relative_to(instance.root)) if report_path.exists() else None,
+                "vault_refs": entry_report.get("vault_refs", []),
+                "external_call_made": bool(entry_report.get("external_call_made")),
+                "mutation_performed": bool(entry_report.get("mutation_performed")),
+                "network_push_performed": bool(entry_report.get("network_push_performed")),
+            }
+        )
+    completed_count = sum(1 for result in results if result["status"] == "completed")
+    blocked_count = len(results) - completed_count
+    batch_report = {
+        "schema_id": "hisys.live_autonomy.queue_run_report",
+        "schema_version": "0.1.0",
+        "queue_id": queue.get("queue_id"),
+        "status": "completed" if blocked_count == 0 else "completed_with_blocks",
+        "entry_count": len(results),
+        "completed_count": completed_count,
+        "blocked_count": blocked_count,
+        "standing_approval_policy_ref": str(standing_approval_policy),
+        "external_call_made": any(result["external_call_made"] for result in results),
+        "mutation_performed": any(result["mutation_performed"] for result in results),
+        "network_push_performed": any(result["network_push_performed"] for result in results),
+        "results": results,
+    }
+    report_path = _write_live_autonomy_run_report(instance=instance, yyyymmdd=yyyymmdd, report=batch_report)
+    print(f"live autonomy run: status={batch_report['status']} completed={completed_count} blocked={blocked_count} report={report_path}")
+    return 0 if blocked_count == 0 else 2
+
+
+def _write_live_autonomy_run_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "live-autonomy-run-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "live-autonomy-run-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                "# Live Autonomy Queue Run Report",
+                "",
+                f"- queue_id: `{report['queue_id']}`",
+                f"- status: `{report['status']}`",
+                f"- entry_count: `{report['entry_count']}`",
+                f"- completed_count: `{report['completed_count']}`",
+                f"- blocked_count: `{report['blocked_count']}`",
+                f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
+                f"- network_push_performed: `{str(report['network_push_performed']).lower()}`",
                 "",
             ]
         ),

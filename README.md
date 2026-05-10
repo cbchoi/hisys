@@ -294,6 +294,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   branch, credential-ref, and expiry controls. Reports record
   `standing_approval_applied`; out-of-scope requests block before source access,
   vault mutation, or Git push.
+- Increment **Live-P autonomous queue runner** -
+  `hisys live-autonomy-run` executes a JSON queue of live ideation persistence
+  entries under one standing approval policy. Each queue item runs in an isolated
+  runtime sub-instance, invokes the full `live-ideation-persist` path, and writes
+  a batch `live-autonomy-run-report.json` with completed/blocked counts, per-entry
+  report refs, vault refs, mutation state, and network-push state. Missing DOI or
+  request refs block at the queue-entry layer; out-of-policy items still block in
+  the standing-approval gate before live source access or mutation.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines
