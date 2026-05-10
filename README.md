@@ -276,6 +276,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   existing DARS and Chief Editor research-review pipeline. Tests use
   `--metadata-fixture`; real DOI metadata access remains approval-gated and
   read-only, with `mutation_performed=false`.
+- Increment **Live-N approved live ideation persistence pipeline** -
+  `hisys live-ideation-persist` fills the remaining live-autonomy gap by chaining
+  approved live ideation, approval-gated Obsidian vault transaction apply, and
+  approval-gated Obsidian Git sync into one command. It requires explicit source,
+  write, and Git enable flags, a single approval ref, a credential reference, and
+  clean/scoped vault Git status confirmation. Tests use injected DOI metadata and
+  a local fixture Git remote; real `/home/cbchoi/obsidian` use remains behind
+  `--allow-real-obsidian-vault` and records `real_obsidian_vault_write_performed`
+  plus `network_push_performed` in `live-ideation-persist-report.json`.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

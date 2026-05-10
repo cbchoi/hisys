@@ -7,6 +7,7 @@ HISYS-CON-022..023.
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 from hisys.cli.main import main
@@ -421,3 +422,126 @@ def test_live_ideation_run_blocks_without_explicit_live_enable(tmp_path: Path, m
     assert report["status"] == "blocked"
     assert report["reason_code"] == "explicit_live_source_enable_required"
     assert report["external_call_made"] is False
+
+
+def test_live_ideation_persist_runs_ideation_vault_write_and_git_sync(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    metadata_fixture = tmp_path / "crossref.json"
+    metadata_fixture.write_text(
+        json.dumps({"message": {"DOI": "10.0000/hisys.fixture.formalism", "title": ["Dynamic Structure Formalism Fixture"]}}),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "  doi_metadata_search:\n    connector_id: doi_metadata_search\n    connector_type: metadata_search\n    enabled: false\n    mode: read_only\n    external_call_allowed: false",
+            "  doi_metadata_search:\n    connector_id: doi_metadata_search\n    connector_type: metadata_search\n    enabled: true\n    mode: read_only\n    external_call_allowed: true",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    vault_root = tmp_path / "vault"
+    remote_root = tmp_path / "remote.git"
+    vault_root.mkdir()
+    subprocess.run(["git", "init", "--bare", str(remote_root)], check=True, capture_output=True, text=True)
+    subprocess.run(["git", "init", "-b", "main"], cwd=vault_root, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "config", "user.email", "hisys-test@example.invalid"], cwd=vault_root, check=True)
+    subprocess.run(["git", "config", "user.name", "Hisys Test"], cwd=vault_root, check=True)
+    subprocess.run(["git", "remote", "add", "origin", str(remote_root)], cwd=vault_root, check=True)
+
+    result = main(
+        [
+            "live-ideation-persist",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--request",
+            str(request_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--doi",
+            "10.0000/hisys.fixture.formalism",
+            "--approval-ref",
+            "APPROVAL-LIVE-PIPELINE-001",
+            "--vault-root",
+            str(vault_root),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--explicit-live-source-enable",
+            "--explicit-live-write-enable",
+            "--explicit-live-git-enable",
+            "--clean-git-status",
+            "--metadata-fixture",
+            str(metadata_fixture),
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-ideation-persist-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "completed"
+    assert report["external_call_made"] is True
+    assert report["mutation_performed"] is True
+    assert report["network_push_performed"] is False
+    assert report["real_obsidian_vault_write_performed"] is False
+    assert report["vault_refs"] == ["91 Hisys/Live Research/approved-ideation/live-ideation-HISYS-REQ-LIVE-B-001.json"]
+    assert (vault_root / report["vault_refs"][0]).exists()
+    assert subprocess.run(["git", "rev-parse", "--verify", "main"], cwd=remote_root, capture_output=True, text=True).returncode == 0
+
+
+def test_live_ideation_persist_blocks_before_vault_write_without_write_enable(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    metadata_fixture = tmp_path / "crossref.json"
+    metadata_fixture.write_text(json.dumps({"message": {"DOI": "10.0000/hisys.fixture.formalism"}}), encoding="utf-8")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "  doi_metadata_search:\n    connector_id: doi_metadata_search\n    connector_type: metadata_search\n    enabled: false\n    mode: read_only\n    external_call_allowed: false",
+            "  doi_metadata_search:\n    connector_id: doi_metadata_search\n    connector_type: metadata_search\n    enabled: true\n    mode: read_only\n    external_call_allowed: true",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "live-ideation-persist",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--request",
+            str(request_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--doi",
+            "10.0000/hisys.fixture.formalism",
+            "--approval-ref",
+            "APPROVAL-LIVE-PIPELINE-001",
+            "--vault-root",
+            str(tmp_path / "vault"),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--explicit-live-source-enable",
+            "--explicit-live-git-enable",
+            "--clean-git-status",
+            "--metadata-fixture",
+            str(metadata_fixture),
+        ]
+    )
+
+    assert result == 2
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-ideation-persist-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "blocked"
+    assert report["reason_code"] == "live_apply_gate_not_satisfied"
+    assert report["mutation_performed"] is False

@@ -32,7 +32,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
-from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, execute_obsidian_git_sync_live, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_git_live_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
+from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_git_sync_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, execute_obsidian_git_sync_live, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_git_live_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -267,6 +267,28 @@ def _build_parser() -> argparse.ArgumentParser:
     live_ideation.add_argument("--approval-ref", required=True, help="approval ref authorizing live ideation source access")
     live_ideation.add_argument("--explicit-live-source-enable", action="store_true", help="operator live-source opt-in")
     live_ideation.add_argument("--metadata-fixture", help="local Crossref-style JSON fixture for tests/harnesses")
+
+    live_pipeline = sub.add_parser(
+        "live-ideation-persist",
+        help="run approved live ideation, write approved Obsidian evidence, and Git-sync it",
+    )
+    live_pipeline.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    live_pipeline.add_argument("--request", required=True, help="DomainInvestigationRequest JSON path")
+    live_pipeline.add_argument("--config", required=True, help="source-connectors.yaml path")
+    live_pipeline.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    live_pipeline.add_argument("--doi", required=True, help="approved DOI for read-only metadata retrieval")
+    live_pipeline.add_argument("--approval-ref", required=True, help="approval ref authorizing all pipeline stages")
+    live_pipeline.add_argument("--vault-root", required=True, help="target Obsidian vault root")
+    live_pipeline.add_argument("--remote-name", default="origin", help="Git remote name for vault sync")
+    live_pipeline.add_argument("--branch", default="main", help="Git branch for vault sync")
+    live_pipeline.add_argument("--credential-ref", required=True, help="credential reference only; raw credentials are rejected")
+    live_pipeline.add_argument("--commit-message", help="Git commit message for the approved ideation persistence")
+    live_pipeline.add_argument("--explicit-live-source-enable", action="store_true", help="operator live-source opt-in")
+    live_pipeline.add_argument("--explicit-live-write-enable", action="store_true", help="operator live-vault-write opt-in")
+    live_pipeline.add_argument("--explicit-live-git-enable", action="store_true", help="operator live-Git-sync opt-in")
+    live_pipeline.add_argument("--allow-real-obsidian-vault", action="store_true", help="allow /home/cbchoi/obsidian as target vault")
+    live_pipeline.add_argument("--clean-git-status", action="store_true", help="operator confirms target vault Git status is clean except approved refs")
+    live_pipeline.add_argument("--metadata-fixture", help="local Crossref-style JSON fixture for tests/harnesses")
 
     plan_sources = sub.add_parser(
         "plan-source-connectors",
@@ -726,6 +748,26 @@ def main(argv: list[str] | None = None) -> int:
             doi=args.doi,
             approval_ref=args.approval_ref,
             explicit_live_source_enable=args.explicit_live_source_enable,
+            metadata_fixture=Path(args.metadata_fixture) if args.metadata_fixture else None,
+        )
+    if args.command == "live-ideation-persist":
+        return _cmd_live_ideation_persist(
+            instance_root=Path(args.instance),
+            request_path=Path(args.request),
+            config_path=Path(args.config),
+            yyyymmdd=args.date,
+            doi=args.doi,
+            approval_ref=args.approval_ref,
+            vault_root=Path(args.vault_root),
+            remote_name=args.remote_name,
+            branch=args.branch,
+            credential_ref=args.credential_ref,
+            commit_message=args.commit_message,
+            explicit_live_source_enable=args.explicit_live_source_enable,
+            explicit_live_write_enable=args.explicit_live_write_enable,
+            explicit_live_git_enable=args.explicit_live_git_enable,
+            allow_real_obsidian_vault=args.allow_real_obsidian_vault,
+            clean_git_status=args.clean_git_status,
             metadata_fixture=Path(args.metadata_fixture) if args.metadata_fixture else None,
         )
     if args.command == "plan-source-connectors":
@@ -1606,6 +1648,206 @@ def _write_live_ideation_report(*, instance: InstanceRoot, yyyymmdd: str, report
                 f"- external_call_made: `{str(report['external_call_made']).lower()}`",
                 f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
                 f"- dars_chief_editor_pipeline_invoked: `{str(report['dars_chief_editor_pipeline_invoked']).lower()}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _cmd_live_ideation_persist(
+    *,
+    instance_root: Path,
+    request_path: Path,
+    config_path: Path,
+    yyyymmdd: str,
+    doi: str,
+    approval_ref: str,
+    vault_root: Path,
+    remote_name: str,
+    branch: str,
+    credential_ref: str,
+    commit_message: str | None,
+    explicit_live_source_enable: bool,
+    explicit_live_write_enable: bool,
+    explicit_live_git_enable: bool,
+    allow_real_obsidian_vault: bool,
+    clean_git_status: bool,
+    metadata_fixture: Path | None,
+) -> int:
+    """Run approved live ideation through vault persistence and Git sync."""
+
+    instance = InstanceRoot(instance_root)
+    request = DomainInvestigationRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
+    run_status = _cmd_live_ideation_run(
+        instance_root=instance.root,
+        request_path=request_path,
+        config_path=config_path,
+        yyyymmdd=yyyymmdd,
+        doi=doi,
+        approval_ref=approval_ref,
+        explicit_live_source_enable=explicit_live_source_enable,
+        metadata_fixture=metadata_fixture,
+    )
+    ideation_report_path = instance.reports_dir / "run-summaries" / yyyymmdd / "live-ideation-run-report.json"
+    ideation_report = json.loads(ideation_report_path.read_text(encoding="utf-8")) if ideation_report_path.exists() else {}
+    if run_status != 0:
+        pipeline_report = _live_ideation_persist_report(
+            request_id=request.request_id,
+            approval_ref=approval_ref,
+            status="blocked",
+            reason_code="live_ideation_stage_failed",
+            ideation_report_ref=str(ideation_report_path.relative_to(instance.root)) if ideation_report_path.exists() else None,
+        )
+        report_path = _write_live_ideation_persist_report(instance=instance, yyyymmdd=yyyymmdd, report=pipeline_report)
+        print(f"live ideation persist: status=blocked report={report_path}")
+        return 2
+
+    vault_ref = f"91 Hisys/Live Research/approved-ideation/live-ideation-{request.request_id}.json"
+    transaction_plan = {
+        "schema_id": "hisys.obsidian.live_vault_transaction_plan",
+        "schema_version": "0.1.0",
+        "request_id": f"{request.request_id}-PERSIST",
+        "status": "planned_not_executable",
+        "vault_root": str(vault_root),
+        "planned_operation_count": 1,
+        "planned_operations": [
+            {
+                "operation_id": "live-ideation-persist-op-0001",
+                "operation": "write_live_ideation_review_projection",
+                "vault_relative_ref": vault_ref,
+                "approval_ref": approval_ref,
+                "source_refs": ideation_report.get("source_access_refs", []),
+                "evidence_refs": ideation_report.get("source_evidence_refs", []),
+            }
+        ],
+        "live_write_enabled": explicit_live_write_enable,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    apply_report = apply_live_vault_transaction(
+        transaction_plan=transaction_plan,
+        vault_root=vault_root,
+        approval_ref=approval_ref,
+        explicit_live_write_enable=explicit_live_write_enable,
+        allow_real_obsidian_vault=allow_real_obsidian_vault,
+        clean_git_status=clean_git_status,
+    )
+    apply_report_path = write_live_vault_transaction_apply_report(instance_root=instance.root, yyyymmdd=yyyymmdd, report=apply_report)
+    if apply_report.get("status") != "applied":
+        pipeline_report = _live_ideation_persist_report(
+            request_id=request.request_id,
+            approval_ref=approval_ref,
+            status="blocked",
+            reason_code=str(apply_report.get("reason_code") or "vault_apply_failed"),
+            ideation_report_ref=str(ideation_report_path.relative_to(instance.root)),
+            vault_apply_report_ref=str(apply_report_path.relative_to(instance.root)),
+            vault_refs=[vault_ref],
+        )
+        report_path = _write_live_ideation_persist_report(instance=instance, yyyymmdd=yyyymmdd, report=pipeline_report)
+        print(f"live ideation persist: status=blocked report={report_path}")
+        return 2
+
+    git_plan = build_obsidian_git_sync_plan(
+        request_id=f"{request.request_id}-GIT-SYNC",
+        vault_root=vault_root,
+        memo_refs=[vault_ref],
+        runtime_boundary_refs=[],
+        commit_message=commit_message or f"chore(obsidian): persist live ideation {request.request_id}",
+        remote_name=remote_name,
+        branch=branch,
+        credential_ref=credential_ref,
+        approval_ref=approval_ref,
+    )
+    git_report = execute_obsidian_git_sync_live(
+        plan=git_plan,
+        vault_root=vault_root,
+        approval_ref=approval_ref,
+        explicit_live_git_enable=explicit_live_git_enable,
+        allow_real_obsidian_vault=allow_real_obsidian_vault,
+        clean_git_status=clean_git_status,
+    )
+    git_report_path = write_obsidian_git_live_execution_report(instance_root=instance.root, yyyymmdd=yyyymmdd, report=git_report)
+    status = "completed" if git_report.get("status") == "applied" else "blocked"
+    pipeline_report = _live_ideation_persist_report(
+        request_id=request.request_id,
+        approval_ref=approval_ref,
+        status=status,
+        reason_code=None if status == "completed" else str(git_report.get("reason_code") or "git_sync_failed"),
+        ideation_report_ref=str(ideation_report_path.relative_to(instance.root)),
+        vault_apply_report_ref=str(apply_report_path.relative_to(instance.root)),
+        git_sync_report_ref=str(git_report_path.relative_to(instance.root)),
+        vault_refs=[vault_ref],
+        source_access_refs=list(ideation_report.get("source_access_refs", [])),
+        source_evidence_refs=list(ideation_report.get("source_evidence_refs", [])),
+        external_call_made=bool(ideation_report.get("external_call_made")) or bool(git_report.get("external_call_made")),
+        real_obsidian_vault_write_performed=bool(apply_report.get("real_obsidian_vault_write_performed")),
+        network_push_performed=bool(git_report.get("network_push_performed")),
+        mutation_performed=bool(apply_report.get("mutation_performed")) or bool(git_report.get("mutation_performed")),
+    )
+    report_path = _write_live_ideation_persist_report(instance=instance, yyyymmdd=yyyymmdd, report=pipeline_report)
+    print(f"live ideation persist: status={status} report={report_path}")
+    print(f"real_obsidian_vault_write_performed: {str(pipeline_report['real_obsidian_vault_write_performed']).lower()}")
+    print(f"network_push_performed: {str(pipeline_report['network_push_performed']).lower()}")
+    return 0 if status == "completed" else 2
+
+
+def _live_ideation_persist_report(
+    *,
+    request_id: str,
+    approval_ref: str,
+    status: str,
+    reason_code: str | None = None,
+    ideation_report_ref: str | None = None,
+    vault_apply_report_ref: str | None = None,
+    git_sync_report_ref: str | None = None,
+    vault_refs: list[str] | None = None,
+    source_access_refs: list[str] | None = None,
+    source_evidence_refs: list[str] | None = None,
+    external_call_made: bool = False,
+    real_obsidian_vault_write_performed: bool = False,
+    network_push_performed: bool = False,
+    mutation_performed: bool = False,
+) -> dict[str, object]:
+    return {
+        "schema_id": "hisys.live_ideation.persist_report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "status": status,
+        "reason_code": reason_code,
+        "approval_ref": approval_ref,
+        "ideation_report_ref": ideation_report_ref,
+        "vault_apply_report_ref": vault_apply_report_ref,
+        "git_sync_report_ref": git_sync_report_ref,
+        "vault_refs": vault_refs or [],
+        "source_access_refs": source_access_refs or [],
+        "source_evidence_refs": source_evidence_refs or [],
+        "external_call_made": external_call_made,
+        "real_obsidian_vault_write_performed": real_obsidian_vault_write_performed,
+        "network_push_performed": network_push_performed,
+        "mutation_performed": mutation_performed,
+        "dars_chief_editor_pipeline_invoked": status == "completed",
+        "human_review_required": True,
+    }
+
+
+def _write_live_ideation_persist_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "live-ideation-persist-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "live-ideation-persist-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                "# Live Ideation Persist Report",
+                "",
+                f"- request_id: `{report['request_id']}`",
+                f"- status: `{report['status']}`",
+                f"- real_obsidian_vault_write_performed: `{str(report['real_obsidian_vault_write_performed']).lower()}`",
+                f"- network_push_performed: `{str(report['network_push_performed']).lower()}`",
+                f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
                 "",
             ]
         ),
