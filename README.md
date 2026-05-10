@@ -224,8 +224,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   concrete independent/corroborating candidates (patents, datasheets, papers,
   filings, or distributor/spec pages) into the source-candidate artifact without
   fetching them; the sufficiency plan then tells the operator to promote those
-  URLs through governed source reads before final review. After Chief Editor has
-  accepted the package for adversarial review, `request-browser-dars-review`
+  URLs through governed source reads before final review. The competitive matrix
+  also records normalized segment and corroborating evidence class fields so the
+  later DARS revision gate can be resolved deterministically. `review-browser-investigation`
+  consumes the completed browser investigation report, verifies the sufficiency
+  gate, and writes `data/chief-editor-reviews/<date>/CHIEF-REVIEW-*-BROWSER.json`
+  with `decision=accept_for_devil_dars_adversarial_review` for the advisory
+  DARS/Devil handoff. After Chief Editor has accepted the package for adversarial review, `request-browser-dars-review`
   records an advisory-only DARS/Devil handoff plus
   `data/dars-browser-reviews/<date>/DARS-REVIEW-*-BROWSER.json`; it makes no
   external DARS call, performs no mutation, and normally returns

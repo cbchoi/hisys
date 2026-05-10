@@ -357,6 +357,31 @@ Boundary rules:
    gate mutation;
 7. DARS may critique the registry as advisory lineage only; Chief Editor recommendation-claim registry remains conditional.
 
+## Browser-I full browser acceptance chain boundary
+
+Browser-I closes the local acceptance chain from completed browser acquisition to
+final Chief Editor browser acceptance. It adds the explicit Chief Editor readiness
+step that consumes `browser-investigation-report.json` and produces the
+`CHIEF-REVIEW-*-BROWSER.json` artifact required by Browser-F.
+
+Boundary rules:
+
+1. `review-browser-investigation` requires an explicit completed browser
+   investigation report ref;
+2. the browser investigation report must link to an evidence-sufficiency artifact
+   with `chief_editor_decision_allowed=true` before a Chief Editor review can be
+   written;
+3. the Chief Editor readiness review accepts only for advisory Devil/DARS review,
+   not for final acceptance, publication, mutation, or live action;
+4. browser competitive matrix rows carry normalized segment and corroborating
+   evidence class fields so Browser-G can deterministically resolve DARS segment
+   and high-strength corroboration requirements;
+5. the full local chain remains browser acquisition -> Chief Editor readiness ->
+   advisory DARS review -> deterministic revision resolution -> final Chief Editor
+   browser acceptance for human-reviewed use;
+6. the readiness review writes only local artifacts and records
+   `external_call_made=false`, `mutation_performed=false`, and `action_taken=none`.
+
 ## Browser-G DARS revision resolution boundary
 
 Browser-G consumes an advisory `DARS-REVIEW-*-BROWSER.json` that requires

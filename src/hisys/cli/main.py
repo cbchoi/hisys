@@ -466,6 +466,14 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         help="orchestrator-provided candidate URL for independent corroboration; recorded but not fetched unless separately promoted as a source URL",
     )
+    browser_review = sub.add_parser(
+        "review-browser-investigation",
+        help="run Chief Editor readiness review over a browser investigation report",
+    )
+    browser_review.add_argument("--instance", required=True, help="runtime instance root containing browser investigation outputs")
+    browser_review.add_argument("--date", required=True, help="YYYYMMDD review partition")
+    browser_review.add_argument("--browser-investigation-report-ref", required=True, help="relative ref to browser-investigation-report.json")
+    browser_review.add_argument("--producer-id", default="chief-editor-browser-review-cli", help="Chief Editor browser review producer id")
 
     plan_pdf = sub.add_parser(
         "plan-pdf-candidates",
@@ -1057,6 +1065,13 @@ def main(argv: list[str] | None = None) -> int:
             follow_links=args.follow_links,
             max_follow_links_per_source=args.max_follow_links_per_source,
             orchestrator_corroborating_urls=args.orchestrator_corroborating_url,
+        )
+    if args.command == "review-browser-investigation":
+        return _cmd_review_browser_investigation(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            browser_investigation_report_ref=args.browser_investigation_report_ref,
+            producer_id=args.producer_id,
         )
     if args.command == "search-topic":
         return _cmd_search_topic(
@@ -4020,6 +4035,120 @@ def _write_browser_investigation_report(instance: InstanceRoot, yyyymmdd: str, r
     return json_path
 
 
+
+def _cmd_review_browser_investigation(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    browser_investigation_report_ref: str,
+    producer_id: str,
+) -> int:
+    instance = InstanceRoot(instance_root)
+    report_path = instance.root / browser_investigation_report_ref
+    if not report_path.exists():
+        print(f"browser investigation report not found: {browser_investigation_report_ref}", file=sys.stderr)
+        return 1
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    if report.get("status") != "completed":
+        print("browser chief editor review: blocked reason=browser_investigation_not_completed")
+        return 2
+    sufficiency_ref = str(report.get("evidence_sufficiency_ref") or "")
+    sufficiency = _load_json_ref(instance, sufficiency_ref) if sufficiency_ref else {}
+    if sufficiency.get("chief_editor_decision_allowed") is not True:
+        print("browser chief editor review: blocked reason=evidence_sufficiency_gate_not_ready")
+        return 2
+    request_id = str(report.get("request_id") or _browser_request_id_from_ref(browser_investigation_report_ref))
+    review = _build_browser_chief_editor_review(
+        request_id=request_id,
+        browser_investigation_report_ref=browser_investigation_report_ref,
+        browser_report=report,
+        sufficiency=sufficiency,
+        producer_id=producer_id,
+    )
+    review_ref = f"data/chief-editor-reviews/{yyyymmdd}/CHIEF-REVIEW-{request_id}-BROWSER.json"
+    review_path = instance.root / review_ref
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps(review, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    review_path.with_suffix(".md").write_text(_render_browser_chief_editor_review_md(review), encoding="utf-8")
+    run_report_ref = f"reports/run-summaries/{yyyymmdd}/browser-chief-editor-review-report.json"
+    run_report = {
+        "schema_id": "hisys.chief_editor.browser_investigation_review.report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "browser_investigation_report_ref": browser_investigation_report_ref,
+        "chief_editor_review_ref": review_ref,
+        "decision": review["decision"],
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    run_report_path = instance.root / run_report_ref
+    run_report_path.parent.mkdir(parents=True, exist_ok=True)
+    run_report_path.write_text(json.dumps(run_report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"browser chief editor review: report={run_report_path}")
+    print(f"decision: {review['decision']}")
+    print("external_call_made: false")
+    print("mutation_performed: false")
+    return 0
+
+
+
+def _build_browser_chief_editor_review(
+    *,
+    request_id: str,
+    browser_investigation_report_ref: str,
+    browser_report: dict[str, object],
+    sufficiency: dict[str, object],
+    producer_id: str,
+) -> dict[str, object]:
+    basis_refs = {
+        "browser_investigation_report": browser_investigation_report_ref,
+        "evidence_package": str(browser_report.get("evidence_package_ref") or ""),
+        "source_candidates": str(browser_report.get("source_candidates_ref") or ""),
+        "competitive_matrix": str(browser_report.get("competitive_matrix_ref") or ""),
+        "evidence_sufficiency": str(browser_report.get("evidence_sufficiency_ref") or ""),
+        "memo": str(browser_report.get("memo_ref") or ""),
+    }
+    return {
+        "schema_id": "hisys.chief_editor.browser_investigation_review",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "browser_investigation_report_ref": browser_investigation_report_ref,
+        "decision": "accept_for_devil_dars_adversarial_review",
+        "basis_refs": {key: value for key, value in basis_refs.items() if value},
+        "review_readiness": sufficiency.get("review_readiness"),
+        "chief_editor_questions_for_devil_dars": [
+            "Are high-strength competitive signals independently corroborated by patents, datasheets, filings, papers, or distributor/spec pages?",
+            "Are conclusions normalized by segment before comparing vendors or technologies?",
+            "Are source candidates sufficient to avoid shallow-page or vendor-marketing bias?",
+        ],
+        "human_approval_required": True,
+        "approval_status": "not_requested",
+        "action_taken": "none",
+        "external_call_made": False,
+        "mutation_performed": False,
+        "producer_id": producer_id,
+    }
+
+
+
+def _render_browser_chief_editor_review_md(review: dict[str, object]) -> str:
+    return "\n".join([
+        f"# Chief Editor Browser Review {review['request_id']}",
+        "",
+        f"- decision: `{review['decision']}`",
+        f"- review_readiness: `{review.get('review_readiness')}`",
+        f"- action_taken: `{review['action_taken']}`",
+        f"- external_call_made: `{str(review['external_call_made']).lower()}`",
+        f"- mutation_performed: `{str(review['mutation_performed']).lower()}`",
+        "",
+        "## Questions for Devil/DARS",
+        "",
+        *[f"- {item}" for item in review.get("chief_editor_questions_for_devil_dars", [])],
+        "",
+    ])
+
+
+
 def _select_browser_follow_links(
     *,
     source_url: str,
@@ -4260,10 +4389,14 @@ def _build_browser_competitive_matrix(
         signals = _browser_technology_signals(item.quoted_text or "")
         if not signals["technology_signals"]:
             continue
+        source_type = _classify_browser_source_type(url=item.url or "", title=item.title, text=item.quoted_text or "")
         rows.append(
             {
                 "company_or_source": item.title,
                 "url": item.url,
+                "source_type": source_type,
+                "corroborating_evidence_class": source_type,
+                "segment": _primary_browser_segment(signals["segment_signals"]),
                 "segment_signals": signals["segment_signals"],
                 "technology_signals": signals["technology_signals"],
                 "competitive_signal_strength": signals["competitive_signal_strength"],
@@ -4315,6 +4448,23 @@ def _browser_technology_signals(text: str) -> dict[str, str]:
         "technology_signals": ", ".join(technologies),
         "competitive_signal_strength": strength,
     }
+
+
+
+def _primary_browser_segment(segment_signals: str) -> str:
+    signal = segment_signals.lower()
+    if "ct" in signal:
+        return "ct"
+    if "medical" in signal or "dental" in signal:
+        return "medical_dental"
+    if "industrial" in signal or "ndt" in signal or "inspection" in signal:
+        return "industrial_ndt"
+    if "xrf" in signal or "xrd" in signal or "analytical" in signal:
+        return "analytical_xrf_xrd"
+    if "security" in signal or "irradiation" in signal:
+        return "security_irradiation"
+    return "unknown"
+
 
 
 def _render_browser_investigation_memo(

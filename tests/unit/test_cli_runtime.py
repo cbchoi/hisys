@@ -1147,6 +1147,112 @@ def test_execute_alert_actions_command_records_disabled_connector_block(tmp_path
 
 
 
+def test_full_browser_review_chain_from_investigation_report_to_final_acceptance(tmp_path: Path, capsys):
+    date = "20260510"
+    request_id = "HISYS-REQ-BROWSER-FULL-001"
+    report_ref = f"reports/run-summaries/{date}/browser-investigation-report.json"
+    evidence_ref = f"data/evidence-packages/{date}/EPKG-{request_id}-BROWSER.json"
+    source_candidates_ref = f"data/source-candidates/{date}/SRC-CANDIDATES-{request_id}-BROWSER.json"
+    matrix_ref = f"data/competitive-matrices/{date}/MATRIX-{request_id}-BROWSER.json"
+    sufficiency_ref = f"data/evidence-sufficiency/{date}/SUFF-{request_id}-BROWSER.json"
+    memo_ref = f"data/investigation-memos/{date}/MEM-{request_id}-BROWSER.md"
+    (tmp_path / report_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / evidence_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / source_candidates_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / matrix_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / sufficiency_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / memo_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / report_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_investigation.report",
+                "request_id": request_id,
+                "status": "completed",
+                "evidence_package_ref": evidence_ref,
+                "source_candidates_ref": source_candidates_ref,
+                "competitive_matrix_ref": matrix_ref,
+                "evidence_sufficiency_ref": sufficiency_ref,
+                "memo_ref": memo_ref,
+                "external_call_made": True,
+                "mutation_performed": False,
+                "transport_kinds": ["playwright_live", "playwright_live", "playwright_live"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / evidence_ref).write_text(json.dumps({"package_id": f"EPKG-{request_id}-BROWSER"}), encoding="utf-8")
+    (tmp_path / source_candidates_ref).write_text(json.dumps({"candidate_count": 3}), encoding="utf-8")
+    (tmp_path / memo_ref).write_text("# Browser memo\n", encoding="utf-8")
+    (tmp_path / matrix_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_investigation.competitive_matrix",
+                "request_id": request_id,
+                "rows": [
+                    {
+                        "company_or_source": "DUNLEE | LMB Tube Technology",
+                        "technology_signals": "liquid metal bearing for CT tube cooling",
+                        "competitive_signal_strength": "high",
+                        "segment": "ct",
+                        "source_type": "patent",
+                        "evidence_refs": ["EV-DUNLEE-PATENT"],
+                    },
+                    {
+                        "company_or_source": "Industrial X-ray Tubes - Varex Imaging",
+                        "technology_signals": "stable dose/resolution for NDT inspection",
+                        "competitive_signal_strength": "high",
+                        "segment": "industrial_ndt",
+                        "source_type": "datasheet_or_specification",
+                        "evidence_refs": ["EV-VAREX-DATASHEET"],
+                    },
+                    {
+                        "company_or_source": "COMET X-ray",
+                        "technology_signals": "industrial high-resolution x-ray modules",
+                        "competitive_signal_strength": "medium",
+                        "segment": "industrial_ndt",
+                        "source_type": "company_product_page",
+                        "evidence_refs": ["EV-COMET"],
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / sufficiency_ref).write_text(
+        json.dumps(
+            {
+                "review_readiness": "ready_for_fair_chief_editor_and_devil_review",
+                "chief_editor_decision_allowed": True,
+                "devil_review_allowed": True,
+                "blockers": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert main([
+        "review-browser-investigation", "--instance", str(tmp_path), "--date", date,
+        "--browser-investigation-report-ref", report_ref,
+    ]) == 0
+    chief_ref = f"data/chief-editor-reviews/{date}/CHIEF-REVIEW-{request_id}-BROWSER.json"
+    chief_review = json.loads((tmp_path / chief_ref).read_text(encoding="utf-8"))
+    assert chief_review["decision"] == "accept_for_devil_dars_adversarial_review"
+    assert chief_review["basis_refs"]["competitive_matrix"] == matrix_ref
+    assert chief_review["basis_refs"]["evidence_sufficiency"] == sufficiency_ref
+
+    assert main(["request-browser-dars-review", "--instance", str(tmp_path), "--date", date, "--chief-editor-review-ref", chief_ref]) == 0
+    dars_ref = f"data/dars-browser-reviews/{date}/DARS-REVIEW-{request_id}-BROWSER.json"
+    assert main(["resolve-browser-dars-revisions", "--instance", str(tmp_path), "--date", date, "--dars-review-ref", dars_ref]) == 0
+    revision_ref = f"data/browser-dars-revision-resolutions/{date}/REVISION-{request_id}-BROWSER.json"
+    assert main(["final-review-browser-investigation", "--instance", str(tmp_path), "--date", date, "--revision-resolution-ref", revision_ref]) == 0
+
+    final_ref = f"data/chief-editor-final-browser-reviews/{date}/FINAL-CHIEF-REVIEW-{request_id}-BROWSER.json"
+    final_review = json.loads((tmp_path / final_ref).read_text(encoding="utf-8"))
+    assert final_review["decision"] == "accept_for_human_reviewed_use"
+    assert final_review["publication_or_live_action_approved"] is False
+    assert final_review["action_taken"] == "none"
+
+
 def test_request_browser_dars_review_consumes_chief_editor_artifact_and_flags_adversarial_questions(tmp_path: Path, capsys):
     date = "20260510"
     request_id = "HISYS-REQ-BROWSER-DARS-001"
