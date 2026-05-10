@@ -138,8 +138,9 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   connectors without approval policy or allowlisted domains.
 - Increment **Live-A3 disabled source connector examples** -
   `examples/instance/config/source-connectors.yaml` declares disabled examples
-  for publisher web search, DOI metadata search, open-access PDF fetch,
-  arXiv metadata search, local PDF reading, and Selenium read-only browsing.
+  for a disabled-by-default general web search connector, publisher web search,
+  DOI metadata search, open-access PDF fetch, arXiv metadata search, local PDF
+  reading, and Selenium read-only browsing.
   All checked-in examples keep `enabled=false`, `external_call_allowed=false`,
   `requires_human_approval=true`, no credentials, and forbidden live actions.
 - Increment **Live-A4 source connector dispatch gate** -
@@ -160,7 +161,9 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   governed source connector registry, writes `connector-plan-*.json|md` under
   `runtime-boundary/source-connectors/<YYYYMMDD>/`, and writes
   `source-connector-plan-report.{json,md}` without executing adapters, making
-  external calls, or performing mutations.
+  external calls, or performing mutations. Research-domain plans now include the
+  disabled-by-default `general_web_search` connector so Live-Z can plan broad
+  topic search while keeping routine execution blocked until approved.
 - Increment **Live-B2 fixture publisher evidence connector** -
   `hisys.connectors.fixture_publisher` reads local static publisher-shaped HTML
   fixtures only, extracts title/quoted evidence, writes `SourceAccessRecord` and

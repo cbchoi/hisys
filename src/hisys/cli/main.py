@@ -3740,7 +3740,7 @@ def _cmd_build_recommendation_claim_registry(
 def _select_source_connectors_for_request(request: DomainInvestigationRequest, connector_ids: Iterable[str]) -> list[str]:
     ids = set(connector_ids)
     if request.domain == "research":
-        preferred = ["publisher_web_search", "doi_metadata_search", "open_access_pdf_fetch", "arxiv_metadata_search"]
+        preferred = ["general_web_search", "publisher_web_search", "doi_metadata_search", "open_access_pdf_fetch", "arxiv_metadata_search"]
         return [connector_id for connector_id in preferred if connector_id in ids]
     return [connector_id for connector_id in ["local_pdf_reader"] if connector_id in ids]
 

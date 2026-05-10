@@ -70,8 +70,10 @@ def test_plan_source_connectors_writes_dry_run_plan_without_external_call(tmp_pa
     report = json.loads(report_artifact.read_text(encoding="utf-8"))
     assert plan["request_id"] == "HISYS-REQ-LIVE-B-001"
     assert "publisher_web_search" in plan["planned_connectors"]
+    assert "general_web_search" in plan["planned_connectors"]
     assert "doi_metadata_search" in plan["planned_connectors"]
     assert "open_access_pdf_fetch" in plan["planned_connectors"]
+    assert "general_web_search" in plan["disabled_connectors"]
     assert "publisher_web_search" in plan["disabled_connectors"]
     assert plan["external_call_made"] is False
     assert plan["mutation_performed"] is False

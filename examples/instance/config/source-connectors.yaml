@@ -11,6 +11,31 @@ policy:
   require_allowlist: true
   require_provenance_record: true
 connectors:
+  general_web_search:
+    connector_id: general_web_search
+    connector_type: web_search
+    enabled: false
+    mode: read_only
+    external_call_allowed: false
+    requires_human_approval: true
+    approval_policy_ref: POLICY-LIVE-SEARCH-001
+    allowed_domains:
+      - search.local.fixture
+      - api.search.local.fixture
+    disallowed_domains: []
+    forbidden_actions: &forbidden_live_actions
+      - login
+      - credential_use
+      - form_submit
+      - upload
+      - purchase
+      - post
+      - mutation
+      - access_control_bypass
+    output_schema: EvidencePackage
+    manual_smoke_only: true
+    manual_smoke_env_var: HISYS_ALLOW_LIVE_SEARCH_SMOKE
+    smoke_test_in_ci: false
   publisher_web_search:
     connector_id: publisher_web_search
     connector_type: web_search
@@ -27,15 +52,7 @@ connectors:
       - springer.com
       - ieee.org
     disallowed_domains: []
-    forbidden_actions: &forbidden_live_actions
-      - login
-      - credential_use
-      - form_submit
-      - upload
-      - purchase
-      - post
-      - mutation
-      - access_control_bypass
+    forbidden_actions: *forbidden_live_actions
     output_schema: EvidencePackage
   doi_metadata_search:
     connector_id: doi_metadata_search
