@@ -180,6 +180,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   selected source id, user opinion, and evidence refs for `investigate-memo
   --orchestrator-harness`. Missing approval/env/fixture transport blocks before
   provider access, preserving read-only/no-mutation boundaries.
+- Increment **Search-C approved provider-backed search adapter** -
+  `hisys search-topic` now supports a deployable provider path with
+  `--provider-url-ref env:...`, optional `--credential-ref env:...`, and either
+  deterministic `--provider-response-fixture` for staging/tests or gated HTTPS
+  provider GET for production. Endpoint and token values are resolved only at
+  runtime and are not persisted; reports keep refs only. The same dispatch gate
+  validates approval, connector enabled state, read-only action, and provider
+  domain allowlist before provider access. Search remains read-only and still
+  forbids login, form submission, upload, purchase, post, and mutation.
 - Increment **Live-B2 fixture publisher evidence connector** -
   `hisys.connectors.fixture_publisher` reads local static publisher-shaped HTML
   fixtures only, extracts title/quoted evidence, writes `SourceAccessRecord` and

@@ -20,7 +20,8 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
+from urllib.request import Request, urlopen
 
 from .. import __version__
 from ..adapters import AgentSystemMockSource, HardwareMockSource, HermesToolMockSource, WebNewsMockSource
@@ -549,6 +550,10 @@ def _build_parser() -> argparse.ArgumentParser:
     search_topic.add_argument("--user-opinion", default="", help="optional user opinion to preserve in the Investigator harness")
     search_topic.add_argument("--approval-ref", help="manual/standing approval reference")
     search_topic.add_argument("--transport-fixture-search", help="local JSON fixture used as injected search transport for tests/smoke")
+    search_topic.add_argument("--provider", default="generic_json", help="approved search provider adapter name")
+    search_topic.add_argument("--provider-url-ref", help="credential-style ref to provider endpoint URL, e.g. env:HISYS_SEARCH_PROVIDER_URL")
+    search_topic.add_argument("--credential-ref", help="optional credential ref for provider API token; never persisted as a value")
+    search_topic.add_argument("--provider-response-fixture", help="local provider JSON response fixture for deterministic adapter tests")
 
     vault_plan = sub.add_parser(
         "vault-plan",
@@ -991,6 +996,10 @@ def main(argv: list[str] | None = None) -> int:
             user_opinion=args.user_opinion,
             approval_ref=args.approval_ref,
             transport_fixture_search=Path(args.transport_fixture_search) if args.transport_fixture_search else None,
+            provider=args.provider,
+            provider_url_ref=args.provider_url_ref,
+            credential_ref=args.credential_ref,
+            provider_response_fixture=Path(args.provider_response_fixture) if args.provider_response_fixture else None,
         )
     if args.command == "plan-pdf-candidates":
         return _cmd_plan_pdf_candidates(
@@ -3218,6 +3227,10 @@ def _cmd_search_topic(
     user_opinion: str,
     approval_ref: str | None,
     transport_fixture_search: Path | None,
+    provider: str,
+    provider_url_ref: str | None,
+    credential_ref: str | None,
+    provider_response_fixture: Path | None,
 ) -> int:
     """Run governed topic search and emit an Investigator harness."""
 
@@ -3242,13 +3255,34 @@ def _cmd_search_topic(
         _write_search_topic_report(instance, yyyymmdd, report)
         print("search topic: status=blocked reason=manual_smoke_env_missing")
         return 2
+    provider_endpoint = None
+    requested_domain = "search.local.fixture"
+    if transport_fixture_search is None:
+        if provider_url_ref is None:
+            report = _search_topic_report(
+                request_id=request_id,
+                topic=topic,
+                status="blocked",
+                reason_code="search_provider_ref_required",
+                dispatch_ref=None,
+                source_access_refs=[],
+                source_evidence_refs=[],
+                investigator_harness_ref=None,
+                external_call_made=False,
+            )
+            _write_search_topic_report(instance, yyyymmdd, report)
+            return 2
+        provider_endpoint = _resolve_env_ref(provider_url_ref, "provider-url-ref")
+        requested_domain = urlparse(provider_endpoint).hostname or ""
+    if credential_ref is not None:
+        _validate_runtime_secret_ref(credential_ref, "credential-ref")
     decision = SourceConnectorDispatchGate(instance=instance).evaluate(
         yyyymmdd=yyyymmdd,
         request_id=request_id,
         registry=registry,
         connector_id=connector_id,
         approval_ref=approval_ref,
-        requested_domain="search.local.fixture",
+        requested_domain=requested_domain,
         requested_actions=["read"],
     )
     if decision.decision != "allowed":
@@ -3265,27 +3299,35 @@ def _cmd_search_topic(
         )
         _write_search_topic_report(instance, yyyymmdd, report)
         return 2
-    if transport_fixture_search is None:
-        report = _search_topic_report(
+    transport_kind = "fixture_injected"
+    if transport_fixture_search is not None:
+        package = GeneralWebSearchConnector().collect_fixture(
             request_id=request_id,
-            topic=topic,
-            status="blocked",
-            reason_code="search_fixture_transport_required",
-            dispatch_ref=dispatch_ref,
-            source_access_refs=[],
-            source_evidence_refs=[],
-            investigator_harness_ref=None,
-            external_call_made=False,
+            query=topic,
+            fixture_path=transport_fixture_search,
+            output_root=instance.root,
+            yyyymmdd=yyyymmdd,
         )
-        _write_search_topic_report(instance, yyyymmdd, report)
-        return 2
-    package = GeneralWebSearchConnector().collect_fixture(
-        request_id=request_id,
-        query=topic,
-        fixture_path=transport_fixture_search,
-        output_root=instance.root,
-        yyyymmdd=yyyymmdd,
-    )
+    else:
+        if provider_response_fixture is not None:
+            provider_payload = json.loads(provider_response_fixture.read_text(encoding="utf-8"))
+            transport_kind = "provider_fixture"
+        else:
+            provider_payload = _fetch_search_provider_json(
+                endpoint_url=provider_endpoint or "",
+                query=topic,
+                credential_ref=credential_ref,
+            )
+            transport_kind = "provider_http"
+        package = GeneralWebSearchConnector().collect_provider_results(
+            request_id=request_id,
+            query=topic,
+            provider_name=provider,
+            provider_url_ref=provider_url_ref or "[none]",
+            provider_payload=provider_payload,
+            output_root=instance.root,
+            yyyymmdd=yyyymmdd,
+        )
     harness_ref = f"runtime-boundary/source-connectors/{yyyymmdd}/orchestrator-harness-{request_id}.json"
     harness = {
         "schema_id": "hisys.investigator.orchestrator_harness",
@@ -3298,6 +3340,10 @@ def _cmd_search_topic(
         "rationale": "Governed general web search produced bounded source evidence for Investigator follow-up.",
         "source_access_refs": [package.access_ref],
         "source_evidence_refs": [package.evidence_ref],
+        "transport_kind": transport_kind,
+        "provider": provider,
+        "provider_url_ref": provider_url_ref,
+        "credential_ref": credential_ref,
         "external_call_made": True,
         "mutation_performed": False,
     }
@@ -3314,6 +3360,10 @@ def _cmd_search_topic(
         source_evidence_refs=[package.evidence_ref],
         investigator_harness_ref=harness_ref,
         external_call_made=True,
+        transport_kind=transport_kind,
+        provider=provider,
+        provider_url_ref=provider_url_ref,
+        credential_ref=credential_ref,
     )
     _write_search_topic_report(instance, yyyymmdd, report)
     print(f"search topic: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'search-topic-report.json'}")
@@ -3331,6 +3381,10 @@ def _search_topic_report(
     source_evidence_refs: list[str],
     investigator_harness_ref: str | None,
     external_call_made: bool,
+    transport_kind: str | None = None,
+    provider: str | None = None,
+    provider_url_ref: str | None = None,
+    credential_ref: str | None = None,
 ) -> dict[str, object]:
     return {
         "schema_id": "hisys.search_topic.report",
@@ -3344,9 +3398,59 @@ def _search_topic_report(
         "source_access_refs": source_access_refs,
         "source_evidence_refs": source_evidence_refs,
         "investigator_harness_ref": investigator_harness_ref,
+        "transport_kind": transport_kind,
+        "provider": provider,
+        "provider_url_ref": provider_url_ref,
+        "credential_ref": credential_ref,
         "external_call_made": external_call_made,
         "mutation_performed": False,
     }
+
+
+def _resolve_env_ref(ref: str, label: str) -> str:
+    if not ref.startswith("env:"):
+        raise ValueError(f"{label} must be an env: reference")
+    name = ref.split(":", 1)[1]
+    if not name:
+        raise ValueError(f"{label} env ref is empty")
+    value = os.environ.get(name)
+    if not value:
+        raise ValueError(f"{label} environment value is missing")
+    return value
+
+
+def _validate_runtime_secret_ref(ref: str, label: str) -> None:
+    allowed = ("env:", "keyring:", "file:", "ssh-agent:", "secretstore:", "op:", "aws-sm:")
+    if not ref.startswith(allowed):
+        raise ValueError(f"{label} must be a credential reference, not a raw value")
+
+
+def _resolve_optional_env_token(ref: str | None) -> str | None:
+    if ref is None:
+        return None
+    _validate_runtime_secret_ref(ref, "credential-ref")
+    if not ref.startswith("env:"):
+        return None
+    return os.environ.get(ref.split(":", 1)[1])
+
+
+def _fetch_search_provider_json(*, endpoint_url: str, query: str, credential_ref: str | None) -> dict[str, Any]:
+    parsed = urlparse(endpoint_url)
+    if parsed.scheme != "https":
+        raise ValueError("search provider endpoint must use https")
+    separator = "&" if parsed.query else "?"
+    url = f"{endpoint_url}{separator}{urlencode({'q': query})}"
+    headers = {"Accept": "application/json", "User-Agent": "hisys-search/0.1"}
+    credential_value = _resolve_optional_env_token(credential_ref)
+    if credential_value:
+        headers["Authorization"] = f"Bearer {credential_value}"
+    request = Request(url, headers=headers, method="GET")
+    with urlopen(request, timeout=20) as response:  # noqa: S310 - gated read-only approved endpoint
+        body = response.read().decode("utf-8")
+    payload = json.loads(body)
+    if not isinstance(payload, dict):
+        raise ValueError("search provider response must be a JSON object")
+    return payload
 
 
 def _write_search_topic_report(instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:

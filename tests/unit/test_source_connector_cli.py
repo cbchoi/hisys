@@ -266,6 +266,103 @@ def test_search_topic_writes_search_report_and_investigator_harness(tmp_path: Pa
     assert harness["source_evidence_refs"] == report["source_evidence_refs"]
 
 
+def test_search_topic_uses_approved_provider_fixture_without_persisting_endpoint_or_token(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_SEARCH_SMOKE", "1")
+    monkeypatch.setenv("HISYS_SEARCH_PROVIDER_URL", "https://search.local.fixture/api/search")
+    monkeypatch.setenv("HISYS_SEARCH_PROVIDER_TOKEN", "SHOULD_NOT_BE_PERSISTED")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1),
+        encoding="utf-8",
+    )
+    provider_fixture = tmp_path / "provider-response.json"
+    provider_fixture.write_text(
+        json.dumps(
+            {
+                "results": [
+                    {
+                        "title": "Provider topic search result",
+                        "url": "https://search.local.fixture/provider/topic",
+                        "snippet": "Provider-style search adapter returns governed evidence for deployment search.",
+                    }
+                ]
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "search-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-SEARCH-C-001",
+            "--topic",
+            "deployable governed search",
+            "--approval-ref",
+            "APPROVAL-SEARCH-C-001",
+            "--provider",
+            "generic_json",
+            "--provider-url-ref",
+            "env:HISYS_SEARCH_PROVIDER_URL",
+            "--credential-ref",
+            "env:HISYS_SEARCH_PROVIDER_TOKEN",
+            "--provider-response-fixture",
+            str(provider_fixture),
+        ]
+    )
+
+    assert result == 0
+    report_artifact = tmp_path / "reports" / "run-summaries" / "20260510" / "search-topic-report.json"
+    report_text = report_artifact.read_text(encoding="utf-8")
+    report = json.loads(report_text)
+    assert report["transport_kind"] == "provider_fixture"
+    assert report["provider_url_ref"] == "env:HISYS_SEARCH_PROVIDER_URL"
+    assert report["credential_ref"] == "env:HISYS_SEARCH_PROVIDER_TOKEN"
+    assert "https://search.local.fixture/api/search" not in report_text
+    assert "SHOULD_NOT_BE_PERSISTED" not in report_text
+    access = json.loads((tmp_path / report["source_access_refs"][0]).read_text(encoding="utf-8"))
+    assert access["source_url"] == "search-provider-ref://env:HISYS_SEARCH_PROVIDER_URL"
+    assert access["external_call_made"] is True
+
+
+def test_search_topic_requires_provider_ref_when_no_fixture_transport(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_SEARCH_SMOKE", "1")
+    result = main(
+        [
+            "search-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            "examples/instance/config/source-connectors.yaml",
+            "--date",
+            "20260510",
+            "--request-id",
+            "HISYS-REQ-SEARCH-C-002",
+            "--topic",
+            "blocked provider search",
+            "--approval-ref",
+            "APPROVAL-SEARCH-C-002",
+        ]
+    )
+
+    assert result == 2
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260510" / "search-topic-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "blocked"
+    assert report["reason_code"] == "search_provider_ref_required"
+    assert report["external_call_made"] is False
+
+
 def test_smoke_general_web_search_manual_live_requires_fixture_transport(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("HISYS_ALLOW_LIVE_SEARCH_SMOKE", "1")
     config_path = tmp_path / "source-connectors-enabled.yaml"
