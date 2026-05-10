@@ -339,6 +339,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   queue files to `attention/`, and invalid JSON queue files to `rejected/`. Tick
   reports include lifecycle enablement, lifecycle dirs, per-queue active/final
   refs, and final lifecycle state without adding prompt-based checks.
+- Increment **Live-U queue admission validator** -
+  `hisys live-autonomy-admit` validates candidate queue JSON files before they
+  reach the scheduler incoming directory. The admission step performs only cheap
+  deterministic checks: valid JSON object, safe optional `queue_id`, non-empty
+  `entries`, unique entry IDs, and required `doi` plus `request_path` fields. It
+  moves accepted candidate files to `--incoming-dir`, rejected files to
+  `--rejected-dir`, writes `live-autonomy-admission-report.json|md`, and records
+  `external_call_made=false`, `mutation_performed=false`, and
+  `network_push_performed=false`.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

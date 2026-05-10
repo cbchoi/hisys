@@ -337,6 +337,18 @@ def _build_parser() -> argparse.ArgumentParser:
     live_scheduler.add_argument("--attention-dir", help="queue lifecycle attention directory; defaults to sibling attention directory")
     live_scheduler.add_argument("--rejected-dir", help="queue lifecycle rejected directory; defaults to sibling rejected directory")
 
+    live_admission = sub.add_parser(
+        "live-autonomy-admit",
+        help="deterministically validate candidate live-autonomy queues into incoming or rejected handoff dirs",
+    )
+    live_admission.add_argument("--instance", required=True, help="runtime instance root for admission reports")
+    live_admission.add_argument("--candidate-dir", required=True, help="directory containing candidate queue JSON files")
+    live_admission.add_argument("--candidate-glob", default="*.json", help="glob for candidate queue JSON files; default: *.json")
+    live_admission.add_argument("--incoming-dir", required=True, help="accepted incoming queue handoff directory")
+    live_admission.add_argument("--rejected-dir", required=True, help="rejected queue handoff directory")
+    live_admission.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    live_admission.add_argument("--max-candidates", type=int, default=10, help="maximum candidate queue files to validate in this admission tick")
+
     plan_sources = sub.add_parser(
         "plan-source-connectors",
         help="dry-run plan governed source connectors for a domain investigation request",
@@ -859,6 +871,16 @@ def main(argv: list[str] | None = None) -> int:
             done_dir=Path(args.done_dir) if args.done_dir else None,
             attention_dir=Path(args.attention_dir) if args.attention_dir else None,
             rejected_dir=Path(args.rejected_dir) if args.rejected_dir else None,
+        )
+    if args.command == "live-autonomy-admit":
+        return _cmd_live_autonomy_admit(
+            instance_root=Path(args.instance),
+            candidate_dir=Path(args.candidate_dir),
+            candidate_glob=args.candidate_glob,
+            incoming_dir=Path(args.incoming_dir),
+            rejected_dir=Path(args.rejected_dir),
+            yyyymmdd=args.date,
+            max_candidates=args.max_candidates,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -2128,6 +2150,125 @@ def _live_autonomy_finalize_queue_file(*, queue_path: Path, active_copy: Path | 
     if active_copy is not None and active_copy.exists():
         active_copy.unlink()
     return str(final_path)
+
+
+def _validate_live_autonomy_candidate_queue(queue: object) -> tuple[bool, str | None, str | None]:
+    if not isinstance(queue, dict):
+        return False, "queue_not_object", None
+    queue_id_raw = queue.get("queue_id")
+    queue_id = str(queue_id_raw).strip() if queue_id_raw is not None else None
+    if queue_id_raw is not None and (not queue_id or _live_autonomy_safe_report_segment(queue_id) != queue_id):
+        return False, "queue_id_invalid", queue_id
+    entries = queue.get("entries")
+    if not isinstance(entries, list) or not entries:
+        return False, "queue_entries_missing", queue_id
+    entry_ids: set[str] = set()
+    for index, entry in enumerate(entries, start=1):
+        if not isinstance(entry, dict):
+            return False, "queue_entry_not_object", queue_id
+        entry_id = str(entry.get("entry_id") or f"entry-{index:04d}").strip()
+        if not entry_id:
+            return False, "queue_entry_id_invalid", queue_id
+        if entry_id in entry_ids:
+            return False, "queue_entry_id_duplicate", queue_id
+        entry_ids.add(entry_id)
+        if not isinstance(entry.get("doi"), str) or not entry["doi"].strip():
+            return False, "queue_entry_missing_doi", queue_id
+        if not isinstance(entry.get("request_path"), str) or not entry["request_path"].strip():
+            return False, "queue_entry_missing_request", queue_id
+    return True, None, queue_id
+
+
+def _write_live_autonomy_admission_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "live-autonomy-admission-report.json"
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    (report_dir / "live-autonomy-admission-report.md").write_text(
+        "\n".join(
+            [
+                "# Live Autonomy Admission Report",
+                "",
+                f"- status: `{report['status']}`",
+                f"- admitted_count: `{report['admitted_count']}`",
+                f"- rejected_count: `{report['rejected_count']}`",
+                f"- processed_candidate_count: `{report['processed_candidate_count']}`",
+                f"- external_call_made: `{str(report['external_call_made']).lower()}`",
+                f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _cmd_live_autonomy_admit(
+    *,
+    instance_root: Path,
+    candidate_dir: Path,
+    candidate_glob: str,
+    incoming_dir: Path,
+    rejected_dir: Path,
+    yyyymmdd: str,
+    max_candidates: int,
+) -> int:
+    """Validate candidate queue files before admitting them to incoming."""
+
+    instance = InstanceRoot(instance_root)
+    discovered = sorted(path for path in candidate_dir.glob(candidate_glob) if path.is_file()) if candidate_dir.exists() else []
+    selected = discovered[: max(0, max_candidates)]
+    results: list[dict[str, object]] = []
+    for candidate_path in selected:
+        status = "rejected"
+        reason_code: str | None = None
+        queue_id: str | None = candidate_path.stem
+        try:
+            candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+            accepted, reason_code, validated_queue_id = _validate_live_autonomy_candidate_queue(candidate)
+            queue_id = validated_queue_id or candidate_path.stem
+        except json.JSONDecodeError:
+            accepted = False
+            reason_code = "queue_json_invalid"
+        destination = incoming_dir if accepted else rejected_dir
+        final_ref = _live_autonomy_unique_path(destination, candidate_path.name)
+        shutil.move(str(candidate_path), str(final_ref))
+        if accepted:
+            status = "admitted"
+        results.append(
+            {
+                "candidate_path": str(candidate_path),
+                "queue_id": queue_id,
+                "status": status,
+                "reason_code": reason_code,
+                "final_ref": str(final_ref),
+                "external_call_made": False,
+                "mutation_performed": False,
+                "network_push_performed": False,
+            }
+        )
+    rejected_count = sum(1 for result in results if result["status"] == "rejected")
+    admitted_count = sum(1 for result in results if result["status"] == "admitted")
+    report = {
+        "schema_id": "hisys.live_autonomy.admission_report",
+        "schema_version": "0.1.0",
+        "status": "idle" if not selected else ("completed" if rejected_count == 0 else "attention_required"),
+        "candidate_dir": str(candidate_dir),
+        "candidate_glob": candidate_glob,
+        "incoming_dir": str(incoming_dir),
+        "rejected_dir": str(rejected_dir),
+        "discovered_candidate_count": len(discovered),
+        "processed_candidate_count": len(selected),
+        "admitted_count": admitted_count,
+        "rejected_count": rejected_count,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "network_push_performed": False,
+        "results": results,
+    }
+    report_path = _write_live_autonomy_admission_report(instance=instance, yyyymmdd=yyyymmdd, report=report)
+    print(f"live autonomy admit: status={report['status']} admitted={admitted_count} rejected={rejected_count} report={report_path}")
+    return 0 if rejected_count == 0 else 2
 
 
 def _cmd_live_autonomy_tick(

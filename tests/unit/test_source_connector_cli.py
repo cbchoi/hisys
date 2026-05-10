@@ -936,6 +936,96 @@ def test_live_autonomy_run_skips_retry_exhausted_entries(tmp_path: Path, monkeyp
     assert watchdog["health_status"] == "ok"
 
 
+def test_live_autonomy_admit_moves_valid_and_invalid_candidates(tmp_path: Path) -> None:
+    candidate_dir = tmp_path / "candidates"
+    incoming_dir = tmp_path / "incoming"
+    rejected_dir = tmp_path / "rejected"
+    candidate_dir.mkdir()
+    valid = candidate_dir / "valid.json"
+    valid.write_text(
+        json.dumps(
+            {
+                "queue_id": "LIVE-U-VALID",
+                "entries": [
+                    {
+                        "entry_id": "valid-001",
+                        "doi": "10.0000/hisys.fixture.formalism",
+                        "request_path": "requests/valid.json",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    missing_request = candidate_dir / "missing-request.json"
+    missing_request.write_text(
+        json.dumps({"queue_id": "LIVE-U-MISSING", "entries": [{"entry_id": "bad-001", "doi": "10.0000/hisys.fixture.formalism"}]}),
+        encoding="utf-8",
+    )
+    invalid_json = candidate_dir / "invalid.json"
+    invalid_json.write_text("{not-json", encoding="utf-8")
+
+    result = main(
+        [
+            "live-autonomy-admit",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--candidate-dir",
+            str(candidate_dir),
+            "--incoming-dir",
+            str(incoming_dir),
+            "--rejected-dir",
+            str(rejected_dir),
+            "--date",
+            "20260510",
+        ]
+    )
+
+    assert result == 2
+    assert not list(candidate_dir.glob("*.json"))
+    assert (incoming_dir / "valid.json").exists()
+    assert (rejected_dir / "missing-request.json").exists()
+    assert (rejected_dir / "invalid.json").exists()
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-admission-report.json").read_text(encoding="utf-8"))
+    assert report["schema_id"] == "hisys.live_autonomy.admission_report"
+    assert report["status"] == "attention_required"
+    assert report["admitted_count"] == 1
+    assert report["rejected_count"] == 2
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False
+    statuses = {Path(item["candidate_path"]).name: item for item in report["results"]}
+    assert statuses["valid.json"]["status"] == "admitted"
+    assert statuses["missing-request.json"]["reason_code"] == "queue_entry_missing_request"
+    assert statuses["invalid.json"]["reason_code"] == "queue_json_invalid"
+
+
+def test_live_autonomy_admit_reports_idle_without_candidates(tmp_path: Path) -> None:
+    candidate_dir = tmp_path / "candidates"
+    candidate_dir.mkdir()
+    result = main(
+        [
+            "live-autonomy-admit",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--candidate-dir",
+            str(candidate_dir),
+            "--incoming-dir",
+            str(tmp_path / "incoming"),
+            "--rejected-dir",
+            str(tmp_path / "rejected"),
+            "--date",
+            "20260510",
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-admission-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "idle"
+    assert report["processed_candidate_count"] == 0
+    assert report["admitted_count"] == 0
+    assert report["rejected_count"] == 0
+
+
 def test_live_autonomy_tick_reports_idle_when_no_queues(tmp_path: Path) -> None:
     queue_dir = tmp_path / "queues"
     queue_dir.mkdir()
