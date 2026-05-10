@@ -267,6 +267,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `recommendation_claim_registry_refs` in `InvestigationDataPackage`, DARS trace,
   and Chief Editor review with `recommendation_claim_registry_present` status and
   condition `Run Live-K claim coverage gates before stronger manuscript-facing claims`.
+- Increment **Live-M approved live ideation run** -
+  `hisys live-ideation-run` is the first one-command live-source ideation loop:
+  it requires `--explicit-live-source-enable`, `HISYS_ALLOW_LIVE_IDEATION=1`, an
+  approval ref, enabled/read-only `doi_metadata_search`, and dispatch allowlist
+  approval before a DOI metadata source access. It writes source-access/evidence
+  provenance, feeds those refs into `investigate-domain`, then invokes the
+  existing DARS and Chief Editor research-review pipeline. Tests use
+  `--metadata-fixture`; real DOI metadata access remains approval-gated and
+  read-only, with `mutation_performed=false`.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

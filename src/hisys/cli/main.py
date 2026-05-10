@@ -240,6 +240,33 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         help="explicit recommendation claim registry ref for conditional required-claim lineage; repeatable",
     )
+    investigate_domain.add_argument(
+        "--source-access-ref",
+        dest="live_source_access_refs",
+        action="append",
+        default=[],
+        help="explicit live source-access ref from an approved source connector; repeatable",
+    )
+    investigate_domain.add_argument(
+        "--source-evidence-ref",
+        dest="live_source_evidence_refs",
+        action="append",
+        default=[],
+        help="explicit live source-evidence ref from an approved source connector; repeatable",
+    )
+
+    live_ideation = sub.add_parser(
+        "live-ideation-run",
+        help="run approved live-source ideation evidence through DARS and Chief Editor",
+    )
+    live_ideation.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    live_ideation.add_argument("--request", required=True, help="DomainInvestigationRequest JSON path")
+    live_ideation.add_argument("--config", required=True, help="source-connectors.yaml path")
+    live_ideation.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    live_ideation.add_argument("--doi", required=True, help="approved DOI for read-only metadata retrieval")
+    live_ideation.add_argument("--approval-ref", required=True, help="approval ref authorizing live ideation source access")
+    live_ideation.add_argument("--explicit-live-source-enable", action="store_true", help="operator live-source opt-in")
+    live_ideation.add_argument("--metadata-fixture", help="local Crossref-style JSON fixture for tests/harnesses")
 
     plan_sources = sub.add_parser(
         "plan-source-connectors",
@@ -687,6 +714,19 @@ def main(argv: list[str] | None = None) -> int:
             claim_evidence_summary_refs=args.claim_evidence_summary_refs,
             claim_coverage_gate_refs=args.claim_coverage_gate_refs,
             recommendation_claim_registry_refs=args.recommendation_claim_registry_refs,
+            live_source_access_refs=args.live_source_access_refs,
+            live_source_evidence_refs=args.live_source_evidence_refs,
+        )
+    if args.command == "live-ideation-run":
+        return _cmd_live_ideation_run(
+            instance_root=Path(args.instance),
+            request_path=Path(args.request),
+            config_path=Path(args.config),
+            yyyymmdd=args.date,
+            doi=args.doi,
+            approval_ref=args.approval_ref,
+            explicit_live_source_enable=args.explicit_live_source_enable,
+            metadata_fixture=Path(args.metadata_fixture) if args.metadata_fixture else None,
         )
     if args.command == "plan-source-connectors":
         return _cmd_plan_source_connectors(
@@ -1423,6 +1463,157 @@ def _cmd_vault_topic_transition_plan(
     return 0 if plan["status"] == "planned" else 2
 
 
+def _cmd_live_ideation_run(
+    *,
+    instance_root: Path,
+    request_path: Path,
+    config_path: Path,
+    yyyymmdd: str,
+    doi: str,
+    approval_ref: str,
+    explicit_live_source_enable: bool,
+    metadata_fixture: Path | None,
+) -> int:
+    """Run approved live-source ideation evidence through DARS and Chief Editor.
+
+    This is the first autonomous live ideation increment: one command gates a
+    read-only DOI metadata source access, records provenance, and feeds the
+    resulting source refs into the existing domain/DARS/Chief Editor pipeline.
+    """
+
+    instance = InstanceRoot(instance_root)
+    request = DomainInvestigationRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
+    registry = load_source_connector_registry(config_path)
+    if not explicit_live_source_enable:
+        return _write_live_ideation_blocked_report(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            request_id=request.request_id,
+            reason_code="explicit_live_source_enable_required",
+        )
+    if os.environ.get("HISYS_ALLOW_LIVE_IDEATION") != "1":
+        return _write_live_ideation_blocked_report(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            request_id=request.request_id,
+            reason_code="live_ideation_env_missing",
+        )
+    gate = SourceConnectorDispatchGate(instance=instance)
+    decision = gate.evaluate(
+        yyyymmdd=yyyymmdd,
+        request_id=request.request_id,
+        registry=registry,
+        connector_id="doi_metadata_search",
+        approval_ref=approval_ref,
+        requested_domain="api.crossref.org",
+        requested_actions=["read"],
+    )
+    dispatch_ref = f"runtime-boundary/source-connectors/{yyyymmdd}/connector-dispatch-{request.request_id}-doi_metadata_search.json"
+    if decision.decision != "allowed":
+        return _write_live_ideation_blocked_report(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            request_id=request.request_id,
+            reason_code=decision.reason_code,
+            dispatch_ref=dispatch_ref,
+        )
+
+    fetch = None
+    transport_kind = "live_network"
+    if metadata_fixture is not None:
+        transport_kind = "fixture_injected"
+
+        def fetch(url: str) -> tuple[int, str, str]:
+            return 200, "application/json", metadata_fixture.read_text(encoding="utf-8")
+
+    package = DoiMetadataConnector(fetch=fetch).collect(
+        request_id=request.request_id,
+        doi=doi,
+        output_root=instance.root,
+        yyyymmdd=yyyymmdd,
+    )
+    domain_status = _cmd_investigate_domain(
+        instance_root=instance.root,
+        request_path=request_path,
+        yyyymmdd=yyyymmdd,
+        live_source_access_refs=[package.access_ref],
+        live_source_evidence_refs=[package.evidence_ref],
+    )
+    report = {
+        "schema_id": "hisys.live_ideation.run_report",
+        "schema_version": "0.1.0",
+        "request_id": request.request_id,
+        "status": "completed" if domain_status == 0 else "domain_investigation_failed",
+        "mode": "approved_live_source_ideation",
+        "approval_ref": approval_ref,
+        "dispatch_ref": dispatch_ref,
+        "source_access_refs": [package.access_ref],
+        "source_evidence_refs": [package.evidence_ref],
+        "transport_kind": transport_kind,
+        "external_call_made": True,
+        "mutation_performed": False,
+        "dars_chief_editor_pipeline_invoked": domain_status == 0,
+        "human_review_required": True,
+    }
+    report_path = _write_live_ideation_report(instance=instance, yyyymmdd=yyyymmdd, report=report)
+    print(f"live ideation run: status={report['status']} report={report_path}")
+    print("external_call_made: true")
+    print("mutation_performed: false")
+    return 0 if domain_status == 0 else 1
+
+
+def _write_live_ideation_blocked_report(
+    *,
+    instance: InstanceRoot,
+    yyyymmdd: str,
+    request_id: str,
+    reason_code: str | None,
+    dispatch_ref: str | None = None,
+) -> int:
+    report = {
+        "schema_id": "hisys.live_ideation.run_report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "status": "blocked",
+        "mode": "approved_live_source_ideation",
+        "reason_code": reason_code,
+        "dispatch_ref": dispatch_ref,
+        "source_access_refs": [],
+        "source_evidence_refs": [],
+        "external_call_made": False,
+        "mutation_performed": False,
+        "dars_chief_editor_pipeline_invoked": False,
+        "human_review_required": True,
+    }
+    report_path = _write_live_ideation_report(instance=instance, yyyymmdd=yyyymmdd, report=report)
+    print(f"live ideation run: status=blocked reason={reason_code} report={report_path}")
+    return 2
+
+
+def _write_live_ideation_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "live-ideation-run-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "live-ideation-run-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                "# Live Ideation Run Report",
+                "",
+                f"- request_id: `{report['request_id']}`",
+                f"- status: `{report['status']}`",
+                f"- external_call_made: `{str(report['external_call_made']).lower()}`",
+                f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
+                f"- dars_chief_editor_pipeline_invoked: `{str(report['dars_chief_editor_pipeline_invoked']).lower()}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return report_path
+
+
 def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_path: Path, yyyymmdd: str) -> int:
     """Write a dry-run source connector plan without executing adapters."""
 
@@ -2109,6 +2300,8 @@ def _cmd_investigate_domain(
     claim_evidence_summary_refs: list[str] | None = None,
     claim_coverage_gate_refs: list[str] | None = None,
     recommendation_claim_registry_refs: list[str] | None = None,
+    live_source_access_refs: list[str] | None = None,
+    live_source_evidence_refs: list[str] | None = None,
 ) -> int:
     """Persist the local MVP boundary for a domain investigation request."""
 
@@ -2140,6 +2333,8 @@ def _cmd_investigate_domain(
         claim_evidence_summary_refs=claim_evidence_summary_refs or [],
         claim_coverage_gate_refs=claim_coverage_gate_refs or [],
         recommendation_claim_registry_refs=recommendation_claim_registry_refs or [],
+        live_source_access_refs=live_source_access_refs or [],
+        live_source_evidence_refs=live_source_evidence_refs or [],
     )
     if domain_result is not None:
         domain_result = _write_dars_fixture_for_domain_result(
@@ -2222,6 +2417,8 @@ def _build_research_domain_result(
     claim_evidence_summary_refs: list[str] | None = None,
     claim_coverage_gate_refs: list[str] | None = None,
     recommendation_claim_registry_refs: list[str] | None = None,
+    live_source_access_refs: list[str] | None = None,
+    live_source_evidence_refs: list[str] | None = None,
 ) -> DomainInvestigationResult | None:
     """Build the MVP deterministic research adapter result for research-gap requests."""
 
@@ -2265,6 +2462,14 @@ def _build_research_domain_result(
     for registry_ref in registry_refs:
         if not registry_ref.startswith("runtime-boundary/source-connectors/") or "/recommendation-claim-registry-" not in registry_ref:
             raise ValueError("recommendation_claim_registry_refs must point to runtime-boundary/source-connectors recommendation-claim-registry artifacts")
+    live_access_refs = live_source_access_refs or []
+    for access_ref in live_access_refs:
+        if not access_ref.startswith("runtime-boundary/source-connectors/") or "/source-access-" not in access_ref:
+            raise ValueError("live_source_access_refs must point to runtime-boundary/source-connectors source-access artifacts")
+    live_evidence_refs = live_source_evidence_refs or []
+    for evidence_ref in live_evidence_refs:
+        if not evidence_ref.startswith("runtime-boundary/source-connectors/") or "/source-evidence-" not in evidence_ref:
+            raise ValueError("live_source_evidence_refs must point to runtime-boundary/source-connectors source-evidence artifacts")
     evidence = DomainEvidencePackage(
         package_id=f"DEPKG-{request.request_id}-FORMALISM-GAP",
         domain="research",
@@ -2276,7 +2481,7 @@ def _build_research_domain_result(
             "self-organizing structure that jointly models local interaction, feedback, topology/behavior "
             "co-evolution, executable semantics, and analyzable structural constraints."
         ),
-        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs, *promoted_evidence_refs, *quote_refs, *ledger_refs, *summary_refs, *gate_refs, *registry_refs],
+        evidence_refs=["fixture:formalism_gap_analysis", "fixture:formalism_comparison", *connector_refs, *live_evidence_refs, *promoted_evidence_refs, *quote_refs, *ledger_refs, *summary_refs, *gate_refs, *registry_refs],
         source_refs=source_refs,
         claims=[
             "DSDEVS, graph rewriting, and ABM cover complementary but separated formalism capabilities.",
@@ -2297,6 +2502,8 @@ def _build_research_domain_result(
         source_governance_refs=[
             str((boundary_dir / f"hisys-tool-request-{request.request_id}.json").relative_to(instance.root)),
             *connector_refs,
+            *live_access_refs,
+            *live_evidence_refs,
             *promoted_source_refs,
         ],
         promoted_pdf_evidence_refs=promoted_evidence_refs,
@@ -2340,7 +2547,7 @@ def _build_research_domain_result(
         ],
         quality_gate="passed",
         requires_human_review=True,
-        external_call_made=False,
+        external_call_made=bool(live_access_refs or live_evidence_refs),
         mutation_performed=False,
     )
 

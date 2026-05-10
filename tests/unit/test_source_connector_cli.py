@@ -325,3 +325,99 @@ def test_plan_pdf_candidates_writes_candidate_plan_without_fetching_pdf(tmp_path
     assert report["plan_ref"] == str(plan_artifact.relative_to(tmp_path))
     assert report["candidate_count"] == 1
     assert report["pdf_downloaded"] is False
+
+
+def test_live_ideation_run_gates_doi_metadata_into_dars_and_chief_editor(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+    metadata_fixture = tmp_path / "crossref.json"
+    metadata_fixture.write_text(
+        json.dumps(
+            {
+                "message": {
+                    "DOI": "10.0000/hisys.fixture.formalism",
+                    "title": ["Dynamic Structure Formalism Fixture"],
+                    "publisher": "Fixture Publisher",
+                    "URL": "https://doi.org/10.0000/hisys.fixture.formalism",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "  doi_metadata_search:\n    connector_id: doi_metadata_search\n    connector_type: metadata_search\n    enabled: false\n    mode: read_only\n    external_call_allowed: false",
+            "  doi_metadata_search:\n    connector_id: doi_metadata_search\n    connector_type: metadata_search\n    enabled: true\n    mode: read_only\n    external_call_allowed: true",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "live-ideation-run",
+            "--instance",
+            str(tmp_path),
+            "--request",
+            str(request_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--doi",
+            "10.0000/hisys.fixture.formalism",
+            "--approval-ref",
+            "APPROVAL-LIVE-IDEATION-001",
+            "--explicit-live-source-enable",
+            "--metadata-fixture",
+            str(metadata_fixture),
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260510" / "live-ideation-run-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "completed"
+    assert report["external_call_made"] is True
+    assert report["transport_kind"] == "fixture_injected"
+    assert report["dars_chief_editor_pipeline_invoked"] is True
+    decision = json.loads(
+        (tmp_path / "runtime-boundary" / "chief-editor" / "research" / "20260510" / "research-recommendation-review-CEDEC-HISYS-REQ-LIVE-B-001.json").read_text(encoding="utf-8")
+    )
+    assert decision["source_validation_status"] == "fixture_source_evidence_present"
+    assert any("doi_metadata_search" in ref for ref in decision["source_evidence_refs"])
+    assert decision["dars_acceptance_decision"] == "accepted_as_conditions"
+
+
+def test_live_ideation_run_blocks_without_explicit_live_enable(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    request_path = tmp_path / "domain-request.json"
+    _write_domain_request(request_path)
+
+    result = main(
+        [
+            "live-ideation-run",
+            "--instance",
+            str(tmp_path),
+            "--request",
+            str(request_path),
+            "--config",
+            "examples/instance/config/source-connectors.yaml",
+            "--date",
+            "20260510",
+            "--doi",
+            "10.0000/hisys.fixture.formalism",
+            "--approval-ref",
+            "APPROVAL-LIVE-IDEATION-001",
+        ]
+    )
+
+    assert result == 2
+    report = json.loads((tmp_path / "reports" / "run-summaries" / "20260510" / "live-ideation-run-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "blocked"
+    assert report["reason_code"] == "explicit_live_source_enable_required"
+    assert report["external_call_made"] is False
