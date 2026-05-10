@@ -113,6 +113,12 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   fixture, the decision is `recommend_with_conditions`, requires human review,
   requests publisher-source/evaluation-scenario evidence, and takes no external
   action or mutation.
+- Increment **Hisys MVP A6 Chief Editor DARS acceptance** -
+  The Chief Editor research review now explicitly decides whether to accept DARS
+  advice. Safe DARS responses (`blocks_decision=false`, no mutation, no external
+  side effects, and non-executable recommended actions) are accepted as review
+  conditions via `dars_acceptance_decision=accepted_as_conditions`; DARS still
+  cannot approve, block, execute, or mutate.
 - Increment **Live-A2 Source connector registry schemas** -
   `hisys.connectors.live_source_config` defines disabled-by-default live source
   connector registry models and loader behavior for future publisher/search/PDF,

@@ -17,7 +17,7 @@ import os
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 from urllib.parse import urlparse
 
 from .. import __version__
@@ -2658,6 +2658,20 @@ def _write_chief_editor_research_review(
         source_validation_status = "manual_pdf_evidence_promoted"
     else:
         source_validation_status = "fixture_source_evidence_present" if source_evidence_refs else "source_validation_needed"
+    dars_acceptance = _decide_dars_acceptance(instance=instance, dars_refs=domain_result.dars_refs)
+    conditions = [
+        "Validate fixture source evidence against live publisher pages before publication claims.",
+        "Collect publisher-source evidence for DSDEVS, graph transformation, and ABM literature.",
+        "Define evaluation scenarios for topology/behavior co-evolution.",
+        "Keep novelty claims conditional until DARS source-validation actions are resolved.",
+        "Keep novelty claims conditional after quote extraction.",
+        "Keep novelty claims conditional after claim-evidence ledger mapping.",
+        "Keep confidence advisory after claim-evidence summary aggregation.",
+        "Keep manuscript-facing claims conditional after claim coverage gating.",
+        "Run Live-K claim coverage gates before stronger manuscript-facing claims.",
+    ]
+    if dars_acceptance["dars_accepted"]:
+        conditions.append("Chief Editor accepted DARS advisory actions as non-executable conditions.")
     decision = {
         "schema_id": "hisys.chief_editor.research_recommendation_review",
         "schema_version": "0.1.0",
@@ -2682,17 +2696,7 @@ def _write_chief_editor_research_review(
         "recommendation_claim_registry_conditional": bool(domain_result.investigation_data.recommendation_claim_registry_refs),
         "manuscript_language_gate": "conditional_only" if domain_result.investigation_data.claim_coverage_gate_refs else "source_validation_required",
         "conditional_manuscript_language_only": bool(domain_result.investigation_data.claim_coverage_gate_refs),
-        "conditions": [
-            "Validate fixture source evidence against live publisher pages before publication claims.",
-            "Collect publisher-source evidence for DSDEVS, graph transformation, and ABM literature.",
-            "Define evaluation scenarios for topology/behavior co-evolution.",
-            "Keep novelty claims conditional until DARS source-validation actions are resolved.",
-            "Keep novelty claims conditional after quote extraction.",
-            "Keep novelty claims conditional after claim-evidence ledger mapping.",
-            "Keep confidence advisory after claim-evidence summary aggregation.",
-            "Keep manuscript-facing claims conditional after claim coverage gating.",
-            "Run Live-K claim coverage gates before stronger manuscript-facing claims.",
-        ],
+        "conditions": conditions,
         "required_next_evidence": [
             "DSDEVS source literature",
             "graph transformation/self-organization formalism sources",
@@ -2700,6 +2704,7 @@ def _write_chief_editor_research_review(
             "evaluation scenarios for topology/behavior co-evolution",
         ],
         "dars_trace_refs": dars_trace_refs,
+        **dars_acceptance,
         "human_approval_required": True,
         "approval_status": "not_requested",
         "action_taken": "none",
@@ -2721,6 +2726,8 @@ def _write_chief_editor_research_review(
                 "- status: `recommend_with_conditions`",
                 f"- recommended_candidate_id: `{recommended_id}`",
                 f"- source_validation_status: `{source_validation_status}`",
+                f"- dars_acceptance_decision: `{decision['dars_acceptance_decision']}`",
+                f"- dars_accepted: `{str(decision['dars_accepted']).lower()}`",
                 "- action_taken: `none`",
                 "- human_approval_required: `true`",
                 "",
@@ -2734,6 +2741,79 @@ def _write_chief_editor_research_review(
     ref = str(decision_path.relative_to(instance.root))
     domain_result.runtime_boundary_refs.append(ref)
     return domain_result
+
+
+def _decide_dars_acceptance(*, instance: InstanceRoot, dars_refs: list[str]) -> dict[str, Any]:
+    """Chief Editor's controlled decision on whether to accept DARS advice.
+
+    DARS remains advisory-only: accepting DARS means importing its recommended
+    action IDs as non-executable review conditions, never executing them.
+    """
+
+    response = _load_latest_dars_response(instance=instance, dars_refs=dars_refs)
+    if response is None:
+        return {
+            "dars_acceptance_decision": "not_available",
+            "dars_accepted": False,
+            "accepted_dars_action_ids": [],
+            "dars_blocks_decision": False,
+            "dars_unresolved_high_severity_findings": 0,
+            "dars_acceptance_rationale": "No DARS response artifact was available for Chief Editor review.",
+        }
+
+    boundary = response.get("boundary", {})
+    decision_trace = response.get("decision_trace", {})
+    critique = response.get("critique", {})
+    recommended_actions = critique.get("recommended_actions", [])
+    unsafe_boundary = (
+        boundary.get("action_taken") != "none"
+        or boundary.get("mutation_performed") is True
+        or boundary.get("external_side_effects_performed") is True
+    )
+    blocks_decision = bool(decision_trace.get("blocks_decision", False))
+    unresolved_high = int(decision_trace.get("unresolved_high_severity_findings", 0) or 0)
+    accepted_action_ids = [
+        action.get("action_id")
+        for action in recommended_actions
+        if isinstance(action, dict)
+        and action.get("action_id")
+        and action.get("allowed_to_execute") is False
+    ]
+    if unsafe_boundary or blocks_decision:
+        return {
+            "dars_acceptance_decision": "rejected_boundary_violation",
+            "dars_accepted": False,
+            "accepted_dars_action_ids": [],
+            "dars_blocks_decision": blocks_decision,
+            "dars_unresolved_high_severity_findings": unresolved_high,
+            "dars_acceptance_rationale": "DARS advice was not accepted because it violated the advisory-only boundary or attempted to block the decision.",
+        }
+    if accepted_action_ids:
+        return {
+            "dars_acceptance_decision": "accepted_as_conditions",
+            "dars_accepted": True,
+            "accepted_dars_action_ids": accepted_action_ids,
+            "dars_blocks_decision": blocks_decision,
+            "dars_unresolved_high_severity_findings": unresolved_high,
+            "dars_acceptance_rationale": "Chief Editor accepted DARS advisory recommendations as non-executable conditions requiring human-reviewed follow-up.",
+        }
+    return {
+        "dars_acceptance_decision": "reviewed_no_advisory_actions",
+        "dars_accepted": False,
+        "accepted_dars_action_ids": [],
+        "dars_blocks_decision": blocks_decision,
+        "dars_unresolved_high_severity_findings": unresolved_high,
+        "dars_acceptance_rationale": "DARS response was reviewed but contained no non-executable advisory action IDs to accept.",
+    }
+
+
+def _load_latest_dars_response(*, instance: InstanceRoot, dars_refs: list[str]) -> dict[str, Any] | None:
+    response_refs = [ref for ref in dars_refs if "/dars-response-" in ref and ref.endswith(".json")]
+    for ref in reversed(response_refs):
+        path = instance.root / ref
+        if path.exists() and path.is_file():
+            return json.loads(path.read_text(encoding="utf-8"))
+    return None
 
 
 def _format_domain_request_markdown(request: DomainInvestigationRequest) -> str:

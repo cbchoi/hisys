@@ -175,6 +175,11 @@ def test_investigate_domain_research_gap_fixture_generates_alternatives(tmp_path
     assert decision["source_validation_status"] == "fixture_source_evidence_present"
     assert any("source-evidence-EVID-HISYS-REQ-RESEARCH-GAP-001-fixture_publisher_page_reader.json" in ref for ref in decision["source_evidence_refs"])
     assert "Validate fixture source evidence against live publisher pages before publication claims." in decision["conditions"]
+    assert decision["dars_acceptance_decision"] == "accepted_as_conditions"
+    assert decision["dars_accepted"] is True
+    assert decision["accepted_dars_action_ids"] == ["RECACT-HISYS-REQ-RESEARCH-GAP-001-SOURCE-VALIDATION"]
+    assert decision["dars_blocks_decision"] is False
+    assert "Chief Editor accepted DARS advisory actions as non-executable conditions." in decision["conditions"]
     assert decision["action_taken"] == "none"
     assert decision["human_approval_required"] is True
     assert decision["external_call_made"] is False
