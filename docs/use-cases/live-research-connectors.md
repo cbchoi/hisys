@@ -379,3 +379,25 @@ Boundary rules:
    approved;
 6. the command writes only local revision-resolution and report artifacts, with
    `external_call_made=false` and `mutation_performed=false`.
+
+## Browser-H final Chief Editor browser acceptance boundary
+
+Browser-H consumes a `REVISION-*-BROWSER.json` artifact only after Browser-G has
+marked the package `ready_for_final_acceptance_review`. It records the Chief
+Editor final browser acceptance decision for controlled, human-reviewed use; it
+does not approve publication, live connector execution, or any external action.
+
+Boundary rules:
+
+1. final review requires an explicit Browser-G revision-resolution ref;
+2. the revision artifact must show `decision=ready_for_final_acceptance_review`,
+   `final_acceptance_allowed=true`, complete segment normalization, complete
+   corroboration mapping, no remaining blockers, no external call, and no
+   mutation;
+3. acceptance is scoped to the browser investigation evidence package for
+   human-reviewed use;
+4. DARS remains advisory-only and non-executable;
+5. consequential/public/live use still requires separate human approval;
+6. the command writes only local final-review and report artifacts, with
+   `publication_or_live_action_approved=false`, `action_taken=none`,
+   `external_call_made=false`, and `mutation_performed=false`.

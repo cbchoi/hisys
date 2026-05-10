@@ -1317,6 +1317,115 @@ def test_resolve_browser_dars_revisions_marks_segment_and_corroboration_ready(tm
     assert revision["remaining_blockers"] == []
 
 
+def test_final_browser_acceptance_review_accepts_ready_revision_resolution(tmp_path: Path, capsys):
+    date = "20260510"
+    request_id = "HISYS-REQ-BROWSER-FINAL-001"
+    matrix_ref = f"data/competitive-matrices/{date}/MATRIX-{request_id}-BROWSER.json"
+    chief_ref = f"data/chief-editor-reviews/{date}/CHIEF-REVIEW-{request_id}-BROWSER.json"
+    dars_ref = f"data/dars-browser-reviews/{date}/DARS-REVIEW-{request_id}-BROWSER.json"
+    revision_ref = f"data/browser-dars-revision-resolutions/{date}/REVISION-{request_id}-BROWSER.json"
+    (tmp_path / matrix_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / matrix_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_investigation.competitive_matrix",
+                "rows": [
+                    {
+                        "company_or_source": "DUNLEE | LMB Tube Technology",
+                        "technology_signals": "liquid metal bearing for CT tube cooling",
+                        "competitive_signal_strength": "high",
+                        "segment": "ct",
+                        "corroborating_evidence_class": "patent",
+                        "evidence_refs": ["EV-DUNLEE-PATENT"],
+                    },
+                    {
+                        "company_or_source": "Industrial X-ray Tubes - Varex Imaging",
+                        "technology_signals": "stable dose/resolution for NDT inspection",
+                        "competitive_signal_strength": "high",
+                        "segment": "industrial_ndt",
+                        "corroborating_evidence_class": "datasheet_or_specification",
+                        "evidence_refs": ["EV-VAREX-DATASHEET"],
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / chief_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / chief_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.chief_editor.browser_investigation_review",
+                "request_id": request_id,
+                "decision": "accept_for_devil_dars_adversarial_review",
+                "basis_refs": {"competitive_matrix": matrix_ref},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / dars_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / dars_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.dars.browser_investigation_review",
+                "request_id": request_id,
+                "chief_editor_review_ref": chief_ref,
+                "decision": "requires_revision_before_final_acceptance",
+                "allowed_actions": "advisory_only",
+                "external_call_made": False,
+                "mutation_performed": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / revision_ref).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / revision_ref).write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.browser_dars_revision_resolution",
+                "request_id": request_id,
+                "dars_review_ref": dars_ref,
+                "chief_editor_review_ref": chief_ref,
+                "competitive_matrix_ref": matrix_ref,
+                "decision": "ready_for_final_acceptance_review",
+                "segment_normalization_status": "complete",
+                "corroboration_mapping_status": "complete",
+                "remaining_blockers": [],
+                "final_acceptance_allowed": True,
+                "allowed_actions": "advisory_only",
+                "external_call_made": False,
+                "mutation_performed": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main([
+        "final-review-browser-investigation",
+        "--instance", str(tmp_path),
+        "--date", date,
+        "--revision-resolution-ref", revision_ref,
+        "--producer-id", "chief-final-test",
+    ])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "accept_for_human_reviewed_use" in captured.out
+    final_ref = f"data/chief-editor-final-browser-reviews/{date}/FINAL-CHIEF-REVIEW-{request_id}-BROWSER.json"
+    final_review = json.loads((tmp_path / final_ref).read_text(encoding="utf-8"))
+    assert final_review["decision"] == "accept_for_human_reviewed_use"
+    assert final_review["revision_resolution_ref"] == revision_ref
+    assert final_review["dars_review_ref"] == dars_ref
+    assert final_review["chief_editor_review_ref"] == chief_ref
+    assert final_review["competitive_matrix_ref"] == matrix_ref
+    assert final_review["accepted_conditions"] == ["segment_normalization_complete", "independent_corroboration_mapping_complete"]
+    assert final_review["publication_or_live_action_approved"] is False
+    assert final_review["human_approval_required_for_consequential_use"] is True
+    assert final_review["external_call_made"] is False
+    assert final_review["mutation_performed"] is False
+    assert final_review["action_taken"] == "none"
+
+
 def test_request_dars_critique_command_records_advisory_result(tmp_path: Path, capsys):
     _prepare_flagged_conflict_memo(tmp_path, capsys)
     assert main([

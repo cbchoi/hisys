@@ -870,6 +870,14 @@ def _build_parser() -> argparse.ArgumentParser:
     browser_revision.add_argument("--date", required=True, help="YYYYMMDD review partition")
     browser_revision.add_argument("--dars-review-ref", required=True, help="relative ref to DARS-REVIEW-*-BROWSER.json")
     browser_revision.add_argument("--producer-id", default="browser-revision-cli", help="revision resolver producer id")
+    browser_final = sub.add_parser(
+        "final-review-browser-investigation",
+        help="run Chief Editor final acceptance review over resolved browser DARS revisions",
+    )
+    browser_final.add_argument("--instance", required=True, help="runtime instance root containing the revision resolution")
+    browser_final.add_argument("--date", required=True, help="YYYYMMDD review partition")
+    browser_final.add_argument("--revision-resolution-ref", required=True, help="relative ref to REVISION-*-BROWSER.json")
+    browser_final.add_argument("--producer-id", default="chief-editor-browser-final-cli", help="Chief Editor final-review producer id")
     return parser
 
 
@@ -1351,6 +1359,13 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             dars_review_ref=args.dars_review_ref,
+            producer_id=args.producer_id,
+        )
+    if args.command == "final-review-browser-investigation":
+        return _cmd_final_review_browser_investigation(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            revision_resolution_ref=args.revision_resolution_ref,
             producer_id=args.producer_id,
         )
     parser.error(f"unknown command: {args.command}")
@@ -7076,6 +7091,139 @@ def _render_browser_dars_revision_report_md(report: dict[str, object]) -> str:
         f"- request_id: `{report['request_id']}`",
         f"- decision: `{report['decision']}`",
         f"- revision_resolution_ref: `{report['revision_resolution_ref']}`",
+        f"- external_call_made: `{str(report['external_call_made']).lower()}`",
+        f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
+        "",
+    ])
+
+
+
+def _cmd_final_review_browser_investigation(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    revision_resolution_ref: str,
+    producer_id: str,
+) -> int:
+    instance = InstanceRoot(instance_root)
+    revision_path = instance.root / revision_resolution_ref
+    if not revision_path.exists():
+        print(f"browser revision resolution not found: {revision_resolution_ref}", file=sys.stderr)
+        return 1
+    revision = json.loads(revision_path.read_text(encoding="utf-8"))
+    if not _browser_revision_ready_for_final_review(revision):
+        print("final browser review: blocked reason=revision_resolution_not_ready")
+        return 2
+    final_review = _build_final_browser_acceptance_review(
+        request_id=str(revision.get("request_id") or _browser_request_id_from_ref(revision_resolution_ref)),
+        revision_resolution_ref=revision_resolution_ref,
+        revision=revision,
+        producer_id=producer_id,
+    )
+    final_ref = f"data/chief-editor-final-browser-reviews/{yyyymmdd}/FINAL-CHIEF-REVIEW-{final_review['request_id']}-BROWSER.json"
+    final_path = instance.root / final_ref
+    final_path.parent.mkdir(parents=True, exist_ok=True)
+    final_path.write_text(json.dumps(final_review, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    final_path.with_suffix(".md").write_text(_render_final_browser_acceptance_review_md(final_review), encoding="utf-8")
+    report_ref = f"reports/run-summaries/{yyyymmdd}/final-browser-acceptance-review-report.json"
+    report = {
+        "schema_id": "hisys.chief_editor.final_browser_acceptance_review.report",
+        "schema_version": "0.1.0",
+        "request_id": final_review["request_id"],
+        "revision_resolution_ref": revision_resolution_ref,
+        "final_review_ref": final_ref,
+        "decision": final_review["decision"],
+        "publication_or_live_action_approved": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    report_path = instance.root / report_ref
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_path.with_suffix(".md").write_text(_render_final_browser_acceptance_report_md(report), encoding="utf-8")
+    print(f"final browser review: report={report_path}")
+    print(f"decision: {final_review['decision']}")
+    print("publication_or_live_action_approved: false")
+    print("action_taken: none")
+    print("external_call_made: false")
+    return 0
+
+
+
+def _browser_revision_ready_for_final_review(revision: dict[str, object]) -> bool:
+    return (
+        revision.get("decision") == "ready_for_final_acceptance_review"
+        and revision.get("final_acceptance_allowed") is True
+        and revision.get("segment_normalization_status") == "complete"
+        and revision.get("corroboration_mapping_status") == "complete"
+        and not revision.get("remaining_blockers")
+        and revision.get("external_call_made") is False
+        and revision.get("mutation_performed") is False
+    )
+
+
+
+def _build_final_browser_acceptance_review(
+    *,
+    request_id: str,
+    revision_resolution_ref: str,
+    revision: dict[str, object],
+    producer_id: str,
+) -> dict[str, object]:
+    return {
+        "schema_id": "hisys.chief_editor.final_browser_acceptance_review",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "revision_resolution_ref": revision_resolution_ref,
+        "dars_review_ref": str(revision.get("dars_review_ref", "")),
+        "chief_editor_review_ref": str(revision.get("chief_editor_review_ref", "")),
+        "competitive_matrix_ref": str(revision.get("competitive_matrix_ref", "")),
+        "decision": "accept_for_human_reviewed_use",
+        "accepted_conditions": [
+            "segment_normalization_complete",
+            "independent_corroboration_mapping_complete",
+        ],
+        "acceptance_scope": "browser_investigation_evidence_package_for_human_reviewed_use",
+        "dars_role": "advisory_only_non_executable",
+        "publication_or_live_action_approved": False,
+        "human_approval_required_for_consequential_use": True,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "action_taken": "none",
+        "producer_id": producer_id,
+    }
+
+
+
+def _render_final_browser_acceptance_review_md(review: dict[str, object]) -> str:
+    return "\n".join([
+        f"# Final Browser Acceptance Review {review['request_id']}",
+        "",
+        f"- decision: `{review['decision']}`",
+        f"- acceptance_scope: `{review['acceptance_scope']}`",
+        f"- revision_resolution_ref: `{review['revision_resolution_ref']}`",
+        f"- publication_or_live_action_approved: `{str(review['publication_or_live_action_approved']).lower()}`",
+        f"- human_approval_required_for_consequential_use: `{str(review['human_approval_required_for_consequential_use']).lower()}`",
+        f"- action_taken: `{review['action_taken']}`",
+        f"- external_call_made: `{str(review['external_call_made']).lower()}`",
+        f"- mutation_performed: `{str(review['mutation_performed']).lower()}`",
+        "",
+        "## Accepted Conditions",
+        "",
+        *[f"- {item}" for item in review.get("accepted_conditions", [])],
+        "",
+    ])
+
+
+
+def _render_final_browser_acceptance_report_md(report: dict[str, object]) -> str:
+    return "\n".join([
+        "# Final Browser Acceptance Review Report",
+        "",
+        f"- request_id: `{report['request_id']}`",
+        f"- decision: `{report['decision']}`",
+        f"- final_review_ref: `{report['final_review_ref']}`",
+        f"- publication_or_live_action_approved: `{str(report['publication_or_live_action_approved']).lower()}`",
         f"- external_call_made: `{str(report['external_call_made']).lower()}`",
         f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
         "",

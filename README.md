@@ -236,6 +236,11 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   deterministically checks normalized segment labels and independent
   corroboration classes for high-strength rows, then marks the package
   `ready_for_final_acceptance_review` only when both revision gates are complete.
+  `final-review-browser-investigation` consumes that resolution artifact and
+  writes `data/chief-editor-final-browser-reviews/<date>/FINAL-CHIEF-REVIEW-*-BROWSER.json`
+  with `decision=accept_for_human_reviewed_use`, while preserving
+  `publication_or_live_action_approved=false`, `action_taken=none`, and no
+  external calls or mutations.
 - Increment **Browser-A governed Playwright page collector** -
   `playwright_read_only` adds the first browser-based actual-data acquisition
   path for company and publisher pages. `hisys smoke-source-connector
