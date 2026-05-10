@@ -302,6 +302,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   report refs, vault refs, mutation state, and network-push state. Missing DOI or
   request refs block at the queue-entry layer; out-of-policy items still block in
   the standing-approval gate before live source access or mutation.
+- Increment **Live-Q queue idempotency and retry ledger** -
+  `hisys live-autonomy-run` now maintains a JSON ledger, defaulting to
+  `data/live-autonomy-ledgers/<YYYYMMDD>/<queue_id>.json`, or an explicit
+  `--ledger` path. Completed entries are skipped on rerun instead of re-mutating
+  the vault or re-pushing Git. Blocked entries record `attempt_count`,
+  `retry_eligible`, and the last reason/report refs; `--max-retries` prevents
+  exhausted retry entries from running again. Batch reports include the ledger ref,
+  skipped-completed count, retry-exhausted count, and retry-eligible count.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

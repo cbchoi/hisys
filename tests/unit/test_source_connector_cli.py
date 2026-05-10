@@ -768,3 +768,108 @@ def test_live_autonomy_run_executes_standing_approved_queue(tmp_path: Path, monk
     assert report["results"][0]["status"] == "completed"
     assert report["results"][0]["pipeline_report_ref"].endswith("live-ideation-persist-report.json")
     assert subprocess.run(["git", "rev-parse", "--verify", "main"], cwd=remote_root, capture_output=True, text=True).returncode == 0
+
+    second_result = main(
+        [
+            "live-autonomy-run",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--queue",
+            str(queue_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--vault-root",
+            str(vault_root),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--standing-approval-policy",
+            str(policy_path),
+            "--clean-git-status",
+        ]
+    )
+    assert second_result == 0
+    second_report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-run-report.json").read_text(encoding="utf-8"))
+    assert second_report["completed_count"] == 0
+    assert second_report["skipped_completed_count"] == 1
+    assert second_report["results"][0]["status"] == "skipped_completed"
+    ledger = json.loads((tmp_path / "instance" / second_report["ledger_ref"]).read_text(encoding="utf-8"))
+    assert ledger["entries"]["formalism-gap-001"]["status"] == "completed"
+    assert ledger["entries"]["formalism-gap-001"]["attempt_count"] == 1
+
+
+def test_live_autonomy_run_skips_retry_exhausted_entries(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    queue_path = tmp_path / "queue.json"
+    queue_path.write_text(
+        json.dumps(
+            {
+                "queue_id": "LIVE-AUTONOMY-Q-RETRY",
+                "entries": [
+                    {
+                        "entry_id": "retry-exhausted-001",
+                        "request_path": "missing-request.json",
+                        "doi": "10.0000/hisys.fixture.formalism",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "source-connectors.yaml"
+    config_path.write_text(Path("examples/instance/config/source-connectors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    policy_path = tmp_path / "standing-approval.json"
+    policy_path.write_text(json.dumps({"status": "approved", "approval_ref": "STANDING-LIVE-AUTONOMY-RETRY"}), encoding="utf-8")
+    ledger_path = tmp_path / "ledger.json"
+    ledger_path.write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.live_autonomy.queue_retry_ledger",
+                "schema_version": "0.1.0",
+                "queue_id": "LIVE-AUTONOMY-Q-RETRY",
+                "date": "20260510",
+                "entries": {
+                    "retry-exhausted-001": {
+                        "entry_id": "retry-exhausted-001",
+                        "status": "blocked",
+                        "reason_code": "live_ideation_stage_failed",
+                        "attempt_count": 1,
+                        "retry_eligible": True,
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "live-autonomy-run",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--queue",
+            str(queue_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--vault-root",
+            str(tmp_path / "vault"),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--standing-approval-policy",
+            str(policy_path),
+            "--ledger",
+            str(ledger_path),
+            "--max-retries",
+            "1",
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-run-report.json").read_text(encoding="utf-8"))
+    assert report["completed_count"] == 0
+    assert report["skipped_retry_exhausted_count"] == 1
+    assert report["results"][0]["status"] == "skipped_retry_exhausted"
+    assert report["results"][0]["attempt_count"] == 1
