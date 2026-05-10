@@ -310,6 +310,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `retry_eligible`, and the last reason/report refs; `--max-retries` prevents
   exhausted retry entries from running again. Batch reports include the ledger ref,
   skipped-completed count, retry-exhausted count, and retry-eligible count.
+- Increment **Live-R queue state transitions and watchdog reports** -
+  The live autonomy ledger now records scheduler-readable `current_state` and
+  `state_history` transitions such as `queued`, `running`, `completed`, `blocked`,
+  `skipped_completed`, and `skipped_retry_exhausted`. Every queue run also writes
+  `live-autonomy-watchdog-report.json|md` with `scheduler_ready`, `health_status`,
+  retry counts, ledger ref, and `next_scheduler_action`, so cron/watchdog wrappers
+  can decide whether to sleep, retry, or request operator review without parsing
+  every per-entry pipeline report.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

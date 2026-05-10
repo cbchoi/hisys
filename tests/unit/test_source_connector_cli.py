@@ -797,6 +797,11 @@ def test_live_autonomy_run_executes_standing_approved_queue(tmp_path: Path, monk
     ledger = json.loads((tmp_path / "instance" / second_report["ledger_ref"]).read_text(encoding="utf-8"))
     assert ledger["entries"]["formalism-gap-001"]["status"] == "completed"
     assert ledger["entries"]["formalism-gap-001"]["attempt_count"] == 1
+    assert [state["state"] for state in ledger["entries"]["formalism-gap-001"]["state_history"]] == ["queued", "running", "completed", "queued", "skipped_completed"]
+    watchdog = json.loads((tmp_path / "instance" / second_report["watchdog_report_ref"]).read_text(encoding="utf-8"))
+    assert watchdog["scheduler_ready"] is True
+    assert watchdog["health_status"] == "ok"
+    assert watchdog["next_scheduler_action"] == "sleep"
 
 
 def test_live_autonomy_run_skips_retry_exhausted_entries(tmp_path: Path, monkeypatch) -> None:
@@ -873,3 +878,9 @@ def test_live_autonomy_run_skips_retry_exhausted_entries(tmp_path: Path, monkeyp
     assert report["skipped_retry_exhausted_count"] == 1
     assert report["results"][0]["status"] == "skipped_retry_exhausted"
     assert report["results"][0]["attempt_count"] == 1
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    assert ledger["entries"]["retry-exhausted-001"]["current_state"] == "skipped_retry_exhausted"
+    assert [state["state"] for state in ledger["entries"]["retry-exhausted-001"]["state_history"]][-2:] == ["queued", "skipped_retry_exhausted"]
+    watchdog = json.loads((tmp_path / "instance" / report["watchdog_report_ref"]).read_text(encoding="utf-8"))
+    assert watchdog["scheduler_ready"] is True
+    assert watchdog["health_status"] == "ok"

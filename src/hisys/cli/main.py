@@ -2027,7 +2027,9 @@ def _cmd_live_autonomy_run(
     for index, entry in enumerate(entries, start=1):
         entry_id = str(entry.get("entry_id") or f"entry-{index:04d}")
         ledger_entry = ledger["entries"].get(entry_id, {})
+        ledger_entry = _live_autonomy_mark_transition(ledger_entry, state="queued", yyyymmdd=yyyymmdd, reason_code=None)
         if ledger_entry.get("status") == "completed":
+            ledger_entry = _live_autonomy_mark_transition(ledger_entry, state="skipped_completed", yyyymmdd=yyyymmdd, reason_code="ledger_completed")
             results.append(
                 {
                     "entry_id": entry_id,
@@ -2043,8 +2045,10 @@ def _cmd_live_autonomy_run(
                     "network_push_performed": False,
                 }
             )
+            ledger["entries"][entry_id] = ledger_entry
             continue
         if int(ledger_entry.get("attempt_count", 0)) >= max_retries and ledger_entry.get("status") == "blocked":
+            ledger_entry = _live_autonomy_mark_transition(ledger_entry, state="skipped_retry_exhausted", yyyymmdd=yyyymmdd, reason_code="retry_limit_exhausted")
             results.append(
                 {
                     "entry_id": entry_id,
@@ -2060,6 +2064,7 @@ def _cmd_live_autonomy_run(
                     "network_push_performed": False,
                 }
             )
+            ledger["entries"][entry_id] = ledger_entry
             continue
         request_ref = entry.get("request_path")
         doi = entry.get("doi")
@@ -2073,6 +2078,7 @@ def _cmd_live_autonomy_run(
                 "retry_eligible": False,
             }
             results.append(result)
+            ledger_entry = _live_autonomy_mark_transition(ledger_entry, state="blocked", yyyymmdd=yyyymmdd, reason_code="queue_entry_missing_request_or_doi")
             ledger["entries"][entry_id] = _live_autonomy_ledger_entry_from_result(previous=ledger_entry, result=result)
             continue
         request_path = Path(request_ref)
@@ -2083,6 +2089,7 @@ def _cmd_live_autonomy_run(
         if metadata_fixture_path is not None and not metadata_fixture_path.is_absolute():
             metadata_fixture_path = queue_dir / metadata_fixture_path
         entry_instance_root = instance.data_dir / "autonomy-runs" / yyyymmdd / entry_id
+        ledger_entry = _live_autonomy_mark_transition(ledger_entry, state="running", yyyymmdd=yyyymmdd, reason_code=None)
         status_code = _cmd_live_ideation_persist(
             instance_root=entry_instance_root,
             request_path=request_path,
@@ -2119,6 +2126,12 @@ def _cmd_live_autonomy_run(
             "mutation_performed": bool(entry_report.get("mutation_performed")),
             "network_push_performed": bool(entry_report.get("network_push_performed")),
         }
+        ledger_entry = _live_autonomy_mark_transition(
+            ledger_entry,
+            state="completed" if status_code == 0 else "blocked",
+            yyyymmdd=yyyymmdd,
+            reason_code=result.get("reason_code"),
+        )
         results.append(result)
         ledger["entries"][entry_id] = _live_autonomy_ledger_entry_from_result(previous=ledger_entry, result=result)
     completed_count = sum(1 for result in results if result["status"] == "completed")
@@ -2135,12 +2148,29 @@ def _cmd_live_autonomy_run(
         "retry_eligible_count": retry_eligible_count,
     }
     _write_live_autonomy_ledger(ledger_path=ledger_path, ledger=ledger)
+    watchdog_report = {
+        "schema_id": "hisys.live_autonomy.watchdog_report",
+        "schema_version": "0.1.0",
+        "queue_id": queue_id,
+        "scheduler_ready": True,
+        "health_status": "ok" if blocked_count == 0 and retry_eligible_count == 0 else "attention_required",
+        "entry_count": len(results),
+        "completed_count": completed_count,
+        "blocked_count": blocked_count,
+        "skipped_completed_count": skipped_completed_count,
+        "skipped_retry_exhausted_count": skipped_retry_exhausted_count,
+        "retry_eligible_count": retry_eligible_count,
+        "ledger_ref": str(ledger_path.relative_to(instance.root)) if ledger_path.is_relative_to(instance.root) else str(ledger_path),
+        "next_scheduler_action": "sleep" if blocked_count == 0 and retry_eligible_count == 0 else "review_or_retry_eligible_entries",
+    }
+    watchdog_report_path = _write_live_autonomy_watchdog_report(instance=instance, yyyymmdd=yyyymmdd, report=watchdog_report)
     batch_report = {
         "schema_id": "hisys.live_autonomy.queue_run_report",
         "schema_version": "0.1.0",
         "queue_id": queue.get("queue_id"),
         "status": "completed" if blocked_count == 0 else "completed_with_blocks",
         "ledger_ref": str(ledger_path.relative_to(instance.root)) if ledger_path.is_relative_to(instance.root) else str(ledger_path),
+        "watchdog_report_ref": str(watchdog_report_path.relative_to(instance.root)),
         "entry_count": len(results),
         "completed_count": completed_count,
         "blocked_count": blocked_count,
@@ -2200,12 +2230,27 @@ def _live_autonomy_reason_retryable(reason_code: object) -> bool:
     return reason_code not in non_retryable
 
 
+def _live_autonomy_mark_transition(entry: dict[str, object], *, state: str, yyyymmdd: str, reason_code: object) -> dict[str, object]:
+    updated = dict(entry)
+    history = list(updated.get("state_history") or [])
+    if not history or history[-1].get("state") != state:
+        transition: dict[str, object] = {"state": state, "run_date": yyyymmdd}
+        if reason_code:
+            transition["reason_code"] = reason_code
+        history.append(transition)
+    updated["current_state"] = state
+    updated["state_history"] = history
+    return updated
+
+
 def _live_autonomy_ledger_entry_from_result(*, previous: dict[str, object], result: dict[str, object]) -> dict[str, object]:
     attempt_count = int(result.get("attempt_count") or previous.get("attempt_count") or 0)
     return {
         "entry_id": result.get("entry_id"),
         "request_id": result.get("request_id") or previous.get("request_id"),
         "status": result.get("status"),
+        "current_state": previous.get("current_state") or result.get("status"),
+        "state_history": previous.get("state_history", []),
         "reason_code": result.get("reason_code"),
         "pipeline_report_ref": result.get("pipeline_report_ref"),
         "vault_refs": result.get("vault_refs", []),
@@ -2215,6 +2260,30 @@ def _live_autonomy_ledger_entry_from_result(*, previous: dict[str, object], resu
         "mutation_performed": bool(result.get("mutation_performed")),
         "network_push_performed": bool(result.get("network_push_performed")),
     }
+
+
+def _write_live_autonomy_watchdog_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "live-autonomy-watchdog-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "live-autonomy-watchdog-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                "# Live Autonomy Watchdog Report",
+                "",
+                f"- queue_id: `{report['queue_id']}`",
+                f"- scheduler_ready: `{str(report['scheduler_ready']).lower()}`",
+                f"- health_status: `{report['health_status']}`",
+                f"- next_scheduler_action: `{report['next_scheduler_action']}`",
+                f"- retry_eligible_count: `{report['retry_eligible_count']}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return report_path
 
 
 def _write_live_autonomy_run_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
