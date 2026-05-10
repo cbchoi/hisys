@@ -310,6 +310,27 @@ def _build_parser() -> argparse.ArgumentParser:
     live_autonomy.add_argument("--ledger", help="optional queue idempotency/retry ledger JSON path; defaults under data/live-autonomy-ledgers")
     live_autonomy.add_argument("--max-retries", type=int, default=3, help="maximum retry attempts for retryable blocked entries")
 
+    live_scheduler = sub.add_parser(
+        "live-autonomy-tick",
+        help="cron-ready scheduler tick that discovers and runs standing-approved live autonomy queues",
+    )
+    live_scheduler.add_argument("--instance", required=True, help="runtime instance root for scheduler outputs")
+    live_scheduler.add_argument("--queue-dir", required=True, help="directory containing queue JSON files")
+    live_scheduler.add_argument("--queue-glob", default="*.json", help="glob for queue JSON files; default: *.json")
+    live_scheduler.add_argument("--config", required=True, help="source-connectors.yaml path")
+    live_scheduler.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    live_scheduler.add_argument("--vault-root", required=True, help="target Obsidian vault root")
+    live_scheduler.add_argument("--credential-ref", required=True, help="credential reference only; raw credentials are rejected")
+    live_scheduler.add_argument("--standing-approval-policy", required=True, help="approved standing autonomous operating-envelope policy JSON")
+    live_scheduler.add_argument("--remote-name", default="origin", help="Git remote name for vault sync")
+    live_scheduler.add_argument("--branch", default="main", help="Git branch for vault sync")
+    live_scheduler.add_argument("--allow-real-obsidian-vault", action="store_true", help="allow /home/cbchoi/obsidian as target vault if policy allows it")
+    live_scheduler.add_argument("--clean-git-status", action="store_true", help="operator confirms target vault Git status is clean before queue execution")
+    live_scheduler.add_argument("--max-queues", type=int, default=1, help="maximum queue files to process in this scheduler tick")
+    live_scheduler.add_argument("--max-items", type=int, help="optional maximum queue entries to execute per queue")
+    live_scheduler.add_argument("--ledger-dir", help="optional directory for per-queue ledgers; defaults under instance data")
+    live_scheduler.add_argument("--max-retries", type=int, default=3, help="maximum retry attempts for retryable blocked entries")
+
     plan_sources = sub.add_parser(
         "plan-source-connectors",
         help="dry-run plan governed source connectors for a domain investigation request",
@@ -806,6 +827,25 @@ def main(argv: list[str] | None = None) -> int:
             clean_git_status=args.clean_git_status,
             max_items=args.max_items,
             ledger_path=Path(args.ledger) if args.ledger else None,
+            max_retries=args.max_retries,
+        )
+    if args.command == "live-autonomy-tick":
+        return _cmd_live_autonomy_tick(
+            instance_root=Path(args.instance),
+            queue_dir=Path(args.queue_dir),
+            queue_glob=args.queue_glob,
+            config_path=Path(args.config),
+            yyyymmdd=args.date,
+            vault_root=Path(args.vault_root),
+            credential_ref=args.credential_ref,
+            standing_approval_policy=Path(args.standing_approval_policy),
+            remote_name=args.remote_name,
+            branch=args.branch,
+            allow_real_obsidian_vault=args.allow_real_obsidian_vault,
+            clean_git_status=args.clean_git_status,
+            max_queues=args.max_queues,
+            max_items=args.max_items,
+            ledger_dir=Path(args.ledger_dir) if args.ledger_dir else None,
             max_retries=args.max_retries,
         )
     if args.command == "plan-source-connectors":
@@ -1995,6 +2035,124 @@ def _write_live_ideation_persist_report(*, instance: InstanceRoot, yyyymmdd: str
     return report_path
 
 
+def _write_live_autonomy_scheduler_tick_report(*, instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "live-autonomy-scheduler-tick-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "live-autonomy-scheduler-tick-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                "# Live Autonomy Scheduler Tick Report",
+                "",
+                f"- status: `{report['status']}`",
+                f"- scheduler_ready: `{str(report['scheduler_ready']).lower()}`",
+                f"- discovered_queue_count: `{report['discovered_queue_count']}`",
+                f"- processed_queue_count: `{report['processed_queue_count']}`",
+                f"- attention_count: `{report['attention_count']}`",
+                f"- next_scheduler_action: `{report['next_scheduler_action']}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _cmd_live_autonomy_tick(
+    *,
+    instance_root: Path,
+    queue_dir: Path,
+    queue_glob: str,
+    config_path: Path,
+    yyyymmdd: str,
+    vault_root: Path,
+    credential_ref: str,
+    standing_approval_policy: Path,
+    remote_name: str,
+    branch: str,
+    allow_real_obsidian_vault: bool,
+    clean_git_status: bool,
+    max_queues: int,
+    max_items: int | None,
+    ledger_dir: Path | None,
+    max_retries: int,
+) -> int:
+    """Run one cron-ready scheduler tick over discovered live autonomy queues."""
+
+    instance = InstanceRoot(instance_root)
+    discovered = sorted(path for path in queue_dir.glob(queue_glob) if path.is_file()) if queue_dir.exists() else []
+    selected = discovered[: max(0, max_queues)]
+    queue_results: list[dict[str, object]] = []
+    for queue_path in selected:
+        queue_id = queue_path.stem
+        try:
+            queue_data = json.loads(queue_path.read_text(encoding="utf-8"))
+            queue_id = str(queue_data.get("queue_id") or queue_path.stem)
+        except json.JSONDecodeError:
+            queue_results.append(
+                {
+                    "queue_path": str(queue_path),
+                    "queue_id": queue_id,
+                    "status": "blocked",
+                    "reason_code": "queue_json_invalid",
+                    "queue_run_report_ref": None,
+                    "watchdog_report_ref": None,
+                }
+            )
+            continue
+        ledger_path = (ledger_dir / f"{queue_id}.json") if ledger_dir else None
+        status_code = _cmd_live_autonomy_run(
+            instance_root=instance.root,
+            queue_path=queue_path,
+            config_path=config_path,
+            yyyymmdd=yyyymmdd,
+            vault_root=vault_root,
+            credential_ref=credential_ref,
+            standing_approval_policy=standing_approval_policy,
+            remote_name=remote_name,
+            branch=branch,
+            allow_real_obsidian_vault=allow_real_obsidian_vault,
+            clean_git_status=clean_git_status,
+            max_items=max_items,
+            ledger_path=ledger_path,
+            max_retries=max_retries,
+        )
+        run_report_path = instance.reports_dir / "run-summaries" / yyyymmdd / "live-autonomy-run-report.json"
+        run_report = json.loads(run_report_path.read_text(encoding="utf-8")) if run_report_path.exists() else {}
+        queue_results.append(
+            {
+                "queue_path": str(queue_path),
+                "queue_id": queue_id,
+                "status": "completed" if status_code == 0 else "attention_required",
+                "reason_code": None if status_code == 0 else "queue_run_attention_required",
+                "queue_run_report_ref": str(run_report_path.relative_to(instance.root)) if run_report_path.exists() else None,
+                "watchdog_report_ref": run_report.get("watchdog_report_ref"),
+                "completed_count": run_report.get("completed_count", 0),
+                "blocked_count": run_report.get("blocked_count", 0),
+                "retry_eligible_count": run_report.get("retry_eligible_count", 0),
+            }
+        )
+    attention_count = sum(1 for result in queue_results if result["status"] != "completed")
+    tick_report = {
+        "schema_id": "hisys.live_autonomy.scheduler_tick_report",
+        "schema_version": "0.1.0",
+        "status": "idle" if not selected and attention_count == 0 else ("completed" if attention_count == 0 else "attention_required"),
+        "scheduler_ready": True,
+        "queue_dir": str(queue_dir),
+        "queue_glob": queue_glob,
+        "discovered_queue_count": len(discovered),
+        "processed_queue_count": len(selected),
+        "attention_count": attention_count,
+        "next_scheduler_action": "sleep" if attention_count == 0 else "review_queue_results",
+        "queue_results": queue_results,
+    }
+    report_path = _write_live_autonomy_scheduler_tick_report(instance=instance, yyyymmdd=yyyymmdd, report=tick_report)
+    print(f"live autonomy tick: status={tick_report['status']} processed={len(selected)} attention={attention_count} report={report_path}")
+    return 0 if attention_count == 0 else 2
+
+
 def _cmd_live_autonomy_run(
     *,
     instance_root: Path,
@@ -2076,6 +2234,9 @@ def _cmd_live_autonomy_run(
                 "pipeline_report_ref": None,
                 "attempt_count": int(ledger_entry.get("attempt_count", 0)),
                 "retry_eligible": False,
+                "external_call_made": False,
+                "mutation_performed": False,
+                "network_push_performed": False,
             }
             results.append(result)
             ledger_entry = _live_autonomy_mark_transition(ledger_entry, state="blocked", yyyymmdd=yyyymmdd, reason_code="queue_entry_missing_request_or_doi")

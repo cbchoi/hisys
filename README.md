@@ -318,6 +318,14 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   retry counts, ledger ref, and `next_scheduler_action`, so cron/watchdog wrappers
   can decide whether to sleep, retry, or request operator review without parsing
   every per-entry pipeline report.
+- Increment **Live-S scheduler tick wrapper** -
+  `hisys live-autonomy-tick` is a cron-ready wrapper that discovers queue JSON
+  files from `--queue-dir`, processes up to `--max-queues` through the governed
+  `live-autonomy-run` path, and writes
+  `live-autonomy-scheduler-tick-report.json|md`. An empty queue directory is an
+  explicit idle success with `next_scheduler_action=sleep`; queue runs that need
+  operator attention are summarized with queue report/watchdog refs and exit code
+  `2` for external schedulers.
 - Increment **Live-Obsidian-Config-A scaffold** -
   `docs/use-cases/obsidian-live-research-layout.md` captures the Claude-reviewed
   Obsidian live-research structure before implementation. It defines

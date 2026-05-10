@@ -884,3 +884,91 @@ def test_live_autonomy_run_skips_retry_exhausted_entries(tmp_path: Path, monkeyp
     watchdog = json.loads((tmp_path / "instance" / report["watchdog_report_ref"]).read_text(encoding="utf-8"))
     assert watchdog["scheduler_ready"] is True
     assert watchdog["health_status"] == "ok"
+
+
+def test_live_autonomy_tick_reports_idle_when_no_queues(tmp_path: Path) -> None:
+    queue_dir = tmp_path / "queues"
+    queue_dir.mkdir()
+    config_path = tmp_path / "source-connectors.yaml"
+    config_path.write_text(Path("examples/instance/config/source-connectors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    policy_path = tmp_path / "standing-approval.json"
+    policy_path.write_text(json.dumps({"status": "approved", "approval_ref": "STANDING-LIVE-SCHEDULER"}), encoding="utf-8")
+
+    result = main(
+        [
+            "live-autonomy-tick",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--queue-dir",
+            str(queue_dir),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--vault-root",
+            str(tmp_path / "vault"),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--standing-approval-policy",
+            str(policy_path),
+        ]
+    )
+
+    assert result == 0
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-scheduler-tick-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "idle"
+    assert report["scheduler_ready"] is True
+    assert report["discovered_queue_count"] == 0
+    assert report["processed_queue_count"] == 0
+    assert report["next_scheduler_action"] == "sleep"
+
+
+def test_live_autonomy_tick_runs_queue_and_reports_attention(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_IDEATION", "1")
+    queue_dir = tmp_path / "queues"
+    queue_dir.mkdir()
+    queue_path = queue_dir / "queue.json"
+    queue_path.write_text(
+        json.dumps(
+            {
+                "queue_id": "LIVE-SCHEDULER-Q-001",
+                "entries": [{"entry_id": "missing-input", "doi": "10.0000/hisys.fixture.formalism"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "source-connectors.yaml"
+    config_path.write_text(Path("examples/instance/config/source-connectors.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    policy_path = tmp_path / "standing-approval.json"
+    policy_path.write_text(json.dumps({"status": "approved", "approval_ref": "STANDING-LIVE-SCHEDULER"}), encoding="utf-8")
+
+    result = main(
+        [
+            "live-autonomy-tick",
+            "--instance",
+            str(tmp_path / "instance"),
+            "--queue-dir",
+            str(queue_dir),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260510",
+            "--vault-root",
+            str(tmp_path / "vault"),
+            "--credential-ref",
+            "env:HISYS_OBSIDIAN_GIT_SSH_KEY",
+            "--standing-approval-policy",
+            str(policy_path),
+        ]
+    )
+
+    assert result == 2
+    report = json.loads((tmp_path / "instance" / "reports" / "run-summaries" / "20260510" / "live-autonomy-scheduler-tick-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "attention_required"
+    assert report["processed_queue_count"] == 1
+    assert report["attention_count"] == 1
+    assert report["queue_results"][0]["status"] == "attention_required"
+    assert report["queue_results"][0]["watchdog_report_ref"].endswith("live-autonomy-watchdog-report.json")
+    watchdog = json.loads((tmp_path / "instance" / report["queue_results"][0]["watchdog_report_ref"]).read_text(encoding="utf-8"))
+    assert watchdog["scheduler_ready"] is True
+    assert watchdog["health_status"] == "attention_required"
