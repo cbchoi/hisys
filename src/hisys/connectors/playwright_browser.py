@@ -112,6 +112,9 @@ class PlaywrightBrowserConnector:
         transport_kind: str,
     ) -> PlaywrightBrowserEvidencePackage:
         normalized_text = _normalize_visible_text(visible_text)
+        evidence_text = normalized_text[:1200] or "[no visible text captured; page may be empty, blocked, or unavailable]"
+        page_capture_status = "captured_visible_text" if normalized_text else "empty_or_blocked_page"
+        evidence_confidence = "medium" if normalized_text else "low"
         digest = hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()
         access_id = f"ACCESS-{request_id}-{self.connector_id}"
         evidence_id = f"EVID-{request_id}-{self.connector_id}"
@@ -134,16 +137,16 @@ class PlaywrightBrowserConnector:
         evidence = SourceEvidenceItem(
             evidence_id=evidence_id,
             access_ref=access_ref,
-            quoted_text=normalized_text[:1200],
+            quoted_text=evidence_text,
             interpretation=(
                 "Read-only Playwright browser collection captured visible page text from a company/publisher source "
                 "for downstream actual-data investigation."
             ),
             claim_type="source_evidence",
-            confidence="medium",
+            confidence=evidence_confidence,
             uncertainty=(
-                f"Browser transport kind={transport_kind}; extracted visible text requires downstream corroboration "
-                "before Chief Editor acceptance."
+                f"Browser transport kind={transport_kind}; page_capture_status={page_capture_status}; "
+                "extracted visible text requires downstream corroboration before Chief Editor acceptance."
             ),
         )
         output_dir = output_root / "runtime-boundary" / "source-connectors" / yyyymmdd

@@ -187,7 +187,11 @@ publication_or_live_action_approved=false
 
 If `status=blocked`, inspect `blockers` in the JSON/Markdown report. Common
 blockers are missing Playwright installation, an invalid config, or a disabled
-connector.
+connector. During a live run, some corporate/security-filtered networks can
+return an empty or security-warning page; Hisys records this as low-confidence
+`empty_or_blocked_page` evidence instead of crashing, and the downstream evidence
+sufficiency gate may still block the final decision until better public sources
+are provided.
 
 ## 6. Approve the run window and enable the manual smoke gate
 
