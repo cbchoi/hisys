@@ -8,6 +8,7 @@ from hisys.schemas.investment import (
     OrderTicketDraft,
     ScenarioAssessment,
 )
+from hisys.schemas.lapidary_governance import EvidenceChainRecord, HisysMode
 
 
 def _signal(signal_id: str = "SIG-SP500-GDP-001") -> InvestmentSignal:
@@ -120,3 +121,80 @@ def test_investment_decision_packet_requires_evidence_for_signals_and_scenarios(
                 evidence_refs=[],
             )
         )
+
+
+def _decision_chain(**overrides) -> EvidenceChainRecord:
+    data = {
+        "chain_id": "CHAIN-IDP-SP500-001",
+        "producer_id": "hisys-investment-decision-support",
+        "status": "active",
+        "decision_ref": "canonical/decisions/DECISION-IDP-SP500-001.md",
+        "synthesis_refs": ["canonical/synthesis/SYN-IDP-SP500-001.md"],
+        "claim_ledger_refs": ["canonical/claims/LEDGER-IDP-SP500-001.md#C-IDP-SP500-001"],
+        "evidence_refs": ["canonical/evidence/EVID-SP500-GDP-001.md"],
+        "source_refs": ["canonical/sources/SRC-SP500-GDP-001.md"],
+    }
+    data.update(overrides)
+    return EvidenceChainRecord(**data)
+
+
+def test_investment_decision_packet_hisys_mode_defaults_to_selective_none():
+    packet = _packet()
+
+    assert packet.hisys_mode.level == "none"
+    assert packet.hisys_mode.selective_governance is True
+    assert packet.hisys_mode.applies_to_all_notes is False
+    assert packet.evidence_chain is None
+
+    dumped = packet.model_dump(mode="json")
+    assert dumped["hisys_mode"]["level"] == "none"
+    assert dumped["evidence_chain"] is None
+
+
+def test_investment_decision_packet_decision_mode_requires_decision_level_evidence_chain():
+    with pytest.raises(ValidationError, match="hisys_mode.level='decision'"):
+        _packet(hisys_mode=HisysMode(level="decision"))
+
+
+def test_investment_decision_packet_publication_mode_requires_decision_level_evidence_chain():
+    with pytest.raises(ValidationError, match="hisys_mode.level='publication'"):
+        _packet(hisys_mode=HisysMode(level="publication"))
+
+
+def test_investment_decision_packet_decision_mode_rejects_stone_only_evidence_chain():
+    stone_chain = EvidenceChainRecord(
+        chain_id="CHAIN-IDP-SP500-STONE-001",
+        producer_id="hisys-investment-decision-support",
+        status="active",
+        decision_ref=None,
+        synthesis_refs=[],
+        claim_ledger_refs=[],
+        evidence_refs=["canonical/evidence/EVID-SP500-GDP-001.md"],
+        source_refs=["canonical/sources/SRC-SP500-GDP-001.md"],
+    )
+
+    with pytest.raises(ValidationError, match="decision-level EvidenceChainRecord"):
+        _packet(hisys_mode=HisysMode(level="decision"), evidence_chain=stone_chain)
+
+
+def test_investment_decision_packet_decision_mode_accepts_decision_level_evidence_chain():
+    packet = _packet(
+        hisys_mode=HisysMode(level="decision"),
+        evidence_chain=_decision_chain(),
+    )
+
+    assert packet.hisys_mode.level == "decision"
+    assert packet.evidence_chain is not None
+    assert packet.evidence_chain.decision_ref is not None
+    dumped = packet.model_dump(mode="json")
+    assert dumped["hisys_mode"]["level"] == "decision"
+    assert dumped["evidence_chain"]["decision_ref"] == (
+        "canonical/decisions/DECISION-IDP-SP500-001.md"
+    )
+
+
+def test_investment_decision_packet_lower_modes_allow_omitted_evidence_chain():
+    for level in ("none", "stone", "claim", "synthesis"):
+        packet = _packet(hisys_mode=HisysMode(level=level))
+        assert packet.hisys_mode.level == level
+        assert packet.evidence_chain is None

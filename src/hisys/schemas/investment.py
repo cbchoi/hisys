@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..core.ids import validate_id
 from .base import BaseRecord
+from .lapidary_governance import EvidenceChainRecord, HisysMode
 
 InvestmentDirection = Literal["bullish", "neutral", "bearish", "mixed", "unknown"]
 InvestmentAction = Literal["buy", "staged_buy", "hold", "reduce", "sell", "watch", "no_action"]
@@ -161,6 +162,8 @@ class InvestmentDecisionPacket(BaseRecord):
     execution_authorized: bool = False
     publication_or_live_action_approved: bool = False
     disclaimers: list[str] = Field(default_factory=lambda: ["not financial advice", "no autonomous execution"])
+    hisys_mode: HisysMode = Field(default_factory=HisysMode)
+    evidence_chain: EvidenceChainRecord | None = None
 
     @field_validator("packet_id")
     @classmethod
@@ -193,4 +196,21 @@ class InvestmentDecisionPacket(BaseRecord):
             raise ValueError("InvestmentDecisionPacket disclaimers must include 'not financial advice'")
         if "no autonomous execution" not in {item.lower() for item in self.disclaimers}:
             raise ValueError("InvestmentDecisionPacket disclaimers must include 'no autonomous execution'")
+        if self.hisys_mode.level in ("decision", "publication"):
+            if self.evidence_chain is None:
+                raise ValueError(
+                    f"hisys_mode.level={self.hisys_mode.level!r} requires a decision-level EvidenceChainRecord"
+                )
+            chain = self.evidence_chain
+            if (
+                chain.decision_ref is None
+                or not chain.synthesis_refs
+                or not chain.claim_ledger_refs
+                or not chain.evidence_refs
+                or not chain.source_refs
+            ):
+                raise ValueError(
+                    f"hisys_mode.level={self.hisys_mode.level!r} requires a decision-level EvidenceChainRecord "
+                    "(decision_ref plus synthesis_refs, claim_ledger_refs, evidence_refs, source_refs)"
+                )
         return self
