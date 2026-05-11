@@ -71,7 +71,7 @@ Recommended tool set:
 | `hisys_public_browser_readiness` | Check config/profile/import readiness | No |
 | `hisys_public_browser_run` | Run governed public browser chain | Yes, only after gates |
 | `hisys_get_run_summary` | Read public run summary artifact | No |
-| `hisys_get_artifact` | Read a specific JSON/Markdown artifact by safe ref | No |
+| `hisys_show_artifact` | Read a specific JSON/Markdown artifact by safe ref | No |
 | `hisys_list_run_artifacts` | List artifacts for a date/request id | No |
 
 Optional later tools:
@@ -126,7 +126,7 @@ Hermes should then call Hisys tools in this order:
 2. hisys_public_browser_readiness
 3. hisys_public_browser_run
 4. hisys_get_run_summary
-5. hisys_get_artifact for final Chief Editor review if needed
+5. hisys_list_run_artifacts and hisys_show_artifact for final Chief Editor review if needed
 ```
 
 Hermes should answer the user with:
@@ -210,6 +210,8 @@ mcp_hisys_validate_public_browser_profile
 mcp_hisys_public_browser_readiness
 mcp_hisys_public_browser_run
 mcp_hisys_get_run_summary
+mcp_hisys_list_run_artifacts
+mcp_hisys_show_artifact
 ```
 
 ### Phase B: Native Python API tools

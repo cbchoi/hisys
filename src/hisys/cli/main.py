@@ -237,6 +237,34 @@ def _build_parser() -> argparse.ArgumentParser:
     public_readiness.add_argument("--profile", type=Path, required=True, help="public browser profile YAML path")
     public_readiness.add_argument("--date", required=True, help="YYYYMMDD output partition")
 
+    get_run_summary = sub.add_parser(
+        "get-run-summary",
+        help="print a public browser run summary artifact for agent consumption",
+    )
+    get_run_summary.add_argument("--instance", required=True, help="runtime instance root containing reports/")
+    get_run_summary.add_argument("--date", required=True, help="YYYYMMDD run partition")
+    get_run_summary.add_argument(
+        "--format",
+        choices=["json", "markdown"],
+        default="json",
+        help="summary format to print",
+    )
+
+    list_run_artifacts = sub.add_parser(
+        "list-run-artifacts",
+        help="list safe relative artifact refs for a date/request id",
+    )
+    list_run_artifacts.add_argument("--instance", required=True, help="runtime instance root containing artifacts")
+    list_run_artifacts.add_argument("--date", required=True, help="YYYYMMDD run partition")
+    list_run_artifacts.add_argument("--request-id", help="optional request id filter")
+
+    show_artifact = sub.add_parser(
+        "show-artifact",
+        help="print a safe relative JSON/Markdown artifact under the runtime instance",
+    )
+    show_artifact.add_argument("--instance", required=True, help="runtime instance root containing artifacts")
+    show_artifact.add_argument("--ref", required=True, help="safe relative artifact ref to print")
+
     collect = sub.add_parser("collect", help="run fixture-backed Investigator collection")
     collect.add_argument("--instance", required=True, help="runtime instance root for outputs")
     collect.add_argument(
@@ -994,6 +1022,20 @@ def main(argv: list[str] | None = None) -> int:
             profile_path=args.profile,
             yyyymmdd=args.date,
         )
+    if args.command == "get-run-summary":
+        return _cmd_get_run_summary(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            output_format=args.format,
+        )
+    if args.command == "list-run-artifacts":
+        return _cmd_list_run_artifacts(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+        )
+    if args.command == "show-artifact":
+        return _cmd_show_artifact(instance_root=Path(args.instance), ref=args.ref)
     if args.command == "collect":
         config_root = Path(args.config_from) if args.config_from else Path(args.instance)
         return _cmd_collect(
@@ -3682,6 +3724,107 @@ def _write_search_topic_report(instance: InstanceRoot, yyyymmdd: str, report: di
         encoding="utf-8",
     )
     return report_artifact
+
+
+def _safe_artifact_path(instance: InstanceRoot, ref: str) -> Path | None:
+    candidate = (instance.root / ref).resolve()
+    root = instance.root.resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    if candidate.suffix not in {".json", ".md"}:
+        return None
+    return candidate
+
+
+def _safe_artifact_ref(instance: InstanceRoot, path: Path) -> str:
+    return path.resolve().relative_to(instance.root.resolve()).as_posix()
+
+
+def _cmd_get_run_summary(*, instance_root: Path, yyyymmdd: str, output_format: str) -> int:
+    instance = InstanceRoot(instance_root)
+    suffix = "md" if output_format == "markdown" else "json"
+    ref = f"reports/run-summaries/{yyyymmdd}/public-browser-run-summary.{suffix}"
+    path = _safe_artifact_path(instance, ref)
+    if path is None or not path.exists():
+        print(f"run summary not found: {ref}", file=sys.stderr)
+        return 1
+    print(path.read_text(encoding="utf-8"), end="")
+    return 0
+
+
+def _artifact_kind(ref: str) -> str:
+    if ref.startswith("reports/run-summaries/"):
+        return "run_summary"
+    if ref.startswith("data/chief-editor-final-browser-reviews/"):
+        return "final_chief_editor_review"
+    if ref.startswith("data/browser-dars-revision-resolutions/"):
+        return "browser_dars_revision_resolution"
+    if ref.startswith("data/dars-browser-reviews/"):
+        return "dars_browser_review"
+    if ref.startswith("data/chief-editor-reviews/"):
+        return "chief_editor_review"
+    if ref.startswith("data/evidence-packages/"):
+        return "evidence_package"
+    if ref.startswith("data/source-access/"):
+        return "source_access"
+    if ref.startswith("data/investigation-memos/"):
+        return "investigation_memo"
+    return "artifact"
+
+
+def _cmd_list_run_artifacts(*, instance_root: Path, yyyymmdd: str, request_id: str | None) -> int:
+    instance = InstanceRoot(instance_root)
+    roots = [
+        instance.root / "reports" / "run-summaries" / yyyymmdd,
+        instance.root / "data" / "source-access" / yyyymmdd,
+        instance.root / "data" / "evidence-packages" / yyyymmdd,
+        instance.root / "data" / "investigation-memos" / yyyymmdd,
+        instance.root / "data" / "chief-editor-reviews" / yyyymmdd,
+        instance.root / "data" / "dars-browser-reviews" / yyyymmdd,
+        instance.root / "data" / "browser-dars-revision-resolutions" / yyyymmdd,
+        instance.root / "data" / "chief-editor-final-browser-reviews" / yyyymmdd,
+    ]
+    artifacts: list[dict[str, object]] = []
+    for root in roots:
+        if not root.exists():
+            continue
+        for path in sorted([*root.glob("*.json"), *root.glob("*.md")]):
+            ref = _safe_artifact_ref(instance, path)
+            if request_id and request_id not in path.name and "public-browser" not in path.name:
+                continue
+            artifacts.append(
+                {
+                    "ref": ref,
+                    "kind": _artifact_kind(ref),
+                    "format": path.suffix.lstrip("."),
+                    "bytes": path.stat().st_size,
+                }
+            )
+    payload = {
+        "schema_id": "hisys.run_artifact_index",
+        "date": yyyymmdd,
+        "request_id": request_id,
+        "artifacts": artifacts,
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+    return 0
+
+
+def _cmd_show_artifact(*, instance_root: Path, ref: str) -> int:
+    instance = InstanceRoot(instance_root)
+    path = _safe_artifact_path(instance, ref)
+    if path is None:
+        print(f"unsafe artifact ref: {ref}", file=sys.stderr)
+        return 2
+    if not path.exists() or not path.is_file():
+        print(f"artifact not found: {ref}", file=sys.stderr)
+        return 1
+    print(path.read_text(encoding="utf-8"), end="")
+    return 0
 
 
 def _cmd_public_browser_readiness(

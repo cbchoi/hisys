@@ -234,6 +234,27 @@ $HISYS_INSTANCE/reports/run-summaries/20260511/public-browser-run-summary.md
 $HISYS_INSTANCE/reports/run-summaries/20260511/public-browser-run-summary.json
 ```
 
+For CLI-first agents such as Hermes, use the artifact helper commands instead
+of guessing paths:
+
+```bash
+hisys get-run-summary \
+  --instance "$HISYS_INSTANCE" \
+  --date 20260511
+
+hisys list-run-artifacts \
+  --instance "$HISYS_INSTANCE" \
+  --date 20260511 \
+  --request-id HISYS-REQ-PUBLIC-DEMO-001
+
+hisys show-artifact \
+  --instance "$HISYS_INSTANCE" \
+  --ref data/chief-editor-final-browser-reviews/20260511/FINAL-CHIEF-REVIEW-HISYS-REQ-PUBLIC-DEMO-001-BROWSER.json
+```
+
+`show-artifact` accepts only safe relative JSON/Markdown refs under the runtime
+instance.
+
 The run also produces intermediate and review artifacts, including:
 
 ```text
