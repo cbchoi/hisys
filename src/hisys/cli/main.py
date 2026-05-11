@@ -95,6 +95,7 @@ from ..schemas import (
     HisysToolResult,
     InvestigationDataPackage,
     InvestmentDecisionPacket,
+    InvestmentWeightPolicy,
     ExtractedSignal,
     PerspectiveProfile,
     RawObservation,
@@ -256,6 +257,7 @@ def _cmd_build_investment_decision_packet(
     instance_root: Path,
     packet_path: Path,
     yyyymmdd: str,
+    weight_policy_path: Path | None = None,
 ) -> int:
     """Validate and persist a human-gated investment packet product boundary."""
 
@@ -266,6 +268,12 @@ def _cmd_build_investment_decision_packet(
     output_dir.mkdir(parents=True, exist_ok=True)
     packet_json_path = output_dir / f"{packet.packet_id}.json"
     packet_md_path = packet_json_path.with_suffix(".md")
+    weight_policy_ref: str | None = None
+    if weight_policy_path is not None:
+        weight_policy = InvestmentWeightPolicy.model_validate_json(weight_policy_path.read_text(encoding="utf-8"))
+        weight_policy_json_path = output_dir / f"{weight_policy.policy_id}.json"
+        weight_policy_json_path.write_text(_round_trip_record_json(weight_policy) + "\n", encoding="utf-8")
+        weight_policy_ref = _safe_relative_ref(instance.root, weight_policy_json_path)
     packet_json_path.write_text(_round_trip_record_json(packet) + "\n", encoding="utf-8")
     packet_md_path.write_text(_render_investment_decision_packet_md(packet), encoding="utf-8")
 
@@ -282,6 +290,8 @@ def _cmd_build_investment_decision_packet(
         "asset": packet.asset,
         "packet_ref": _safe_relative_ref(instance.root, packet_json_path),
         "packet_markdown_ref": _safe_relative_ref(instance.root, packet_md_path),
+        "packet_weight_policy_ref": packet.weight_policy_ref,
+        "weight_policy_ref": weight_policy_ref,
         "lapidary_audit_refs": audit_refs,
         "hisys_mode_level": packet.hisys_mode.level,
         "chief_editor_status": packet.chief_editor_status,
@@ -304,6 +314,8 @@ def _cmd_build_investment_decision_packet(
     print(f"investment decision packet: written packet_id={packet.packet_id}")
     print(f"packet_ref={report['packet_ref']}")
     print(f"report_ref={_safe_relative_ref(instance.root, report_path)}")
+    if weight_policy_ref is not None:
+        print(f"weight_policy_ref={weight_policy_ref}")
     print(f"execution_authorized={_bool_text(packet.execution_authorized)}")
     print(f"publication_or_live_action_approved={_bool_text(packet.publication_or_live_action_approved)}")
     print(f"human_approval_status={packet.human_approval.status}")
@@ -356,6 +368,8 @@ def _cmd_review_investment_decision_packet(
         "artifact_refs": {
             "packet_ref": report.get("packet_ref"),
             "packet_markdown_ref": report.get("packet_markdown_ref"),
+            "packet_weight_policy_ref": report.get("packet_weight_policy_ref"),
+            "weight_policy_ref": report.get("weight_policy_ref"),
             "report_ref": _safe_relative_ref(instance.root, report_path),
             "lapidary_audit_refs": report.get("lapidary_audit_refs", []),
         },
@@ -469,6 +483,7 @@ def _build_parser() -> argparse.ArgumentParser:
     investment_packet.add_argument("--instance", required=True, help="runtime instance root for outputs")
     investment_packet.add_argument("--date", required=True, help="YYYYMMDD output partition")
     investment_packet.add_argument("--packet", required=True, help="InvestmentDecisionPacket JSON input path")
+    investment_packet.add_argument("--weight-policy", help="optional InvestmentWeightPolicy JSON path to persist with the packet")
 
     review_investment_packet = sub.add_parser(
         "review-investment-decision-packet",
@@ -1268,6 +1283,7 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             packet_path=Path(args.packet),
             yyyymmdd=args.date,
+            weight_policy_path=Path(args.weight_policy) if args.weight_policy else None,
         )
     if args.command == "review-investment-decision-packet":
         return _cmd_review_investment_decision_packet(

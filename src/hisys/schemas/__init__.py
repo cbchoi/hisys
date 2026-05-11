@@ -18,6 +18,7 @@ from .investment import (
     HumanApprovalGate,
     InvestmentDecisionPacket,
     InvestmentSignal,
+    InvestmentWeightPolicy,
     OrderTicketDraft,
     ScenarioAssessment,
 )
@@ -70,6 +71,7 @@ __all__ = [
     "HumanApprovalGate",
     "InvestmentDecisionPacket",
     "InvestmentSignal",
+    "InvestmentWeightPolicy",
     "OrderTicketDraft",
     "ScenarioAssessment",
     "AppraiserSeparationPolicy",

@@ -5,6 +5,7 @@ from hisys.schemas.investment import (
     HumanApprovalGate,
     InvestmentDecisionPacket,
     InvestmentSignal,
+    InvestmentWeightPolicy,
     OrderTicketDraft,
     ScenarioAssessment,
 )
@@ -36,6 +37,7 @@ def _packet(**overrides) -> InvestmentDecisionPacket:
         "instrument_refs": ["SPY", "VOO"],
         "time_horizon": "6-12 months",
         "proposed_action": "staged_buy",
+        "weight_policy_ref": "IW-POLICY-SP500-BALANCED-001",
         "recommendation_summary": "Conditional staged exposure only if the human accepts valuation risk.",
         "confidence": 0.58,
         "evidence_score": 0.72,
@@ -86,6 +88,7 @@ def test_investment_decision_packet_serializes_human_gated_recommendation():
     assert dumped["schema_id"] == "hisys.investment_decision_packet"
     assert dumped["packet_id"] == "IDP-SP500-001"
     assert dumped["proposed_action"] == "staged_buy"
+    assert dumped["weight_policy_ref"] == "IW-POLICY-SP500-BALANCED-001"
     assert dumped["human_approval"]["required"] is True
     assert dumped["human_approval"]["status"] == "pending"
     assert dumped["publication_or_live_action_approved"] is False
@@ -97,6 +100,47 @@ def test_investment_decision_packet_serializes_human_gated_recommendation():
 def test_investment_decision_packet_blocks_execution_without_approved_human_gate():
     with pytest.raises(ValidationError, match="execution_authorized requires human_approval.status='approved'"):
         _packet(execution_authorized=True)
+
+
+def test_investment_weight_policy_serializes_product_profile():
+    policy = InvestmentWeightPolicy(
+        policy_id="IW-POLICY-SP500-BALANCED-001",
+        producer_id="hisys-investment-decision-support",
+        status="active",
+        profile_name="Balanced 6-12 month index decision support",
+        risk_tolerance="balanced",
+        time_horizon_profile="6-12 months",
+        evidence_weight=0.40,
+        risk_weight=0.25,
+        contradiction_weight=0.20,
+        confidence_weight=0.15,
+        contradiction_handling="require_human_review",
+        contradiction_threshold=0.60,
+    )
+
+    dumped = policy.model_dump(mode="json")
+
+    assert dumped["schema_id"] == "hisys.investment_weight_policy"
+    assert dumped["policy_id"] == "IW-POLICY-SP500-BALANCED-001"
+    assert dumped["risk_tolerance"] == "balanced"
+    assert dumped["contradiction_handling"] == "require_human_review"
+
+
+def test_investment_weight_policy_rejects_zero_total_weight():
+    with pytest.raises(ValidationError, match="InvestmentWeightPolicy requires positive total decision weight"):
+        InvestmentWeightPolicy(
+            policy_id="IW-POLICY-ZERO-001",
+            producer_id="hisys-investment-decision-support",
+            status="active",
+            profile_name="Invalid zero policy",
+            risk_tolerance="balanced",
+            time_horizon_profile="6-12 months",
+            evidence_weight=0.0,
+            risk_weight=0.0,
+            contradiction_weight=0.0,
+            confidence_weight=0.0,
+            contradiction_handling="require_human_review",
+        )
 
 
 def test_investment_decision_packet_blocks_order_draft_without_approval_and_dry_run():

@@ -31,6 +31,7 @@ asset
 instrument_refs
 time_horizon
 proposed_action
+weight_policy_ref
 recommendation_summary
 confidence
 evidence_score
@@ -72,7 +73,8 @@ and weighted-alternative audit records, and writes a compact boundary report:
 hisys build-investment-decision-packet \
   --instance "$HISYS_INSTANCE" \
   --date <YYYYMMDD> \
-  --packet packet-input.json
+  --packet packet-input.json \
+  --weight-policy investment-weight-policy.json
 
 hisys review-investment-decision-packet \
   --instance "$HISYS_INSTANCE" \
@@ -86,6 +88,7 @@ Artifacts:
 ```text
 runtime-boundary/investment-decisions/<YYYYMMDD>/<packet_id>.json
 runtime-boundary/investment-decisions/<YYYYMMDD>/<packet_id>.md
+runtime-boundary/investment-decisions/<YYYYMMDD>/<policy_id>.json           # when --weight-policy is supplied
 runtime-boundary/investment-decisions/<YYYYMMDD>/investment-decision-packet-report.json
 data/audit/<YYYYMMDD>/lapidary-governance/evidence-chains/<chain_id>.json
 data/audit/<YYYYMMDD>/lapidary-governance/weighted-alternatives/<alternative_id>.json
@@ -95,7 +98,10 @@ The command performs no external call, no live mutation, no publication, and no
 execution. It is a product artifact builder for human-reviewed decision support.
 The review command reads the persisted packet/report pair and prints a bounded
 operator summary for agent or human review; it also performs no mutation or
-external call.
+external call. `InvestmentWeightPolicy` externalizes the decision weighting
+profile (`risk_tolerance`, time horizon, evidence/risk/contradiction/confidence
+weights, contradiction handling), so product runs can cite a stable policy
+artifact instead of relying on implicit or hard-coded weighting assumptions.
 
 ## Example status progression
 

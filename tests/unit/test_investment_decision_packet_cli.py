@@ -19,6 +19,7 @@ def _packet_payload() -> dict:
         "instrument_refs": ["SPY", "VOO"],
         "time_horizon": "6-12 months",
         "proposed_action": "staged_buy",
+        "weight_policy_ref": "IW-POLICY-CLI-SP500-BALANCED-001",
         "recommendation_summary": "Conditional staged exposure only after human review accepts valuation risk.",
         "confidence": 0.58,
         "evidence_score": 0.72,
@@ -108,6 +109,23 @@ def _packet_payload() -> dict:
     }
 
 
+def _weight_policy_payload() -> dict:
+    return {
+        "policy_id": "IW-POLICY-CLI-SP500-BALANCED-001",
+        "producer_id": "hisys-investment-decision-support-cli-test",
+        "status": "active",
+        "profile_name": "Balanced S&P 500 6-12 month support",
+        "risk_tolerance": "balanced",
+        "time_horizon_profile": "6-12 months",
+        "evidence_weight": 0.40,
+        "risk_weight": 0.25,
+        "contradiction_weight": 0.20,
+        "confidence_weight": 0.15,
+        "contradiction_handling": "require_human_review",
+        "contradiction_threshold": 0.60,
+    }
+
+
 def test_build_investment_decision_packet_cli_writes_product_artifacts_and_audit(
     tmp_path: Path, capsys
 ) -> None:
@@ -162,6 +180,42 @@ def test_build_investment_decision_packet_cli_writes_product_artifacts_and_audit
     assert report["action_taken"] == "none"
     assert report["external_call_made"] is False
     assert report["mutation_performed"] is False
+
+
+def test_build_investment_decision_packet_cli_attaches_weight_policy(tmp_path: Path, capsys) -> None:
+    from hisys.cli.main import main
+
+    request_path = tmp_path / "packet-input.json"
+    policy_path = tmp_path / "weight-policy.json"
+    request_path.write_text(json.dumps(_packet_payload()), encoding="utf-8")
+    policy_path.write_text(json.dumps(_weight_policy_payload()), encoding="utf-8")
+
+    result = main(
+        [
+            "build-investment-decision-packet",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260512",
+            "--packet",
+            str(request_path),
+            "--weight-policy",
+            str(policy_path),
+        ]
+    )
+
+    assert result == 0
+    assert "weight_policy_ref=runtime-boundary/investment-decisions/20260512/IW-POLICY-CLI-SP500-BALANCED-001.json" in capsys.readouterr().out
+    report_json = tmp_path / "runtime-boundary" / "investment-decisions" / "20260512" / "investment-decision-packet-report.json"
+    persisted_policy = tmp_path / "runtime-boundary" / "investment-decisions" / "20260512" / "IW-POLICY-CLI-SP500-BALANCED-001.json"
+
+    assert persisted_policy.exists()
+    policy = json.loads(persisted_policy.read_text(encoding="utf-8"))
+    assert policy["schema_id"] == "hisys.investment_weight_policy"
+    assert policy["contradiction_handling"] == "require_human_review"
+    report = json.loads(report_json.read_text(encoding="utf-8"))
+    assert report["weight_policy_ref"] == "runtime-boundary/investment-decisions/20260512/IW-POLICY-CLI-SP500-BALANCED-001.json"
+    assert report["packet_weight_policy_ref"] == "IW-POLICY-CLI-SP500-BALANCED-001"
 
 
 def test_review_investment_decision_packet_cli_prints_operator_summary(tmp_path: Path, capsys) -> None:

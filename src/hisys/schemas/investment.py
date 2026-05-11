@@ -35,6 +35,8 @@ ApprovalScope = Literal[
     "manual_execution",
     "live_connector_execution",
 ]
+RiskTolerance = Literal["conservative", "balanced", "aggressive"]
+ContradictionHandling = Literal["penalize", "block_if_high", "require_human_review"]
 OrderSide = Literal["buy", "sell"]
 OrderType = Literal["market", "limit", "stop", "stop_limit"]
 
@@ -75,6 +77,44 @@ class ScenarioAssessment(BaseModel):
         if not value.startswith("CASE-"):
             raise ValueError(f"case_id must start with 'CASE-': {value!r}")
         return value
+
+
+class InvestmentWeightPolicy(BaseRecord):
+    """Product policy profile for weighting investment decision dimensions."""
+
+    REQUIREMENTS: ClassVar[tuple[str, ...]] = (
+        "HISYS-SCHEMA-001",
+        "HISYS-NFR-SEC-004",
+        "HISYS-FR-CE-002",
+    )
+
+    schema_id: str = "hisys.investment_weight_policy"
+    policy_id: str
+    profile_name: str
+    risk_tolerance: RiskTolerance
+    time_horizon_profile: str
+    evidence_weight: float = Field(ge=0.0, le=1.0)
+    risk_weight: float = Field(ge=0.0, le=1.0)
+    contradiction_weight: float = Field(ge=0.0, le=1.0)
+    confidence_weight: float = Field(ge=0.0, le=1.0)
+    contradiction_handling: ContradictionHandling = "require_human_review"
+    contradiction_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
+    notes: list[str] = Field(default_factory=list)
+
+    @field_validator("policy_id")
+    @classmethod
+    def _policy_id(cls, value: str) -> str:
+        validate_id(value)
+        if not value.startswith("IW-POLICY-"):
+            raise ValueError(f"policy_id must start with 'IW-POLICY-': {value!r}")
+        return value
+
+    @model_validator(mode="after")
+    def _positive_total_weight(self) -> "InvestmentWeightPolicy":
+        total = self.evidence_weight + self.risk_weight + self.contradiction_weight + self.confidence_weight
+        if total <= 0:
+            raise ValueError("InvestmentWeightPolicy requires positive total decision weight")
+        return self
 
 
 class HumanApprovalGate(BaseModel):
@@ -161,6 +201,7 @@ class InvestmentDecisionPacket(BaseRecord):
     instrument_refs: list[str] = Field(default_factory=list)
     time_horizon: str
     proposed_action: InvestmentAction
+    weight_policy_ref: str | None = None
     recommendation_summary: str
     confidence: float = Field(ge=0.0, le=1.0)
     evidence_score: float = Field(ge=0.0, le=1.0)
