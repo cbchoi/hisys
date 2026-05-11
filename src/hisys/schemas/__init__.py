@@ -13,6 +13,13 @@ from .signal import ExtractedSignal
 from .perspective import PerspectiveProfile
 from .memo import ZettelMemo
 from .alert import AlertDecisionRecord
+from .investment import (
+    HumanApprovalGate,
+    InvestmentDecisionPacket,
+    InvestmentSignal,
+    OrderTicketDraft,
+    ScenarioAssessment,
+)
 from .handoff import AgentHandoffPackage
 from .hermes_trace import HermesCollectionTrace
 from .audit import AuditEvent
@@ -49,6 +56,11 @@ __all__ = [
     "PerspectiveProfile",
     "ZettelMemo",
     "AlertDecisionRecord",
+    "HumanApprovalGate",
+    "InvestmentDecisionPacket",
+    "InvestmentSignal",
+    "OrderTicketDraft",
+    "ScenarioAssessment",
     "AgentHandoffPackage",
     "HermesCollectionTrace",
     "AuditEvent",

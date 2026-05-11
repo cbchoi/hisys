@@ -96,6 +96,13 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   `AlternativeDecisionSet`, full `DomainInvestigationResult`, and compact
   `HisysToolResult` projection. These schemas keep the MVP read-only by default
   and provide the contract for the future `investigate-domain` CLI/runtime flow.
+- Increment **Investment Decision Packet schema boundary** -
+  `hisys.schemas.investment` defines `InvestmentDecisionPacket`, evidence-backed
+  `InvestmentSignal`, bull/base/bear `ScenarioAssessment`, `HumanApprovalGate`,
+  and non-executing `OrderTicketDraft`. The schema supports buy/hold/sell-style
+  human-in-the-loop decision support while defaulting `execution_authorized=false`,
+  requiring human approval for consequential use, and preserving `not financial
+  advice` / `no autonomous execution` disclaimers.
 - Increment **Hisys MVP A2 domain investigation CLI boundary** -
   `hisys investigate-domain --request <json>` validates a
   `DomainInvestigationRequest`, writes request/result JSON and Markdown under
@@ -768,8 +775,8 @@ Mirrors `HISYS-REPO-001` (repository-structure baseline):
     src/hisys/
       core/        IDs, time, errors, result types
       schemas/     Pydantic v2 records (source, observation, signal,
-                   compliance, perspective, memo, alert, handoff, audit,
-                   hermes_trace)
+                   compliance, perspective, memo, alert, investment,
+                   handoff, audit, hermes_trace)
       registry/    source registry and web compliance collection gate
       adapters/    base + hardware/web/agent/Hermes mocks and runtime manager
       config/      runtime instance root, YAML source-registry loader,
