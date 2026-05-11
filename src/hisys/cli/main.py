@@ -66,6 +66,7 @@ from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
+from ..operations.lapidary_flow import build_weighted_alternative
 from ..investigator import (
     ClaimRecord,
     CollectionReport,
@@ -95,8 +96,13 @@ from ..schemas import (
     HisysToolResult,
     InvestigationDataPackage,
     InvestmentDecisionPacket,
+    InvestmentSignal,
     InvestmentWeightPolicy,
     ExtractedSignal,
+    HumanApprovalGate,
+    ScenarioAssessment,
+    EvidenceChainRecord,
+    HisysMode,
     PerspectiveProfile,
     RawObservation,
     SourceRegistryEntry,
@@ -252,18 +258,16 @@ def _render_investment_decision_packet_md(packet: InvestmentDecisionPacket) -> s
     return "\n".join(lines) + "\n"
 
 
-def _cmd_build_investment_decision_packet(
+def _persist_investment_decision_packet(
     *,
-    instance_root: Path,
-    packet_path: Path,
+    instance: InstanceRoot,
+    packet: InvestmentDecisionPacket,
     yyyymmdd: str,
     weight_policy_path: Path | None = None,
-) -> int:
-    """Validate and persist a human-gated investment packet product boundary."""
-
-    instance = InstanceRoot(instance_root)
-    packet = InvestmentDecisionPacket.model_validate_json(packet_path.read_text(encoding="utf-8"))
-
+    workflow: str = "investment_decision_packet_build",
+    input_evidence_package_refs: list[str] | None = None,
+    fixture_backend_used: bool | None = None,
+) -> tuple[dict, Path, Path, str | None]:
     output_dir = instance.runtime_boundary_dir / "investment-decisions" / yyyymmdd
     output_dir.mkdir(parents=True, exist_ok=True)
     packet_json_path = output_dir / f"{packet.packet_id}.json"
@@ -288,12 +292,15 @@ def _cmd_build_investment_decision_packet(
 
     report = {
         "schema_id": "hisys.investment_decision_packet_report",
+        "workflow": workflow,
         "packet_id": packet.packet_id,
         "asset": packet.asset,
         "packet_ref": _safe_relative_ref(instance.root, packet_json_path),
         "packet_markdown_ref": _safe_relative_ref(instance.root, packet_md_path),
         "packet_weight_policy_ref": packet.weight_policy_ref,
         "weight_policy_ref": weight_policy_ref,
+        "input_evidence_package_refs": input_evidence_package_refs or [],
+        "fixture_backend_used": fixture_backend_used,
         "lapidary_audit_refs": audit_refs,
         "hisys_mode_level": packet.hisys_mode.level,
         "chief_editor_status": packet.chief_editor_status,
@@ -312,6 +319,26 @@ def _cmd_build_investment_decision_packet(
     }
     report_path = output_dir / "investment-decision-packet-report.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return report, report_path, packet_json_path, weight_policy_ref
+
+
+def _cmd_build_investment_decision_packet(
+    *,
+    instance_root: Path,
+    packet_path: Path,
+    yyyymmdd: str,
+    weight_policy_path: Path | None = None,
+) -> int:
+    """Validate and persist a human-gated investment packet product boundary."""
+
+    instance = InstanceRoot(instance_root)
+    packet = InvestmentDecisionPacket.model_validate_json(packet_path.read_text(encoding="utf-8"))
+    report, report_path, _packet_json_path, weight_policy_ref = _persist_investment_decision_packet(
+        instance=instance,
+        packet=packet,
+        yyyymmdd=yyyymmdd,
+        weight_policy_path=weight_policy_path,
+    )
 
     print(f"investment decision packet: written packet_id={packet.packet_id}")
     print(f"packet_ref={report['packet_ref']}")
@@ -321,6 +348,153 @@ def _cmd_build_investment_decision_packet(
     print(f"execution_authorized={_bool_text(packet.execution_authorized)}")
     print(f"publication_or_live_action_approved={_bool_text(packet.publication_or_live_action_approved)}")
     print(f"human_approval_status={packet.human_approval.status}")
+    print("action_taken=none")
+    return 0
+
+
+def _investment_id_suffix(asset: str) -> str:
+    id_part = "".join(ch for ch in asset.upper() if ch.isalnum())
+    if not id_part:
+        id_part = "ASSET"
+    return id_part[:24]
+
+
+def _cmd_run_investment_decision_dry_run(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    asset: str,
+    instruments: list[str],
+    time_horizon: str,
+    evidence_package_paths: list[Path],
+    weight_policy_path: Path,
+) -> int:
+    """Assemble a human-gated investment packet from read-only evidence artifacts."""
+
+    if not evidence_package_paths:
+        raise ValueError("run-investment-decision-dry-run requires at least one evidence package")
+    instance = InstanceRoot(instance_root)
+    packages = [EvidencePackage.model_validate_json(path.read_text(encoding="utf-8")) for path in evidence_package_paths]
+    if any(package.external_side_effects for package in packages):
+        raise ValueError("investment dry-run evidence packages must not report external_side_effects")
+    first_package = packages[0]
+    if not first_package.claims:
+        raise ValueError("investment dry-run requires at least one claim")
+    if not first_package.evidence:
+        raise ValueError("investment dry-run requires at least one evidence item")
+    claim = first_package.claims[0]
+    evidence_item = first_package.evidence[0]
+    source_ref = evidence_item.source_id or evidence_item.url or evidence_item.path
+    if not source_ref:
+        raise ValueError("investment dry-run evidence items require source_id, url, or path")
+
+    suffix = _investment_id_suffix(asset)
+    policy = InvestmentWeightPolicy.model_validate_json(weight_policy_path.read_text(encoding="utf-8"))
+    evidence_score = min(1.0, max(0.0, claim.confidence))
+    contradiction_score = 0.5 if first_package.open_questions else 0.35
+    risk_score = max(0.35, contradiction_score)
+    confidence = round((evidence_score + max(0.0, 1.0 - contradiction_score)) / 2, 2)
+    chain = EvidenceChainRecord(
+        chain_id=f"CHAIN-INVDRY-{suffix}-001",
+        producer_id="hisys-investment-decision-dry-run",
+        status="active",
+        decision_ref=f"ALERT-INVDRY-{suffix}-001",
+        synthesis_refs=[first_package.package_id],
+        claim_ledger_refs=[claim.claim_id],
+        evidence_refs=[evidence_item.evidence_id],
+        source_refs=[source_ref],
+    )
+    alternative = build_weighted_alternative(
+        alternative_id=f"ALT-INVDRY-{suffix}-001",
+        label=f"Dry-run human-reviewed {asset} decision support",
+        claim=claim.text,
+        evidence_chain=chain,
+        producer_id="hisys-investment-decision-dry-run",
+        recommended_use="hybrid",
+    )
+    packet = InvestmentDecisionPacket(
+        packet_id=f"IDP-INVDRY-{suffix}-001",
+        producer_id="hisys-investment-decision-dry-run",
+        status="draft",
+        asset=asset,
+        instrument_refs=instruments,
+        time_horizon=time_horizon,
+        proposed_action="staged_buy",
+        weight_policy_ref=policy.policy_id,
+        recommendation_summary=f"Dry-run decision-support packet assembled from read-only evidence artifact {first_package.package_id}.",
+        confidence=confidence,
+        evidence_score=evidence_score,
+        risk_score=risk_score,
+        contradiction_score=contradiction_score,
+        signals=[
+            InvestmentSignal(
+                signal_id=f"SIG-INVDRY-{suffix}-001",
+                name=f"{asset} read-only evidence signal",
+                direction="mixed" if first_package.open_questions else "bullish",
+                strength=evidence_score,
+                evidence_refs=[evidence_item.evidence_id],
+                interpretation=claim.text,
+                limitations=list(claim.limitations) + list(first_package.limitations),
+            )
+        ],
+        bull_case=ScenarioAssessment(
+            case_id=f"CASE-INVDRY-{suffix}-BULL-001",
+            summary="Evidence improves enough to support human-reviewed staged exposure.",
+            probability=0.34,
+            evidence_refs=[evidence_item.evidence_id],
+        ),
+        base_case=ScenarioAssessment(
+            case_id=f"CASE-INVDRY-{suffix}-BASE-001",
+            summary="Evidence remains mixed; retain guarded human-reviewed decision support.",
+            probability=0.46,
+            evidence_refs=[evidence_item.evidence_id],
+        ),
+        bear_case=ScenarioAssessment(
+            case_id=f"CASE-INVDRY-{suffix}-BEAR-001",
+            summary="Open questions or contradiction risk block stronger consequential use.",
+            probability=0.20,
+            evidence_refs=[evidence_item.evidence_id],
+        ),
+        decision_boundary=["Dry run only; no publication, execution, order placement, or live connector action."],
+        risk_register=list(first_package.limitations) + list(first_package.open_questions),
+        contradicting_evidence_refs=[evidence_item.evidence_id] if first_package.open_questions else [],
+        chief_editor_status="accepted_for_human_reviewed_use",
+        devil_review_status="completed",
+        dars_review_status="not_started",
+        human_insight_refs=[],
+        human_approval=HumanApprovalGate(
+            required=True,
+            status="pending",
+            approver_ref="human:operator",
+            responsibility_statement="Human accepts responsibility before any consequential use.",
+        ),
+        disclaimers=["not financial advice", "no autonomous execution"],
+        hisys_mode=HisysMode(
+            level="decision",
+            routing_policy_ref="lapidary-routing-policy/operational-governance-v1",
+            upgrade_triggers=["decision_requested", "artifact_backed_dry_run"],
+        ),
+        evidence_chain=chain,
+        weighted_alternatives=[alternative],
+    )
+    report, report_path, _packet_json_path, weight_policy_ref = _persist_investment_decision_packet(
+        instance=instance,
+        packet=packet,
+        yyyymmdd=yyyymmdd,
+        weight_policy_path=weight_policy_path,
+        workflow="investment_decision_dry_run",
+        input_evidence_package_refs=[str(path) for path in evidence_package_paths],
+        fixture_backend_used=False,
+    )
+
+    print(f"investment decision dry run: assembled packet_id={packet.packet_id}")
+    print(f"packet_ref={report['packet_ref']}")
+    print(f"report_ref={_safe_relative_ref(instance.root, report_path)}")
+    if weight_policy_ref is not None:
+        print(f"weight_policy_ref={weight_policy_ref}")
+    print("fixture_backend_used=false")
+    print("external_call_made=false")
+    print("mutation_performed=false")
     print("action_taken=none")
     return 0
 
@@ -500,6 +674,18 @@ def _build_parser() -> argparse.ArgumentParser:
         default="json",
         help="operator summary format to print",
     )
+
+    investment_dry_run = sub.add_parser(
+        "run-investment-decision-dry-run",
+        help="assemble an investment decision packet from read-only evidence artifacts without a fixture backend",
+    )
+    investment_dry_run.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    investment_dry_run.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    investment_dry_run.add_argument("--asset", required=True, help="asset under review")
+    investment_dry_run.add_argument("--instrument", action="append", required=True, help="instrument ref; repeat for multiple instruments")
+    investment_dry_run.add_argument("--time-horizon", required=True, help="human-readable time horizon")
+    investment_dry_run.add_argument("--evidence-package", action="append", required=True, help="read-only EvidencePackage artifact path; repeat for multiple packages")
+    investment_dry_run.add_argument("--weight-policy", required=True, help="InvestmentWeightPolicy JSON path")
 
     collect = sub.add_parser("collect", help="run fixture-backed Investigator collection")
     collect.add_argument("--instance", required=True, help="runtime instance root for outputs")
@@ -1293,6 +1479,16 @@ def main(argv: list[str] | None = None) -> int:
             packet_id=args.packet_id,
             yyyymmdd=args.date,
             output_format=args.format,
+        )
+    if args.command == "run-investment-decision-dry-run":
+        return _cmd_run_investment_decision_dry_run(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            asset=args.asset,
+            instruments=args.instrument,
+            time_horizon=args.time_horizon,
+            evidence_package_paths=[Path(path) for path in args.evidence_package],
+            weight_policy_path=Path(args.weight_policy),
         )
     if args.command == "collect":
         config_root = Path(args.config_from) if args.config_from else Path(args.instance)

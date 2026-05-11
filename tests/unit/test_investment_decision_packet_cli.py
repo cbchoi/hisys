@@ -246,6 +246,96 @@ def test_build_investment_decision_packet_cli_rejects_mismatched_weight_policy(t
         )
 
 
+def test_run_investment_decision_dry_run_assembles_packet_from_evidence_artifacts(tmp_path: Path, capsys) -> None:
+    from hisys.cli.main import main
+
+    evidence_path = tmp_path / "evidence-package.json"
+    policy_path = tmp_path / "weight-policy.json"
+    evidence_path.write_text(
+        json.dumps(
+            {
+                "package_id": "PKG-INVDRY-SP500-001",
+                "task_id": "TASK-INVDRY-SP500-001",
+                "agent_id": "browser-read-only-evidence-artifact",
+                "agent_type": "investment_decision_support",
+                "claims": [
+                    {
+                        "claim_id": "CLAIM-INVDRY-SP500-GROWTH-001",
+                        "text": "Macro growth evidence supports a staged S&P 500 exposure review.",
+                        "confidence": 0.66,
+                        "evidence_refs": ["EV-INVDRY-SP500-GDP-001"],
+                        "limitations": ["Evidence artifact is read-only and not a live market feed."],
+                    }
+                ],
+                "evidence": [
+                    {
+                        "evidence_id": "EV-INVDRY-SP500-GDP-001",
+                        "task_id": "TASK-INVDRY-SP500-001",
+                        "agent_id": "browser-read-only-evidence-artifact",
+                        "source_id": "SRC-INVDRY-SP500-GDP-001",
+                        "url": "https://example.org/read-only-market-evidence",
+                        "title": "Read-only market evidence artifact",
+                        "quoted_text": "Growth remains positive while valuation risk is material.",
+                        "retrieved_at": "2026-05-12T00:00:00Z",
+                        "content_hash": "sha256:dryrun",
+                    }
+                ],
+                "limitations": ["Dry-run evidence artifact; no autonomous execution."],
+                "open_questions": ["Validate with additional independent sources before stronger use."],
+                "external_side_effects": False,
+                "actions_taken": ["read_only_artifact_ingested"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    policy_path.write_text(json.dumps(_weight_policy_payload()), encoding="utf-8")
+
+    result = main(
+        [
+            "run-investment-decision-dry-run",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260512",
+            "--asset",
+            "S&P 500",
+            "--instrument",
+            "SPY",
+            "--instrument",
+            "VOO",
+            "--time-horizon",
+            "6-12 months",
+            "--evidence-package",
+            str(evidence_path),
+            "--weight-policy",
+            str(policy_path),
+        ]
+    )
+
+    assert result == 0
+    output = capsys.readouterr().out
+    assert "investment decision dry run: assembled packet_id=IDP-INVDRY-SP500-001" in output
+    assert "fixture_backend_used=false" in output
+    packet_json = tmp_path / "runtime-boundary" / "investment-decisions" / "20260512" / "IDP-INVDRY-SP500-001.json"
+    report_json = tmp_path / "runtime-boundary" / "investment-decisions" / "20260512" / "investment-decision-packet-report.json"
+    assert packet_json.exists()
+    packet = json.loads(packet_json.read_text(encoding="utf-8"))
+    assert packet["asset"] == "S&P 500"
+    assert packet["instrument_refs"] == ["SPY", "VOO"]
+    assert packet["evidence_chain"]["source_refs"] == ["SRC-INVDRY-SP500-GDP-001"]
+    assert packet["weighted_alternatives"][0]["alternative_id"] == "ALT-INVDRY-SP500-001"
+    assert packet["chief_editor_status"] == "accepted_for_human_reviewed_use"
+    assert packet["dars_review_status"] == "not_started"
+    assert packet["execution_authorized"] is False
+    assert packet["publication_or_live_action_approved"] is False
+    report = json.loads(report_json.read_text(encoding="utf-8"))
+    assert report["workflow"] == "investment_decision_dry_run"
+    assert report["fixture_backend_used"] is False
+    assert report["input_evidence_package_refs"] == [str(evidence_path)]
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False
+
+
 def test_review_investment_decision_packet_cli_prints_operator_summary(tmp_path: Path, capsys) -> None:
     from hisys.cli.main import main
 

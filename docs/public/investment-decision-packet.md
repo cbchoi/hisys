@@ -81,6 +81,16 @@ hisys review-investment-decision-packet \
   --date <YYYYMMDD> \
   --packet-id <packet_id> \
   --format json
+
+hisys run-investment-decision-dry-run \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --asset "S&P 500" \
+  --instrument SPY \
+  --instrument VOO \
+  --time-horizon "6-12 months" \
+  --evidence-package evidence-package.json \
+  --weight-policy investment-weight-policy.json
 ```
 
 Artifacts:
@@ -104,7 +114,11 @@ weights, contradiction handling), so product runs can cite a stable policy
 artifact instead of relying on implicit or hard-coded weighting assumptions. When
 `--weight-policy` is supplied and the packet already names `weight_policy_ref`,
 the CLI rejects mismatched policy IDs so the report cannot silently attach the
-wrong weighting profile.
+wrong weighting profile. The dry-run workflow consumes already-materialized
+`EvidencePackage` JSON artifacts rather than using a fixture backend. It assembles
+a bounded packet, evidence chain, weighted alternative, policy artifact, and
+report while recording `fixture_backend_used=false`, `external_call_made=false`,
+`mutation_performed=false`, and `action_taken=none`.
 
 ## Example status progression
 
@@ -124,10 +138,16 @@ wrong weighting profile.
    Lapidary evidence-chain and weighted-alternative audit records are persisted
    action_taken=none
 
-4. human review
+4. dry-run assembly from evidence artifacts
+   hisys run-investment-decision-dry-run reads EvidencePackage artifacts without a fixture backend
+   fixture_backend_used=false
+   external_call_made=false
+   mutation_performed=false
+
+5. human review
    human_approval.status=approved or rejected
 
-5. optional external execution system
+6. optional external execution system
    outside this schema and outside Hisys default boundary
 ```
 
