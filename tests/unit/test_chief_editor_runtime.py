@@ -2,7 +2,8 @@
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
 HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021, HISYS-T-025.
+HISYS-T-018, HISYS-T-019, HISYS-T-020, HISYS-T-021, HISYS-T-025,
+HISYS-SCHEMA-001, HISYS-FR-INV-001, HISYS-FR-INV-003, HISYS-T-024.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from hisys.chief_editor import (
 )
 from hisys.config import InstanceRoot
 from hisys.editor import MemoReviewReport
-from hisys.schemas import ZettelMemo
+from hisys.schemas import EvidenceChainRecord, HisysMode, ZettelMemo
 
 
 def test_chief_editor_product_factory_analysis_only_closes_decision_without_alert_target(tmp_path: Path):
@@ -383,6 +384,134 @@ def _write_high_impact_approval_request(tmp_path: Path) -> str:
     decision_report = decision_runtime.decide_run([memo], memo_review_report=review_report, yyyymmdd="20260508")
     return decision_report.alert_decision_refs[0]
 
+
+
+def test_chief_editor_runtime_persists_evidence_chain_in_governed_decision_mode(tmp_path: Path):
+    memo = _memo_for_decision(
+        "MEM-CE-GOV-DEC-001",
+        review_status="flagged_conflict",
+        summary="governed temperature trend high",
+    )
+    review_report = MemoReviewReport(
+        reviewed_memo_refs=[memo.memo_id],
+        conflict_memo_refs=[memo.memo_id],
+    )
+    runtime = ChiefEditorRuntime(
+        instance=InstanceRoot(tmp_path),
+        policy=ChiefEditorPolicy.fixture_default(),
+        producer_id="chief-editor-governed-test",
+        hisys_mode=HisysMode(level="decision"),
+    )
+
+    decision_report = runtime.decide_run(
+        [memo], memo_review_report=review_report, yyyymmdd="20260508"
+    )
+
+    assert len(decision_report.alert_decision_refs) == 1
+    alert_id = decision_report.alert_decision_refs[0]
+    assert len(decision_report.evidence_chain_refs) == 1
+    chain_id = decision_report.evidence_chain_refs[0]
+    assert chain_id.startswith("CHAIN-")
+    chain_path = (
+        tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.evidence_chain.json"
+    )
+    assert chain_path.exists()
+    chain = EvidenceChainRecord.model_validate_json(chain_path.read_text(encoding="utf-8"))
+    assert chain.chain_id == chain_id
+    assert chain.decision_ref == alert_id
+    assert chain.synthesis_refs == [memo.perspective_id]
+    assert chain.claim_ledger_refs == [memo.memo_id]
+    assert chain.evidence_refs == memo.signal_refs
+    assert chain.source_refs == memo.source_refs
+    assert chain.structured_links_source_of_truth is True
+    assert chain.wikilinks_are_projection is True
+
+
+def test_chief_editor_runtime_persists_evidence_chain_in_publication_mode(tmp_path: Path):
+    memo = _memo_for_decision(
+        "MEM-CE-GOV-PUB-001",
+        review_status="flagged_conflict",
+        summary="publication-grade temperature trend high",
+    )
+    review_report = MemoReviewReport(
+        reviewed_memo_refs=[memo.memo_id],
+        conflict_memo_refs=[memo.memo_id],
+    )
+    runtime = ChiefEditorRuntime(
+        instance=InstanceRoot(tmp_path),
+        policy=ChiefEditorPolicy.fixture_default(),
+        producer_id="chief-editor-publication-test",
+        hisys_mode=HisysMode(level="publication"),
+    )
+
+    decision_report = runtime.decide_run(
+        [memo], memo_review_report=review_report, yyyymmdd="20260508"
+    )
+
+    alert_id = decision_report.alert_decision_refs[0]
+    chain_path = (
+        tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.evidence_chain.json"
+    )
+    assert chain_path.exists()
+    assert decision_report.evidence_chain_refs and decision_report.evidence_chain_refs[0].startswith("CHAIN-")
+
+
+def test_chief_editor_runtime_default_mode_emits_no_evidence_chain(tmp_path: Path):
+    memo = _memo_for_decision(
+        "MEM-CE-DEFAULT-001",
+        review_status="flagged_conflict",
+        summary="default-mode temperature trend high",
+    )
+    review_report = MemoReviewReport(
+        reviewed_memo_refs=[memo.memo_id],
+        conflict_memo_refs=[memo.memo_id],
+    )
+    runtime = ChiefEditorRuntime(
+        instance=InstanceRoot(tmp_path),
+        policy=ChiefEditorPolicy.fixture_default(),
+        producer_id="chief-editor-default-test",
+    )
+
+    decision_report = runtime.decide_run(
+        [memo], memo_review_report=review_report, yyyymmdd="20260508"
+    )
+
+    assert decision_report.evidence_chain_refs == []
+    alert_id = decision_report.alert_decision_refs[0]
+    chain_path = (
+        tmp_path / "data" / "alert-decisions" / "20260508" / f"{alert_id}.evidence_chain.json"
+    )
+    assert not chain_path.exists()
+
+
+def test_chief_editor_runtime_governed_mode_skips_chain_for_suppressed_decision(tmp_path: Path):
+    memo = _memo_for_decision(
+        "MEM-CE-GOV-SUPP-001",
+        review_status="flagged_duplicate",
+        summary="duplicate suppression under governance",
+    )
+    review_report = MemoReviewReport(
+        reviewed_memo_refs=[memo.memo_id],
+        duplicate_memo_refs=[memo.memo_id],
+    )
+    runtime = ChiefEditorRuntime(
+        instance=InstanceRoot(tmp_path),
+        policy=ChiefEditorPolicy.fixture_default(),
+        producer_id="chief-editor-governed-suppress-test",
+        hisys_mode=HisysMode(level="decision"),
+    )
+
+    decision_report = runtime.decide_run(
+        [memo], memo_review_report=review_report, yyyymmdd="20260508"
+    )
+
+    assert decision_report.alert_decision_refs == []
+    assert decision_report.evidence_chain_refs == []
+    suppressed_alert_id = decision_report.non_escalation_decision_refs[0]
+    chain_path = (
+        tmp_path / "data" / "alert-decisions" / "20260508" / f"{suppressed_alert_id}.evidence_chain.json"
+    )
+    assert not chain_path.exists()
 
 
 def _memo_for_decision(memo_id: str, *, review_status: str, summary: str) -> ZettelMemo:

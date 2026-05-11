@@ -2,7 +2,8 @@
 
 Traceability: HISYS-FR-CE-001..006, HISYS-CE-POLICY-001,
 HISYS-D-015, HISYS-T-014, HISYS-T-015, HISYS-T-016, HISYS-T-017,
-HISYS-T-018.
+HISYS-T-018, HISYS-SCHEMA-001, HISYS-FR-INV-001, HISYS-FR-INV-003,
+HISYS-T-024.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from pydantic import BaseModel
 from ..config import InstanceRoot
 from ..core.ids import IdNamespace, make_id
 from ..editor import MemoReviewReport
-from ..schemas import AlertDecisionRecord, ZettelMemo
+from ..schemas import AlertDecisionRecord, EvidenceChainRecord, HisysMode, ZettelMemo
 from .policy import ChiefEditorPolicy
 
 
@@ -29,6 +30,7 @@ class AlertDecisionRunReport:
     non_escalation_decision_refs: list[str] = field(default_factory=list)
     suppressed_memo_refs: list[str] = field(default_factory=list)
     skipped_memo_refs: list[str] = field(default_factory=list)
+    evidence_chain_refs: list[str] = field(default_factory=list)
     policy_refs: list[str] = field(
         default_factory=lambda: ["HISYS-FR-CE-004", "HISYS-CE-POLICY-001", "HISYS-T-016"]
     )
@@ -37,10 +39,18 @@ class AlertDecisionRunReport:
 class ChiefEditorRuntime:
     """Persist fixture Chief Editor alert decisions under a runtime instance root."""
 
-    def __init__(self, *, instance: InstanceRoot, policy: ChiefEditorPolicy, producer_id: str) -> None:
+    def __init__(
+        self,
+        *,
+        instance: InstanceRoot,
+        policy: ChiefEditorPolicy,
+        producer_id: str,
+        hisys_mode: HisysMode | None = None,
+    ) -> None:
         self.instance = instance
         self.policy = policy
         self.producer_id = producer_id
+        self.hisys_mode = hisys_mode or HisysMode()
 
     def decide_run(
         self,
@@ -54,6 +64,7 @@ class ChiefEditorRuntime:
         non_escalation_refs: list[str] = []
         suppressed_refs: list[str] = []
         skipped_refs: list[str] = []
+        chain_refs: list[str] = []
         existing_suppression_keys = _load_existing_suppression_keys(self.instance, yyyymmdd)
         current_suppression_keys: set[str] = set()
         for memo_id in memo_review_report.reviewed_memo_refs:
@@ -87,15 +98,47 @@ class ChiefEditorRuntime:
                 non_escalation_refs.append(decision.alert_id)
             else:
                 alert_refs.append(decision.alert_id)
+                if self.hisys_mode.level in ("decision", "publication"):
+                    chain = self._build_evidence_chain(decision=decision, memo=memo)
+                    self._write_evidence_chain(decision=decision, chain=chain, yyyymmdd=yyyymmdd)
+                    chain_refs.append(chain.chain_id)
         report = AlertDecisionRunReport(
             reviewed_memo_refs=list(memo_review_report.reviewed_memo_refs),
             alert_decision_refs=alert_refs,
             non_escalation_decision_refs=non_escalation_refs,
             suppressed_memo_refs=suppressed_refs,
             skipped_memo_refs=skipped_refs,
+            evidence_chain_refs=chain_refs,
         )
         self._write_report(report, yyyymmdd)
         return report
+
+    def _build_evidence_chain(
+        self, *, decision: AlertDecisionRecord, memo: ZettelMemo
+    ) -> EvidenceChainRecord:
+        return EvidenceChainRecord(
+            chain_id=make_id("CHAIN"),
+            decision_ref=decision.alert_id,
+            synthesis_refs=[memo.perspective_id],
+            claim_ledger_refs=[memo.memo_id],
+            evidence_refs=list(memo.signal_refs),
+            source_refs=list(memo.source_refs),
+            producer_id=self.producer_id,
+            status="active",
+        )
+
+    def _write_evidence_chain(
+        self,
+        *,
+        decision: AlertDecisionRecord,
+        chain: EvidenceChainRecord,
+        yyyymmdd: str,
+    ) -> Path:
+        directory = self.instance.root / "data" / "alert-decisions" / yyyymmdd
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{decision.alert_id}.evidence_chain.json"
+        path.write_text(_to_json(chain), encoding="utf-8")
+        return path
 
     def _write_decision(self, decision: AlertDecisionRecord, yyyymmdd: str) -> tuple[Path, Path]:
         directory = self.instance.root / "data" / "alert-decisions" / yyyymmdd
@@ -129,7 +172,12 @@ def _load_existing_suppression_keys(instance: InstanceRoot, yyyymmdd: str) -> se
 
 
 def _to_json(record: BaseModel) -> str:
-    return json.dumps(record.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True)
+    return json.dumps(
+        record.model_dump(mode="json", round_trip=True),
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
 
 
 def _decision_to_markdown(decision: AlertDecisionRecord) -> str:
