@@ -19,15 +19,14 @@ from pydantic import BaseModel, ConfigDict
 
 from ..config.instance import InstanceRoot
 from ..schemas.lapidary_governance import AppraiserSeparationPolicy
+from .appraiser_separation import (
+    ADVISORY_INTENTS,
+    AUTHORITY_INTENTS,
+    DEFAULT_APPRAISER_POLICY_REF,
+    classify_intent,
+    resolve_policy_ref,
+)
 from .dars_config import DarsBackendConfig, DarsConfig
-
-ADVISORY_INTENTS: frozenset[str] = frozenset(
-    {"advisory_critique", "return_findings", "return_recommendations"}
-)
-AUTHORITY_INTENTS: frozenset[str] = frozenset(
-    {"approve_decision", "execute_action", "publish_output"}
-)
-DEFAULT_APPRAISER_POLICY_REF = "APPRAISER-POLICY-DEFAULT"
 
 
 class DarsDispatchDecision(BaseModel):
@@ -72,21 +71,17 @@ class DarsDispatchGate:
         appraiser_policy: AppraiserSeparationPolicy | None = None,
     ) -> DarsDispatchDecision:
         backend = config.spec.backends.get(backend_id)
-        policy_ref = (
-            appraiser_policy.policy_id if appraiser_policy is not None else DEFAULT_APPRAISER_POLICY_REF
-        )
-        if intent not in ADVISORY_INTENTS:
+        policy_ref = resolve_policy_ref(appraiser_policy)
+        verdict = classify_intent(intent, appraiser_policy=appraiser_policy)
+        if verdict.decision == "blocked":
             decision = self._blocked(
                 request_id=request_id,
                 backend_id=backend_id,
                 backend=backend,
                 config=config,
                 approval_ref=approval_ref,
-                reason_code="appraiser_separation_policy_violation",
-                reason=(
-                    "DARS/Appraiser is advisory-only and may not be dispatched for "
-                    f"authority intent {intent!r}; refer to {policy_ref}."
-                ),
+                reason_code=verdict.reason_code,
+                reason=verdict.reason,
                 intent=intent,
                 policy_ref=policy_ref,
             )

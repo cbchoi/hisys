@@ -17,6 +17,10 @@ import json
 from pydantic import ValidationError
 
 from ..config.instance import InstanceRoot
+from .appraiser_separation import (
+    AppraiserSeparationViolation,
+    enforce_advisory_intent,
+)
 from .dars_config import DarsBackendConfig
 from .dars_dispatch import DarsDispatchDecision
 from .dars_protocol import DarsResponseEnvelope
@@ -38,6 +42,18 @@ class DarsFixtureBackend:
     ) -> DarsResponseEnvelope:
         if dispatch_decision.decision != "allowed":
             raise ValueError("dispatch decision is not allowed")
+        try:
+            enforce_advisory_intent(dispatch_decision.intent)
+        except AppraiserSeparationViolation as exc:
+            _write_validation_report(
+                self.instance,
+                yyyymmdd,
+                request_id=request_id,
+                status="rejected",
+                reason_code=exc.reason_code,
+                issues=[exc.verdict.reason],
+            )
+            raise ValueError(exc.reason_code) from exc
         if backend_config.kind != "fixture_file":
             raise ValueError("DarsFixtureBackend requires a fixture_file backend")
         if backend_config.external_call_allowed:
@@ -175,9 +191,20 @@ class DarsMockEndpointAdapter:
         backend_config: DarsBackendConfig,
         dispatch_decision: DarsDispatchDecision,
     ) -> DarsResponseEnvelope:
-        del yyyymmdd, request_id
         if dispatch_decision.decision != "allowed":
             raise ValueError("dispatch decision is not allowed")
+        try:
+            enforce_advisory_intent(dispatch_decision.intent)
+        except AppraiserSeparationViolation as exc:
+            _write_validation_report(
+                self.instance,
+                yyyymmdd,
+                request_id=request_id,
+                status="rejected",
+                reason_code=exc.reason_code,
+                issues=[exc.verdict.reason],
+            )
+            raise ValueError(exc.reason_code) from exc
         if backend_config.kind != "mock_http":
             raise ValueError("DarsMockEndpointAdapter requires a mock_http backend")
         raise NotImplementedError("mock endpoint adapter is a disabled-by-default harness boundary")
