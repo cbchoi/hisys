@@ -36,6 +36,7 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..browser.public_profile import load_public_browser_profile
+from ..browser.public_summary import write_public_browser_run_summary
 from ..browser.reports import (
     _browser_investigation_report,
     _render_browser_chief_editor_review_md,
@@ -203,6 +204,28 @@ def _build_parser() -> argparse.ArgumentParser:
         help="validate a governed public browser launch profile",
     )
     public_profile.add_argument("--profile", type=Path, required=True, help="public browser profile YAML path")
+
+    public_browser_run = sub.add_parser(
+        "public-browser-run",
+        help="run the governed public browser beta chain and write a public operator summary",
+    )
+    public_browser_run.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    public_browser_run.add_argument("--config", required=True, help="source-connectors.yaml path")
+    public_browser_run.add_argument("--profile", type=Path, required=True, help="validated public browser profile YAML path")
+    public_browser_run.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    public_browser_run.add_argument("--request-id", required=True, help="request id for public browser run")
+    public_browser_run.add_argument("--topic", required=True, help="topic/question being investigated")
+    public_browser_run.add_argument("--user-opinion", default="", help="operator context to carry into memo")
+    public_browser_run.add_argument("--approval-ref", required=True, help="approval ref for read-only browser source access")
+    public_browser_run.add_argument("--source-url", action="append", required=True, help="approved URL to visit; repeat for multiple pages")
+    public_browser_run.add_argument("--follow-links", action="store_true", help="follow bounded same-domain technology/product detail links discovered from source pages")
+    public_browser_run.add_argument("--max-follow-links-per-source", type=int, help="override public profile follow-link bound")
+    public_browser_run.add_argument(
+        "--orchestrator-corroborating-url",
+        action="append",
+        default=[],
+        help="orchestrator-provided candidate URL for independent corroboration; recorded but not fetched unless promoted as a source URL",
+    )
 
     collect = sub.add_parser("collect", help="run fixture-backed Investigator collection")
     collect.add_argument("--instance", required=True, help="runtime instance root for outputs")
@@ -939,6 +962,21 @@ def main(argv: list[str] | None = None) -> int:
             f"profile_id={profile.profile_id} connector_id={profile.connector_id} transport_kind={profile.transport_kind}"
         )
         return 0
+    if args.command == "public-browser-run":
+        return _cmd_public_browser_run(
+            instance_root=Path(args.instance),
+            config_path=Path(args.config),
+            profile_path=args.profile,
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            topic=args.topic,
+            user_opinion=args.user_opinion,
+            approval_ref=args.approval_ref,
+            source_urls=args.source_url,
+            follow_links=args.follow_links,
+            max_follow_links_per_source=args.max_follow_links_per_source,
+            orchestrator_corroborating_urls=args.orchestrator_corroborating_url,
+        )
     if args.command == "collect":
         config_root = Path(args.config_from) if args.config_from else Path(args.instance)
         return _cmd_collect(
@@ -3627,6 +3665,185 @@ def _write_search_topic_report(instance: InstanceRoot, yyyymmdd: str, report: di
         encoding="utf-8",
     )
     return report_artifact
+
+
+def _cmd_public_browser_run(
+    *,
+    instance_root: Path,
+    config_path: Path,
+    profile_path: Path,
+    yyyymmdd: str,
+    request_id: str,
+    topic: str,
+    user_opinion: str,
+    approval_ref: str,
+    source_urls: list[str],
+    follow_links: bool,
+    max_follow_links_per_source: int | None,
+    orchestrator_corroborating_urls: list[str],
+) -> int:
+    profile = load_public_browser_profile(profile_path)
+    if profile.connector_id != "playwright_read_only":
+        print("public browser run: blocked reason=unsupported_public_browser_connector", file=sys.stderr)
+        return 2
+    if len(source_urls) > profile.max_source_urls:
+        print("public browser run: blocked reason=too_many_source_urls", file=sys.stderr)
+        return 2
+    follow_bound = profile.max_follow_links_per_source if max_follow_links_per_source is None else max_follow_links_per_source
+    if follow_bound > profile.max_follow_links_per_source:
+        print("public browser run: blocked reason=max_follow_links_exceeds_profile", file=sys.stderr)
+        return 2
+
+    instance = InstanceRoot(instance_root)
+    investigation_code = _cmd_browser_investigate_topic(
+        instance_root=instance_root,
+        config_path=config_path,
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        topic=topic,
+        user_opinion=user_opinion,
+        approval_ref=approval_ref,
+        source_urls=source_urls,
+        orchestrator_decide_domains=True,
+        browser_fixture_html=[],
+        follow_links=follow_links,
+        max_follow_links_per_source=follow_bound,
+        orchestrator_corroborating_urls=orchestrator_corroborating_urls,
+    )
+    browser_report_ref = f"reports/run-summaries/{yyyymmdd}/browser-investigation-report.json"
+    if investigation_code != 0:
+        _write_blocked_public_browser_summary(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            request_id=request_id,
+            topic=topic,
+            source_urls=source_urls,
+            reason=f"browser_investigation_failed:{investigation_code}",
+            refs={"browser_investigation_report_ref": browser_report_ref},
+        )
+        return investigation_code
+
+    chief_code = _cmd_review_browser_investigation(
+        instance_root=instance_root,
+        yyyymmdd=yyyymmdd,
+        browser_investigation_report_ref=browser_report_ref,
+        producer_id="public-browser-run-chief-editor",
+    )
+    chief_ref = f"data/chief-editor-reviews/{yyyymmdd}/CHIEF-REVIEW-{request_id}-BROWSER.json"
+    if chief_code != 0:
+        _write_blocked_public_browser_summary(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            request_id=request_id,
+            topic=topic,
+            source_urls=source_urls,
+            reason=f"chief_editor_review_failed:{chief_code}",
+            refs={"browser_investigation_report_ref": browser_report_ref, "chief_editor_review_ref": chief_ref},
+        )
+        return chief_code
+
+    dars_code = _cmd_request_browser_dars_review(
+        instance_root=instance_root,
+        yyyymmdd=yyyymmdd,
+        chief_editor_review_ref=chief_ref,
+        producer_id="public-browser-run-dars",
+    )
+    dars_ref = f"data/dars-browser-reviews/{yyyymmdd}/DARS-REVIEW-{request_id}-BROWSER.json"
+    if dars_code != 0:
+        _write_blocked_public_browser_summary(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            request_id=request_id,
+            topic=topic,
+            source_urls=source_urls,
+            reason=f"dars_review_failed:{dars_code}",
+            refs={"browser_investigation_report_ref": browser_report_ref, "chief_editor_review_ref": chief_ref, "dars_review_ref": dars_ref},
+        )
+        return dars_code
+
+    revision_code = _cmd_resolve_browser_dars_revisions(
+        instance_root=instance_root,
+        yyyymmdd=yyyymmdd,
+        dars_review_ref=dars_ref,
+        producer_id="public-browser-run-revision",
+    )
+    revision_ref = f"data/browser-dars-revision-resolutions/{yyyymmdd}/REVISION-{request_id}-BROWSER.json"
+    if revision_code != 0:
+        _write_blocked_public_browser_summary(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            request_id=request_id,
+            topic=topic,
+            source_urls=source_urls,
+            reason=f"revision_resolution_failed:{revision_code}",
+            refs={
+                "browser_investigation_report_ref": browser_report_ref,
+                "chief_editor_review_ref": chief_ref,
+                "dars_review_ref": dars_ref,
+                "revision_resolution_ref": revision_ref,
+            },
+        )
+        return revision_code
+
+    final_code = _cmd_final_review_browser_investigation(
+        instance_root=instance_root,
+        yyyymmdd=yyyymmdd,
+        revision_resolution_ref=revision_ref,
+        producer_id="public-browser-run-final-chief-editor",
+    )
+    final_ref = f"data/chief-editor-final-browser-reviews/{yyyymmdd}/FINAL-CHIEF-REVIEW-{request_id}-BROWSER.json"
+    refs = {
+        "browser_investigation_report_ref": browser_report_ref,
+        "chief_editor_review_ref": chief_ref,
+        "dars_review_ref": dars_ref,
+        "revision_resolution_ref": revision_ref,
+        "final_review_ref": final_ref,
+    }
+    browser_report = _load_json_ref(instance, browser_report_ref)
+    final_review = _load_json_ref(instance, final_ref)
+    revision = _load_json_ref(instance, revision_ref)
+    summary_ref = write_public_browser_run_summary(
+        instance=instance,
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        topic=topic,
+        source_urls=source_urls,
+        transport_kinds=[str(item) for item in browser_report.get("transport_kinds", [])],
+        final_decision=str(final_review.get("decision", "blocked")),
+        remaining_blockers=[str(item) for item in revision.get("remaining_blockers", [])],
+        refs=refs,
+        external_call_made=bool(browser_report.get("external_call_made")),
+        mutation_performed=False,
+    )
+    print(f"public browser run: summary={instance.root / summary_ref}")
+    print(f"decision: {final_review.get('decision', 'blocked')}")
+    print("publication_or_live_action_approved: false")
+    return final_code
+
+
+def _write_blocked_public_browser_summary(
+    *,
+    instance: InstanceRoot,
+    yyyymmdd: str,
+    request_id: str,
+    topic: str,
+    source_urls: list[str],
+    reason: str,
+    refs: dict[str, str],
+) -> str:
+    return write_public_browser_run_summary(
+        instance=instance,
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        topic=topic,
+        source_urls=source_urls,
+        transport_kinds=[],
+        final_decision="blocked",
+        remaining_blockers=[reason],
+        refs=refs,
+        external_call_made=False,
+        mutation_performed=False,
+    )
 
 
 def _cmd_browser_investigate_topic(
