@@ -28,6 +28,13 @@ ReviewStatus = Literal[
     "rejected",
 ]
 HumanApprovalStatus = Literal["pending", "approved", "rejected", "not_required"]
+ApprovalScope = Literal[
+    "internal_review",
+    "human_reviewed_use",
+    "publication",
+    "manual_execution",
+    "live_connector_execution",
+]
 OrderSide = Literal["buy", "sell"]
 OrderType = Literal["market", "limit", "stop", "stop_limit"]
 
@@ -71,20 +78,33 @@ class ScenarioAssessment(BaseModel):
 
 
 class HumanApprovalGate(BaseModel):
-    """Human approval and responsibility gate for consequential use."""
+    """Human approval and responsibility gate for consequential use.
+
+    Scope fields keep approval bounded: review approval is not execution
+    approval, and publication/live connector approval must be explicit.
+    """
 
     required: bool = True
     status: HumanApprovalStatus = "pending"
     approver_ref: str | None = None
     approved_at: str | None = None
+    requested_scopes: list[ApprovalScope] = Field(default_factory=lambda: ["human_reviewed_use"])
+    approved_scopes: list[ApprovalScope] = Field(default_factory=list)
     responsibility_statement: str
 
     @model_validator(mode="after")
     def _approval_fields(self) -> "HumanApprovalGate":
         if self.status == "approved" and not self.approver_ref:
             raise ValueError("approved human approval requires approver_ref")
+        if self.status == "approved" and not self.approved_scopes:
+            raise ValueError("approved human approval requires approved_scopes")
+        if self.status != "approved" and self.approved_scopes:
+            raise ValueError("approved_scopes require human_approval.status='approved'")
         if self.required and self.status == "not_required":
             raise ValueError("required human approval cannot have status='not_required'")
+        unrequested = set(self.approved_scopes) - set(self.requested_scopes)
+        if unrequested:
+            raise ValueError("approved_scopes must be a subset of requested_scopes")
         return self
 
 
@@ -187,10 +207,14 @@ class InvestmentDecisionPacket(BaseRecord):
             raise ValueError("scenario assessments require evidence_refs")
         if self.execution_authorized and self.human_approval.status != "approved":
             raise ValueError("execution_authorized requires human_approval.status='approved'")
+        if self.execution_authorized and not ({"manual_execution", "live_connector_execution"} & set(self.human_approval.approved_scopes)):
+            raise ValueError("execution_authorized requires approved manual_execution or live_connector_execution scope")
         if self.publication_or_live_action_approved and self.human_approval.status != "approved":
             raise ValueError(
                 "publication_or_live_action_approved requires human_approval.status='approved'"
             )
+        if self.publication_or_live_action_approved and "publication" not in set(self.human_approval.approved_scopes):
+            raise ValueError("publication_or_live_action_approved requires approved publication scope")
         if self.order_ticket_draft and not self.order_ticket_draft.dry_run and self.human_approval.status != "approved":
             raise ValueError("live order_ticket_draft requires approved human approval")
         if "not financial advice" not in {item.lower() for item in self.disclaimers}:

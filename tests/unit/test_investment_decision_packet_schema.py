@@ -113,6 +113,63 @@ def test_investment_decision_packet_blocks_order_draft_without_approval_and_dry_
         _packet(order_ticket_draft=order)
 
 
+def test_human_approval_gate_serializes_requested_and_approved_scopes():
+    gate = HumanApprovalGate(
+        required=True,
+        status="approved",
+        approver_ref="human:professor",
+        approved_at="2026-05-12T00:00:00Z",
+        requested_scopes=["human_reviewed_use", "publication"],
+        approved_scopes=["human_reviewed_use"],
+        responsibility_statement="Human accepts responsibility for the approved scope only.",
+    )
+
+    dumped = gate.model_dump(mode="json")
+
+    assert dumped["requested_scopes"] == ["human_reviewed_use", "publication"]
+    assert dumped["approved_scopes"] == ["human_reviewed_use"]
+
+
+def test_human_approval_gate_rejects_approved_status_without_approved_scope():
+    with pytest.raises(ValidationError, match="approved human approval requires approved_scopes"):
+        HumanApprovalGate(
+            required=True,
+            status="approved",
+            approver_ref="human:professor",
+            responsibility_statement="Human accepts responsibility before any consequential use.",
+        )
+
+
+def test_investment_decision_packet_blocks_execution_without_execution_approval_scope():
+    approval = HumanApprovalGate(
+        required=True,
+        status="approved",
+        approver_ref="human:professor",
+        requested_scopes=["human_reviewed_use", "manual_execution"],
+        approved_scopes=["human_reviewed_use"],
+        responsibility_statement="Human accepts responsibility for review but not execution.",
+    )
+
+    with pytest.raises(ValidationError, match="execution_authorized requires approved manual_execution or live_connector_execution scope"):
+        _packet(human_approval=approval, execution_authorized=True)
+
+
+def test_investment_decision_packet_allows_manual_execution_only_with_explicit_scope():
+    approval = HumanApprovalGate(
+        required=True,
+        status="approved",
+        approver_ref="human:professor",
+        requested_scopes=["human_reviewed_use", "manual_execution"],
+        approved_scopes=["human_reviewed_use", "manual_execution"],
+        responsibility_statement="Human accepts responsibility for manual execution outside Hisys.",
+    )
+
+    packet = _packet(human_approval=approval, execution_authorized=True)
+
+    assert packet.execution_authorized is True
+    assert "manual_execution" in packet.human_approval.approved_scopes
+
+
 def test_investment_decision_packet_requires_evidence_for_signals_and_scenarios():
     with pytest.raises(ValidationError, match="signals require evidence_refs"):
         _packet(signals=[_signal().model_copy(update={"evidence_refs": []})])

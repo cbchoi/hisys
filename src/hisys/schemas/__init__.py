@@ -14,6 +14,7 @@ from .perspective import PerspectiveProfile
 from .memo import ZettelMemo
 from .alert import AlertDecisionRecord
 from .investment import (
+    ApprovalScope,
     HumanApprovalGate,
     InvestmentDecisionPacket,
     InvestmentSignal,
@@ -65,6 +66,7 @@ __all__ = [
     "PerspectiveProfile",
     "ZettelMemo",
     "AlertDecisionRecord",
+    "ApprovalScope",
     "HumanApprovalGate",
     "InvestmentDecisionPacket",
     "InvestmentSignal",

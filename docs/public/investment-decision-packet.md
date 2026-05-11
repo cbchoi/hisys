@@ -16,6 +16,9 @@ The schema is intentionally conservative:
 - `execution_authorized` defaults to `false`.
 - `publication_or_live_action_approved` defaults to `false`.
 - `human_approval.status='approved'` is required before execution authorization or live action approval can be represented.
+- Approval scope is explicit: review approval does not imply publication, manual execution, or live connector execution approval.
+- `execution_authorized=true` requires an approved `manual_execution` or `live_connector_execution` scope.
+- `publication_or_live_action_approved=true` requires an approved `publication` scope.
 - An `OrderTicketDraft` is a non-executing draft. It cannot include an execution endpoint reference.
 - Live order drafts (`dry_run=false`) require approved human approval.
 - Disclaimers must include both `not financial advice` and `no autonomous execution`.
@@ -132,6 +135,8 @@ execution. It is a product artifact builder for human-reviewed decision support.
     "required": true,
     "status": "pending",
     "approver_ref": "human:professor",
+    "requested_scopes": ["human_reviewed_use"],
+    "approved_scopes": [],
     "responsibility_statement": "Human accepts responsibility before any consequential use."
   },
   "execution_authorized": false,

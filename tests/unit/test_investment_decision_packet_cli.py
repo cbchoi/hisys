@@ -155,6 +155,8 @@ def test_build_investment_decision_packet_cli_writes_product_artifacts_and_audit
     report = json.loads(report_json.read_text(encoding="utf-8"))
     assert report["packet_ref"] == "runtime-boundary/investment-decisions/20260512/IDP-CLI-SP500-001.json"
     assert report["human_approval_required_for_consequential_use"] is True
+    assert report["requested_approval_scopes"] == ["human_reviewed_use"]
+    assert report["approved_approval_scopes"] == []
     assert report["action_taken"] == "none"
     assert report["external_call_made"] is False
     assert report["mutation_performed"] is False
