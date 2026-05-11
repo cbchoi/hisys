@@ -35,6 +35,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
+from ..browser.public_profile import load_public_browser_profile
 from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_git_sync_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, execute_obsidian_git_sync_live, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_git_live_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, GeneralWebSearchConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, PlaywrightBrowserConnector, PlaywrightUnavailableError, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
@@ -176,6 +177,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     validate = sub.add_parser("validate-config", help="validate a Hisys runtime instance config")
     validate.add_argument("--instance", required=True, help="runtime instance root containing config/")
+
+    public_profile = sub.add_parser(
+        "validate-public-browser-profile",
+        help="validate a governed public browser launch profile",
+    )
+    public_profile.add_argument("--profile", type=Path, required=True, help="public browser profile YAML path")
 
     collect = sub.add_parser("collect", help="run fixture-backed Investigator collection")
     collect.add_argument("--instance", required=True, help="runtime instance root for outputs")
@@ -901,6 +908,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "validate-config":
         return _cmd_validate_config(Path(args.instance))
+    if args.command == "validate-public-browser-profile":
+        try:
+            profile = load_public_browser_profile(args.profile)
+        except Exception as exc:
+            print(f"public browser profile: invalid reason={exc}", file=sys.stderr)
+            return 2
+        print(
+            "public browser profile: valid "
+            f"profile_id={profile.profile_id} connector_id={profile.connector_id} transport_kind={profile.transport_kind}"
+        )
+        return 0
     if args.command == "collect":
         config_root = Path(args.config_from) if args.config_from else Path(args.instance)
         return _cmd_collect(
