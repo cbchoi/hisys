@@ -135,7 +135,7 @@ class EvidenceChainRecord(BaseRecord):
             raise ValueError("wikilinks must remain human-navigation projections")
         return self
 
-    @computed_field  # type: ignore[misc]
+    @computed_field(exclude_if=lambda _: True)  # type: ignore[misc]
     @property
     def path_summary(self) -> str:
         return "decision/Jewel -> synthesis/Gem -> claim ledger -> evidence/Stone -> attachment/source"
