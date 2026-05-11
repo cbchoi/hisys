@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import shutil
@@ -226,6 +227,15 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         help="orchestrator-provided candidate URL for independent corroboration; recorded but not fetched unless promoted as a source URL",
     )
+
+    public_readiness = sub.add_parser(
+        "public-browser-readiness",
+        help="check public browser beta profile/config/import readiness without live network access",
+    )
+    public_readiness.add_argument("--instance", required=True, help="runtime instance root for readiness report")
+    public_readiness.add_argument("--config", required=True, help="source-connectors.yaml path")
+    public_readiness.add_argument("--profile", type=Path, required=True, help="public browser profile YAML path")
+    public_readiness.add_argument("--date", required=True, help="YYYYMMDD output partition")
 
     collect = sub.add_parser("collect", help="run fixture-backed Investigator collection")
     collect.add_argument("--instance", required=True, help="runtime instance root for outputs")
@@ -976,6 +986,13 @@ def main(argv: list[str] | None = None) -> int:
             follow_links=args.follow_links,
             max_follow_links_per_source=args.max_follow_links_per_source,
             orchestrator_corroborating_urls=args.orchestrator_corroborating_url,
+        )
+    if args.command == "public-browser-readiness":
+        return _cmd_public_browser_readiness(
+            instance_root=Path(args.instance),
+            config_path=Path(args.config),
+            profile_path=args.profile,
+            yyyymmdd=args.date,
         )
     if args.command == "collect":
         config_root = Path(args.config_from) if args.config_from else Path(args.instance)
@@ -3665,6 +3682,120 @@ def _write_search_topic_report(instance: InstanceRoot, yyyymmdd: str, report: di
         encoding="utf-8",
     )
     return report_artifact
+
+
+def _cmd_public_browser_readiness(
+    *,
+    instance_root: Path,
+    config_path: Path,
+    profile_path: Path,
+    yyyymmdd: str,
+) -> int:
+    instance = InstanceRoot(instance_root)
+    blockers: list[str] = []
+    profile_valid = False
+    connector_ready = False
+    profile_id = ""
+    connector_id = ""
+    transport_kind = ""
+    try:
+        profile = load_public_browser_profile(profile_path)
+        profile_valid = True
+        profile_id = profile.profile_id
+        connector_id = profile.connector_id
+        transport_kind = profile.transport_kind
+    except Exception as exc:
+        profile = None
+        blockers.append(f"profile_invalid:{exc}")
+
+    if profile is not None:
+        try:
+            registry = load_source_connector_registry(config_path)
+            connector = registry.connectors.get(profile.connector_id)
+            if not registry.policy.live_network_enabled:
+                blockers.append("live_network_not_enabled")
+            if connector is None:
+                blockers.append("connector_missing")
+            else:
+                if not connector.enabled:
+                    blockers.append("connector_not_enabled")
+                if connector.mode != "read_only":
+                    blockers.append("connector_not_read_only")
+                if not connector.external_call_allowed:
+                    blockers.append("connector_external_call_not_allowed")
+                if connector.domain_decision_policy != profile.domain_decision_policy:
+                    blockers.append("domain_decision_policy_mismatch")
+                forbidden = set(connector.forbidden_actions)
+                missing_forbidden = set(profile.forbidden_actions) - forbidden
+                if missing_forbidden:
+                    blockers.append("connector_missing_forbidden_actions")
+            connector_ready = not any(
+                item
+                in {
+                    "live_network_not_enabled",
+                    "connector_missing",
+                    "connector_not_enabled",
+                    "connector_not_read_only",
+                    "connector_external_call_not_allowed",
+                    "domain_decision_policy_mismatch",
+                    "connector_missing_forbidden_actions",
+                }
+                for item in blockers
+            )
+        except Exception as exc:
+            blockers.append(f"config_invalid:{exc}")
+
+    playwright_importable = importlib.util.find_spec("playwright") is not None
+    status = "ready" if profile_valid and connector_ready and not blockers else "blocked"
+    report = {
+        "schema_id": "hisys.public_browser_readiness.report",
+        "schema_version": "0.1.0",
+        "status": status,
+        "profile_id": profile_id,
+        "connector_id": connector_id,
+        "transport_kind": transport_kind,
+        "profile_valid": profile_valid,
+        "connector_ready": connector_ready,
+        "playwright_importable": playwright_importable,
+        "blockers": blockers,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+    report_ref = f"reports/run-summaries/{yyyymmdd}/public-browser-readiness-report.json"
+    report_path = instance.root / report_ref
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_path.with_suffix(".md").write_text(_render_public_browser_readiness_report_md(report), encoding="utf-8")
+    print(f"public browser readiness: status={status} report={report_path}")
+    print("external_call_made: false")
+    return 0 if status == "ready" else 2
+
+
+def _render_public_browser_readiness_report_md(report: dict[str, object]) -> str:
+    blockers = [f"- {item}" for item in report.get("blockers", [])]
+    if not blockers:
+        blockers = ["- none"]
+    return "\n".join(
+        [
+            "# Public Browser Readiness Report",
+            "",
+            f"- status: `{report['status']}`",
+            f"- profile_id: `{report.get('profile_id', '')}`",
+            f"- connector_id: `{report.get('connector_id', '')}`",
+            f"- transport_kind: `{report.get('transport_kind', '')}`",
+            f"- profile_valid: `{str(report['profile_valid']).lower()}`",
+            f"- connector_ready: `{str(report['connector_ready']).lower()}`",
+            f"- playwright_importable: `{str(report['playwright_importable']).lower()}`",
+            f"- external_call_made: `{str(report['external_call_made']).lower()}`",
+            f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
+            "",
+            "## Blockers",
+            "",
+            *blockers,
+            "",
+        ]
+    )
 
 
 def _cmd_public_browser_run(

@@ -89,7 +89,34 @@ connectors:
     smoke_test_in_ci: false
 ```
 
-## 4. Run browser acquisition
+## 4. Check public browser readiness
+
+Before a run, validate profile/config/import readiness without making a live
+network call:
+
+```bash
+hisys public-browser-readiness \
+  --instance <runtime-instance> \
+  --config <scoped-source-connectors.yaml> \
+  --profile examples/instance/config/profiles/public-browser.yaml \
+  --date <YYYYMMDD>
+```
+
+Expected readiness report:
+
+```text
+reports/run-summaries/<YYYYMMDD>/public-browser-readiness-report.json
+```
+
+The readiness check must record:
+
+```text
+external_call_made=false
+mutation_performed=false
+publication_or_live_action_approved=false
+```
+
+## 5. Run the public browser wrapper
 
 Set the manual smoke gate only for the approved run window:
 
@@ -97,7 +124,36 @@ Set the manual smoke gate only for the approved run window:
 export HISYS_ALLOW_BROWSER_SMOKE=1
 ```
 
-Run read-only browser acquisition:
+The recommended public beta UX is the wrapper command. It runs acquisition,
+Chief Editor readiness review, advisory DARS/Devil review, revision resolution,
+final Chief Editor browser review, and a public operator summary:
+
+```bash
+hisys public-browser-run \
+  --instance <runtime-instance> \
+  --config <scoped-source-connectors.yaml> \
+  --profile examples/instance/config/profiles/public-browser.yaml \
+  --date <YYYYMMDD> \
+  --request-id <HISYS-REQ-PUBLIC-...> \
+  --topic "<topic>" \
+  --user-opinion "<operator context>" \
+  --approval-ref <APPROVAL-REF> \
+  --follow-links \
+  --max-follow-links-per-source 2 \
+  --source-url https://example.com/page-a \
+  --source-url https://example.org/page-b
+```
+
+Expected public run summary:
+
+```text
+reports/run-summaries/<YYYYMMDD>/public-browser-run-summary.json
+reports/run-summaries/<YYYYMMDD>/public-browser-run-summary.md
+```
+
+## 6. Optional: run browser acquisition and review chain manually
+
+Use manual steps when debugging an individual gate. Run read-only browser acquisition:
 
 ```bash
 hisys browser-investigate-topic \
@@ -130,7 +186,7 @@ mutation_performed=false
 orchestrator_domain_decision_ref is present when --orchestrator-decide-domains is used
 ```
 
-## 5. Run the governed review chain
+## 7. Run the governed review chain
 
 Use the artifact refs from the acquisition report:
 
@@ -156,7 +212,7 @@ Resolve required advisory revisions:
 hisys resolve-browser-dars-revisions \
   --instance <runtime-instance> \
   --date <YYYYMMDD> \
-  --dars-review-ref data/dars-reviews/<YYYYMMDD>/DARS-<REQ>-BROWSER.json
+  --dars-review-ref data/dars-browser-reviews/<YYYYMMDD>/DARS-REVIEW-<REQ>-BROWSER.json
 ```
 
 Finalize the local Chief Editor browser review package:
@@ -168,7 +224,7 @@ hisys final-review-browser-investigation \
   --revision-resolution-ref data/browser-dars-revision-resolutions/<YYYYMMDD>/REVISION-<REQ>-BROWSER.json
 ```
 
-## 6. Interpret final state
+## 8. Interpret final state
 
 A successful final artifact is still bounded:
 
