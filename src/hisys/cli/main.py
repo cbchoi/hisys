@@ -271,6 +271,8 @@ def _cmd_build_investment_decision_packet(
     weight_policy_ref: str | None = None
     if weight_policy_path is not None:
         weight_policy = InvestmentWeightPolicy.model_validate_json(weight_policy_path.read_text(encoding="utf-8"))
+        if packet.weight_policy_ref is not None and weight_policy.policy_id != packet.weight_policy_ref:
+            raise ValueError("weight policy id does not match packet.weight_policy_ref")
         weight_policy_json_path = output_dir / f"{weight_policy.policy_id}.json"
         weight_policy_json_path.write_text(_round_trip_record_json(weight_policy) + "\n", encoding="utf-8")
         weight_policy_ref = _safe_relative_ref(instance.root, weight_policy_json_path)

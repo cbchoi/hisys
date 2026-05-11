@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 
 def _packet_payload() -> dict:
     return {
@@ -216,6 +218,32 @@ def test_build_investment_decision_packet_cli_attaches_weight_policy(tmp_path: P
     report = json.loads(report_json.read_text(encoding="utf-8"))
     assert report["weight_policy_ref"] == "runtime-boundary/investment-decisions/20260512/IW-POLICY-CLI-SP500-BALANCED-001.json"
     assert report["packet_weight_policy_ref"] == "IW-POLICY-CLI-SP500-BALANCED-001"
+
+
+def test_build_investment_decision_packet_cli_rejects_mismatched_weight_policy(tmp_path: Path) -> None:
+    from hisys.cli.main import main
+
+    request_path = tmp_path / "packet-input.json"
+    policy_path = tmp_path / "weight-policy.json"
+    mismatched_policy = _weight_policy_payload()
+    mismatched_policy["policy_id"] = "IW-POLICY-CLI-SP500-CONSERVATIVE-001"
+    request_path.write_text(json.dumps(_packet_payload()), encoding="utf-8")
+    policy_path.write_text(json.dumps(mismatched_policy), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="weight policy id does not match packet.weight_policy_ref"):
+        main(
+            [
+                "build-investment-decision-packet",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260512",
+                "--packet",
+                str(request_path),
+                "--weight-policy",
+                str(policy_path),
+            ]
+        )
 
 
 def test_review_investment_decision_packet_cli_prints_operator_summary(tmp_path: Path, capsys) -> None:

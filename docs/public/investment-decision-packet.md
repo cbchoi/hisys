@@ -101,7 +101,10 @@ operator summary for agent or human review; it also performs no mutation or
 external call. `InvestmentWeightPolicy` externalizes the decision weighting
 profile (`risk_tolerance`, time horizon, evidence/risk/contradiction/confidence
 weights, contradiction handling), so product runs can cite a stable policy
-artifact instead of relying on implicit or hard-coded weighting assumptions.
+artifact instead of relying on implicit or hard-coded weighting assumptions. When
+`--weight-policy` is supplied and the packet already names `weight_policy_ref`,
+the CLI rejects mismatched policy IDs so the report cannot silently attach the
+wrong weighting profile.
 
 ## Example status progression
 
