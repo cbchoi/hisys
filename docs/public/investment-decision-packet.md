@@ -59,6 +59,32 @@ no_action
 
 These are decision-support labels, not broker commands.
 
+## Product CLI workflow
+
+The product-level CLI boundary validates an `InvestmentDecisionPacket` JSON input,
+writes user-facing JSON/Markdown packet artifacts, persists Lapidary evidence-chain
+and weighted-alternative audit records, and writes a compact boundary report:
+
+```bash
+hisys build-investment-decision-packet \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --packet packet-input.json
+```
+
+Artifacts:
+
+```text
+runtime-boundary/investment-decisions/<YYYYMMDD>/<packet_id>.json
+runtime-boundary/investment-decisions/<YYYYMMDD>/<packet_id>.md
+runtime-boundary/investment-decisions/<YYYYMMDD>/investment-decision-packet-report.json
+data/audit/<YYYYMMDD>/lapidary-governance/evidence-chains/<chain_id>.json
+data/audit/<YYYYMMDD>/lapidary-governance/weighted-alternatives/<alternative_id>.json
+```
+
+The command performs no external call, no live mutation, no publication, and no
+execution. It is a product artifact builder for human-reviewed decision support.
+
 ## Example status progression
 
 ```text
@@ -72,10 +98,15 @@ These are decision-support labels, not broker commands.
    devil_review_status=completed
    dars_review_status=completed
 
-3. human review
+3. product packet build
+   hisys build-investment-decision-packet writes runtime-boundary packet/report artifacts
+   Lapidary evidence-chain and weighted-alternative audit records are persisted
+   action_taken=none
+
+4. human review
    human_approval.status=approved or rejected
 
-4. optional external execution system
+5. optional external execution system
    outside this schema and outside Hisys default boundary
 ```
 

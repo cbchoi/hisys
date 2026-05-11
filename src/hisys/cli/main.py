@@ -36,6 +36,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
+from ..audit import LapidaryGovernanceAuditWriter
 from ..browser.public_profile import load_public_browser_profile
 from ..browser.public_summary import write_public_browser_run_summary
 from ..browser.reports import (
@@ -93,6 +94,7 @@ from ..schemas import (
     FinalBrowserAcceptanceReviewReport,
     HisysToolResult,
     InvestigationDataPackage,
+    InvestmentDecisionPacket,
     ExtractedSignal,
     PerspectiveProfile,
     RawObservation,
@@ -193,6 +195,110 @@ def _record_json(record: object) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)
 
 
+def _bool_text(value: bool) -> str:
+    return "true" if value else "false"
+
+
+def _safe_relative_ref(instance_root: Path, path: Path) -> str:
+    return path.relative_to(instance_root).as_posix()
+
+
+def _render_investment_decision_packet_md(packet: InvestmentDecisionPacket) -> str:
+    """Render a compact operator-facing investment packet boundary summary."""
+
+    lines = [
+        f"# Investment Decision Packet: {packet.packet_id}",
+        "",
+        f"- Asset: {packet.asset}",
+        f"- Instruments: {', '.join(packet.instrument_refs) if packet.instrument_refs else 'n/a'}",
+        f"- Time horizon: {packet.time_horizon}",
+        f"- Proposed action: {packet.proposed_action}",
+        f"- Hisys mode: {packet.hisys_mode.level}",
+        f"- Chief Editor status: {packet.chief_editor_status}",
+        f"- Devil review status: {packet.devil_review_status}",
+        f"- DARS review status: {packet.dars_review_status}",
+        f"- Human approval: {packet.human_approval.status}",
+        f"- Execution authorized: {_bool_text(packet.execution_authorized)}",
+        f"- Publication/live action approved: {_bool_text(packet.publication_or_live_action_approved)}",
+        "",
+        "## Recommendation summary",
+        "",
+        packet.recommendation_summary,
+        "",
+        "## Scores",
+        "",
+        f"- Confidence: {packet.confidence:.2f}",
+        f"- Evidence score: {packet.evidence_score:.2f}",
+        f"- Risk score: {packet.risk_score:.2f}",
+        f"- Contradiction score: {packet.contradiction_score:.2f}",
+        "",
+        "## Boundary",
+        "",
+        "- Not financial advice.",
+        "- No autonomous execution.",
+        "- Consequential use requires explicit approved human approval.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _cmd_build_investment_decision_packet(
+    *,
+    instance_root: Path,
+    packet_path: Path,
+    yyyymmdd: str,
+) -> int:
+    """Validate and persist a human-gated investment packet product boundary."""
+
+    instance = InstanceRoot(instance_root)
+    packet = InvestmentDecisionPacket.model_validate_json(packet_path.read_text(encoding="utf-8"))
+
+    output_dir = instance.runtime_boundary_dir / "investment-decisions" / yyyymmdd
+    output_dir.mkdir(parents=True, exist_ok=True)
+    packet_json_path = output_dir / f"{packet.packet_id}.json"
+    packet_md_path = packet_json_path.with_suffix(".md")
+    packet_json_path.write_text(_record_json(packet) + "\n", encoding="utf-8")
+    packet_md_path.write_text(_render_investment_decision_packet_md(packet), encoding="utf-8")
+
+    audit_writer = LapidaryGovernanceAuditWriter(instance)
+    audit_refs: list[str] = []
+    if packet.evidence_chain is not None:
+        audit_refs.append(_safe_relative_ref(instance.root, audit_writer.append(packet.evidence_chain, yyyymmdd=yyyymmdd)))
+    for alternative in packet.weighted_alternatives:
+        audit_refs.append(_safe_relative_ref(instance.root, audit_writer.append(alternative, yyyymmdd=yyyymmdd)))
+
+    report = {
+        "schema_id": "hisys.investment_decision_packet_report",
+        "packet_id": packet.packet_id,
+        "asset": packet.asset,
+        "packet_ref": _safe_relative_ref(instance.root, packet_json_path),
+        "packet_markdown_ref": _safe_relative_ref(instance.root, packet_md_path),
+        "lapidary_audit_refs": audit_refs,
+        "hisys_mode_level": packet.hisys_mode.level,
+        "chief_editor_status": packet.chief_editor_status,
+        "devil_review_status": packet.devil_review_status,
+        "dars_review_status": packet.dars_review_status,
+        "human_approval_status": packet.human_approval.status,
+        "human_approval_required_for_consequential_use": packet.human_approval.required,
+        "execution_authorized": packet.execution_authorized,
+        "publication_or_live_action_approved": packet.publication_or_live_action_approved,
+        "action_taken": "none",
+        "external_call_made": False,
+        "mutation_performed": False,
+        "disclaimers": list(packet.disclaimers),
+    }
+    report_path = output_dir / "investment-decision-packet-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    print(f"investment decision packet: written packet_id={packet.packet_id}")
+    print(f"packet_ref={report['packet_ref']}")
+    print(f"report_ref={_safe_relative_ref(instance.root, report_path)}")
+    print(f"execution_authorized={_bool_text(packet.execution_authorized)}")
+    print(f"publication_or_live_action_approved={_bool_text(packet.publication_or_live_action_approved)}")
+    print(f"human_approval_status={packet.human_approval.status}")
+    print("action_taken=none")
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="hisys", description="Hisys runtime CLI.")
     parser.add_argument("--version", action="version", version=f"hisys {__version__}")
@@ -273,8 +379,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "show-artifact",
         help="print a safe relative JSON/Markdown artifact under the runtime instance",
     )
-    show_artifact.add_argument("--instance", required=True, help="runtime instance root containing artifacts")
+    show_artifact.add_argument("--instance", required=True, help="runtime instance root")
     show_artifact.add_argument("--ref", required=True, help="safe relative artifact ref to print")
+
+    investment_packet = sub.add_parser(
+        "build-investment-decision-packet",
+        help="validate and persist a human-gated investment decision packet product artifact",
+    )
+    investment_packet.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    investment_packet.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    investment_packet.add_argument("--packet", required=True, help="InvestmentDecisionPacket JSON input path")
 
     collect = sub.add_parser("collect", help="run fixture-backed Investigator collection")
     collect.add_argument("--instance", required=True, help="runtime instance root for outputs")
@@ -1055,6 +1169,12 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.command == "show-artifact":
         return _cmd_show_artifact(instance_root=Path(args.instance), ref=args.ref)
+    if args.command == "build-investment-decision-packet":
+        return _cmd_build_investment_decision_packet(
+            instance_root=Path(args.instance),
+            packet_path=Path(args.packet),
+            yyyymmdd=args.date,
+        )
     if args.command == "collect":
         config_root = Path(args.config_from) if args.config_from else Path(args.instance)
         return _cmd_collect(
