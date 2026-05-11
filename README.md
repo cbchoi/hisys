@@ -189,6 +189,17 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   validates approval, connector enabled state, read-only action, and provider
   domain allowlist before provider access. Search remains read-only and still
   forbids login, form submission, upload, purchase, post, and mutation.
+- Increment **Public browser beta profile and quickstart** -
+  `hisys validate-public-browser-profile --profile
+  examples/instance/config/profiles/public-browser.yaml` validates the public
+  launch safety envelope before an operator prepares a scoped live connector
+  config. The checked-in public beta profile exposes only `playwright_read_only`
+  with `transport_kind=playwright_live`, forbids credentials/mutation/public
+  fixture UX, requires read-only external calls and orchestrator-decided domain
+  scope, and keeps Camoufox as a disabled future experimental transport. Public
+  operator instructions live in `docs/public/browser-quickstart.md` and use the
+  installed `hisys` console script plus Playwright Chromium; fixture flags remain
+  developer/CI-only.
 - Increment **Browser-B actual browser investigation command** -
   `hisys browser-investigate-topic` turns approved company/publisher URLs into
   actual-data investigation artifacts. It gates each URL through
