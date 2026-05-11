@@ -764,6 +764,123 @@ git commit -m "feat: validate public browser profile"
 
 ---
 
+### Task 2.3: Evaluate Camoufox as an optional browser transport spike
+
+**Objective:** Consider Camoufox as a future optional read-only browser transport without making it the public default or weakening governance.
+
+**Context:** Camoufox is an open-source Firefox/Playwright-oriented browser for AI agents. The Python package describes itself as a wrapper around Playwright that launches Camoufox and injects realistic device/browser characteristics. This may improve compatibility with some sites, but it also raises governance, compliance, reproducibility, and public-positioning concerns because it is associated with fingerprinting and anti-bot avoidance.
+
+**Decision for public beta:**
+
+```text
+Keep Playwright Chromium as the default public transport.
+Do not add Camoufox to the first public launch profile.
+Evaluate Camoufox only behind an explicit experimental/internal transport flag.
+Do not enable proxy rotation, credential use, CAPTCHA bypass, login, form submit, mutation, or access-control bypass.
+```
+
+**Files if implemented later:**
+- Create: `src/hisys/connectors/camoufox_browser.py`
+- Modify: `src/hisys/connectors/live_source_config.py`
+- Modify: `examples/instance/config/source-connectors.yaml`
+- Modify: `src/hisys/browser/public_profile.py`
+- Test: `tests/unit/browser/test_camoufox_transport.py`
+- Docs: `docs/use-cases/live-research-connectors.md`
+
+**Step 1: Add a design note before code**
+
+Create `docs/design/camoufox-browser-transport.md` with:
+
+```text
+- intended use: optional compatibility transport for read-only public pages
+- non-goals: anti-bot bypass, proxy rotation, CAPTCHA bypass, login, scraping protected/private content
+- governance: same SourceConnectorDispatchGate as Playwright
+- artifact transport_kind: camoufox_live
+- public profile default: disabled
+- CI path: fixture or mocked transport only
+```
+
+**Step 2: Add connector config type only after design approval**
+
+If approved, extend `SourceConnectorConfig.connector_type` with:
+
+```python
+"camoufox_read_only"
+```
+
+Then add disabled-by-default registry entry:
+
+```yaml
+camoufox_read_only:
+  connector_id: camoufox_read_only
+  connector_type: camoufox_read_only
+  enabled: false
+  mode: read_only
+  external_call_allowed: false
+  requires_human_approval: true
+  approval_policy_ref: POLICY-LIVE-RESEARCH-001
+  domain_decision_policy: orchestrator_decided
+  forbidden_actions: *forbidden_live_actions
+  output_schema: EvidencePackage
+  manual_smoke_only: true
+  manual_smoke_env_var: HISYS_ALLOW_CAMOUFOX_SMOKE
+  smoke_test_in_ci: false
+```
+
+**Step 3: Implement transport behind existing BrowserTransport protocol**
+
+Use the existing `BrowserTransport.fetch(url) -> tuple[...]` shape so workflow code remains transport-agnostic.
+
+Sketch:
+
+```python
+class CamoufoxSyncTransport:
+    transport_kind = "camoufox_live"
+
+    def fetch(self, url: str) -> tuple[int, str, str, list[tuple[str, str]]]:
+        try:
+            from camoufox.sync_api import Camoufox
+        except Exception as exc:
+            raise PlaywrightUnavailableError(
+                "camoufox is not installed; install optional camoufox extra and fetch browser runtime"
+            ) from exc
+        # read-only page.goto, title, body inner_text, links only
+```
+
+Verify the actual Camoufox API before implementing; do not rely on this sketch blindly.
+
+**Step 4: Add explicit tests for forbidden positioning**
+
+Tests must assert:
+
+```text
+Camoufox is disabled by default.
+Public profile rejects Camoufox unless experimental flag is enabled.
+Camoufox transport records transport_kind=camoufox_live.
+Camoufox transport preserves mutation_performed=false.
+Proxy/credential/CAPTCHA-bypass fields are rejected if introduced.
+```
+
+**Step 5: Run validation**
+
+```bash
+python3 -m pytest tests/unit/browser/test_camoufox_transport.py tests/unit/test_source_connector_cli.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+Expected: pass.
+
+**Step 6: Commit if implemented**
+
+```bash
+git add docs/design/camoufox-browser-transport.md src/hisys/connectors/camoufox_browser.py tests/unit/browser/test_camoufox_transport.py
+git commit -m "spike: evaluate camoufox browser transport"
+```
+
+---
+
 # Phase 3: Public Run UX and Summary
 
 ### Task 3.1: Add public browser run summary builder
