@@ -8,7 +8,12 @@ from hisys.schemas.investment import (
     OrderTicketDraft,
     ScenarioAssessment,
 )
-from hisys.schemas.lapidary_governance import EvidenceChainRecord, HisysMode
+from hisys.schemas.lapidary_governance import (
+    EvidenceChainRecord,
+    EvidenceOriginWeight,
+    HisysMode,
+    WeightedDecisionAlternative,
+)
 
 
 def _signal(signal_id: str = "SIG-SP500-GDP-001") -> InvestmentSignal:
@@ -181,6 +186,7 @@ def test_investment_decision_packet_decision_mode_accepts_decision_level_evidenc
     packet = _packet(
         hisys_mode=HisysMode(level="decision"),
         evidence_chain=_decision_chain(),
+        weighted_alternatives=[_weighted_alternative()],
     )
 
     assert packet.hisys_mode.level == "decision"
@@ -198,3 +204,90 @@ def test_investment_decision_packet_lower_modes_allow_omitted_evidence_chain():
         packet = _packet(hisys_mode=HisysMode(level=level))
         assert packet.hisys_mode.level == level
         assert packet.evidence_chain is None
+
+
+def _weighted_alternative(
+    alternative_id: str = "ALT-IDP-SP500-001",
+    *,
+    origin_weight: float = 0.6,
+) -> WeightedDecisionAlternative:
+    return WeightedDecisionAlternative(
+        alternative_id=alternative_id,
+        producer_id="hisys-investment-decision-support",
+        status="active",
+        label="Staged buy under valuation guardrails",
+        claim="Stagger exposure while contradiction risk remains elevated.",
+        origin_weights=[
+            EvidenceOriginWeight(
+                evidence_origin="external_source",
+                ref="canonical/evidence/EVID-SP500-GDP-001.md",
+                origin_weight=origin_weight,
+                source_quality=0.8,
+                verification_status=0.7,
+                recency=0.9,
+                independence=0.6,
+                contradiction_status=0.5,
+                domain_fit=0.8,
+            ),
+        ],
+        recommended_use="hybrid",
+    )
+
+
+def test_investment_decision_packet_decision_mode_requires_weighted_alternatives():
+    with pytest.raises(ValidationError, match="weighted_alternatives"):
+        _packet(
+            hisys_mode=HisysMode(level="decision"),
+            evidence_chain=_decision_chain(),
+        )
+
+
+def test_investment_decision_packet_publication_mode_requires_weighted_alternatives():
+    with pytest.raises(ValidationError, match="weighted_alternatives"):
+        _packet(
+            hisys_mode=HisysMode(level="publication"),
+            evidence_chain=_decision_chain(),
+        )
+
+
+def test_investment_decision_packet_decision_mode_rejects_empty_weighted_alternatives():
+    with pytest.raises(ValidationError, match="weighted_alternatives"):
+        _packet(
+            hisys_mode=HisysMode(level="decision"),
+            evidence_chain=_decision_chain(),
+            weighted_alternatives=[],
+        )
+
+
+def test_investment_decision_packet_decision_mode_accepts_non_empty_weighted_alternatives():
+    packet = _packet(
+        hisys_mode=HisysMode(level="decision"),
+        evidence_chain=_decision_chain(),
+        weighted_alternatives=[_weighted_alternative()],
+    )
+
+    assert packet.hisys_mode.level == "decision"
+    assert len(packet.weighted_alternatives) == 1
+    alternative = packet.weighted_alternatives[0]
+    assert alternative.alternative_id == "ALT-IDP-SP500-001"
+    assert sum(w.origin_weight for w in alternative.origin_weights) > 0
+    dumped = packet.model_dump(mode="json")
+    assert dumped["weighted_alternatives"][0]["alternative_id"] == "ALT-IDP-SP500-001"
+
+
+def test_investment_decision_packet_publication_mode_accepts_non_empty_weighted_alternatives():
+    packet = _packet(
+        hisys_mode=HisysMode(level="publication"),
+        evidence_chain=_decision_chain(),
+        weighted_alternatives=[_weighted_alternative()],
+    )
+
+    assert packet.hisys_mode.level == "publication"
+    assert len(packet.weighted_alternatives) == 1
+
+
+def test_investment_decision_packet_lower_modes_allow_empty_weighted_alternatives():
+    for level in ("none", "stone", "claim", "synthesis"):
+        packet = _packet(hisys_mode=HisysMode(level=level))
+        assert packet.hisys_mode.level == level
+        assert packet.weighted_alternatives == []

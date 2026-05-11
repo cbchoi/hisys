@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..core.ids import validate_id
 from .base import BaseRecord
-from .lapidary_governance import EvidenceChainRecord, HisysMode
+from .lapidary_governance import EvidenceChainRecord, HisysMode, WeightedDecisionAlternative
 
 InvestmentDirection = Literal["bullish", "neutral", "bearish", "mixed", "unknown"]
 InvestmentAction = Literal["buy", "staged_buy", "hold", "reduce", "sell", "watch", "no_action"]
@@ -164,6 +164,7 @@ class InvestmentDecisionPacket(BaseRecord):
     disclaimers: list[str] = Field(default_factory=lambda: ["not financial advice", "no autonomous execution"])
     hisys_mode: HisysMode = Field(default_factory=HisysMode)
     evidence_chain: EvidenceChainRecord | None = None
+    weighted_alternatives: list[WeightedDecisionAlternative] = Field(default_factory=list)
 
     @field_validator("packet_id")
     @classmethod
@@ -212,5 +213,9 @@ class InvestmentDecisionPacket(BaseRecord):
                 raise ValueError(
                     f"hisys_mode.level={self.hisys_mode.level!r} requires a decision-level EvidenceChainRecord "
                     "(decision_ref plus synthesis_refs, claim_ledger_refs, evidence_refs, source_refs)"
+                )
+            if not self.weighted_alternatives:
+                raise ValueError(
+                    f"hisys_mode.level={self.hisys_mode.level!r} requires weighted_alternatives"
                 )
         return self
