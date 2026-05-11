@@ -20,6 +20,15 @@ from .investment import (
     OrderTicketDraft,
     ScenarioAssessment,
 )
+from .lapidary_governance import (
+    AppraiserSeparationPolicy,
+    EvidenceChainRecord,
+    EvidenceOriginWeight,
+    HisysMode,
+    LapidaryRoleAssignment,
+    TemporalArchivePolicy,
+    WeightedDecisionAlternative,
+)
 from .handoff import AgentHandoffPackage
 from .hermes_trace import HermesCollectionTrace
 from .audit import AuditEvent
@@ -61,6 +70,13 @@ __all__ = [
     "InvestmentSignal",
     "OrderTicketDraft",
     "ScenarioAssessment",
+    "AppraiserSeparationPolicy",
+    "EvidenceChainRecord",
+    "EvidenceOriginWeight",
+    "HisysMode",
+    "LapidaryRoleAssignment",
+    "TemporalArchivePolicy",
+    "WeightedDecisionAlternative",
     "AgentHandoffPackage",
     "HermesCollectionTrace",
     "AuditEvent",

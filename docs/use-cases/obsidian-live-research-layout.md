@@ -276,6 +276,69 @@ Use tags for navigation and domain labels only, for example
 `hisys/live-research`, `research/devs`, or `research/digital-twin`. Do not encode
 pipeline phase as tags such as `hisys/live-k`; use `phase: live-k`.
 
+## Hisys Lapidary governance layer
+
+Hisys keeps its core name and technical ontology. Stone/Gem/Jewel and
+Lapidary/Jewelcraft labels are a role/workflow layer used to make governed
+research traceability easier to navigate:
+
+| Metaphor | Hisys technical role |
+|---|---|
+| Stone | `hisys/source`, `hisys/evidence`, `hisys/quote` |
+| Claim Index | `hisys/claim`, `hisys/claim-evidence-ledger` |
+| Gem | `hisys/synthesis`, `hisys/claim-evidence-summary`, `hisys/claim-coverage-gate` |
+| Jewel | `hisys/decision`, accepted thesis/principle |
+| Miner | source discovery |
+| Cutter | evidence and claim extraction |
+| Artisan | synthesis/Gem builder |
+| Appraiser | advisory DARS/adversarial audit |
+| Jeweler | Jewel/decision review |
+| Curator | topic routing, promotion, archive review |
+| Vault Steward | scheduled maintenance/degradation scan |
+
+Machine-readable role records should preserve `agent_role`, `function`, and
+`technical_type`; `display_metaphor` is only the human-facing label.
+
+Hisys governance is selective, not universal. Use `hisys_mode.level` with this
+controlled sequence: `none -> stone -> claim -> synthesis -> decision ->
+publication`. Most raw notes and links stay at `none` or `stone`; higher levels
+require consequence, reuse, publication, decision, or contradiction-handling value.
+
+Evidence-chain traversal should be downward and structured:
+
+```text
+decision/Jewel -> synthesis/Gem -> claim ledger -> evidence/Stone -> attachment/source
+```
+
+Structured `links` are the governance source of truth. Obsidian wikilinks and
+backlinks are human-navigation projections for finding upward dependencies.
+
+Time-sensitive evidence degrades by stage rather than being deleted:
+
+```text
+fresh -> aging -> stale -> deprecated -> archive_candidate -> archive
+```
+
+For company, market, product, roadmap, funding, people, organization, and news
+records, archive stale material as historical decision evidence unless a separate
+approved pruning package exists.
+
+Internal and external evidence must remain distinguishable through
+`evidence_origin` values such as `external_source`, `internal_prior`,
+`human_decision`, `agent_synthesis`, and `runtime_observation`. Alternatives
+should record weights for source quality, verification status, recency,
+independence, contradiction status, and domain fit instead of collapsing internal
+experience and current external evidence into one opaque confidence score.
+
+DARS remains an Appraiser/adversarial audit function. It may critique, identify
+confirmation bias, stale evidence, weak evidence, and contradiction gaps, but it
+must not approve, execute, publish, or replace Chief Editor/Jeweler/human decision
+authority.
+
+The formal Pydantic boundary for this layer is
+`src/hisys/schemas/lapidary_governance.py`, verified by
+`tests/unit/test_lapidary_governance_schema.py`.
+
 ## Link relation policy
 
 Structured links are primary. Wiki links may be generated for human navigation,
@@ -306,6 +369,12 @@ split_from
 related_topics
 promoted_from_investigation
 tombstoned_by
+synthesizes_claims
+evidence_for_decision
+promoted_to_jewel
+archived_as_historical_evidence
+weighted_by_origin
+reviewed_by_appraiser
 ```
 
 Future validators should type-check relations, e.g. reject a quote note claiming
