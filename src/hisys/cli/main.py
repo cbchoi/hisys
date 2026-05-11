@@ -359,6 +359,12 @@ def _investment_id_suffix(asset: str) -> str:
     return id_part[:24]
 
 
+def _evidence_package_uses_fixture_backend(package: EvidencePackage) -> bool:
+    markers = [package.agent_id, package.agent_type, *package.actions_taken]
+    markers.extend(item.agent_id for item in package.evidence)
+    return any("fixture" in marker.lower() or "mock" in marker.lower() for marker in markers)
+
+
 def _cmd_run_investment_decision_dry_run(
     *,
     instance_root: Path,
@@ -377,6 +383,8 @@ def _cmd_run_investment_decision_dry_run(
     packages = [EvidencePackage.model_validate_json(path.read_text(encoding="utf-8")) for path in evidence_package_paths]
     if any(package.external_side_effects for package in packages):
         raise ValueError("investment dry-run evidence packages must not report external_side_effects")
+    if any(_evidence_package_uses_fixture_backend(package) for package in packages):
+        raise ValueError("fixture backend evidence packages are not accepted for investment dry-run")
     first_package = packages[0]
     if not first_package.claims:
         raise ValueError("investment dry-run requires at least one claim")

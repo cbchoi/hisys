@@ -336,6 +336,63 @@ def test_run_investment_decision_dry_run_assembles_packet_from_evidence_artifact
     assert report["mutation_performed"] is False
 
 
+def test_run_investment_decision_dry_run_rejects_fixture_backend_evidence(tmp_path: Path) -> None:
+    from hisys.cli.main import main
+
+    evidence_path = tmp_path / "fixture-evidence-package.json"
+    policy_path = tmp_path / "weight-policy.json"
+    payload = {
+        "package_id": "PKG-INVDRY-FIXTURE-001",
+        "task_id": "TASK-INVDRY-FIXTURE-001",
+        "agent_id": "fixture-investigator",
+        "agent_type": "fixture",
+        "claims": [
+            {
+                "claim_id": "CLAIM-INVDRY-FIXTURE-001",
+                "text": "Fixture-only claim must not enter product dry-run workflow.",
+                "confidence": 0.5,
+                "evidence_refs": ["EV-INVDRY-FIXTURE-001"],
+            }
+        ],
+        "evidence": [
+            {
+                "evidence_id": "EV-INVDRY-FIXTURE-001",
+                "task_id": "TASK-INVDRY-FIXTURE-001",
+                "agent_id": "fixture-investigator",
+                "source_id": "SRC-INVDRY-FIXTURE-001",
+                "title": "Fixture-only evidence",
+                "quoted_text": "Synthetic fixture text.",
+                "retrieved_at": "2026-05-12T00:00:00Z",
+            }
+        ],
+        "external_side_effects": False,
+        "actions_taken": ["fixture_backend_ingested"],
+    }
+    evidence_path.write_text(json.dumps(payload), encoding="utf-8")
+    policy_path.write_text(json.dumps(_weight_policy_payload()), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="fixture backend evidence packages are not accepted"):
+        main(
+            [
+                "run-investment-decision-dry-run",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260512",
+                "--asset",
+                "S&P 500",
+                "--instrument",
+                "SPY",
+                "--time-horizon",
+                "6-12 months",
+                "--evidence-package",
+                str(evidence_path),
+                "--weight-policy",
+                str(policy_path),
+            ]
+        )
+
+
 def test_review_investment_decision_packet_cli_prints_operator_summary(tmp_path: Path, capsys) -> None:
     from hisys.cli.main import main
 

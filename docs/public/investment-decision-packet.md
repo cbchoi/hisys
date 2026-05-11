@@ -118,7 +118,10 @@ wrong weighting profile. The dry-run workflow consumes already-materialized
 `EvidencePackage` JSON artifacts rather than using a fixture backend. It assembles
 a bounded packet, evidence chain, weighted alternative, policy artifact, and
 report while recording `fixture_backend_used=false`, `external_call_made=false`,
-`mutation_performed=false`, and `action_taken=none`.
+`mutation_performed=false`, and `action_taken=none`. Evidence packages whose
+agent IDs, agent types, evidence agent IDs, or recorded actions indicate `fixture`
+or `mock` provenance are rejected from this product dry-run path; fixture-backed
+coverage remains isolated to lower-level tests/harnesses.
 
 ## Example status progression
 
