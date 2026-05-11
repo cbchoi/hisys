@@ -14,6 +14,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from ..audit import LapidaryGovernanceAuditWriter
 from ..config import InstanceRoot
 from ..core.ids import IdNamespace, make_id
 from ..editor import MemoReviewReport
@@ -51,6 +52,7 @@ class ChiefEditorRuntime:
         self.policy = policy
         self.producer_id = producer_id
         self.hisys_mode = hisys_mode or HisysMode()
+        self.governance_audit_writer = LapidaryGovernanceAuditWriter(instance)
 
     def decide_run(
         self,
@@ -138,6 +140,7 @@ class ChiefEditorRuntime:
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / f"{decision.alert_id}.evidence_chain.json"
         path.write_text(_to_json(chain), encoding="utf-8")
+        self.governance_audit_writer.append(chain, yyyymmdd=yyyymmdd)
         return path
 
     def _write_decision(self, decision: AlertDecisionRecord, yyyymmdd: str) -> tuple[Path, Path]:
