@@ -50,6 +50,7 @@ from ..browser.reports import (
     _write_browser_investigation_report,
 )
 from ..browser.workflow import BrowserInvestigationRunConfig, run_browser_investigation
+from ..hermes_deploy import DEFAULT_HERMES_TOOL_ROOT, deploy_hisys_to_hermes
 from ..browser.review_chain import (
     _build_browser_chief_editor_review,
     _build_browser_dars_review,
@@ -199,6 +200,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
     validate = sub.add_parser("validate-config", help="validate a Hisys runtime instance config")
     validate.add_argument("--instance", required=True, help="runtime instance root containing config/")
+
+    deploy_hermes = sub.add_parser(
+        "deploy-hermes-tool",
+        help="deploy a controlled Hisys wrapper/manifest under a Hermes tools directory",
+    )
+    deploy_hermes.add_argument("--source-root", type=Path, default=Path.cwd(), help="Hisys source repo root; defaults to current directory")
+    deploy_hermes.add_argument("--target", type=Path, default=DEFAULT_HERMES_TOOL_ROOT, help="Hermes Hisys tool deployment directory")
+    deploy_hermes.add_argument("--channel-id", help="optional Discord channel/thread id for generated config snippet")
+    deploy_hermes.add_argument("--channel-name", help="optional human-readable channel/thread name for generated prompt")
+    deploy_hermes.add_argument("--force", action="store_true", help="replace an existing Hisys Hermes tool deployment")
 
     public_profile = sub.add_parser(
         "validate-public-browser-profile",
@@ -989,6 +1000,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "validate-config":
         return _cmd_validate_config(Path(args.instance))
+    if args.command == "deploy-hermes-tool":
+        return _cmd_deploy_hermes_tool(
+            source_root=args.source_root,
+            target_root=args.target,
+            channel_id=args.channel_id,
+            channel_name=args.channel_name,
+            force=args.force,
+        )
     if args.command == "validate-public-browser-profile":
         try:
             profile = load_public_browser_profile(args.profile)
@@ -1524,6 +1543,25 @@ def main(argv: list[str] | None = None) -> int:
         )
     parser.error(f"unknown command: {args.command}")
     return 2
+
+
+def _cmd_deploy_hermes_tool(
+    *,
+    source_root: Path,
+    target_root: Path,
+    channel_id: str | None,
+    channel_name: str | None,
+    force: bool,
+) -> int:
+    result = deploy_hisys_to_hermes(
+        source_root=source_root,
+        target_root=target_root,
+        channel_id=channel_id,
+        channel_name=channel_name,
+        force=force,
+    )
+    print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    return 0 if result.get("status") == "deployed" else 2
 
 
 def _cmd_validate_config(instance_root: Path) -> int:

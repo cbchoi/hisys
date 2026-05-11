@@ -199,9 +199,10 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   scope, and keeps Camoufox as a disabled future experimental transport. Public
   operator instructions live in `docs/public/browser-quickstart.md` and the
   fuller manual `docs/public/public-beta-manual.md`; agent-facing integration
-  guidance lives in `docs/public/agent-tool-manual.md`. These docs use the installed
-  `hisys` console script plus Playwright Chromium. Fixture flags remain
-  developer/CI-only.
+  guidance lives in `docs/public/agent-tool-manual.md`, and deployment under
+  `~/.hermes/tools/hisys` is documented in `docs/public/hermes-tool-deployment.md`.
+  These docs use the installed `hisys` console script plus Playwright Chromium.
+  Fixture flags remain developer/CI-only.
 - Increment **Browser-B actual browser investigation command** -
   `hisys browser-investigate-topic` turns approved company/publisher URLs into
   actual-data investigation artifacts. It gates each URL through
