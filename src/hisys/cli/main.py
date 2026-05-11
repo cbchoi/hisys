@@ -36,6 +36,25 @@ from ..chief_editor import (
 )
 from ..agents import DarsRuntime
 from ..browser.public_profile import load_public_browser_profile
+from ..browser.reports import (
+    _browser_investigation_report,
+    _render_browser_chief_editor_review_md,
+    _render_browser_dars_handoff_md,
+    _render_browser_dars_revision_report_md,
+    _render_browser_dars_revision_resolution_md,
+    _render_browser_dars_review_md,
+    _render_final_browser_acceptance_report_md,
+    _render_final_browser_acceptance_review_md,
+    _write_browser_investigation_report,
+)
+from ..browser.review_chain import (
+    _build_browser_chief_editor_review,
+    _build_browser_dars_review,
+    _build_browser_dars_revision_resolution,
+    _build_final_browser_acceptance_review,
+    _browser_revision_ready_for_final_review,
+    _primary_browser_segment,
+)
 from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_git_sync_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, execute_obsidian_git_sync_live, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_git_live_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, GeneralWebSearchConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, PlaywrightBrowserConnector, PlaywrightUnavailableError, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..core.ids import IdNamespace, make_id
@@ -3982,79 +4001,8 @@ def _write_orchestrator_domain_decision(
 
 
 
-def _browser_investigation_report(
-    *,
-    request_id: str,
-    topic: str,
-    user_opinion: str,
-    status: str,
-    reason_code: str | None,
-    source_urls: list[str],
-    source_access_refs: list[str],
-    source_evidence_refs: list[str],
-    transport_kinds: list[str],
-    domain_decision_policy: str,
-    resolved_allowed_domains: list[str],
-    orchestrator_domain_decision_ref: str | None,
-    evidence_package_ref: str | None,
-    memo_ref: str | None,
-    external_call_made: bool,
-    followed_source_urls: list[str] | None = None,
-    source_candidates_ref: str | None = None,
-    competitive_matrix_ref: str | None = None,
-    evidence_sufficiency_ref: str | None = None,
-) -> dict[str, object]:
-    return {
-        "schema_id": "hisys.browser_investigation.report",
-        "schema_version": "0.1.0",
-        "request_id": request_id,
-        "topic": topic,
-        "user_opinion": user_opinion,
-        "connector_id": "playwright_read_only",
-        "status": status,
-        "reason_code": reason_code,
-        "source_urls": source_urls,
-        "followed_source_urls": followed_source_urls or [],
-        "pages_collected": len(source_access_refs),
-        "source_access_refs": source_access_refs,
-        "source_evidence_refs": source_evidence_refs,
-        "transport_kinds": transport_kinds,
-        "domain_decision_policy": domain_decision_policy,
-        "resolved_allowed_domains": resolved_allowed_domains,
-        "orchestrator_domain_decision_ref": orchestrator_domain_decision_ref,
-        "evidence_package_ref": evidence_package_ref,
-        "source_candidates_ref": source_candidates_ref,
-        "competitive_matrix_ref": competitive_matrix_ref,
-        "evidence_sufficiency_ref": evidence_sufficiency_ref,
-        "memo_ref": memo_ref,
-        "external_call_made": external_call_made,
-        "mutation_performed": False,
-    }
 
 
-def _write_browser_investigation_report(instance: InstanceRoot, yyyymmdd: str, report: dict[str, object]) -> Path:
-    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
-    report_dir.mkdir(parents=True, exist_ok=True)
-    json_path = report_dir / "browser-investigation-report.json"
-    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    md_path = report_dir / "browser-investigation-report.md"
-    md_path.write_text(
-        "\n".join(
-            [
-                "# Browser Investigation Report",
-                "",
-                f"- request_id: `{report['request_id']}`",
-                f"- connector_id: `{report['connector_id']}`",
-                f"- status: `{report['status']}`",
-                f"- pages_collected: `{report['pages_collected']}`",
-                f"- external_call_made: `{report['external_call_made']}`",
-                f"- mutation_performed: `{report['mutation_performed']}`",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    return json_path
 
 
 
@@ -4114,60 +4062,9 @@ def _cmd_review_browser_investigation(
 
 
 
-def _build_browser_chief_editor_review(
-    *,
-    request_id: str,
-    browser_investigation_report_ref: str,
-    browser_report: dict[str, object],
-    sufficiency: dict[str, object],
-    producer_id: str,
-) -> dict[str, object]:
-    basis_refs = {
-        "browser_investigation_report": browser_investigation_report_ref,
-        "evidence_package": str(browser_report.get("evidence_package_ref") or ""),
-        "source_candidates": str(browser_report.get("source_candidates_ref") or ""),
-        "competitive_matrix": str(browser_report.get("competitive_matrix_ref") or ""),
-        "evidence_sufficiency": str(browser_report.get("evidence_sufficiency_ref") or ""),
-        "memo": str(browser_report.get("memo_ref") or ""),
-    }
-    return {
-        "schema_id": "hisys.chief_editor.browser_investigation_review",
-        "schema_version": "0.1.0",
-        "request_id": request_id,
-        "browser_investigation_report_ref": browser_investigation_report_ref,
-        "decision": "accept_for_devil_dars_adversarial_review",
-        "basis_refs": {key: value for key, value in basis_refs.items() if value},
-        "review_readiness": sufficiency.get("review_readiness"),
-        "chief_editor_questions_for_devil_dars": [
-            "Are high-strength competitive signals independently corroborated by patents, datasheets, filings, papers, or distributor/spec pages?",
-            "Are conclusions normalized by segment before comparing vendors or technologies?",
-            "Are source candidates sufficient to avoid shallow-page or vendor-marketing bias?",
-        ],
-        "human_approval_required": True,
-        "approval_status": "not_requested",
-        "action_taken": "none",
-        "external_call_made": False,
-        "mutation_performed": False,
-        "producer_id": producer_id,
-    }
 
 
 
-def _render_browser_chief_editor_review_md(review: dict[str, object]) -> str:
-    return "\n".join([
-        f"# Chief Editor Browser Review {review['request_id']}",
-        "",
-        f"- decision: `{review['decision']}`",
-        f"- review_readiness: `{review.get('review_readiness')}`",
-        f"- action_taken: `{review['action_taken']}`",
-        f"- external_call_made: `{str(review['external_call_made']).lower()}`",
-        f"- mutation_performed: `{str(review['mutation_performed']).lower()}`",
-        "",
-        "## Questions for Devil/DARS",
-        "",
-        *[f"- {item}" for item in review.get("chief_editor_questions_for_devil_dars", [])],
-        "",
-    ])
 
 
 
@@ -4473,19 +4370,6 @@ def _browser_technology_signals(text: str) -> dict[str, str]:
 
 
 
-def _primary_browser_segment(segment_signals: str) -> str:
-    signal = segment_signals.lower()
-    if "ct" in signal:
-        return "ct"
-    if "medical" in signal or "dental" in signal:
-        return "medical_dental"
-    if "industrial" in signal or "ndt" in signal or "inspection" in signal:
-        return "industrial_ndt"
-    if "xrf" in signal or "xrd" in signal or "analytical" in signal:
-        return "analytical_xrf_xrd"
-    if "security" in signal or "irradiation" in signal:
-        return "security_irradiation"
-    return "unknown"
 
 
 
@@ -6993,88 +6877,10 @@ def _cmd_request_browser_dars_review(
     return 0
 
 
-def _build_browser_dars_review(
-    *,
-    request_id: str,
-    chief_editor_review_ref: str,
-    chief_review: dict[str, object],
-    matrix: dict[str, object],
-    producer_id: str,
-) -> dict[str, object]:
-    rows = [row for row in matrix.get("rows", []) if isinstance(row, dict)]
-    questions = [str(item) for item in chief_review.get("chief_editor_questions_for_devil_dars", [])]
-    findings: list[str] = []
-    rows_text = "\n".join(
-        f"{row.get('company_or_source', '')} {row.get('technology_signals', '')} {row.get('evidence_excerpt', '')}"
-        for row in rows
-    ).lower()
-    if "dunlee" in rows_text or any("dunlee" in item.lower() for item in questions):
-        findings.append("Dunlee LMB claims need explicit patent/spec cross-reference; current signal is strong but should not alone decide overall competitiveness.")
-    if "varex" in rows_text or any("varex" in item.lower() for item in questions):
-        findings.append("Varex breadth may reflect catalog scope rather than superior tube technology; compare product-spec rows against COMET and distributor evidence.")
-    if "malvern" in rows_text or any("malvern" in item.lower() for item in questions):
-        findings.append("Malvern Panalytical evidence may be instrument-integrated analytical XRF/XRD tubes, so segment scope must be separated from general x-ray tube manufacturing.")
-    if "canon" in rows_text or any("canon" in item.lower() for item in questions):
-        findings.append("Canon ETD signals appear medical/dental and stationary-anode focused; avoid ranking it against industrial/NDT vendors without segment normalization.")
-    if not findings:
-        findings.append("No company-specific adversarial finding generated; require human review of matrix rows before final acceptance.")
-    revisions = [
-        "Normalize conclusions by segment: CT, medical/dental, industrial/NDT, analytical XRF/XRD, and security/irradiation.",
-        "Map every high-strength row to at least one corroborating evidence class: patent, datasheet/specification, distributor/spec page, filing, or paper.",
-        "Downgrade any claim supported only by vendor marketing text to preliminary signal, not accepted conclusion.",
-    ]
-    return {
-        "schema_id": "hisys.dars.browser_investigation_review",
-        "schema_version": "0.1.0",
-        "request_id": request_id,
-        "chief_editor_review_ref": chief_editor_review_ref,
-        "decision": "requires_revision_before_final_acceptance",
-        "allowed_actions": "advisory_only",
-        "external_call_made": False,
-        "mutation_performed": False,
-        "risk_classification": "evidence_quality_adversarial_review_not_cybersecurity",
-        "dars_backend": "deterministic_local_advisory",
-        "adversarial_findings": findings,
-        "required_revisions": revisions,
-        "questions_reviewed": questions,
-        "matrix_rows_reviewed": len(rows),
-        "producer_id": producer_id,
-    }
 
 
-def _render_browser_dars_handoff_md(handoff: dict[str, object]) -> str:
-    return "\n".join([
-        f"# DARS handoff {handoff['handoff_id']}",
-        "",
-        f"- target_agent_system: {handoff['target_agent_system']}",
-        f"- task: {handoff['task']}",
-        f"- allowed_actions: {handoff['allowed_actions']}",
-        f"- status: {handoff['status']}",
-        f"- evidence_bundle: {', '.join(str(item) for item in handoff['evidence_bundle'])}",
-        "",
-    ])
 
 
-def _render_browser_dars_review_md(review: dict[str, object]) -> str:
-    findings = [str(item) for item in review.get("adversarial_findings", [])]
-    revisions = [str(item) for item in review.get("required_revisions", [])]
-    return "\n".join([
-        f"# DARS Browser Review {review['request_id']}",
-        "",
-        f"- decision: `{review['decision']}`",
-        f"- allowed_actions: `{review['allowed_actions']}`",
-        f"- external_call_made: `{str(review['external_call_made']).lower()}`",
-        f"- mutation_performed: `{str(review['mutation_performed']).lower()}`",
-        "",
-        "## Adversarial Findings",
-        "",
-        *[f"- {item}" for item in findings],
-        "",
-        "## Required Revisions",
-        "",
-        *[f"- {item}" for item in revisions],
-        "",
-    ])
 
 
 def _browser_request_id_from_ref(ref: str) -> str:
@@ -7154,119 +6960,15 @@ def _load_json_ref(instance: InstanceRoot, ref: str) -> dict[str, object]:
 
 
 
-def _build_browser_dars_revision_resolution(
-    *,
-    request_id: str,
-    dars_review_ref: str,
-    chief_editor_review_ref: str,
-    competitive_matrix_ref: str,
-    dars_review: dict[str, object],
-    matrix: dict[str, object],
-    producer_id: str,
-) -> dict[str, object]:
-    rows = [row for row in matrix.get("rows", []) if isinstance(row, dict)]
-    segment_rows: list[dict[str, object]] = []
-    corroboration_rows: list[dict[str, object]] = []
-    blockers: list[str] = []
-    independent_classes = {"patent", "technical_paper", "datasheet_or_specification", "filing_or_annual_report", "distributor_or_shop_page"}
-    for index, row in enumerate(rows, start=1):
-        row_label = str(row.get("company_or_source") or f"row-{index}")
-        segment = str(row.get("segment") or _infer_browser_segment(row)).strip()
-        if segment == "unknown":
-            blockers.append(f"Segment normalization missing for {row_label}.")
-        signal_strength = str(row.get("competitive_signal_strength", "")).lower()
-        corroborating_class = str(row.get("corroborating_evidence_class") or row.get("source_type") or "").strip()
-        if signal_strength == "high" and corroborating_class not in independent_classes:
-            blockers.append(f"High-strength row lacks independent corroboration class for {row_label}.")
-        segment_rows.append({
-            "row_index": index,
-            "company_or_source": row_label,
-            "normalized_segment": segment,
-            "basis": "explicit_row_segment" if row.get("segment") else "heuristic_from_row_text",
-        })
-        corroboration_rows.append({
-            "row_index": index,
-            "company_or_source": row_label,
-            "competitive_signal_strength": signal_strength or "unspecified",
-            "corroborating_evidence_class": corroborating_class or "missing",
-            "independent_corroboration_present": corroborating_class in independent_classes,
-            "evidence_refs": row.get("evidence_refs", []),
-        })
-    segment_complete = bool(rows) and not any(item["normalized_segment"] == "unknown" for item in segment_rows)
-    corroboration_complete = bool(rows) and not any(
-        item["competitive_signal_strength"] == "high" and not item["independent_corroboration_present"]
-        for item in corroboration_rows
-    )
-    ready = segment_complete and corroboration_complete and not blockers
-    return {
-        "schema_id": "hisys.browser_dars_revision_resolution",
-        "schema_version": "0.1.0",
-        "request_id": request_id,
-        "dars_review_ref": dars_review_ref,
-        "chief_editor_review_ref": chief_editor_review_ref,
-        "competitive_matrix_ref": competitive_matrix_ref,
-        "decision": "ready_for_final_acceptance_review" if ready else "revision_required_before_final_acceptance",
-        "segment_normalization_status": "complete" if segment_complete else "incomplete",
-        "corroboration_mapping_status": "complete" if corroboration_complete else "incomplete",
-        "segment_normalization_rows": segment_rows,
-        "corroboration_mapping_rows": corroboration_rows,
-        "resolved_dars_revision_items": dars_review.get("required_revisions", []),
-        "remaining_blockers": blockers,
-        "final_acceptance_allowed": ready,
-        "allowed_actions": "advisory_only",
-        "external_call_made": False,
-        "mutation_performed": False,
-        "producer_id": producer_id,
-    }
 
 
 
-def _infer_browser_segment(row: dict[str, object]) -> str:
-    text = f"{row.get('company_or_source', '')} {row.get('technology_signals', '')} {row.get('evidence_excerpt', '')}".lower()
-    if any(token in text for token in ["ct", "computed tomography"]):
-        return "ct"
-    if any(token in text for token in ["dental", "medical"]):
-        return "medical_dental"
-    if any(token in text for token in ["industrial", "ndt", "inspection"]):
-        return "industrial_ndt"
-    if any(token in text for token in ["xrf", "xrd", "analytical"]):
-        return "analytical_xrf_xrd"
-    if any(token in text for token in ["security", "irradiation"]):
-        return "security_irradiation"
-    return "unknown"
 
 
 
-def _render_browser_dars_revision_resolution_md(resolution: dict[str, object]) -> str:
-    return "\n".join([
-        f"# Browser DARS Revision Resolution {resolution['request_id']}",
-        "",
-        f"- decision: `{resolution['decision']}`",
-        f"- segment_normalization_status: `{resolution['segment_normalization_status']}`",
-        f"- corroboration_mapping_status: `{resolution['corroboration_mapping_status']}`",
-        f"- final_acceptance_allowed: `{str(resolution['final_acceptance_allowed']).lower()}`",
-        f"- external_call_made: `{str(resolution['external_call_made']).lower()}`",
-        f"- mutation_performed: `{str(resolution['mutation_performed']).lower()}`",
-        "",
-        "## Remaining Blockers",
-        "",
-        *[f"- {item}" for item in resolution.get("remaining_blockers", [])],
-        "",
-    ])
 
 
 
-def _render_browser_dars_revision_report_md(report: dict[str, object]) -> str:
-    return "\n".join([
-        "# Browser DARS Revision Resolution Report",
-        "",
-        f"- request_id: `{report['request_id']}`",
-        f"- decision: `{report['decision']}`",
-        f"- revision_resolution_ref: `{report['revision_resolution_ref']}`",
-        f"- external_call_made: `{str(report['external_call_made']).lower()}`",
-        f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
-        "",
-    ])
 
 
 
@@ -7322,84 +7024,15 @@ def _cmd_final_review_browser_investigation(
 
 
 
-def _browser_revision_ready_for_final_review(revision: dict[str, object]) -> bool:
-    return (
-        revision.get("decision") == "ready_for_final_acceptance_review"
-        and revision.get("final_acceptance_allowed") is True
-        and revision.get("segment_normalization_status") == "complete"
-        and revision.get("corroboration_mapping_status") == "complete"
-        and not revision.get("remaining_blockers")
-        and revision.get("external_call_made") is False
-        and revision.get("mutation_performed") is False
-    )
 
 
 
-def _build_final_browser_acceptance_review(
-    *,
-    request_id: str,
-    revision_resolution_ref: str,
-    revision: dict[str, object],
-    producer_id: str,
-) -> dict[str, object]:
-    return {
-        "schema_id": "hisys.chief_editor.final_browser_acceptance_review",
-        "schema_version": "0.1.0",
-        "request_id": request_id,
-        "revision_resolution_ref": revision_resolution_ref,
-        "dars_review_ref": str(revision.get("dars_review_ref", "")),
-        "chief_editor_review_ref": str(revision.get("chief_editor_review_ref", "")),
-        "competitive_matrix_ref": str(revision.get("competitive_matrix_ref", "")),
-        "decision": "accept_for_human_reviewed_use",
-        "accepted_conditions": [
-            "segment_normalization_complete",
-            "independent_corroboration_mapping_complete",
-        ],
-        "acceptance_scope": "browser_investigation_evidence_package_for_human_reviewed_use",
-        "dars_role": "advisory_only_non_executable",
-        "publication_or_live_action_approved": False,
-        "human_approval_required_for_consequential_use": True,
-        "external_call_made": False,
-        "mutation_performed": False,
-        "action_taken": "none",
-        "producer_id": producer_id,
-    }
 
 
 
-def _render_final_browser_acceptance_review_md(review: dict[str, object]) -> str:
-    return "\n".join([
-        f"# Final Browser Acceptance Review {review['request_id']}",
-        "",
-        f"- decision: `{review['decision']}`",
-        f"- acceptance_scope: `{review['acceptance_scope']}`",
-        f"- revision_resolution_ref: `{review['revision_resolution_ref']}`",
-        f"- publication_or_live_action_approved: `{str(review['publication_or_live_action_approved']).lower()}`",
-        f"- human_approval_required_for_consequential_use: `{str(review['human_approval_required_for_consequential_use']).lower()}`",
-        f"- action_taken: `{review['action_taken']}`",
-        f"- external_call_made: `{str(review['external_call_made']).lower()}`",
-        f"- mutation_performed: `{str(review['mutation_performed']).lower()}`",
-        "",
-        "## Accepted Conditions",
-        "",
-        *[f"- {item}" for item in review.get("accepted_conditions", [])],
-        "",
-    ])
 
 
 
-def _render_final_browser_acceptance_report_md(report: dict[str, object]) -> str:
-    return "\n".join([
-        "# Final Browser Acceptance Review Report",
-        "",
-        f"- request_id: `{report['request_id']}`",
-        f"- decision: `{report['decision']}`",
-        f"- final_review_ref: `{report['final_review_ref']}`",
-        f"- publication_or_live_action_approved: `{str(report['publication_or_live_action_approved']).lower()}`",
-        f"- external_call_made: `{str(report['external_call_made']).lower()}`",
-        f"- mutation_performed: `{str(report['mutation_performed']).lower()}`",
-        "",
-    ])
 
 
 
