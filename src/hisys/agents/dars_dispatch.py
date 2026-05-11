@@ -18,7 +18,16 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from ..config.instance import InstanceRoot
+from ..schemas.lapidary_governance import AppraiserSeparationPolicy
 from .dars_config import DarsBackendConfig, DarsConfig
+
+ADVISORY_INTENTS: frozenset[str] = frozenset(
+    {"advisory_critique", "return_findings", "return_recommendations"}
+)
+AUTHORITY_INTENTS: frozenset[str] = frozenset(
+    {"approve_decision", "execute_action", "publish_output"}
+)
+DEFAULT_APPRAISER_POLICY_REF = "APPRAISER-POLICY-DEFAULT"
 
 
 class DarsDispatchDecision(BaseModel):
@@ -33,6 +42,7 @@ class DarsDispatchDecision(BaseModel):
     reason_code: str
     reason: str
     approval_ref: str | None = None
+    intent: str = "advisory_critique"
     allowed_actions: Literal["advisory_only"] = "advisory_only"
     action_taken: Literal["none"] = "none"
     external_call_requested: bool = False
@@ -58,9 +68,29 @@ class DarsDispatchGate:
         config: DarsConfig,
         backend_id: str,
         approval_ref: str | None,
+        intent: str = "advisory_critique",
+        appraiser_policy: AppraiserSeparationPolicy | None = None,
     ) -> DarsDispatchDecision:
         backend = config.spec.backends.get(backend_id)
-        if backend is None:
+        policy_ref = (
+            appraiser_policy.policy_id if appraiser_policy is not None else DEFAULT_APPRAISER_POLICY_REF
+        )
+        if intent not in ADVISORY_INTENTS:
+            decision = self._blocked(
+                request_id=request_id,
+                backend_id=backend_id,
+                backend=backend,
+                config=config,
+                approval_ref=approval_ref,
+                reason_code="appraiser_separation_policy_violation",
+                reason=(
+                    "DARS/Appraiser is advisory-only and may not be dispatched for "
+                    f"authority intent {intent!r}; refer to {policy_ref}."
+                ),
+                intent=intent,
+                policy_ref=policy_ref,
+            )
+        elif backend is None:
             decision = self._blocked(
                 request_id=request_id,
                 backend_id=backend_id,
@@ -69,6 +99,8 @@ class DarsDispatchGate:
                 approval_ref=approval_ref,
                 reason_code="unknown_backend",
                 reason="DARS backend is not declared in the validated config.",
+                intent=intent,
+                policy_ref=policy_ref,
             )
         elif not backend.enabled:
             decision = self._blocked(
@@ -79,6 +111,8 @@ class DarsDispatchGate:
                 approval_ref=approval_ref,
                 reason_code="backend_disabled",
                 reason="DARS backend is disabled in the resolved config snapshot.",
+                intent=intent,
+                policy_ref=policy_ref,
             )
         elif backend.external_call_allowed and not approval_ref:
             decision = self._blocked(
@@ -89,6 +123,8 @@ class DarsDispatchGate:
                 approval_ref=approval_ref,
                 reason_code="external_call_requires_approval",
                 reason="DARS backend requests an external call and requires explicit approval before dispatch.",
+                intent=intent,
+                policy_ref=policy_ref,
             )
         elif backend.kind == "loopback":
             decision = self._allowed(
@@ -99,6 +135,8 @@ class DarsDispatchGate:
                 approval_ref=approval_ref,
                 reason_code="loopback_backend_allowed",
                 reason="Loopback DARS backend is local-only and advisory-only.",
+                intent=intent,
+                policy_ref=policy_ref,
             )
         elif not backend.external_call_allowed and backend.mode in {"local_only", "read_only", "local_network_only"}:
             decision = self._allowed(
@@ -109,6 +147,8 @@ class DarsDispatchGate:
                 approval_ref=approval_ref,
                 reason_code="local_backend_allowed",
                 reason="Enabled local/read-only DARS backend does not request external calls.",
+                intent=intent,
+                policy_ref=policy_ref,
             )
         else:
             decision = self._blocked(
@@ -119,6 +159,8 @@ class DarsDispatchGate:
                 approval_ref=approval_ref,
                 reason_code="backend_policy_blocked",
                 reason="DARS backend did not satisfy the current dispatch policy.",
+                intent=intent,
+                policy_ref=policy_ref,
             )
 
         _write_decision(self.instance, yyyymmdd, decision)
@@ -134,6 +176,8 @@ class DarsDispatchGate:
         approval_ref: str | None,
         reason_code: str,
         reason: str,
+        intent: str,
+        policy_ref: str,
     ) -> DarsDispatchDecision:
         return _decision(
             request_id=request_id,
@@ -144,6 +188,8 @@ class DarsDispatchGate:
             decision="allowed",
             reason_code=reason_code,
             reason=reason,
+            intent=intent,
+            policy_ref=policy_ref,
         )
 
     def _blocked(
@@ -156,6 +202,8 @@ class DarsDispatchGate:
         approval_ref: str | None,
         reason_code: str,
         reason: str,
+        intent: str,
+        policy_ref: str,
     ) -> DarsDispatchDecision:
         return _decision(
             request_id=request_id,
@@ -166,6 +214,8 @@ class DarsDispatchGate:
             decision="blocked",
             reason_code=reason_code,
             reason=reason,
+            intent=intent,
+            policy_ref=policy_ref,
         )
 
 
@@ -179,8 +229,13 @@ def _decision(
     decision: Literal["allowed", "blocked"],
     reason_code: str,
     reason: str,
+    intent: str,
+    policy_ref: str,
 ) -> DarsDispatchDecision:
     traceability = config.traceability
+    policy_refs = list(traceability.get("constraints", []))
+    if policy_ref not in policy_refs:
+        policy_refs.append(policy_ref)
     return DarsDispatchDecision(
         request_id=request_id,
         backend_id=backend_id,
@@ -189,11 +244,12 @@ def _decision(
         reason_code=reason_code,
         reason=reason,
         approval_ref=approval_ref,
+        intent=intent,
         external_call_requested=bool(backend.external_call_allowed) if backend else False,
         mutation_requested=False,
         output_contract=backend.output_contract if backend else None,
         config_ref=f"{config.config_id}@{config.config_version}",
-        policy_refs=list(traceability.get("constraints", [])),
+        policy_refs=policy_refs,
     )
 
 
@@ -216,7 +272,9 @@ def _decision_markdown(decision: DarsDispatchDecision) -> str:
             f"- reason_code: {decision.reason_code}",
             f"- backend_id: {decision.backend_id}",
             f"- backend_kind: {decision.backend_kind}",
+            f"- intent: {decision.intent}",
             f"- allowed_actions: {decision.allowed_actions}",
+            f"- policy_refs: {', '.join(decision.policy_refs)}",
             f"- external_call_requested: {decision.external_call_requested}",
             f"- external_call_made: {decision.external_call_made}",
             f"- mutation_performed: {decision.mutation_performed}",
