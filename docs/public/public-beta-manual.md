@@ -188,10 +188,14 @@ publication_or_live_action_approved=false
 If `status=blocked`, inspect `blockers` in the JSON/Markdown report. Common
 blockers are missing Playwright installation, an invalid config, or a disabled
 connector. During a live run, some corporate/security-filtered networks can
-return an empty or security-warning page; Hisys records this as low-confidence
-`empty_or_blocked_page` evidence instead of crashing, and the downstream evidence
-sufficiency gate may still block the final decision until better public sources
-are provided.
+return an empty page, security-warning page, or HTTP 403 `Access Denied`. Hisys
+records these as low-confidence `empty_or_blocked_page` or
+`source_access_blocked` evidence instead of crashing. Public run summaries label
+resulting blocks as source-access/evidence-quality limitations, not
+cybersecurity violations, unless there is actual login, credential use,
+access-control bypass, scanning, exploit activity, mutation, publication, or
+another prohibited action. The downstream evidence sufficiency gate may still
+block the final decision until better public sources are provided.
 
 ## 6. Approve the run window and enable the manual smoke gate
 

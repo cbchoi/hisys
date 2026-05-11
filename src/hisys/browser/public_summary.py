@@ -21,6 +21,8 @@ def write_public_browser_run_summary(
     refs: Mapping[str, str],
     external_call_made: bool,
     mutation_performed: bool,
+    blocker_classification: str | None = None,
+    operator_interpretation: str | None = None,
 ) -> str:
     """Write one public-beta operator summary without approving live/public action."""
 
@@ -46,6 +48,10 @@ def write_public_browser_run_summary(
         "action_taken": "none",
         "artifact_refs": dict(refs),
     }
+    if blocker_classification:
+        payload["blocker_classification"] = blocker_classification
+    if operator_interpretation:
+        payload["operator_interpretation"] = operator_interpretation
     summary_path = instance.root / summary_ref
     summary_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     summary_path.with_suffix(".md").write_text(_render_public_browser_run_summary_md(payload), encoding="utf-8")
@@ -72,8 +78,9 @@ def _render_public_browser_run_summary_md(payload: Mapping[str, object]) -> str:
             f"- mutation_performed: `{str(payload['mutation_performed']).lower()}`",
             f"- publication_or_live_action_approved: `{str(payload['publication_or_live_action_approved']).lower()}`",
             f"- action_taken: `{payload['action_taken']}`",
+            f"- blocker_classification: `{payload.get('blocker_classification', 'none')}`",
             "",
-            "Human approval is still required for any public, live, consequential, publication, outreach, or mutation action.",
+            str(payload.get("operator_interpretation", "Human approval is still required for any public, live, consequential, publication, outreach, or mutation action.")),
             "",
             "## Artifact refs",
             "",

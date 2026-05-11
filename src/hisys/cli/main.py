@@ -4105,18 +4105,45 @@ def _write_blocked_public_browser_summary(
     reason: str,
     refs: dict[str, str],
 ) -> str:
+    transport_kinds: list[str] = []
+    external_call_made = False
+    blocker_classification: str | None = None
+    operator_interpretation: str | None = None
+    browser_report_ref = refs.get("browser_investigation_report_ref")
+    if browser_report_ref:
+        try:
+            browser_report = _load_json_ref(instance, browser_report_ref)
+        except FileNotFoundError:
+            browser_report = {}
+        transport_kinds = [str(item) for item in browser_report.get("transport_kinds", [])]
+        external_call_made = bool(browser_report.get("external_call_made"))
+        sufficiency_ref = str(browser_report.get("evidence_sufficiency_ref") or "")
+        if sufficiency_ref:
+            try:
+                sufficiency = _load_json_ref(instance, sufficiency_ref)
+            except FileNotFoundError:
+                sufficiency = {}
+            blocker_classification = str(sufficiency.get("risk_classification") or "") or None
+            if blocker_classification == "evidence_quality_decision_fairness_not_cybersecurity":
+                operator_interpretation = (
+                    "Blocked for source-access/evidence-quality limitation, not a cybersecurity violation. "
+                    "Some pages may have returned Access Denied, empty visible text, or shallow company-only evidence. "
+                    "No login, credential use, access-control bypass, mutation, publication, or live consequential action is approved."
+                )
     return write_public_browser_run_summary(
         instance=instance,
         yyyymmdd=yyyymmdd,
         request_id=request_id,
         topic=topic,
         source_urls=source_urls,
-        transport_kinds=[],
+        transport_kinds=transport_kinds,
         final_decision="blocked",
         remaining_blockers=[reason],
         refs=refs,
-        external_call_made=False,
+        external_call_made=external_call_made,
         mutation_performed=False,
+        blocker_classification=blocker_classification,
+        operator_interpretation=operator_interpretation,
     )
 
 

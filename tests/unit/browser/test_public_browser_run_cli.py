@@ -91,3 +91,54 @@ def test_public_browser_run_executes_governed_chain_and_writes_summary(tmp_path:
     assert summary["human_approval_required_for_consequential_use"] is True
     assert summary["artifact_refs"]["browser_investigation_report_ref"] == "reports/run-summaries/20260511/browser-investigation-report.json"
     assert summary["artifact_refs"]["final_review_ref"] == "data/chief-editor-final-browser-reviews/20260511/FINAL-CHIEF-REVIEW-HISYS-REQ-PUBLIC-RUN-001-BROWSER.json"
+
+
+def test_public_browser_run_blocked_by_evidence_gate_preserves_non_cybersecurity_context(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HISYS_ALLOW_BROWSER_SMOKE", "1")
+
+    from hisys.connectors import playwright_browser
+
+    class FakePlaywrightSyncTransport:
+        def fetch(self, url: str):
+            return (
+                403,
+                "Access Denied",
+                "Access Denied You do not have permission to access this server.",
+                [],
+            )
+
+    monkeypatch.setattr(playwright_browser, "PlaywrightSyncTransport", FakePlaywrightSyncTransport)
+
+    result = main(
+        [
+            "public-browser-run",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(_public_browser_config(tmp_path)),
+            "--profile",
+            "examples/instance/config/profiles/public-browser.yaml",
+            "--date",
+            "20260511",
+            "--request-id",
+            "HISYS-REQ-PUBLIC-RUN-BLOCKED-001",
+            "--topic",
+            "single blocked source for optical communication evidence",
+            "--user-opinion",
+            "Use governed public browser beta chain.",
+            "--approval-ref",
+            "APPROVAL-PUBLIC-BROWSER-RUN-BLOCKED-001",
+            "--source-url",
+            "https://blocked.example/optical-networks",
+        ]
+    )
+
+    assert result == 2
+    summary_path = tmp_path / "reports" / "run-summaries" / "20260511" / "public-browser-run-summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert summary["final_decision"] == "blocked"
+    assert summary["external_call_made"] is True
+    assert summary["transport_kinds"] == ["playwright_live"]
+    assert summary["blocker_classification"] == "evidence_quality_decision_fairness_not_cybersecurity"
+    assert "source-access/evidence-quality limitation" in summary["operator_interpretation"]
+    assert "not a cybersecurity violation" in summary["operator_interpretation"]

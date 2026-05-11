@@ -112,9 +112,17 @@ class PlaywrightBrowserConnector:
         transport_kind: str,
     ) -> PlaywrightBrowserEvidencePackage:
         normalized_text = _normalize_visible_text(visible_text)
+        source_access_blocked = _looks_like_source_access_block(http_status=http_status, title=title, visible_text=normalized_text)
         evidence_text = normalized_text[:1200] or "[no visible text captured; page may be empty, blocked, or unavailable]"
-        page_capture_status = "captured_visible_text" if normalized_text else "empty_or_blocked_page"
-        evidence_confidence = "medium" if normalized_text else "low"
+        if source_access_blocked:
+            page_capture_status = "source_access_blocked"
+            evidence_confidence = "low"
+        elif normalized_text:
+            page_capture_status = "captured_visible_text"
+            evidence_confidence = "medium"
+        else:
+            page_capture_status = "empty_or_blocked_page"
+            evidence_confidence = "low"
         digest = hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()
         access_id = f"ACCESS-{request_id}-{self.connector_id}"
         evidence_id = f"EVID-{request_id}-{self.connector_id}"
@@ -192,6 +200,25 @@ class PlaywrightSyncTransport:
                     browser.close()
         except Exception as exc:  # pragma: no cover - environment dependent
             raise PlaywrightUnavailableError(f"playwright read-only navigation failed for {url}") from exc
+
+
+def _looks_like_source_access_block(*, http_status: int, title: str, visible_text: str) -> bool:
+    """Classify site-side access-denied/security-filter pages as source limitations."""
+
+    haystack = f"{title} {visible_text}".lower()
+    if http_status in {401, 403, 407, 429, 451}:
+        return True
+    access_block_markers = (
+        "access denied",
+        "permission to access",
+        "request blocked",
+        "security check",
+        "security risk",
+        "cybersecurity risk",
+        "forbidden",
+        "not authorized",
+    )
+    return any(marker in haystack for marker in access_block_markers)
 
 
 class _VisibleTextParser(HTMLParser):
