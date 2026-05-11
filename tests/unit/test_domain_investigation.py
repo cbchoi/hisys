@@ -18,6 +18,179 @@ from hisys.schemas.domain_investigation import (
     HisysToolResult,
     InvestigationDataPackage,
 )
+from hisys.schemas.lapidary_governance import EvidenceChainRecord, HisysMode
+
+
+def _investigation_evidence_package() -> DomainEvidencePackage:
+    return DomainEvidencePackage(
+        package_id="DEPKG-INV-MODE-001",
+        domain="research",
+        evidence_type="research_gap_matrix",
+        summary="Evidence summary for hisys_mode tests.",
+        evidence_refs=["EPKG-TASK-INV-001-FORMALISM"],
+        source_refs=["SRC-FORMALISM-001"],
+    )
+
+
+def _investigation_data_package(**overrides) -> InvestigationDataPackage:
+    data = {
+        "investigation_id": "INV-MODE-001",
+        "request_id": "HISYS-REQ-MODE-001",
+        "domain": "research",
+        "objective": "Confirm hisys_mode default selective governance.",
+        "evidence_packages": [_investigation_evidence_package()],
+    }
+    data.update(overrides)
+    return InvestigationDataPackage(**data)
+
+
+def _claim_chain(**overrides) -> EvidenceChainRecord:
+    data = {
+        "chain_id": "CHAIN-INV-CLAIM-001",
+        "producer_id": "hisys-domain-investigation",
+        "status": "active",
+        "decision_ref": None,
+        "synthesis_refs": [],
+        "claim_ledger_refs": ["canonical/claims/LEDGER-INV-001.md#C-INV-001"],
+        "evidence_refs": ["canonical/evidence/EVID-INV-001.md"],
+        "source_refs": ["canonical/sources/SRC-INV-001.md"],
+    }
+    data.update(overrides)
+    return EvidenceChainRecord(**data)
+
+
+def _synthesis_chain(**overrides) -> EvidenceChainRecord:
+    data = {
+        "chain_id": "CHAIN-INV-SYN-001",
+        "producer_id": "hisys-domain-investigation",
+        "status": "active",
+        "decision_ref": None,
+        "synthesis_refs": ["canonical/synthesis/SYN-INV-001.md"],
+        "claim_ledger_refs": ["canonical/claims/LEDGER-INV-001.md#C-INV-001"],
+        "evidence_refs": ["canonical/evidence/EVID-INV-001.md"],
+        "source_refs": ["canonical/sources/SRC-INV-001.md"],
+    }
+    data.update(overrides)
+    return EvidenceChainRecord(**data)
+
+
+def _decision_chain(**overrides) -> EvidenceChainRecord:
+    data = {
+        "chain_id": "CHAIN-INV-DECISION-001",
+        "producer_id": "hisys-domain-investigation",
+        "status": "active",
+        "decision_ref": "canonical/decisions/DECISION-INV-001.md",
+        "synthesis_refs": ["canonical/synthesis/SYN-INV-001.md"],
+        "claim_ledger_refs": ["canonical/claims/LEDGER-INV-001.md#C-INV-001"],
+        "evidence_refs": ["canonical/evidence/EVID-INV-001.md"],
+        "source_refs": ["canonical/sources/SRC-INV-001.md"],
+    }
+    data.update(overrides)
+    return EvidenceChainRecord(**data)
+
+
+def _stone_chain() -> EvidenceChainRecord:
+    return EvidenceChainRecord(
+        chain_id="CHAIN-INV-STONE-001",
+        producer_id="hisys-domain-investigation",
+        status="active",
+        decision_ref=None,
+        synthesis_refs=[],
+        claim_ledger_refs=[],
+        evidence_refs=["canonical/evidence/EVID-INV-001.md"],
+        source_refs=["canonical/sources/SRC-INV-001.md"],
+    )
+
+
+def test_investigation_data_package_hisys_mode_defaults_to_selective_none() -> None:
+    package = _investigation_data_package()
+
+    assert package.hisys_mode.level == "none"
+    assert package.hisys_mode.selective_governance is True
+    assert package.hisys_mode.applies_to_all_notes is False
+    assert package.evidence_chain is None
+
+    dumped = package.model_dump(mode="json")
+    assert dumped["hisys_mode"]["level"] == "none"
+    assert dumped["evidence_chain"] is None
+
+
+def test_investigation_data_package_lower_modes_allow_omitted_evidence_chain() -> None:
+    for level in ("none", "stone"):
+        package = _investigation_data_package(hisys_mode=HisysMode(level=level))
+        assert package.hisys_mode.level == level
+        assert package.evidence_chain is None
+
+
+def test_investigation_data_package_claim_mode_requires_claim_level_evidence_chain() -> None:
+    with pytest.raises(ValidationError, match="hisys_mode.level='claim'"):
+        _investigation_data_package(hisys_mode=HisysMode(level="claim"))
+
+
+def test_investigation_data_package_claim_mode_rejects_stone_only_evidence_chain() -> None:
+    with pytest.raises(ValidationError, match="claim-level EvidenceChainRecord"):
+        _investigation_data_package(
+            hisys_mode=HisysMode(level="claim"),
+            evidence_chain=_stone_chain(),
+        )
+
+
+def test_investigation_data_package_claim_mode_accepts_claim_level_evidence_chain() -> None:
+    package = _investigation_data_package(
+        hisys_mode=HisysMode(level="claim"),
+        evidence_chain=_claim_chain(),
+    )
+
+    assert package.hisys_mode.level == "claim"
+    assert package.evidence_chain is not None
+    assert package.evidence_chain.claim_ledger_refs
+
+
+def test_investigation_data_package_synthesis_mode_requires_synthesis_level_evidence_chain() -> None:
+    with pytest.raises(ValidationError, match="hisys_mode.level='synthesis'"):
+        _investigation_data_package(hisys_mode=HisysMode(level="synthesis"))
+
+
+def test_investigation_data_package_synthesis_mode_rejects_claim_only_evidence_chain() -> None:
+    with pytest.raises(ValidationError, match="synthesis-level EvidenceChainRecord"):
+        _investigation_data_package(
+            hisys_mode=HisysMode(level="synthesis"),
+            evidence_chain=_claim_chain(),
+        )
+
+
+def test_investigation_data_package_synthesis_mode_accepts_synthesis_level_evidence_chain() -> None:
+    package = _investigation_data_package(
+        hisys_mode=HisysMode(level="synthesis"),
+        evidence_chain=_synthesis_chain(),
+    )
+
+    assert package.hisys_mode.level == "synthesis"
+    assert package.evidence_chain is not None
+    assert package.evidence_chain.synthesis_refs
+    assert package.evidence_chain.claim_ledger_refs
+    dumped = package.model_dump(mode="json")
+    assert dumped["hisys_mode"]["level"] == "synthesis"
+    assert dumped["evidence_chain"]["synthesis_refs"] == [
+        "canonical/synthesis/SYN-INV-001.md"
+    ]
+
+
+def test_investigation_data_package_decision_modes_require_decision_level_chain() -> None:
+    for level in ("decision", "publication"):
+        with pytest.raises(ValidationError, match=f"{level}-level EvidenceChainRecord"):
+            _investigation_data_package(
+                hisys_mode=HisysMode(level=level),
+                evidence_chain=_synthesis_chain(),
+            )
+
+        package = _investigation_data_package(
+            hisys_mode=HisysMode(level=level),
+            evidence_chain=_decision_chain(),
+        )
+        assert package.hisys_mode.level == level
+        assert package.evidence_chain is not None
+        assert package.evidence_chain.decision_ref == "canonical/decisions/DECISION-INV-001.md"
 
 
 def test_domain_investigation_request_is_read_only_by_default() -> None:

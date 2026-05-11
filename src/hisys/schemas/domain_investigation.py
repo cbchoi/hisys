@@ -11,6 +11,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from .base import BaseRecord
+from .lapidary_governance import EvidenceChainRecord, HisysMode
 
 DomainName = Literal["codebase", "research", "business", "investment", "iso_process", "general"]
 AccessMode = Literal["read_only"]
@@ -135,6 +136,49 @@ class InvestigationDataPackage(BaseModel):
     claim_coverage_gate_refs: list[str] = Field(default_factory=list)
     recommendation_claim_registry_refs: list[str] = Field(default_factory=list)
     runtime_boundary_refs: list[str] = Field(default_factory=list)
+    hisys_mode: HisysMode = Field(default_factory=HisysMode)
+    evidence_chain: EvidenceChainRecord | None = None
+
+    @model_validator(mode="after")
+    def _enforce_hisys_mode_evidence_chain(self) -> "InvestigationDataPackage":
+        level = self.hisys_mode.level
+        if level in ("none", "stone"):
+            return self
+        if self.evidence_chain is None:
+            raise ValueError(
+                f"hisys_mode.level={level!r} requires an evidence_chain on InvestigationDataPackage"
+            )
+        chain = self.evidence_chain
+        if level == "claim":
+            if not chain.claim_ledger_refs or not chain.evidence_refs or not chain.source_refs:
+                raise ValueError(
+                    "claim-level EvidenceChainRecord requires non-empty claim_ledger_refs,"
+                    " evidence_refs, and source_refs"
+                )
+        elif level == "synthesis":
+            if (
+                not chain.synthesis_refs
+                or not chain.claim_ledger_refs
+                or not chain.evidence_refs
+                or not chain.source_refs
+            ):
+                raise ValueError(
+                    "synthesis-level EvidenceChainRecord requires non-empty synthesis_refs,"
+                    " claim_ledger_refs, evidence_refs, and source_refs"
+                )
+        elif level in ("decision", "publication"):
+            if (
+                chain.decision_ref is None
+                or not chain.synthesis_refs
+                or not chain.claim_ledger_refs
+                or not chain.evidence_refs
+                or not chain.source_refs
+            ):
+                raise ValueError(
+                    f"{level}-level EvidenceChainRecord requires decision_ref plus non-empty"
+                    " synthesis_refs, claim_ledger_refs, evidence_refs, and source_refs"
+                )
+        return self
 
 
 class CandidateRecord(BaseModel):
