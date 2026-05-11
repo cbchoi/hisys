@@ -80,6 +80,89 @@ def test_evidence_chain_rejects_decision_without_synthesis_or_claim_ledger() -> 
         )
 
 
+def test_evidence_chain_rejects_decision_without_source_refs() -> None:
+    with pytest.raises(ValidationError, match="source_refs"):
+        EvidenceChainRecord(
+            chain_id="CHAIN-BAD-003",
+            producer_id="test",
+            status="active",
+            decision_ref="canonical/decisions/DECISION-BAD-003.md",
+            synthesis_refs=["canonical/synthesis/SYN-BAD-003.md"],
+            claim_ledger_refs=["canonical/claims/LEDGER-BAD-003.md#C-BAD-003"],
+            evidence_refs=["canonical/evidence/EVID-BAD-003.md"],
+            source_refs=[],
+        )
+
+
+def test_evidence_chain_allows_stone_level_without_decision() -> None:
+    chain = EvidenceChainRecord(
+        chain_id="CHAIN-STONE-001",
+        producer_id="test",
+        status="active",
+        decision_ref=None,
+        synthesis_refs=[],
+        claim_ledger_refs=[],
+        evidence_refs=["canonical/evidence/EVID-STONE-001.md"],
+        source_refs=["canonical/sources/SRC-STONE-001.md"],
+    )
+
+    assert chain.decision_ref is None
+    assert chain.synthesis_refs == []
+    assert chain.claim_ledger_refs == []
+
+
+def test_evidence_chain_stone_level_still_requires_evidence_and_source() -> None:
+    with pytest.raises(ValidationError, match="evidence_refs"):
+        EvidenceChainRecord(
+            chain_id="CHAIN-STONE-BAD-001",
+            producer_id="test",
+            status="active",
+            decision_ref=None,
+            synthesis_refs=[],
+            claim_ledger_refs=[],
+            evidence_refs=[],
+            source_refs=["canonical/sources/SRC-STONE-001.md"],
+        )
+
+    with pytest.raises(ValidationError, match="source_refs"):
+        EvidenceChainRecord(
+            chain_id="CHAIN-STONE-BAD-002",
+            producer_id="test",
+            status="active",
+            decision_ref=None,
+            synthesis_refs=[],
+            claim_ledger_refs=[],
+            evidence_refs=["canonical/evidence/EVID-STONE-001.md"],
+            source_refs=[],
+        )
+
+
+def test_evidence_chain_rejects_blank_refs() -> None:
+    with pytest.raises(ValidationError, match="blank"):
+        EvidenceChainRecord(
+            chain_id="CHAIN-BLANK-001",
+            producer_id="test",
+            status="active",
+            decision_ref="   ",
+            synthesis_refs=["canonical/synthesis/SYN-BLANK-001.md"],
+            claim_ledger_refs=["canonical/claims/LEDGER-BLANK-001.md#C-BLANK-001"],
+            evidence_refs=["canonical/evidence/EVID-BLANK-001.md"],
+            source_refs=["canonical/sources/SRC-BLANK-001.md"],
+        )
+
+    with pytest.raises(ValidationError, match="blank"):
+        EvidenceChainRecord(
+            chain_id="CHAIN-BLANK-002",
+            producer_id="test",
+            status="active",
+            decision_ref=None,
+            synthesis_refs=[],
+            claim_ledger_refs=[],
+            evidence_refs=["canonical/evidence/EVID-BLANK-001.md"],
+            source_refs=["   "],
+        )
+
+
 def test_lapidary_role_assignment_keeps_metaphor_out_of_function() -> None:
     assignment = LapidaryRoleAssignment(
         role_id="ROLE-APPRAISER-001",
@@ -124,6 +207,21 @@ def test_temporal_policy_archives_instead_of_deleting_time_sensitive_evidence() 
         )
 
 
+def test_temporal_policy_rejects_deleted_next_stage_at_literal_level() -> None:
+    with pytest.raises(ValidationError, match="next_stage"):
+        TemporalArchivePolicy(
+            policy_id="ARCHIVE-POLICY-DELETED",
+            producer_id="test",
+            status="active",
+            temporal_class="company_market_product_news",
+            current_stage="archive_candidate",
+            next_stage="deleted",  # type: ignore[arg-type]
+            delete_allowed=False,
+            preserve_historical_evidence=True,
+            review_due="2026-06-01",
+        )
+
+
 def test_weighted_alternative_preserves_internal_external_origin_distinction() -> None:
     alternative = WeightedDecisionAlternative(
         alternative_id="ALT-HYBRID-001",
@@ -135,6 +233,7 @@ def test_weighted_alternative_preserves_internal_external_origin_distinction() -
             EvidenceOriginWeight(
                 evidence_origin="internal_prior",
                 ref="canonical/synthesis/SYN-PRIOR-001.md",
+                origin_weight=0.5,
                 source_quality=0.5,
                 verification_status=0.4,
                 recency=0.6,
@@ -145,6 +244,7 @@ def test_weighted_alternative_preserves_internal_external_origin_distinction() -
             EvidenceOriginWeight(
                 evidence_origin="external_source",
                 ref="canonical/sources/SRC-PAPER-001.md",
+                origin_weight=0.5,
                 source_quality=0.9,
                 verification_status=0.8,
                 recency=0.7,
@@ -158,6 +258,100 @@ def test_weighted_alternative_preserves_internal_external_origin_distinction() -
 
     assert alternative.origin_summary == ["internal_prior", "external_source"]
     assert alternative.weighted_score > 0
+
+
+def test_weighted_alternative_applies_origin_weight_weighted_average() -> None:
+    alternative = WeightedDecisionAlternative(
+        alternative_id="ALT-WEIGHTED-001",
+        producer_id="test",
+        status="active",
+        label="External-heavy",
+        claim="External source weighted more heavily than internal prior.",
+        origin_weights=[
+            EvidenceOriginWeight(
+                evidence_origin="internal_prior",
+                ref="canonical/synthesis/SYN-PRIOR-002.md",
+                origin_weight=0.3,
+                source_quality=0.5,
+                verification_status=0.4,
+                recency=0.6,
+                independence=0.3,
+                contradiction_status=0.7,
+                domain_fit=0.9,
+            ),
+            EvidenceOriginWeight(
+                evidence_origin="external_source",
+                ref="canonical/sources/SRC-PAPER-002.md",
+                origin_weight=0.7,
+                source_quality=0.9,
+                verification_status=0.8,
+                recency=0.7,
+                independence=0.9,
+                contradiction_status=0.8,
+                domain_fit=0.8,
+            ),
+        ],
+        recommended_use="hybrid",
+    )
+
+    internal_score = round((0.5 + 0.4 + 0.6 + 0.3 + 0.7 + 0.9) / 6, 4)
+    external_score = round((0.9 + 0.8 + 0.7 + 0.9 + 0.8 + 0.8) / 6, 4)
+    expected = round((0.3 * internal_score + 0.7 * external_score) / (0.3 + 0.7), 4)
+
+    assert alternative.weighted_score == expected
+    naive_average = round((internal_score + external_score) / 2, 4)
+    assert alternative.weighted_score != naive_average
+
+
+def test_origin_weight_must_be_between_zero_and_one() -> None:
+    with pytest.raises(ValidationError):
+        EvidenceOriginWeight(
+            evidence_origin="internal_prior",
+            ref="canonical/synthesis/SYN-OOR-001.md",
+            origin_weight=1.5,
+            source_quality=0.5,
+            verification_status=0.5,
+            recency=0.5,
+            independence=0.5,
+            contradiction_status=0.5,
+            domain_fit=0.5,
+        )
+
+
+def test_weighted_alternative_rejects_zero_total_origin_weight() -> None:
+    with pytest.raises(ValidationError, match="positive total origin_weight"):
+        WeightedDecisionAlternative(
+            alternative_id="ALT-ZERO-WEIGHT-001",
+            producer_id="test",
+            status="active",
+            label="Zero-weight invalid alternative",
+            claim="Origin weights must be positive in aggregate.",
+            origin_weights=[
+                EvidenceOriginWeight(
+                    evidence_origin="internal_prior",
+                    ref="canonical/synthesis/SYN-ZERO-001.md",
+                    origin_weight=0.0,
+                    source_quality=0.5,
+                    verification_status=0.5,
+                    recency=0.5,
+                    independence=0.5,
+                    contradiction_status=0.5,
+                    domain_fit=0.5,
+                ),
+                EvidenceOriginWeight(
+                    evidence_origin="external_source",
+                    ref="canonical/sources/SRC-ZERO-001.md",
+                    origin_weight=0.0,
+                    source_quality=0.5,
+                    verification_status=0.5,
+                    recency=0.5,
+                    independence=0.5,
+                    contradiction_status=0.5,
+                    domain_fit=0.5,
+                ),
+            ],
+            recommended_use="request_more_evidence",
+        )
 
 
 def test_appraiser_policy_keeps_dars_advisory_and_separate_from_decision_authority() -> None:

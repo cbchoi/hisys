@@ -80,7 +80,7 @@ class EvidenceChainRecord(BaseRecord):
     )
 
     chain_id: str
-    decision_ref: str
+    decision_ref: str | None = None
     synthesis_refs: list[str] = Field(default_factory=list)
     claim_ledger_refs: list[str] = Field(default_factory=list)
     evidence_refs: list[str] = Field(default_factory=list)
@@ -97,16 +97,38 @@ class EvidenceChainRecord(BaseRecord):
             raise ValueError(f"chain_id must start with 'CHAIN-': {value!r}")
         return value
 
+    @field_validator("decision_ref")
+    @classmethod
+    def _non_blank_decision_ref(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("decision_ref must not be blank")
+        return value
+
+    @field_validator(
+        "synthesis_refs",
+        "claim_ledger_refs",
+        "evidence_refs",
+        "source_refs",
+        "attachment_refs",
+    )
+    @classmethod
+    def _non_blank_ref_lists(cls, value: list[str]) -> list[str]:
+        for ref in value:
+            if not ref or not ref.strip():
+                raise ValueError("evidence chain refs must not be blank")
+        return value
+
     @model_validator(mode="after")
     def _requires_downward_trace(self) -> "EvidenceChainRecord":
-        if self.decision_ref and not self.synthesis_refs:
-            raise ValueError("decision/Jewel evidence chains require synthesis_refs")
-        if not self.claim_ledger_refs:
-            raise ValueError("evidence chains require claim_ledger_refs")
         if not self.evidence_refs:
             raise ValueError("evidence chains require evidence_refs")
-        if not (self.source_refs or self.attachment_refs):
-            raise ValueError("evidence chains require source_refs or attachment_refs")
+        if not self.source_refs:
+            raise ValueError("evidence chains require source_refs")
+        if self.decision_ref is not None:
+            if not self.synthesis_refs:
+                raise ValueError("decision/Jewel evidence chains require synthesis_refs")
+            if not self.claim_ledger_refs:
+                raise ValueError("decision/Jewel evidence chains require claim_ledger_refs")
         if not self.structured_links_source_of_truth:
             raise ValueError("structured links must remain the governance source of truth")
         if not self.wikilinks_are_projection:
@@ -166,7 +188,7 @@ class TemporalArchivePolicy(BaseRecord):
 
     @model_validator(mode="after")
     def _archive_not_delete(self) -> "TemporalArchivePolicy":
-        if self.delete_allowed or not self.preserve_historical_evidence or self.next_stage == "deleted":
+        if self.delete_allowed or not self.preserve_historical_evidence:
             raise ValueError("TemporalArchivePolicy must keep delete_allowed=false and archive historical evidence")
         return self
 
@@ -178,6 +200,7 @@ class EvidenceOriginWeight(BaseModel):
 
     evidence_origin: EvidenceOrigin
     ref: str
+    origin_weight: float = Field(ge=0.0, le=1.0)
     source_quality: float = Field(ge=0.0, le=1.0)
     verification_status: float = Field(ge=0.0, le=1.0)
     recency: float = Field(ge=0.0, le=1.0)
@@ -230,6 +253,8 @@ class WeightedDecisionAlternative(BaseRecord):
     def _requires_weights(self) -> "WeightedDecisionAlternative":
         if not self.origin_weights:
             raise ValueError("WeightedDecisionAlternative requires origin_weights")
+        if sum(weight.origin_weight for weight in self.origin_weights) <= 0:
+            raise ValueError("WeightedDecisionAlternative requires positive total origin_weight")
         return self
 
     @computed_field  # type: ignore[misc]
@@ -240,7 +265,9 @@ class WeightedDecisionAlternative(BaseRecord):
     @computed_field  # type: ignore[misc]
     @property
     def weighted_score(self) -> float:
-        return round(sum(weight.score for weight in self.origin_weights) / len(self.origin_weights), 4)
+        total = sum(weight.origin_weight for weight in self.origin_weights)
+        weighted_sum = sum(weight.origin_weight * weight.score for weight in self.origin_weights)
+        return round(weighted_sum / total, 4)
 
 
 class AppraiserSeparationPolicy(BaseRecord):
