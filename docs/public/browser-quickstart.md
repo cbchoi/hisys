@@ -5,6 +5,8 @@ It produces local evidence and review artifacts for human-reviewed use; it does
 not publish, post, contact third parties, buy, upload, log in, use credentials,
 or perform consequential actions.
 
+For a fuller operator manual, see `docs/public/public-beta-manual.md`.
+
 ## 1. Install
 
 From a clean checkout:
@@ -241,7 +243,7 @@ Hisys public beta produces governed evidence and review artifacts. Any public
 publication, consequential use, outreach, vault persistence, or live mutation
 requires a separate human approval workflow.
 
-## 7. Known limits
+## 9. Known limits
 
 - Public beta defaults to Playwright Chromium.
 - Camoufox is not a public default; it remains an optional future experimental
