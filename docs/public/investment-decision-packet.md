@@ -73,6 +73,12 @@ hisys build-investment-decision-packet \
   --instance "$HISYS_INSTANCE" \
   --date <YYYYMMDD> \
   --packet packet-input.json
+
+hisys review-investment-decision-packet \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --packet-id <packet_id> \
+  --format json
 ```
 
 Artifacts:
@@ -87,6 +93,9 @@ data/audit/<YYYYMMDD>/lapidary-governance/weighted-alternatives/<alternative_id>
 
 The command performs no external call, no live mutation, no publication, and no
 execution. It is a product artifact builder for human-reviewed decision support.
+The review command reads the persisted packet/report pair and prints a bounded
+operator summary for agent or human review; it also performs no mutation or
+external call.
 
 ## Example status progression
 

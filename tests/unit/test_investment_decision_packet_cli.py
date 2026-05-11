@@ -151,6 +151,8 @@ def test_build_investment_decision_packet_cli_writes_product_artifacts_and_audit
     assert packet["publication_or_live_action_approved"] is False
     assert packet["hisys_mode"]["level"] == "decision"
     assert packet["disclaimers"] == ["not financial advice", "no autonomous execution"]
+    assert "weighted_score" not in packet["weighted_alternatives"][0]
+    assert "score" not in packet["weighted_alternatives"][0]["origin_weights"][0]
 
     report = json.loads(report_json.read_text(encoding="utf-8"))
     assert report["packet_ref"] == "runtime-boundary/investment-decisions/20260512/IDP-CLI-SP500-001.json"
@@ -160,3 +162,47 @@ def test_build_investment_decision_packet_cli_writes_product_artifacts_and_audit
     assert report["action_taken"] == "none"
     assert report["external_call_made"] is False
     assert report["mutation_performed"] is False
+
+
+def test_review_investment_decision_packet_cli_prints_operator_summary(tmp_path: Path, capsys) -> None:
+    from hisys.cli.main import main
+
+    request_path = tmp_path / "packet-input.json"
+    request_path.write_text(json.dumps(_packet_payload()), encoding="utf-8")
+    assert main(
+        [
+            "build-investment-decision-packet",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260512",
+            "--packet",
+            str(request_path),
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    result = main(
+        [
+            "review-investment-decision-packet",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260512",
+            "--packet-id",
+            "IDP-CLI-SP500-001",
+            "--format",
+            "json",
+        ]
+    )
+
+    assert result == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["packet_id"] == "IDP-CLI-SP500-001"
+    assert summary["asset"] == "S&P 500"
+    assert summary["proposed_action"] == "staged_buy"
+    assert summary["human_approval_status"] == "pending"
+    assert summary["requested_approval_scopes"] == ["human_reviewed_use"]
+    assert summary["boundary"]["action_taken"] == "none"
+    assert summary["boundary"]["external_call_made"] is False
+    assert summary["artifact_refs"]["packet_markdown_ref"].endswith("IDP-CLI-SP500-001.md")

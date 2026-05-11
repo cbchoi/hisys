@@ -195,6 +195,14 @@ def _record_json(record: object) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)
 
 
+def _round_trip_record_json(record: object) -> str:
+    if hasattr(record, "model_dump"):
+        data = record.model_dump(mode="json", round_trip=True)  # type: ignore[attr-defined]
+    else:
+        data = asdict(record)  # type: ignore[arg-type]
+    return json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)
+
+
 def _bool_text(value: bool) -> str:
     return "true" if value else "false"
 
@@ -258,7 +266,7 @@ def _cmd_build_investment_decision_packet(
     output_dir.mkdir(parents=True, exist_ok=True)
     packet_json_path = output_dir / f"{packet.packet_id}.json"
     packet_md_path = packet_json_path.with_suffix(".md")
-    packet_json_path.write_text(_record_json(packet) + "\n", encoding="utf-8")
+    packet_json_path.write_text(_round_trip_record_json(packet) + "\n", encoding="utf-8")
     packet_md_path.write_text(_render_investment_decision_packet_md(packet), encoding="utf-8")
 
     audit_writer = LapidaryGovernanceAuditWriter(instance)
@@ -300,6 +308,74 @@ def _cmd_build_investment_decision_packet(
     print(f"publication_or_live_action_approved={_bool_text(packet.publication_or_live_action_approved)}")
     print(f"human_approval_status={packet.human_approval.status}")
     print("action_taken=none")
+    return 0
+
+
+def _cmd_review_investment_decision_packet(
+    *,
+    instance_root: Path,
+    packet_id: str,
+    yyyymmdd: str,
+    output_format: str,
+) -> int:
+    """Print an operator-facing summary for a persisted investment packet."""
+
+    instance = InstanceRoot(instance_root)
+    output_dir = instance.runtime_boundary_dir / "investment-decisions" / yyyymmdd
+    packet_json_path = output_dir / f"{packet_id}.json"
+    report_path = output_dir / "investment-decision-packet-report.json"
+
+    packet = InvestmentDecisionPacket.model_validate_json(packet_json_path.read_text(encoding="utf-8"))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    summary = {
+        "schema_id": "hisys.investment_decision_packet_operator_summary",
+        "packet_id": packet.packet_id,
+        "asset": packet.asset,
+        "instrument_refs": list(packet.instrument_refs),
+        "time_horizon": packet.time_horizon,
+        "proposed_action": packet.proposed_action,
+        "chief_editor_status": packet.chief_editor_status,
+        "devil_review_status": packet.devil_review_status,
+        "dars_review_status": packet.dars_review_status,
+        "human_approval_status": packet.human_approval.status,
+        "requested_approval_scopes": list(packet.human_approval.requested_scopes),
+        "approved_approval_scopes": list(packet.human_approval.approved_scopes),
+        "scores": {
+            "confidence": packet.confidence,
+            "evidence_score": packet.evidence_score,
+            "risk_score": packet.risk_score,
+            "contradiction_score": packet.contradiction_score,
+        },
+        "boundary": {
+            "execution_authorized": packet.execution_authorized,
+            "publication_or_live_action_approved": packet.publication_or_live_action_approved,
+            "action_taken": report.get("action_taken", "unknown"),
+            "external_call_made": report.get("external_call_made", "unknown"),
+            "mutation_performed": report.get("mutation_performed", "unknown"),
+        },
+        "artifact_refs": {
+            "packet_ref": report.get("packet_ref"),
+            "packet_markdown_ref": report.get("packet_markdown_ref"),
+            "report_ref": _safe_relative_ref(instance.root, report_path),
+            "lapidary_audit_refs": report.get("lapidary_audit_refs", []),
+        },
+        "disclaimers": list(packet.disclaimers),
+    }
+
+    if output_format == "markdown":
+        print(f"# Investment Decision Packet Review: {packet.packet_id}")
+        print()
+        print(f"- Asset: {packet.asset}")
+        print(f"- Proposed action: {packet.proposed_action}")
+        print(f"- Human approval: {packet.human_approval.status}")
+        print(f"- Requested scopes: {', '.join(packet.human_approval.requested_scopes)}")
+        print(f"- Approved scopes: {', '.join(packet.human_approval.approved_scopes) if packet.human_approval.approved_scopes else 'none'}")
+        print(f"- Action taken: {summary['boundary']['action_taken']}")
+        print(f"- External call made: {_bool_text(bool(summary['boundary']['external_call_made']))}")
+        print(f"- Mutation performed: {_bool_text(bool(summary['boundary']['mutation_performed']))}")
+        return 0
+
+    print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
     return 0
 
 
@@ -393,6 +469,20 @@ def _build_parser() -> argparse.ArgumentParser:
     investment_packet.add_argument("--instance", required=True, help="runtime instance root for outputs")
     investment_packet.add_argument("--date", required=True, help="YYYYMMDD output partition")
     investment_packet.add_argument("--packet", required=True, help="InvestmentDecisionPacket JSON input path")
+
+    review_investment_packet = sub.add_parser(
+        "review-investment-decision-packet",
+        help="print a persisted investment decision packet operator summary",
+    )
+    review_investment_packet.add_argument("--instance", required=True, help="runtime instance root containing outputs")
+    review_investment_packet.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    review_investment_packet.add_argument("--packet-id", required=True, help="InvestmentDecisionPacket packet_id")
+    review_investment_packet.add_argument(
+        "--format",
+        choices=["json", "markdown"],
+        default="json",
+        help="operator summary format to print",
+    )
 
     collect = sub.add_parser("collect", help="run fixture-backed Investigator collection")
     collect.add_argument("--instance", required=True, help="runtime instance root for outputs")
@@ -1178,6 +1268,13 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             packet_path=Path(args.packet),
             yyyymmdd=args.date,
+        )
+    if args.command == "review-investment-decision-packet":
+        return _cmd_review_investment_decision_packet(
+            instance_root=Path(args.instance),
+            packet_id=args.packet_id,
+            yyyymmdd=args.date,
+            output_format=args.format,
         )
     if args.command == "collect":
         config_root = Path(args.config_from) if args.config_from else Path(args.instance)
