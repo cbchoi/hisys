@@ -198,7 +198,8 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   fixture UX, requires read-only external calls and orchestrator-decided domain
   scope, and keeps Camoufox as a disabled future experimental transport. Public
   operator instructions live in `docs/public/browser-quickstart.md` and the
-  fuller manual `docs/public/public-beta-manual.md`; both use the installed
+  fuller manual `docs/public/public-beta-manual.md`; agent-facing integration
+  guidance lives in `docs/public/agent-tool-manual.md`. These docs use the installed
   `hisys` console script plus Playwright Chromium. Fixture flags remain
   developer/CI-only.
 - Increment **Browser-B actual browser investigation command** -

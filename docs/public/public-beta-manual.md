@@ -1,7 +1,9 @@
 # Hisys Controlled Public Beta Manual
 
 This manual explains how to run Hisys as a controlled public beta for governed,
-read-only public-web evidence investigation.
+read-only public-web evidence investigation. If you are integrating Hisys as a
+tool for Hermes or another agentic AI system, also see
+`docs/public/agent-tool-manual.md`.
 
 Hisys does **not** publish, post, log in, use credentials, submit forms, upload,
 purchase, bypass access controls, solve CAPTCHAs, rotate proxies, or approve
