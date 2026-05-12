@@ -68,6 +68,7 @@ from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, Memo
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..operations.lapidary_flow import build_weighted_alternative
+from ..operations.release_readiness import QualityGateResult, build_release_readiness_report
 from ..investigator import (
     ClaimRecord,
     CollectionReport,
@@ -702,6 +703,46 @@ def _component_status(*, component_id: str, title: str, complete: bool, evidence
     }
 
 
+def _parse_quality_gate_result(item: str) -> QualityGateResult:
+    parts = item.split(":", 2)
+    if len(parts) != 3:
+        raise ValueError("quality gate entries must be NAME:STATUS:EVIDENCE")
+    name, status, evidence = parts
+    return QualityGateResult(name=name, status=status, evidence=evidence)
+
+
+def _cmd_release_readiness(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    quality_gate_items: list[str],
+    trace_refs: list[str],
+    known_gaps: list[str],
+    output_format: str,
+) -> int:
+    """Write release-readiness evidence report for human review."""
+
+    instance = InstanceRoot(instance_root)
+    gates = [_parse_quality_gate_result(item) for item in quality_gate_items]
+    report = build_release_readiness_report(
+        runtime_root=instance.root,
+        quality_gates=gates,
+        trace_path_refs=trace_refs,
+        known_gaps=known_gaps,
+    )
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    json_path = report_dir / "hisys-release-readiness.json"
+    json_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+    md_path = report_dir / "hisys-release-readiness.md"
+    md_path.write_text(report.to_markdown(), encoding="utf-8")
+    if output_format == "json":
+        print(report.model_dump_json(indent=2))
+    else:
+        print(f"release readiness: status={report.overall_status} decision={report.release_decision} report={json_path}")
+    return 0 if report.overall_status == "ready_for_review" else 2
+
+
 def _cmd_completion_status(
     *,
     instance_root: Path,
@@ -922,6 +963,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="validation status as name=status, e.g. focused=passed; repeatable",
     )
     completion_status.add_argument("--format", choices=["json", "markdown"], default="json")
+
+    release_readiness = sub.add_parser("release-readiness", help="write release-readiness evidence report")
+    release_readiness.add_argument("--instance", required=True, help="Hisys instance root")
+    release_readiness.add_argument("--date", required=True, help="YYYYMMDD")
+    release_readiness.add_argument("--quality-gate", action="append", default=[], help="quality gate as NAME:pass|fail|blocked|not_run:EVIDENCE")
+    release_readiness.add_argument("--trace-ref", action="append", default=[], help="HISYS-T-024 trace path reference")
+    release_readiness.add_argument("--known-gap", action="append", default=[], help="known release gap")
+    release_readiness.add_argument("--format", choices=["text", "json"], default="text")
 
     review_investment_packet = sub.add_parser(
         "review-investment-decision-packet",
@@ -1764,6 +1813,15 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             validation_items=args.validation,
+            output_format=args.format,
+        )
+    if args.command == "release-readiness":
+        return _cmd_release_readiness(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            quality_gate_items=args.quality_gate,
+            trace_refs=args.trace_ref,
+            known_gaps=args.known_gap,
             output_format=args.format,
         )
     if args.command == "review-investment-decision-packet":

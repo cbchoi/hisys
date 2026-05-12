@@ -118,6 +118,8 @@ runtime-boundary/investment-decisions/<YYYYMMDD>/investment-decision-packet-repo
 data/evidence-packages/<YYYYMMDD>/PKG-INV-SOURCE-*.json                    # source-connector promotion
 reports/run-summaries/<YYYYMMDD>/hisys-completion-status.json              # completion/gate report
 reports/run-summaries/<YYYYMMDD>/hisys-completion-status.md
+reports/run-summaries/<YYYYMMDD>/hisys-release-readiness.json              # release-readiness evidence
+reports/run-summaries/<YYYYMMDD>/hisys-release-readiness.md
 data/audit/<YYYYMMDD>/lapidary-governance/evidence-chains/<chain_id>.json
 data/audit/<YYYYMMDD>/lapidary-governance/weighted-alternatives/<alternative_id>.json
 ```
@@ -139,7 +141,11 @@ call, preserving the source access URL/hash/time and recording
 `external_call_made=false` for the promotion step. `completion-status` summarizes
 completed product components, remaining gaps, validation results, and closed
 safety gates into machine-readable/Markdown status artifacts; it treats live
-external action as gated rather than completed. The dry-run workflow consumes already-materialized
+external action as gated rather than release-complete. `release-readiness` turns
+explicit quality gate evidence (`pytest`, traceability, secret scan,
+backup/restore dry-run, and health status), HISYS-T-024 trace refs, and known
+gaps into final human-review release evidence without live external calls or
+mutations. The dry-run workflow consumes already-materialized
 `EvidencePackage` JSON artifacts rather than using a fixture backend. It assembles
 a bounded packet, evidence chain, weighted alternative, policy artifact, and
 report while recording `fixture_backend_used=false`, `external_call_made=false`,

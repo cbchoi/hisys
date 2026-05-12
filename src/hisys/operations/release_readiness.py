@@ -39,6 +39,8 @@ class QualityGateResult(BaseModel):
 class ReleaseReadinessReport(BaseModel):
     """Human-reviewable release-readiness evidence summary."""
 
+    schema_id: Literal["hisys.release_readiness_report"] = "hisys.release_readiness_report"
+    schema_version: Literal["0.1.0"] = "0.1.0"
     runtime_root: str
     quality_gates: list[QualityGateResult]
     trace_path_refs: list[str]
@@ -48,6 +50,10 @@ class ReleaseReadinessReport(BaseModel):
     trace_path_complete: bool
     overall_status: ReadinessStatus
     release_decision: ReleaseDecision
+    external_call_made: Literal[False] = False
+    mutation_performed: Literal[False] = False
+    publication_or_live_action_approved: Literal[False] = False
+    execution_authorized: Literal[False] = False
     requirement_refs: list[str] = Field(
         default_factory=lambda: [
             "HISYS-T-024",
