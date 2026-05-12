@@ -246,8 +246,8 @@ implemented yet.
 | `hisys.agents.appraiser_separation` | HISYS-DARS-CONTRACT-001, HISYS-FR-AGT-001..005, HISYS-SCHEMA-001, HISYS-CON-010..012 | `tests/unit/test_dars_appraiser_guard.py` |
 | `hisys.agents.dars_backend` | HISYS-DARS-CONTRACT-001, HISYS-FR-AGT-001..005, HISYS-T-019, HISYS-T-020, HISYS-T-024, HISYS-CON-010..012 | `tests/unit/test_dars_backend.py`, `tests/unit/test_dars_mock_endpoint.py` |
 | `hisys.agents.dars_trace` | HISYS-DARS-CONTRACT-001, HISYS-T-024, HISYS-FR-AGT-001..005, HISYS-FR-INV-001..006, HISYS-FR-MEM-001..005 | `tests/unit/test_dars_trace.py` |
-| `hisys.operations.backup` | HISYS-T-023, HISYS-FR-ADM-003, HISYS-DATA-001..004 | `tests/unit/test_backup_restore.py` |
-| `hisys.operations.health` | HISYS-FR-ADM-004, HISYS-T-006, HISYS-T-020, HISYS-T-023, HISYS-FR-AGT-004, HISYS-DARS-CONTRACT-001 | `tests/unit/test_health_status.py` |
+| `hisys.operations.backup` | HISYS-T-023, HISYS-FR-ADM-003, HISYS-DATA-001..004 | `tests/unit/test_backup_restore.py`; `tests/unit/test_release_ops_cli.py`; CLI `hisys backup-runtime`, `hisys restore-backup-dry-run` |
+| `hisys.operations.health` | HISYS-FR-ADM-004, HISYS-T-006, HISYS-T-020, HISYS-T-023, HISYS-FR-AGT-004, HISYS-DARS-CONTRACT-001 | `tests/unit/test_health_status.py`; `tests/unit/test_release_ops_cli.py`; CLI `hisys health-status` |
 | `hisys.operations.release_readiness` | HISYS-T-024, HISYS-FR-ADM-001..004, HISYS-DATA-001..005, HISYS-CON-* | `tests/unit/test_release_readiness.py`; CLI `hisys release-readiness` |
 | `hisys.security.secret_scan` | HISYS-T-021, HISYS-NFR-SEC-001..002, HISYS-FR-ADM-001, HISYS-R-008 | `tests/unit/test_secret_scan.py` |
 | `scripts/scan_secrets.py` | HISYS-T-021 quality-gate script | `tests/unit/test_secret_scan.py` |

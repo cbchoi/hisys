@@ -68,6 +68,8 @@ from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, Memo
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..operations.lapidary_flow import build_weighted_alternative
+from ..operations.backup import create_backup, restore_backup_dry_run
+from ..operations.health import collect_health_status
 from ..operations.release_readiness import QualityGateResult, build_release_readiness_report
 from ..investigator import (
     ClaimRecord,
@@ -703,6 +705,104 @@ def _component_status(*, component_id: str, title: str, complete: bool, evidence
     }
 
 
+def _cmd_health_status(*, instance_root: Path, yyyymmdd: str, output_format: str) -> int:
+    """Write local health status evidence without external probes."""
+
+    instance = InstanceRoot(instance_root)
+    report = collect_health_status(instance.root)
+    payload = report.model_dump(mode="json")
+    payload.update(
+        {
+            "schema_id": "hisys.health_status_report",
+            "schema_version": "0.1.0",
+            "external_call_made": False,
+            "mutation_performed": False,
+            "publication_or_live_action_approved": False,
+            "execution_authorized": False,
+        }
+    )
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    json_path = report_dir / "hisys-health-status.json"
+    json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    md_path = report_dir / "hisys-health-status.md"
+    md_path.write_text(
+        "\n".join(
+            [
+                "# Hisys Health Status",
+                "",
+                f"- overall_status: `{payload['overall_status']}`",
+                f"- external_call_made: `{str(payload['external_call_made']).lower()}`",
+                f"- mutation_performed: `{str(payload['mutation_performed']).lower()}`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    if output_format == "json":
+        print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"health status: status={payload['overall_status']} report={json_path}")
+    return 0 if payload["overall_status"] == "ok" else 2
+
+
+def _cmd_backup_runtime(*, instance_root: Path, yyyymmdd: str, backup_id: str, output_format: str) -> int:
+    """Create a controlled runtime backup evidence artifact."""
+
+    instance = InstanceRoot(instance_root)
+    backup_dir = instance.root / "backups" / yyyymmdd
+    report = create_backup(instance.root, backup_dir=backup_dir, backup_id=backup_id)
+    payload = report.model_dump(mode="json")
+    payload.update(
+        {
+            "schema_id": "hisys.backup_report",
+            "schema_version": "0.1.0",
+            "external_call_made": False,
+            "mutation_performed": False,
+            "publication_or_live_action_approved": False,
+            "execution_authorized": False,
+        }
+    )
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    json_path = report_dir / "hisys-backup-report.json"
+    json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if output_format == "json":
+        print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"backup runtime: file_count={payload['file_count']} archive={payload['archive_path']}")
+    return 0
+
+
+def _cmd_restore_backup_dry_run(
+    *, archive_path: Path, restore_target: Path, report_root: Path, yyyymmdd: str, output_format: str
+) -> int:
+    """Verify a backup archive without restoring files."""
+
+    instance = InstanceRoot(report_root)
+    report = restore_backup_dry_run(archive_path, restore_target)
+    payload = report.model_dump(mode="json")
+    payload.update(
+        {
+            "schema_id": "hisys.restore_dry_run_report",
+            "schema_version": "0.1.0",
+            "external_call_made": False,
+            "mutation_performed": False,
+            "publication_or_live_action_approved": False,
+            "execution_authorized": False,
+        }
+    )
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    json_path = report_dir / "hisys-restore-dry-run.json"
+    json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if output_format == "json":
+        print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"restore dry-run: verified={payload['verified']} would_restore={payload['would_restore_count']} report={json_path}")
+    return 0 if payload["verified"] else 2
+
+
 def _parse_quality_gate_result(item: str) -> QualityGateResult:
     parts = item.split(":", 2)
     if len(parts) != 3:
@@ -971,6 +1071,24 @@ def _build_parser() -> argparse.ArgumentParser:
     release_readiness.add_argument("--trace-ref", action="append", default=[], help="HISYS-T-024 trace path reference")
     release_readiness.add_argument("--known-gap", action="append", default=[], help="known release gap")
     release_readiness.add_argument("--format", choices=["text", "json"], default="text")
+
+    health_status = sub.add_parser("health-status", help="write local health status gate evidence")
+    health_status.add_argument("--instance", required=True, help="Hisys instance root")
+    health_status.add_argument("--date", required=True, help="YYYYMMDD")
+    health_status.add_argument("--format", choices=["text", "json"], default="text")
+
+    backup_runtime = sub.add_parser("backup-runtime", help="create controlled runtime backup gate evidence")
+    backup_runtime.add_argument("--instance", required=True, help="Hisys instance root")
+    backup_runtime.add_argument("--date", required=True, help="YYYYMMDD")
+    backup_runtime.add_argument("--backup-id", required=True, help="backup artifact id")
+    backup_runtime.add_argument("--format", choices=["text", "json"], default="text")
+
+    restore_dry_run = sub.add_parser("restore-backup-dry-run", help="verify a backup archive without restore writes")
+    restore_dry_run.add_argument("--archive", required=True, help="backup archive path")
+    restore_dry_run.add_argument("--restore-target", required=True, help="target root to verify without writing")
+    restore_dry_run.add_argument("--report-root", required=True, help="Hisys instance root for writing the dry-run report")
+    restore_dry_run.add_argument("--date", required=True, help="YYYYMMDD")
+    restore_dry_run.add_argument("--format", choices=["text", "json"], default="text")
 
     review_investment_packet = sub.add_parser(
         "review-investment-decision-packet",
@@ -1822,6 +1940,23 @@ def main(argv: list[str] | None = None) -> int:
             quality_gate_items=args.quality_gate,
             trace_refs=args.trace_ref,
             known_gaps=args.known_gap,
+            output_format=args.format,
+        )
+    if args.command == "health-status":
+        return _cmd_health_status(instance_root=Path(args.instance), yyyymmdd=args.date, output_format=args.format)
+    if args.command == "backup-runtime":
+        return _cmd_backup_runtime(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            backup_id=args.backup_id,
+            output_format=args.format,
+        )
+    if args.command == "restore-backup-dry-run":
+        return _cmd_restore_backup_dry_run(
+            archive_path=Path(args.archive),
+            restore_target=Path(args.restore_target),
+            report_root=Path(args.report_root),
+            yyyymmdd=args.date,
             output_format=args.format,
         )
     if args.command == "review-investment-decision-packet":
