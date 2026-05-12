@@ -6,6 +6,7 @@ HISYS-FR-ADM-001, HISYS-R-008.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Iterable
@@ -59,11 +60,11 @@ def _iter_files(root: Path) -> Iterable[Path]:
     if root.is_file():
         yield root
         return
-    for path in root.rglob("*"):
-        if any(part in SKIP_DIR_NAMES for part in path.parts):
-            continue
-        if path.is_file():
-            yield path
+    for directory, dir_names, file_names in os.walk(root):
+        dir_names[:] = [name for name in dir_names if name not in SKIP_DIR_NAMES]
+        directory_path = Path(directory)
+        for file_name in file_names:
+            yield directory_path / file_name
 
 
 def _is_binary(path: Path) -> bool:
@@ -97,6 +98,14 @@ def _scan_line(path: Path, relative_path: str, line_number: int, line: str) -> l
     return hits
 
 
+def _scan_file(path: Path, relative_path: str) -> list[SecretScanHit]:
+    hits: list[SecretScanHit] = []
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            hits.extend(_scan_line(path, relative_path, line_number, line.rstrip("\n")))
+    return hits
+
+
 def scan_paths(paths: Iterable[str | Path]) -> SecretScanReport:
     """Scan text files for simple assignment-style secret-like values.
 
@@ -114,18 +123,13 @@ def scan_paths(paths: Iterable[str | Path]) -> SecretScanReport:
             if _is_binary(file_path):
                 skipped_files += 1
                 continue
+            relative_path = str(file_path.relative_to(base))
             try:
-                text = file_path.read_text(encoding="utf-8")
-            except UnicodeDecodeError:
-                skipped_files += 1
-                continue
+                hits.extend(_scan_file(file_path, relative_path))
             except OSError:
                 skipped_files += 1
                 continue
             scanned_files += 1
-            relative_path = str(file_path.relative_to(base))
-            for line_number, line in enumerate(text.splitlines(), start=1):
-                hits.extend(_scan_line(file_path, relative_path, line_number, line))
     return SecretScanReport(
         scanned_paths=[str(root) for root in roots],
         scanned_files=scanned_files,

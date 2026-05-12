@@ -36,6 +36,23 @@ def test_secret_scan_reports_redacted_hits_and_skips_runtime_caches(tmp_path: Pa
     assert "API_KEY=[REDACTED]" in report.hits[0].redacted_excerpt
 
 
+def test_secret_scan_streams_text_like_files_with_late_decode_noise(tmp_path: Path) -> None:
+    root = tmp_path / "runtime"
+    root.mkdir()
+    noisy = root / "noisy.log"
+    unsafe_value = "unsafe" + "-value"
+    noisy.write_bytes((("password" + "=") + unsafe_value + "\ntext before a late non-utf8 byte: ").encode("utf-8") + b"\xff\n")
+
+    report = scan_paths([root])
+
+    assert report.hit_count == 1
+    assert report.scanned_files == 1
+    assert report.skipped_files == 0
+    assert report.hits[0].relative_path == "noisy.log"
+    assert report.hits[0].redacted_excerpt == "password=[REDACTED]"
+    assert unsafe_value not in report.model_dump_json()
+
+
 def test_secret_scan_script_outputs_json_and_nonzero_on_hits(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     root.mkdir()
