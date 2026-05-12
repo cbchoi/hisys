@@ -82,6 +82,14 @@ hisys review-investment-decision-packet \
   --packet-id <packet_id> \
   --format json
 
+hisys build-investment-evidence-package \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --request-id <request_id> \
+  --asset "S&P 500" \
+  --source-access runtime-boundary/source-connectors/<YYYYMMDD>/source-access-ACCESS-....json \
+  --source-evidence runtime-boundary/source-connectors/<YYYYMMDD>/source-evidence-EVID-....json
+
 hisys run-investment-decision-dry-run \
   --instance "$HISYS_INSTANCE" \
   --date <YYYYMMDD> \
@@ -100,6 +108,7 @@ runtime-boundary/investment-decisions/<YYYYMMDD>/<packet_id>.json
 runtime-boundary/investment-decisions/<YYYYMMDD>/<packet_id>.md
 runtime-boundary/investment-decisions/<YYYYMMDD>/<policy_id>.json           # when --weight-policy is supplied
 runtime-boundary/investment-decisions/<YYYYMMDD>/investment-decision-packet-report.json
+data/evidence-packages/<YYYYMMDD>/PKG-INV-SOURCE-*.json                    # source-connector promotion
 data/audit/<YYYYMMDD>/lapidary-governance/evidence-chains/<chain_id>.json
 data/audit/<YYYYMMDD>/lapidary-governance/weighted-alternatives/<alternative_id>.json
 ```
@@ -114,7 +123,11 @@ weights, contradiction handling), so product runs can cite a stable policy
 artifact instead of relying on implicit or hard-coded weighting assumptions. When
 `--weight-policy` is supplied and the packet already names `weight_policy_ref`,
 the CLI rejects mismatched policy IDs so the report cannot silently attach the
-wrong weighting profile. The dry-run workflow consumes already-materialized
+wrong weighting profile. `build-investment-evidence-package` promotes persisted
+source connector `SourceAccessRecord` and `SourceEvidenceItem` artifacts into a
+standard investment `EvidencePackage` without a fixture backend or new external
+call, preserving the source access URL/hash/time and recording
+`external_call_made=false` for the promotion step. The dry-run workflow consumes already-materialized
 `EvidencePackage` JSON artifacts rather than using a fixture backend. It assembles
 a bounded packet, evidence chain, weighted alternative, policy artifact, and
 report while recording `fixture_backend_used=false`, `external_call_made=false`,

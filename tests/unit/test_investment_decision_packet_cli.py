@@ -336,6 +336,122 @@ def test_run_investment_decision_dry_run_assembles_packet_from_evidence_artifact
     assert report["mutation_performed"] is False
 
 
+def test_source_connector_evidence_can_feed_investment_decision_dry_run(tmp_path: Path, monkeypatch, capsys) -> None:
+    from hisys.cli.main import main
+
+    monkeypatch.setenv("HISYS_ALLOW_LIVE_SEARCH_SMOKE", "1")
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace(
+            "enabled: false\n    mode: read_only\n    external_call_allowed: false",
+            "enabled: true\n    mode: read_only\n    external_call_allowed: true",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    search_fixture = tmp_path / "search-results.json"
+    search_fixture.write_text(
+        json.dumps(
+            {
+                "results": [
+                    {
+                        "title": "S&P 500 earnings breadth evidence",
+                        "url": "https://search.local.fixture/sp500/earnings-breadth",
+                        "snippet": "S&P 500 earnings breadth improved, but valuation risk remains material.",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert main(
+        [
+            "search-topic",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260512",
+            "--request-id",
+            "HISYS-REQ-INV-E2E-001",
+            "--topic",
+            "S&P 500 investment evidence",
+            "--approval-ref",
+            "APPROVAL-INV-E2E-001",
+            "--transport-fixture-search",
+            str(search_fixture),
+        ]
+    ) == 0
+    capsys.readouterr()
+    source_dir = tmp_path / "runtime-boundary" / "source-connectors" / "20260512"
+    source_access = source_dir / "source-access-ACCESS-HISYS-REQ-INV-E2E-001-general_web_search.json"
+    source_evidence = source_dir / "source-evidence-EVID-HISYS-REQ-INV-E2E-001-general_web_search.json"
+    policy_path = tmp_path / "weight-policy.json"
+    policy_path.write_text(json.dumps(_weight_policy_payload()), encoding="utf-8")
+
+    assert main(
+        [
+            "build-investment-evidence-package",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260512",
+            "--request-id",
+            "HISYS-REQ-INV-E2E-001",
+            "--asset",
+            "S&P 500",
+            "--source-access",
+            str(source_access),
+            "--source-evidence",
+            str(source_evidence),
+        ]
+    ) == 0
+    output = capsys.readouterr().out
+    assert "investment evidence package: package_id=PKG-INV-SOURCE-SP500-001" in output
+    evidence_package = tmp_path / "data" / "evidence-packages" / "20260512" / "PKG-INV-SOURCE-SP500-001.json"
+    payload = json.loads(evidence_package.read_text(encoding="utf-8"))
+    assert payload["agent_type"] == "investment_decision_support"
+    assert payload["external_side_effects"] is False
+    assert payload["evidence"][0]["source_id"] == "ACCESS-HISYS-REQ-INV-E2E-001-general_web_search"
+    assert payload["evidence"][0]["url"] == "search://S&P 500 investment evidence"
+    assert "fixture" not in payload["agent_id"]
+
+    assert main(
+        [
+            "run-investment-decision-dry-run",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260512",
+            "--asset",
+            "S&P 500",
+            "--instrument",
+            "SPY",
+            "--time-horizon",
+            "6-12 months",
+            "--evidence-package",
+            str(evidence_package),
+            "--weight-policy",
+            str(policy_path),
+        ]
+    ) == 0
+    capsys.readouterr()
+    report = json.loads(
+        (tmp_path / "runtime-boundary" / "investment-decisions" / "20260512" / "investment-decision-packet-report.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert report["workflow"] == "investment_decision_dry_run"
+    assert report["input_evidence_package_refs"] == [str(evidence_package)]
+    assert report["fixture_backend_used"] is False
+    assert report["external_call_made"] is False
+
+
 def test_run_investment_decision_dry_run_rejects_fixture_backend_evidence(tmp_path: Path) -> None:
     from hisys.cli.main import main
 

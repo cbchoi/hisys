@@ -62,6 +62,7 @@ from ..browser.review_chain import (
 )
 from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_git_sync_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, execute_obsidian_git_sync_live, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_git_live_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, GeneralWebSearchConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, PlaywrightBrowserConnector, PlaywrightUnavailableError, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
+from ..connectors.live_source_evidence import SourceAccessRecord, SourceEvidenceItem
 from ..core.ids import IdNamespace, make_id
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
@@ -363,6 +364,111 @@ def _evidence_package_uses_fixture_backend(package: EvidencePackage) -> bool:
     markers = [package.agent_id, package.agent_type, *package.actions_taken]
     markers.extend(item.agent_id for item in package.evidence)
     return any("fixture" in marker.lower() or "mock" in marker.lower() for marker in markers)
+
+
+def _source_evidence_confidence_score(confidence: str) -> float:
+    return {
+        "high": 0.75,
+        "medium": 0.6,
+        "low": 0.4,
+        "unknown": 0.5,
+    }.get(confidence, 0.5)
+
+
+def _cmd_build_investment_evidence_package(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    asset: str,
+    source_access_path: Path,
+    source_evidence_path: Path,
+) -> int:
+    """Promote source connector artifacts into an investment EvidencePackage."""
+
+    instance = InstanceRoot(instance_root)
+    source_access = SourceAccessRecord.model_validate_json(source_access_path.read_text(encoding="utf-8"))
+    source_evidence = SourceEvidenceItem.model_validate_json(source_evidence_path.read_text(encoding="utf-8"))
+    if Path(source_evidence.access_ref).name != source_access_path.name and source_evidence.access_ref != _safe_relative_ref(
+        instance.root, source_access_path
+    ):
+        raise ValueError("source evidence access_ref does not match supplied source access artifact")
+    if source_access.mutation_performed:
+        raise ValueError("investment evidence package requires non-mutating source access")
+
+    suffix = _investment_id_suffix(asset)
+    package_id = f"PKG-INV-SOURCE-{suffix}-001"
+    evidence_id = f"EV-INV-SOURCE-{suffix}-001"
+    claim_id = f"CLAIM-INV-SOURCE-{suffix}-001"
+    confidence = _source_evidence_confidence_score(source_evidence.confidence)
+    source_ref = source_access.access_id
+    package = EvidencePackage(
+        package_id=package_id,
+        task_id=f"TASK-INV-SOURCE-{suffix}-001",
+        agent_id="source-connector-investment-evidence-adapter",
+        agent_type="investment_decision_support",
+        claims=[
+            ClaimRecord(
+                claim_id=claim_id,
+                text=f"{asset} investment decision support signal: {source_evidence.interpretation}",
+                confidence=confidence,
+                evidence_refs=[evidence_id],
+                limitations=[
+                    "Source connector evidence was promoted for dry-run decision support only.",
+                    "Human review is required before consequential use.",
+                ],
+            )
+        ],
+        evidence=[
+            EvidenceItem(
+                evidence_id=evidence_id,
+                task_id=f"TASK-INV-SOURCE-{suffix}-001",
+                agent_id="source-connector-investment-evidence-adapter",
+                source_id=source_ref,
+                url=source_access.source_url,
+                title=source_access.title or f"{asset} source connector evidence",
+                quoted_text=source_evidence.quoted_text,
+                retrieved_at=source_access.accessed_at,
+                content_hash=f"sha256:{source_access.sha256}",
+            )
+        ],
+        limitations=[
+            "EvidencePackage is assembled from persisted read-only source connector artifacts.",
+            "No autonomous execution, publication, or live action is authorized.",
+        ],
+        open_questions=[source_evidence.uncertainty] if source_evidence.uncertainty else [],
+        external_side_effects=False,
+        actions_taken=["source_connector_evidence_promoted"],
+    )
+    output_dir = instance.data_dir / "evidence-packages" / yyyymmdd
+    output_dir.mkdir(parents=True, exist_ok=True)
+    package_path = output_dir / f"{package.package_id}.json"
+    package_path.write_text(_record_json(package) + "\n", encoding="utf-8")
+    report = {
+        "schema_id": "hisys.investment_evidence_package_report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "asset": asset,
+        "package_id": package.package_id,
+        "package_ref": _safe_relative_ref(instance.root, package_path),
+        "source_access_ref": _safe_relative_ref(instance.root, source_access_path),
+        "source_evidence_ref": _safe_relative_ref(instance.root, source_evidence_path),
+        "source_external_call_made": source_access.external_call_made,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+        "execution_authorized": False,
+    }
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "investment-evidence-package-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"investment evidence package: package_id={package.package_id}")
+    print(f"package_ref={report['package_ref']}")
+    print(f"source_external_call_made={_bool_text(source_access.external_call_made)}")
+    print("external_call_made=false")
+    print("mutation_performed=false")
+    return 0
 
 
 def _cmd_run_investment_decision_dry_run(
@@ -668,6 +774,17 @@ def _build_parser() -> argparse.ArgumentParser:
     investment_packet.add_argument("--date", required=True, help="YYYYMMDD output partition")
     investment_packet.add_argument("--packet", required=True, help="InvestmentDecisionPacket JSON input path")
     investment_packet.add_argument("--weight-policy", help="optional InvestmentWeightPolicy JSON path to persist with the packet")
+
+    investment_evidence = sub.add_parser(
+        "build-investment-evidence-package",
+        help="promote source connector evidence artifacts into an investment EvidencePackage for dry-run use",
+    )
+    investment_evidence.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    investment_evidence.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    investment_evidence.add_argument("--request-id", required=True, help="request id for the promotion run")
+    investment_evidence.add_argument("--asset", required=True, help="asset under review")
+    investment_evidence.add_argument("--source-access", required=True, help="SourceAccessRecord JSON artifact path")
+    investment_evidence.add_argument("--source-evidence", required=True, help="SourceEvidenceItem JSON artifact path")
 
     review_investment_packet = sub.add_parser(
         "review-investment-decision-packet",
@@ -1480,6 +1597,15 @@ def main(argv: list[str] | None = None) -> int:
             packet_path=Path(args.packet),
             yyyymmdd=args.date,
             weight_policy_path=Path(args.weight_policy) if args.weight_policy else None,
+        )
+    if args.command == "build-investment-evidence-package":
+        return _cmd_build_investment_evidence_package(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            asset=args.asset,
+            source_access_path=Path(args.source_access),
+            source_evidence_path=Path(args.source_evidence),
         )
     if args.command == "review-investment-decision-packet":
         return _cmd_review_investment_decision_packet(
