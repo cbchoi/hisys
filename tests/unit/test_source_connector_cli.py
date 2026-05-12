@@ -92,6 +92,63 @@ def test_plan_source_connectors_writes_dry_run_plan_without_external_call(tmp_pa
     assert report["planned_handoff_count"] == 1
 
 
+def test_source_connector_preflight_records_approved_read_only_gate_without_live_call(tmp_path: Path) -> None:
+    config_path = tmp_path / "source-connectors-enabled.yaml"
+    config_path.write_text(
+        Path("examples/instance/config/source-connectors.yaml")
+        .read_text(encoding="utf-8")
+        .replace("live_network_enabled: false", "live_network_enabled: true", 1)
+        .replace("enabled: false\n    mode: read_only\n    external_call_allowed: false", "enabled: true\n    mode: read_only\n    external_call_allowed: true", 1),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "source-connector-preflight",
+            "--instance",
+            str(tmp_path),
+            "--config",
+            str(config_path),
+            "--date",
+            "20260512",
+            "--request-id",
+            "HISYS-REQ-PREFLIGHT-001",
+            "--connector-id",
+            "general_web_search",
+            "--approval-ref",
+            "APPROVAL-PREFLIGHT-001",
+            "--requested-domain",
+            "search.local.fixture",
+            "--requested-action",
+            "read",
+            "--provider-url-ref",
+            "env:HISYS_SEARCH_PROVIDER_URL",
+            "--preflight-only",
+        ]
+    )
+
+    assert result == 0
+    report_artifact = tmp_path / "reports" / "run-summaries" / "20260512" / "source-connector-preflight-report.json"
+    dispatch_artifact = tmp_path / "runtime-boundary" / "source-connectors" / "20260512" / "connector-dispatch-HISYS-REQ-PREFLIGHT-001-general_web_search.json"
+    assert report_artifact.exists()
+    assert dispatch_artifact.exists()
+    report = json.loads(report_artifact.read_text(encoding="utf-8"))
+    dispatch = json.loads(dispatch_artifact.read_text(encoding="utf-8"))
+    assert report["schema_id"] == "hisys.source_connector.preflight_report"
+    assert report["status"] == "ready_for_manual_smoke"
+    assert report["preflight_only"] is True
+    assert report["live_execution_ready"] is False
+    assert report["requires_high_impact_confirm_gate"] is True
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False
+    assert report["provider_url_ref"] == "env:HISYS_SEARCH_PROVIDER_URL"
+    assert report["dispatch_ref"] == str(dispatch_artifact.relative_to(tmp_path))
+    assert dispatch["decision"] == "allowed"
+    assert dispatch["external_call_requested"] is True
+    assert dispatch["external_call_permitted"] is True
+    assert dispatch["external_call_made"] is False
+
+
 def test_smoke_source_connector_dry_run_blocks_without_external_call(tmp_path: Path, capsys) -> None:
     result = main(
         [

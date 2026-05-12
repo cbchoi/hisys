@@ -1192,6 +1192,21 @@ def _build_parser() -> argparse.ArgumentParser:
     plan_sources.add_argument("--config", required=True, help="source-connectors.yaml path")
     plan_sources.add_argument("--date", required=True, help="YYYYMMDD output partition")
 
+    source_preflight = sub.add_parser(
+        "source-connector-preflight",
+        help="evaluate approved read-only source connector readiness without executing the connector",
+    )
+    source_preflight.add_argument("--instance", required=True, help="runtime instance root for outputs")
+    source_preflight.add_argument("--config", required=True, help="source-connectors.yaml path")
+    source_preflight.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    source_preflight.add_argument("--request-id", required=True, help="request id for the preflight")
+    source_preflight.add_argument("--connector-id", required=True, help="connector id to preflight")
+    source_preflight.add_argument("--approval-ref", help="approval ref for planned read-only external access")
+    source_preflight.add_argument("--requested-domain", help="domain that a later run would access")
+    source_preflight.add_argument("--requested-action", action="append", default=None, help="requested action; defaults to read")
+    source_preflight.add_argument("--provider-url-ref", help="provider endpoint ref to preserve without resolving")
+    source_preflight.add_argument("--preflight-only", action="store_true", help="required marker that this command performs no connector execution")
+
     smoke_source = sub.add_parser(
         "smoke-source-connector",
         help="manual/dry-run smoke boundary for one governed source connector",
@@ -1903,6 +1918,19 @@ def main(argv: list[str] | None = None) -> int:
             request_path=Path(args.request),
             config_path=Path(args.config),
             yyyymmdd=args.date,
+        )
+    if args.command == "source-connector-preflight":
+        return _cmd_source_connector_preflight(
+            instance_root=Path(args.instance),
+            config_path=Path(args.config),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            connector_id=args.connector_id,
+            approval_ref=args.approval_ref,
+            requested_domain=args.requested_domain,
+            requested_actions=args.requested_action or ["read"],
+            provider_url_ref=args.provider_url_ref,
+            preflight_only=args.preflight_only,
         )
     if args.command == "smoke-source-connector":
         return _cmd_smoke_source_connector(
@@ -4213,6 +4241,97 @@ def _cmd_plan_source_connectors(instance_root: Path, request_path: Path, config_
     print(f"planned_connectors: {len(planned)}")
     print("external_call_made: false")
     return 0
+
+
+def _cmd_source_connector_preflight(
+    *,
+    instance_root: Path,
+    config_path: Path,
+    yyyymmdd: str,
+    request_id: str,
+    connector_id: str,
+    approval_ref: str | None,
+    requested_domain: str | None,
+    requested_actions: list[str],
+    provider_url_ref: str | None,
+    preflight_only: bool,
+) -> int:
+    """Evaluate approved read-only source connector readiness without executing it."""
+
+    instance = InstanceRoot(instance_root)
+    registry = load_source_connector_registry(config_path)
+    decision = SourceConnectorDispatchGate(instance=instance).evaluate(
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        registry=registry,
+        connector_id=connector_id,
+        approval_ref=approval_ref,
+        requested_domain=requested_domain,
+        requested_actions=requested_actions,
+    )
+    dispatch_ref = f"runtime-boundary/source-connectors/{yyyymmdd}/connector-dispatch-{request_id}-{connector_id}.json"
+    connector = registry.connectors.get(connector_id)
+    allowed_read_only = (
+        preflight_only
+        and decision.decision == "allowed"
+        and requested_actions == ["read"]
+        and decision.mutation_requested is False
+        and decision.external_call_made is False
+    )
+    status = "ready_for_manual_smoke" if allowed_read_only else "blocked"
+    report = {
+        "schema_id": "hisys.source_connector.preflight_report",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "connector_id": connector_id,
+        "connector_type": connector.connector_type if connector else None,
+        "status": status,
+        "reason_code": decision.reason_code,
+        "approval_ref": approval_ref,
+        "requested_domain": requested_domain,
+        "requested_actions": requested_actions,
+        "provider_url_ref": provider_url_ref,
+        "preflight_only": preflight_only,
+        "dispatch_ref": dispatch_ref,
+        "external_call_requested": decision.external_call_requested,
+        "external_call_permitted": decision.external_call_permitted,
+        "external_call_made": False,
+        "mutation_requested": decision.mutation_requested,
+        "mutation_performed": False,
+        "live_execution_ready": False,
+        "requires_high_impact_confirm_gate": True,
+        "forbidden_actions_preserved": connector.forbidden_actions if connector else [],
+        "policy_refs": [
+            "docs/use-cases/live-research-connectors.md",
+            "examples/instance/config/source-connectors.yaml",
+            "High-impact Confirm Gate",
+            "No Live External Action Until Harness Passes",
+        ],
+    }
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "source-connector-preflight-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_md = report_dir / "source-connector-preflight-report.md"
+    report_md.write_text(
+        "\n".join(
+            [
+                "# Source Connector Preflight Report",
+                "",
+                f"- connector_id: `{connector_id}`",
+                f"- status: `{status}`",
+                f"- preflight_only: `{str(preflight_only).lower()}`",
+                "- live_execution_ready: `false`",
+                "- external_call_made: `false`",
+                "- mutation_performed: `false`",
+                "- requires_high_impact_confirm_gate: `true`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    print(f"source connector preflight: status={status} report={report_path}")
+    return 0 if status == "ready_for_manual_smoke" else 2
 
 
 def _cmd_search_topic(

@@ -114,6 +114,34 @@ This boundary does not enable live web search, PDF download, external LLM calls,
 credential use, or browser automation. It defines the policy and evidence shape
 that later fixture and live connector increments must satisfy.
 
+## Source connector preflight boundary
+
+`hisys source-connector-preflight` evaluates an approved read-only source
+connector request against the same dispatch gate used by manual smoke commands,
+but it does not execute the adapter, resolve provider endpoint secrets, fetch
+content, download PDFs, run a browser, publish, or mutate state. The report is a
+runtime-boundary readiness artifact for operators:
+
+```bash
+hisys source-connector-preflight \
+  --instance "$HISYS_INSTANCE" \
+  --config source-connectors.yaml \
+  --date <YYYYMMDD> \
+  --request-id <request_id> \
+  --connector-id general_web_search \
+  --approval-ref <APPROVAL-REF> \
+  --requested-domain search.local.fixture \
+  --requested-action read \
+  --provider-url-ref env:HISYS_SEARCH_PROVIDER_URL \
+  --preflight-only
+```
+
+A ready preflight records `status=ready_for_manual_smoke`,
+`preflight_only=true`, `live_execution_ready=false`,
+`requires_high_impact_confirm_gate=true`, `external_call_made=false`, and
+`mutation_performed=false`. It means the gate is shaped correctly for a later
+operator-controlled smoke step; it is not approval to perform a live call.
+
 ## Live-C manual metadata smoke boundary
 
 Live-C introduces only a manually invoked, read-only public metadata smoke
