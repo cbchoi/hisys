@@ -3,6 +3,24 @@ import json
 from hisys.connectors.playwright_browser import PlaywrightBrowserConnector
 
 
+def test_playwright_fixture_collection_records_no_external_call(tmp_path):
+    html = tmp_path / "source.html"
+    html.write_text("<html><head><title>Fixture Source</title></head><body>Fixture body text.</body></html>", encoding="utf-8")
+    connector = PlaywrightBrowserConnector()
+
+    package = connector.collect_fixture(
+        request_id="HISYS-REQ-BROWSER-FIXTURE-001",
+        source_url="https://example.test/fixture-source",
+        fixture_html=html,
+        output_root=tmp_path,
+        yyyymmdd="20260512",
+    )
+
+    access = json.loads((tmp_path / package.access_ref).read_text(encoding="utf-8"))
+    assert package.transport_kind == "playwright_fixture"
+    assert access["external_call_made"] is False
+
+
 class EmptySecurityRiskTransport:
     def fetch(self, url: str):
         return (200, "Cybersecurity risk", "")

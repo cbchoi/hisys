@@ -187,7 +187,7 @@ def test_smoke_general_web_search_with_fixture_transport_writes_evidence(tmp_pat
     assert report["status"] == "completed"
     assert report["reason_code"] == "manual_search_smoke_completed"
     assert report["transport_kind"] == "fixture_injected"
-    assert report["external_call_made"] is True
+    assert report["external_call_made"] is False
     assert report["mutation_performed"] is False
     assert len(report["source_access_refs"]) == 1
     assert len(report["source_evidence_refs"]) == 1
@@ -195,7 +195,7 @@ def test_smoke_general_web_search_with_fixture_transport_writes_evidence(tmp_pat
     evidence = json.loads((tmp_path / report["source_evidence_refs"][0]).read_text(encoding="utf-8"))
     assert access["connector_id"] == "general_web_search"
     assert access["source_url"] == "search://digital twin executable governance"
-    assert access["external_call_made"] is True
+    assert access["external_call_made"] is False
     assert evidence["quoted_text"] == "Executable digital twins need governed evidence capture and source provenance."
 
 
@@ -870,14 +870,14 @@ def test_smoke_playwright_read_only_with_fixture_page_writes_page_evidence(tmp_p
     assert report["status"] == "completed"
     assert report["reason_code"] == "manual_browser_smoke_completed"
     assert report["transport_kind"] == "playwright_fixture"
-    assert report["external_call_made"] is True
+    assert report["external_call_made"] is False
     assert report["mutation_performed"] is False
     access = json.loads((tmp_path / report["source_access_refs"][0]).read_text(encoding="utf-8"))
     evidence = json.loads((tmp_path / report["source_evidence_refs"][0]).read_text(encoding="utf-8"))
     assert access["connector_id"] == "playwright_read_only"
     assert access["source_url"] == "https://company.local.fixture/products/xray-tubes"
     assert access["title"] == "Acme X-ray Tubes"
-    assert access["external_call_made"] is True
+    assert access["external_call_made"] is False
     assert "rotating anode x-ray tube technology" in evidence["quoted_text"]
     assert evidence["claim_type"] == "source_evidence"
 

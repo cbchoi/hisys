@@ -67,6 +67,7 @@ class PlaywrightBrowserConnector:
             output_root=output_root,
             yyyymmdd=yyyymmdd,
             transport_kind="playwright_fixture",
+            external_call_made=False,
         )
 
     def collect_live(
@@ -96,6 +97,7 @@ class PlaywrightBrowserConnector:
             output_root=output_root,
             yyyymmdd=yyyymmdd,
             transport_kind="playwright_live",
+            external_call_made=True,
         )
 
     def _persist_page(
@@ -110,6 +112,7 @@ class PlaywrightBrowserConnector:
         output_root: Path,
         yyyymmdd: str,
         transport_kind: str,
+        external_call_made: bool,
     ) -> PlaywrightBrowserEvidencePackage:
         normalized_text = _normalize_visible_text(visible_text)
         source_access_blocked = _looks_like_source_access_block(http_status=http_status, title=title, visible_text=normalized_text)
@@ -139,7 +142,7 @@ class PlaywrightBrowserConnector:
             title=title or source_url,
             license_signal="unknown",
             sha256=digest,
-            external_call_made=True,
+            external_call_made=external_call_made,
             policy_refs=["docs/use-cases/live-research-connectors.md"],
         )
         evidence = SourceEvidenceItem(

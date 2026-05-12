@@ -4890,7 +4890,7 @@ def _cmd_smoke_source_connector(
             dispatch_ref=dispatch_ref,
             source_access_refs=[package.access_ref],
             source_evidence_refs=[package.evidence_ref],
-            external_call_made=True,
+            external_call_made=package.access_record.external_call_made,
             transport_kind="fixture_injected",
         )
         _write_source_connector_smoke_report(instance, yyyymmdd, report)
@@ -4939,7 +4939,7 @@ def _cmd_smoke_source_connector(
             dispatch_ref=dispatch_ref,
             source_access_refs=[package.access_ref],
             source_evidence_refs=[package.evidence_ref],
-            external_call_made=True,
+            external_call_made=package.access_record.external_call_made,
             transport_kind=transport_kind,
         )
         _write_source_connector_smoke_report(instance, yyyymmdd, report)

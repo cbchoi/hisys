@@ -123,7 +123,7 @@ class GeneralWebSearchConnector:
             title=title,
             license_signal="not_applicable",
             sha256=digest,
-            external_call_made=True,
+            external_call_made=False,
             policy_refs=["docs/use-cases/live-research-connectors.md", "POLICY-LIVE-SEARCH-001"],
         )
         evidence = SourceEvidenceItem(

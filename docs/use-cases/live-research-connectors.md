@@ -1,7 +1,7 @@
 # Live Research Connector Boundary
 
-Status: controlled design boundary plus fixture-backed connector integration for
-the next Hisys live-source search phase.
+Status: controlled design boundary plus fixture-local and approved manual-smoke
+connector integration for the next Hisys live-source search phase.
 
 Traceability: HISYS-FR-INV-001..006, HISYS-T-024, HISYS-CON-010..012,
 HISYS-CON-022..023.
@@ -95,6 +95,17 @@ Evidence packages must distinguish:
 4. license/open-access status;
 5. uncertainty or missing evidence;
 6. downstream recommendation conditions.
+
+## Boundary truthfulness
+
+`external_call_made` records whether the connector actually crossed the local
+runtime boundary to a network, browser, external API, external LLM, or other live
+service. Fixture-local transports and injected provider-response fixtures must
+record `external_call_made=false` in source-access evidence, even when they are
+used to exercise an approved manual-smoke CLI path. Smoke reports should derive
+`external_call_made` from the persisted source-access record and use separate
+mode/transport fields (for example `manual_live` plus `fixture_injected`) to show
+which gate was exercised without overstating live access.
 
 ## Non-goals for this boundary
 
