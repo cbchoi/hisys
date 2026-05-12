@@ -40,6 +40,7 @@ class GeneralWebSearchConnector:
         provider_name: str,
         provider_url_ref: str,
         provider_payload: dict[str, Any],
+        external_call_made: bool,
         output_root: Path,
         yyyymmdd: str,
     ) -> GeneralWebSearchEvidencePackage:
@@ -66,7 +67,7 @@ class GeneralWebSearchConnector:
             title=title,
             license_signal="not_applicable",
             sha256=digest,
-            external_call_made=True,
+            external_call_made=external_call_made,
             policy_refs=["docs/use-cases/live-research-connectors.md", "POLICY-LIVE-SEARCH-001"],
         )
         evidence = SourceEvidenceItem(

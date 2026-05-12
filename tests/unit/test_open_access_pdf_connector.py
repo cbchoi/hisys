@@ -85,11 +85,11 @@ def test_open_access_pdf_connector_collects_manual_smoke_with_injected_transport
     assert calls == ["https://www.mdpi.com/fixture/live-open-access.pdf"]
     assert package.access_record.http_status == 200
     assert package.access_record.pdf_downloaded is True
-    assert package.access_record.external_call_made is True
+    assert package.access_record.external_call_made is False
     assert package.access_record.mutation_performed is False
     assert package.evidence_items[0].quoted_text.startswith("PDF bytes collected from approved manual OA smoke")
     access = json.loads((tmp_path / package.access_ref).read_text(encoding="utf-8"))
-    assert access["external_call_made"] is True
+    assert access["external_call_made"] is False
     assert access["pdf_downloaded"] is True
 
 

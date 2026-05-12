@@ -46,6 +46,7 @@ class OpenAccessPdfConnector:
 
     def __init__(self, *, transport: PdfTransport | None = None) -> None:
         self._transport = transport or _urllib_pdf_transport
+        self._external_call_made = transport is None
 
     def collect_fixture(
         self,
@@ -146,7 +147,7 @@ class OpenAccessPdfConnector:
             oa_pdf_url=source_url,
             sha256=digest,
             pdf_downloaded=True,
-            external_call_made=True,
+            external_call_made=self._external_call_made,
             policy_refs=["docs/use-cases/live-research-connectors.md"],
         )
         evidence = SourceEvidenceItem(

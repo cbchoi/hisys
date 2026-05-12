@@ -4040,6 +4040,7 @@ def _cmd_search_topic(
         if provider_response_fixture is not None:
             provider_payload = json.loads(provider_response_fixture.read_text(encoding="utf-8"))
             transport_kind = "provider_fixture"
+            provider_external_call_made = False
         else:
             provider_payload = _fetch_search_provider_json(
                 endpoint_url=provider_endpoint or "",
@@ -4047,15 +4048,18 @@ def _cmd_search_topic(
                 credential_ref=credential_ref,
             )
             transport_kind = "provider_http"
+            provider_external_call_made = True
         package = GeneralWebSearchConnector().collect_provider_results(
             request_id=request_id,
             query=topic,
             provider_name=provider,
             provider_url_ref=provider_url_ref or "[none]",
             provider_payload=provider_payload,
+            external_call_made=provider_external_call_made,
             output_root=instance.root,
             yyyymmdd=yyyymmdd,
         )
+    external_call_made = package.access_record.external_call_made
     harness_ref = f"runtime-boundary/source-connectors/{yyyymmdd}/orchestrator-harness-{request_id}.json"
     harness = {
         "schema_id": "hisys.investigator.orchestrator_harness",
@@ -4072,7 +4076,7 @@ def _cmd_search_topic(
         "provider": provider,
         "provider_url_ref": provider_url_ref,
         "credential_ref": credential_ref,
-        "external_call_made": True,
+        "external_call_made": external_call_made,
         "mutation_performed": False,
     }
     harness_path = instance.root / harness_ref
@@ -4087,7 +4091,7 @@ def _cmd_search_topic(
         source_access_refs=[package.access_ref],
         source_evidence_refs=[package.evidence_ref],
         investigator_harness_ref=harness_ref,
-        external_call_made=True,
+        external_call_made=external_call_made,
         transport_kind=transport_kind,
         provider=provider,
         provider_url_ref=provider_url_ref,
@@ -4972,7 +4976,7 @@ def _cmd_smoke_source_connector(
             dispatch_ref=dispatch_ref,
             source_access_refs=[package.access_ref],
             source_evidence_refs=[package.evidence_ref],
-            external_call_made=True,
+            external_call_made=package.access_record.external_call_made,
             pdf_downloaded=True,
             transport_kind="fixture_injected" if transport_fixture_pdf is not None else "live_network",
         )
@@ -4992,7 +4996,7 @@ def _cmd_smoke_source_connector(
         reason_code="manual_smoke_completed",
         dispatch_ref=dispatch_ref,
         source_evidence_refs=[package.access_ref, package.evidence_ref],
-        external_call_made=True,
+        external_call_made=package.access_record.external_call_made,
     )
     _write_source_connector_smoke_report(instance, yyyymmdd, report)
     print(f"source connector smoke: status=completed report={instance.reports_dir / 'run-summaries' / yyyymmdd / 'source-connector-smoke-report.json'}")

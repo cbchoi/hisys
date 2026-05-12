@@ -100,8 +100,9 @@ Evidence packages must distinguish:
 
 `external_call_made` records whether the connector actually crossed the local
 runtime boundary to a network, browser, external API, external LLM, or other live
-service. Fixture-local transports and injected provider-response fixtures must
-record `external_call_made=false` in source-access evidence, even when they are
+service. Fixture-local transports, injected DOI/PDF transports, and injected
+provider-response fixtures must record `external_call_made=false` in
+source-access evidence, even when they are
 used to exercise an approved manual-smoke CLI path. Smoke reports should derive
 `external_call_made` from the persisted source-access record and use separate
 mode/transport fields (for example `manual_live` plus `fixture_injected`) to show

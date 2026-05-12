@@ -40,6 +40,7 @@ class DoiMetadataConnector:
 
     def __init__(self, *, fetch: FetchFn | None = None) -> None:
         self._fetch = fetch or _urllib_fetch
+        self._external_call_made = fetch is None
 
     def collect(self, *, request_id: str, doi: str, output_root: Path, yyyymmdd: str) -> DoiMetadataEvidencePackage:
         encoded = quote(doi, safe="")
@@ -67,7 +68,7 @@ class DoiMetadataConnector:
             title=title,
             license_signal="not_applicable",
             sha256=digest,
-            external_call_made=True,
+            external_call_made=self._external_call_made,
             policy_refs=["docs/use-cases/live-research-connectors.md"],
         )
         evidence = SourceEvidenceItem(

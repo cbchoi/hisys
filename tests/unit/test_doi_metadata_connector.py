@@ -43,7 +43,7 @@ def test_doi_metadata_connector_uses_injected_transport_and_records_provenance(t
     assert calls == ["https://api.crossref.org/works/10.0000%2Fhisys.fixture.formalism"]
     assert package.access_record.connector_id == "doi_metadata_search"
     assert package.access_record.source_url == calls[0]
-    assert package.access_record.external_call_made is True
+    assert package.access_record.external_call_made is False
     assert package.access_record.mutation_performed is False
     assert package.access_record.http_status == 200
     assert package.evidence_items[0].quoted_text.startswith("Fixture Dynamic Structure DEVS Metadata")

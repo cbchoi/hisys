@@ -257,7 +257,7 @@ def test_search_topic_writes_search_report_and_investigator_harness(tmp_path: Pa
     assert report["status"] == "completed"
     assert report["connector_id"] == "general_web_search"
     assert report["topic"] == "any topic governance"
-    assert report["external_call_made"] is True
+    assert report["external_call_made"] is False
     assert report["mutation_performed"] is False
     assert report["investigator_harness_ref"] == str(harness_artifact.relative_to(tmp_path))
     assert report["source_evidence_refs"]
@@ -327,13 +327,14 @@ def test_search_topic_uses_approved_provider_fixture_without_persisting_endpoint
     report_text = report_artifact.read_text(encoding="utf-8")
     report = json.loads(report_text)
     assert report["transport_kind"] == "provider_fixture"
+    assert report["external_call_made"] is False
     assert report["provider_url_ref"] == "env:HISYS_SEARCH_PROVIDER_URL"
     assert report["credential_ref"] == "env:HISYS_SEARCH_PROVIDER_TOKEN"
     assert "https://search.local.fixture/api/search" not in report_text
     assert "SHOULD_NOT_BE_PERSISTED" not in report_text
     access = json.loads((tmp_path / report["source_access_refs"][0]).read_text(encoding="utf-8"))
     assert access["source_url"] == "search-provider-ref://env:HISYS_SEARCH_PROVIDER_URL"
-    assert access["external_call_made"] is True
+    assert access["external_call_made"] is False
 
 
 def test_search_topic_requires_provider_ref_when_no_fixture_transport(tmp_path: Path, monkeypatch) -> None:
@@ -1060,7 +1061,7 @@ def test_smoke_source_connector_pdf_manual_live_uses_fixture_transport_after_gat
     report = json.loads(report_artifact.read_text(encoding="utf-8"))
     assert report["status"] == "completed"
     assert report["reason_code"] == "manual_pdf_smoke_completed"
-    assert report["external_call_made"] is True
+    assert report["external_call_made"] is False
     assert report["pdf_downloaded"] is True
     assert report["transport_kind"] == "fixture_injected"
     assert report["source_access_refs"]
