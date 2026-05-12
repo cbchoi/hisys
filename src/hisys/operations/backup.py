@@ -56,6 +56,13 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _sha256_stream(handle) -> str:
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _included_files(instance_root: Path) -> Iterable[Path]:
     for top_level in sorted(INCLUDED_TOP_LEVEL_DIRS):
         root = instance_root / top_level
@@ -117,7 +124,8 @@ def restore_backup_dry_run(archive_path: str | Path, restore_target: str | Path)
         for record in manifest.files:
             if record.relative_path not in member_names:
                 raise ValueError(f"missing backup member: {record.relative_path}")
-            digest = hashlib.sha256(archive.read(record.relative_path)).hexdigest()
+            with archive.open(record.relative_path, "r") as member:
+                digest = _sha256_stream(member)
             if digest != record.sha256:
                 raise ValueError(f"hash mismatch for backup member: {record.relative_path}")
     paths = sorted(record.relative_path for record in manifest.files)

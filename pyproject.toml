@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hisys"
-version = "0.0.1"
+version = "0.0.2"
 description = "Hisys Hierarchical Investigation System - product code skeleton (I0/I1)"
 readme = "README.md"
 requires-python = ">=3.11"
