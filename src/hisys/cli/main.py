@@ -683,6 +683,132 @@ def _cmd_review_investment_decision_packet(
     return 0
 
 
+def _parse_validation_status(items: list[str]) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for item in items:
+        if "=" not in item:
+            raise ValueError("validation entries must use name=status")
+        name, status = item.split("=", 1)
+        statuses[name.strip()] = status.strip()
+    return statuses
+
+
+def _component_status(*, component_id: str, title: str, complete: bool, evidence_refs: list[str], gated: bool = False) -> dict[str, object]:
+    return {
+        "component_id": component_id,
+        "title": title,
+        "status": "gated" if gated else ("complete" if complete else "missing"),
+        "evidence_refs": evidence_refs,
+    }
+
+
+def _cmd_completion_status(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    validation_items: list[str],
+    output_format: str,
+) -> int:
+    """Write a product completion/gate status report from runtime artifacts."""
+
+    instance = InstanceRoot(instance_root)
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    investment_report = instance.runtime_boundary_dir / "investment-decisions" / yyyymmdd / "investment-decision-packet-report.json"
+    evidence_report = report_dir / "investment-evidence-package-report.json"
+    source_e2e_complete = evidence_report.exists() and investment_report.exists()
+    dry_run_boundary_complete = False
+    if investment_report.exists():
+        payload = json.loads(investment_report.read_text(encoding="utf-8"))
+        dry_run_boundary_complete = (
+            payload.get("workflow") == "investment_decision_dry_run"
+            and payload.get("fixture_backend_used") is False
+            and payload.get("external_call_made") is False
+            and payload.get("mutation_performed") is False
+            and payload.get("execution_authorized") is False
+            and payload.get("publication_or_live_action_approved") is False
+        )
+    components = [
+        _component_status(
+            component_id="investment_source_e2e",
+            title="Source connector evidence to investment dry-run E2E",
+            complete=source_e2e_complete,
+            evidence_refs=[
+                _safe_relative_ref(instance.root, evidence_report),
+                _safe_relative_ref(instance.root, investment_report),
+            ]
+            if source_e2e_complete
+            else [],
+        ),
+        _component_status(
+            component_id="investment_dry_run_boundary",
+            title="Investment dry-run no-action boundary",
+            complete=dry_run_boundary_complete,
+            evidence_refs=[_safe_relative_ref(instance.root, investment_report)] if investment_report.exists() else [],
+        ),
+        _component_status(
+            component_id="live_external_action",
+            title="Live external action remains gated",
+            complete=False,
+            evidence_refs=["High-impact Confirm Gate", "No Live External Action Until Harness Passes"],
+            gated=True,
+        ),
+    ]
+    missing = [component["component_id"] for component in components if component["status"] == "missing"]
+    gates = [
+        {
+            "gate_id": "high_impact_confirm_gate",
+            "status": "closed",
+            "reason": "Live connectors, publication, execution, schema/security/governance changes require explicit confirmation.",
+        },
+        {
+            "gate_id": "no_live_external_action_until_harness_passes",
+            "status": "closed",
+            "reason": "Current completion report records no live external action as executed.",
+        },
+    ]
+    validation = _parse_validation_status(validation_items)
+    validations_passed = bool(validation) and all(status == "passed" for status in validation.values())
+    overall_status = "gated_release_candidate" if not missing and validations_passed else "incomplete"
+    report = {
+        "schema_id": "hisys.completion_status_report",
+        "schema_version": "0.1.0",
+        "date": yyyymmdd,
+        "overall_status": overall_status,
+        "components": components,
+        "gaps": missing,
+        "gates": gates,
+        "validation": validation,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+        "execution_authorized": False,
+    }
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "hisys-completion-status.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    md_path = report_dir / "hisys-completion-status.md"
+    md_path.write_text(
+        "\n".join(
+            [
+                "# Hisys Completion Status",
+                "",
+                f"- overall_status: `{overall_status}`",
+                f"- gaps: `{', '.join(missing) if missing else 'none'}`",
+                "- live_external_action: `gated`",
+                "- external_call_made: `false`",
+                "- mutation_performed: `false`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    if output_format == "markdown":
+        print(md_path.read_text(encoding="utf-8"), end="")
+    else:
+        print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="hisys", description="Hisys runtime CLI.")
     parser.add_argument("--version", action="version", version=f"hisys {__version__}")
@@ -782,9 +908,20 @@ def _build_parser() -> argparse.ArgumentParser:
     investment_evidence.add_argument("--instance", required=True, help="runtime instance root for outputs")
     investment_evidence.add_argument("--date", required=True, help="YYYYMMDD output partition")
     investment_evidence.add_argument("--request-id", required=True, help="request id for the promotion run")
-    investment_evidence.add_argument("--asset", required=True, help="asset under review")
+    investment_evidence.add_argument("--asset", required=True, help="asset name the evidence package supports")
     investment_evidence.add_argument("--source-access", required=True, help="SourceAccessRecord JSON artifact path")
     investment_evidence.add_argument("--source-evidence", required=True, help="SourceEvidenceItem JSON artifact path")
+
+    completion_status = sub.add_parser("completion-status", help="write Hisys completion/gate status from runtime artifacts")
+    completion_status.add_argument("--instance", required=True, help="Hisys instance root")
+    completion_status.add_argument("--date", required=True, help="YYYYMMDD")
+    completion_status.add_argument(
+        "--validation",
+        action="append",
+        default=[],
+        help="validation status as name=status, e.g. focused=passed; repeatable",
+    )
+    completion_status.add_argument("--format", choices=["json", "markdown"], default="json")
 
     review_investment_packet = sub.add_parser(
         "review-investment-decision-packet",
@@ -1606,6 +1743,13 @@ def main(argv: list[str] | None = None) -> int:
             asset=args.asset,
             source_access_path=Path(args.source_access),
             source_evidence_path=Path(args.source_evidence),
+        )
+    if args.command == "completion-status":
+        return _cmd_completion_status(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            validation_items=args.validation,
+            output_format=args.format,
         )
     if args.command == "review-investment-decision-packet":
         return _cmd_review_investment_decision_packet(
