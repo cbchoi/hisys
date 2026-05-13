@@ -40,6 +40,7 @@ def _verify(*, tool_root: Path, upstream_source_root: Path, expect_source_commit
     failures: list[str] = []
     manifest_path = tool_root / "manifest.json"
     wrapper_path = tool_root / "bin" / "hisys"
+    runtime_config_path = tool_root / "config" / "runtime.json"
     releases_root = tool_root / "releases"
     current_link = releases_root / "current"
 
@@ -63,6 +64,11 @@ def _verify(*, tool_root: Path, upstream_source_root: Path, expect_source_commit
     ))
     failures.extend(_verify_wrapper(
         wrapper_path=wrapper_path,
+        tool_root=tool_root,
+        upstream_source_root=upstream_source_root,
+    ))
+    failures.extend(_verify_runtime_config(
+        runtime_config_path=runtime_config_path,
         tool_root=tool_root,
         upstream_source_root=upstream_source_root,
     ))
@@ -92,6 +98,7 @@ def _verify_manifest(
         "upstream_source_root": str(upstream_source_root),
         "target_root": str(tool_root),
         "wrapper": str(tool_root / "bin" / "hisys"),
+        "runtime_config": str(tool_root / "config" / "runtime.json"),
         "runtime_root": str(tool_root / "runtime"),
     }
     for key, value in expected.items():
@@ -129,11 +136,50 @@ def _verify_wrapper(*, wrapper_path: Path, tool_root: Path, upstream_source_root
     if str(upstream_source_root) in text:
         failures.append("wrapper references live upstream source checkout")
     expected_source = str(tool_root / "releases" / "current" / "source")
-    if expected_source not in text:
-        failures.append("wrapper does not reference releases/current/source snapshot")
-    match = re.search(r"^HISYS_SOURCE_ROOT=(['\"]?)(.+?)\1$", text, re.MULTILINE)
-    if not match:
-        failures.append("wrapper HISYS_SOURCE_ROOT assignment missing")
+    if expected_source not in text and "HISYS_RUNTIME_CONFIG" not in text:
+        failures.append("wrapper does not reference releases/current/source snapshot or runtime config")
+    if "HISYS_RUNTIME_CONFIG" not in text:
+        match = re.search(r"^HISYS_SOURCE_ROOT=(['\"]?)(.+?)\1$", text, re.MULTILINE)
+        if not match:
+            failures.append("wrapper HISYS_SOURCE_ROOT assignment or HISYS_RUNTIME_CONFIG missing")
+    return failures
+
+
+def _verify_runtime_config(*, runtime_config_path: Path, tool_root: Path, upstream_source_root: Path) -> list[str]:
+    failures: list[str] = []
+    if not runtime_config_path.exists():
+        return [f"runtime config missing: {runtime_config_path}"]
+    try:
+        config = json.loads(runtime_config_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [f"runtime config is not valid JSON: {exc}"]
+    expected_source = str(tool_root / "releases" / "current" / "source")
+    expected = {
+        "schema_id": "hisys.hermes_tool_runtime_config",
+        "schema_version": "0.1.0",
+        "tool_name": "hisys",
+        "execution_mode": "installed_snapshot",
+        "source_root": expected_source,
+        "runtime_root": str(tool_root / "runtime"),
+        "manifest": str(tool_root / "manifest.json"),
+        "deployment_root": str(tool_root),
+    }
+    for key, value in expected.items():
+        if config.get(key) != value:
+            failures.append(f"runtime config {key!r} expected {value!r}, got {config.get(key)!r}")
+    if str(upstream_source_root) in json.dumps(config, ensure_ascii=False):
+        failures.append("runtime config references live upstream source checkout")
+    policy = config.get("source_root_policy")
+    if not isinstance(policy, dict):
+        failures.append("runtime config source_root_policy missing")
+    else:
+        if policy.get("required_path_suffix") != "releases/current/source":
+            failures.append("runtime config must require releases/current/source")
+        for key in ("allow_live_source_checkout", "allow_upstream_source_root"):
+            if policy.get(key) is not False:
+                failures.append(f"runtime config source_root_policy.{key} must be false")
+        if policy.get("fail_closed_on_config_error") is not True:
+            failures.append("runtime config source_root_policy.fail_closed_on_config_error must be true")
     return failures
 
 

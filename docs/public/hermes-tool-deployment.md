@@ -8,7 +8,7 @@ This guide installs a controlled Hermes-side wrapper for Hisys under a stable to
 
 The deployment is intentionally CLI-first. It does **not** require MCP and does not mutate Hermes configuration automatically. The script writes a wrapper, manifest, public browser profile copy, runtime directory, and channel configuration snippet for human review. Installs are staged in a sibling temporary directory and then renamed into place so failed writes do not leave a partial tool tree.
 
-The wrapper runs from an immutable deployment snapshot under `releases/<release_id>/source`, exposed through `releases/current/source`. It does **not** execute the live development checkout directly; this keeps uncommitted work, partial edits, or branch switches in the source repository from changing the deployed Hermes tool unexpectedly.
+The wrapper runs from an immutable deployment snapshot under `releases/<release_id>/source`, exposed through `releases/current/source`. It does **not** execute the live development checkout directly; this keeps uncommitted work, partial edits, or branch switches in the source repository from changing the deployed Hermes tool unexpectedly. The executable source root is resolved from tool-local `config/runtime.json`, which requires `execution_mode=installed_snapshot`, points only to `releases/current/source`, and explicitly disallows live source checkout execution.
 
 ## Command
 
@@ -46,13 +46,14 @@ uv run --extra browser python -m hisys.cli.main deploy-hermes-tool \
   channel-prompt.md                 # prompt text for the target channel/thread
   hermes-channel-snippet.yaml       # config snippet for ~/.hermes/config.yaml
   config/public-browser.yaml        # copied public browser profile
+  config/runtime.json               # installed-snapshot runtime source policy
   runtime/                          # suggested ad-hoc runtime root
   docs/                             # reserved for future tool-local docs
   releases/<release_id>/source/      # immutable source snapshot for this deployment
   releases/current -> <release_id>   # stable pointer used by the wrapper
 ```
 
-The wrapper runs Hisys from the deployed snapshot, not the live development checkout. It unsets Hermes' active `VIRTUAL_ENV` before invoking `uv` so the snapshot project environment is selected cleanly. It prefers:
+The wrapper first reads `config/runtime.json` and fails closed if the config is missing, does not require `installed_snapshot`, permits live source checkout execution, or points anywhere other than `releases/current/source`. After that validation, the wrapper runs Hisys from the deployed snapshot, not the live development checkout. It unsets Hermes' active `VIRTUAL_ENV` before invoking `uv` so the snapshot project environment is selected cleanly. It prefers:
 
 ```bash
 uv run --project "$HISYS_SOURCE_ROOT" --extra browser python -m hisys.cli.main "$@"
@@ -73,6 +74,8 @@ hisys deployment-status \
   --target /home/cbchoi/.hermes/tools/hisys \
   --format json
 ```
+
+`deployment-status` reports `safe_to_use=false` when either the wrapper or `config/runtime.json` can no longer prove installed-snapshot execution. In particular, a runtime config that permits live checkout execution or points back to the upstream source checkout is marked unsafe.
 
 Build a governed deploy report that can be attached to CI artifacts or operator
 approval packages:

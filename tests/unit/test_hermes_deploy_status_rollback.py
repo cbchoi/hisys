@@ -36,8 +36,29 @@ def test_deployment_status_reports_snapshot_safety_and_rollback_availability(tmp
     assert second["release_id"] in status["available_release_ids"]
     assert status["wrapper_points_to_snapshot"] is True
     assert status["wrapper_references_live_source"] is False
+    assert status["runtime_config_exists"] is True
+    assert status["runtime_config_allows_live_source_checkout"] is False
+    assert status["runtime_config_points_to_snapshot"] is True
     assert status["rollback_available"] is True
     assert status["safe_to_use"] is True
+
+
+def test_deployment_status_rejects_runtime_config_that_points_to_live_source(tmp_path):
+    target_root = tmp_path / ".hermes" / "tools" / "hisys"
+    source_root = _source_root(tmp_path, "repo1")
+    deploy_hisys_to_hermes(source_root=source_root, target_root=target_root)
+    runtime_config_path = target_root / "config" / "runtime.json"
+    runtime_config = json.loads(runtime_config_path.read_text(encoding="utf-8"))
+    runtime_config["source_root"] = str(source_root)
+    runtime_config["source_root_policy"]["allow_live_source_checkout"] = True
+    runtime_config_path.write_text(json.dumps(runtime_config), encoding="utf-8")
+
+    status = get_hermes_deployment_status(target_root=target_root)
+
+    assert status["status"] == "unsafe"
+    assert status["runtime_config_points_to_snapshot"] is False
+    assert status["runtime_config_references_live_source"] is True
+    assert status["safe_to_use"] is False
 
 
 def test_rollback_hisys_hermes_tool_moves_current_release_atomically(tmp_path):

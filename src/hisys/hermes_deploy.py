@@ -101,6 +101,13 @@ def _write_deployment_tree(
     else:
         staged_profile_target.write_text(_default_public_profile(), encoding="utf-8")
 
+    runtime_config_path = target_root / "config" / "runtime.json"
+    staged_runtime_config_path = config_dir / "runtime.json"
+    staged_runtime_config_path.write_text(
+        json.dumps(_runtime_config(target_root=target_root, source_root=deployed_source_root), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
     channel_prompt_path = target_root / "channel-prompt.md"
     (staging_root / "channel-prompt.md").write_text(
         _render_channel_prompt(source_root=deployed_source_root, target_root=target_root, channel_name=channel_name),
@@ -130,6 +137,7 @@ def _write_deployment_tree(
         "source_root": str(deployed_source_root),
         "target_root": str(target_root),
         "wrapper": str(wrapper_path),
+        "runtime_config": str(runtime_config_path),
         "public_browser_profile": str(profile_target),
         "runtime_root": str(target_root / "runtime"),
         "channel_id": channel_id,
@@ -242,10 +250,56 @@ def _copy_source_snapshot(*, source_root: Path, snapshot_root: Path) -> None:
     shutil.copytree(source_root, snapshot_root, ignore=ignore)
 
 
+def _runtime_config(*, target_root: Path, source_root: Path) -> dict[str, Any]:
+    return {
+        "schema_id": "hisys.hermes_tool_runtime_config",
+        "schema_version": "0.1.0",
+        "tool_name": "hisys",
+        "execution_mode": "installed_snapshot",
+        "source_root": str(source_root),
+        "runtime_root": str(target_root / "runtime"),
+        "manifest": str(target_root / "manifest.json"),
+        "deployment_root": str(target_root),
+        "source_root_policy": {
+            "required_path_suffix": "releases/current/source",
+            "allow_live_source_checkout": False,
+            "allow_upstream_source_root": False,
+            "fail_closed_on_config_error": True,
+        },
+        "external_call_made": False,
+        "mutation_performed": False,
+    }
+
+
 def _render_wrapper(source_root: Path) -> str:
+    target_root = source_root.parents[2]
+    runtime_config = target_root / "config" / "runtime.json"
     return f"""#!/usr/bin/env bash
 set -euo pipefail
-HISYS_SOURCE_ROOT={sh_quote(str(source_root))}
+HISYS_RUNTIME_CONFIG={sh_quote(str(runtime_config))}
+if [ ! -f "$HISYS_RUNTIME_CONFIG" ]; then
+  echo "Hisys runtime config missing: $HISYS_RUNTIME_CONFIG" >&2
+  exit 64
+fi
+HISYS_SOURCE_ROOT=$(python3 - "$HISYS_RUNTIME_CONFIG" <<'PY'
+import json, pathlib, sys
+config_path = pathlib.Path(sys.argv[1])
+cfg = json.loads(config_path.read_text(encoding="utf-8"))
+raw_source = pathlib.Path(cfg.get("source_root", "")).expanduser()
+source = raw_source.resolve()
+policy = cfg.get("source_root_policy") or {{}}
+required_suffix = pathlib.Path(policy.get("required_path_suffix", "releases/current/source"))
+if cfg.get("execution_mode") != "installed_snapshot":
+    raise SystemExit("Hisys runtime config does not require installed_snapshot execution")
+if policy.get("allow_live_source_checkout") is not False:
+    raise SystemExit("Hisys runtime config permits live source checkout execution")
+if tuple(raw_source.parts[-len(required_suffix.parts):]) != tuple(required_suffix.parts):
+    raise SystemExit(f"Hisys source root is not the installed snapshot pointer: {{raw_source}}")
+if not (source / "src" / "hisys").exists():
+    raise SystemExit(f"Hisys installed snapshot is missing package source: {{source}}")
+print(raw_source)
+PY
+)
 cd "$HISYS_SOURCE_ROOT"
 if command -v uv >/dev/null 2>&1; then
   unset VIRTUAL_ENV
@@ -336,13 +390,29 @@ def get_hermes_deployment_status(*, target_root: Path) -> dict[str, Any]:
             "available_release_ids": [],
         }
     manifest = _read_json(manifest_path)
+    runtime_config_path = target_root / "config" / "runtime.json"
+    runtime_config = _read_json(runtime_config_path) if runtime_config_path.exists() else {}
     current_release_id = _current_release_id(current_link) or manifest.get("release_id")
     available_release_ids = _available_release_ids(releases_root)
     wrapper_text = wrapper_path.read_text(encoding="utf-8") if wrapper_path.exists() else ""
     upstream_source_root = str(manifest.get("upstream_source_root") or "")
     expected_source = str(target_root / "releases" / "current" / "source")
-    wrapper_points_to_snapshot = expected_source in wrapper_text
+    wrapper_points_to_snapshot = expected_source in wrapper_text or "HISYS_RUNTIME_CONFIG" in wrapper_text
     wrapper_references_live_source = bool(upstream_source_root and upstream_source_root in wrapper_text)
+    runtime_policy = runtime_config.get("source_root_policy") if isinstance(runtime_config.get("source_root_policy"), dict) else {}
+    runtime_source_root = str(runtime_config.get("source_root") or "")
+    runtime_config_exists = runtime_config_path.exists()
+    runtime_config_points_to_snapshot = runtime_source_root == expected_source
+    runtime_config_allows_live_source_checkout = runtime_policy.get("allow_live_source_checkout") is not False
+    runtime_config_references_live_source = bool(upstream_source_root and upstream_source_root in json.dumps(runtime_config, ensure_ascii=False))
+    runtime_config_ok = bool(
+        runtime_config_exists
+        and runtime_config.get("schema_id") == "hisys.hermes_tool_runtime_config"
+        and runtime_config.get("execution_mode") == "installed_snapshot"
+        and runtime_config_points_to_snapshot
+        and not runtime_config_allows_live_source_checkout
+        and not runtime_config_references_live_source
+    )
     safety = manifest.get("safety_boundary") if isinstance(manifest.get("safety_boundary"), dict) else {}
     safety_ok = (
         manifest.get("deployment_mode") == "immutable_snapshot"
@@ -358,6 +428,7 @@ def get_hermes_deployment_status(*, target_root: Path) -> dict[str, Any]:
         and (target_root / "releases" / str(current_release_id) / "source").exists()
         and wrapper_points_to_snapshot
         and not wrapper_references_live_source
+        and runtime_config_ok
         and safety_ok
     )
     return {
@@ -375,6 +446,12 @@ def get_hermes_deployment_status(*, target_root: Path) -> dict[str, Any]:
         "wrapper_exists": wrapper_path.exists(),
         "wrapper_points_to_snapshot": wrapper_points_to_snapshot,
         "wrapper_references_live_source": wrapper_references_live_source,
+        "runtime_config": str(runtime_config_path),
+        "runtime_config_exists": runtime_config_exists,
+        "runtime_config_points_to_snapshot": runtime_config_points_to_snapshot,
+        "runtime_config_allows_live_source_checkout": runtime_config_allows_live_source_checkout,
+        "runtime_config_references_live_source": runtime_config_references_live_source,
+        "runtime_config_ok": runtime_config_ok,
         "rollback_available": len([r for r in available_release_ids if r != current_release_id]) > 0,
         "safe_to_use": safe_to_use,
         "manifest": str(manifest_path),
@@ -416,6 +493,7 @@ def rollback_hisys_hermes_tool(
     manifest["source_root"] = str(target_root / "releases" / "current" / "source")
     manifest["target_root"] = str(target_root)
     manifest["wrapper"] = str(target_root / "bin" / "hisys")
+    manifest["runtime_config"] = str(target_root / "config" / "runtime.json")
     manifest["runtime_root"] = str(target_root / "runtime")
     manifest["rollback"] = {
         "rolled_back_at": datetime.now(timezone.utc).isoformat(),

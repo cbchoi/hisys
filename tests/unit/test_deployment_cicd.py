@@ -84,10 +84,34 @@ def test_verify_hermes_tool_deploy_accepts_snapshot_layout(tmp_path):
     (tool_root / "releases" / "current").symlink_to(release.name)
     wrapper = tool_root / "bin" / "hisys"
     wrapper.write_text(
-        f"#!/usr/bin/env bash\nHISYS_SOURCE_ROOT='{tool_root / 'releases' / 'current' / 'source'}'\n",
+        f"#!/usr/bin/env bash\nHISYS_RUNTIME_CONFIG='{tool_root / 'config' / 'runtime.json'}'\n",
         encoding="utf-8",
     )
     wrapper.chmod(0o755)
+    (tool_root / "config" / "runtime.json").write_text(
+        """
+{
+  "schema_id": "hisys.hermes_tool_runtime_config",
+  "schema_version": "0.1.0",
+  "tool_name": "hisys",
+  "execution_mode": "installed_snapshot",
+  "source_root": "REPLACE_SOURCE",
+  "runtime_root": "REPLACE_RUNTIME",
+  "manifest": "REPLACE_MANIFEST",
+  "deployment_root": "REPLACE_TARGET",
+  "source_root_policy": {
+    "required_path_suffix": "releases/current/source",
+    "allow_live_source_checkout": false,
+    "allow_upstream_source_root": false,
+    "fail_closed_on_config_error": true
+  }
+}
+""".replace("REPLACE_SOURCE", str(tool_root / "releases" / "current" / "source"))
+        .replace("REPLACE_RUNTIME", str(tool_root / "runtime"))
+        .replace("REPLACE_MANIFEST", str(tool_root / "manifest.json"))
+        .replace("REPLACE_TARGET", str(tool_root)),
+        encoding="utf-8",
+    )
     (tool_root / "manifest.json").write_text(
         """
 {
@@ -101,6 +125,7 @@ def test_verify_hermes_tool_deploy_accepts_snapshot_layout(tmp_path):
   "upstream_source_root": "REPLACE_UPSTREAM",
   "target_root": "REPLACE_TARGET",
   "wrapper": "REPLACE_WRAPPER",
+  "runtime_config": "REPLACE_RUNTIME_CONFIG",
   "runtime_root": "REPLACE_RUNTIME",
   "public_browser_profile": "REPLACE_PROFILE",
   "safety_boundary": {
@@ -115,6 +140,7 @@ def test_verify_hermes_tool_deploy_accepts_snapshot_layout(tmp_path):
         .replace("REPLACE_UPSTREAM", str(tmp_path / "repo"))
         .replace("REPLACE_TARGET", str(tool_root))
         .replace("REPLACE_WRAPPER", str(wrapper))
+        .replace("REPLACE_RUNTIME_CONFIG", str(tool_root / "config" / "runtime.json"))
         .replace("REPLACE_RUNTIME", str(tool_root / "runtime"))
         .replace("REPLACE_PROFILE", str(tool_root / "config" / "public-browser.yaml")),
         encoding="utf-8",
