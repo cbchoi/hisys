@@ -82,6 +82,7 @@ from ..evidence_store import (
     init_evidence_store,
     promote_stone_candidate,
 )
+from ..environment_config import DEFAULT_ENVIRONMENT_CONFIG, environment_config_status, init_environment_config
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..operations.lapidary_flow import build_weighted_alternative
@@ -1296,6 +1297,21 @@ def _build_parser() -> argparse.ArgumentParser:
     deploy_report.add_argument("--output", type=Path, help="optional JSON report output path")
     deploy_report.add_argument("--format", choices=["json", "text"], default="text")
 
+    environment_init = sub.add_parser("environment-init", help="write host-local Hisys environment/vault registry config")
+    environment_init.add_argument("--config", type=Path, default=DEFAULT_ENVIRONMENT_CONFIG, help="environment YAML config path")
+    environment_init.add_argument("--host-id", required=True)
+    environment_init.add_argument("--hisys-tool-root", type=Path, required=True)
+    environment_init.add_argument("--hisys-source-repo", type=Path, required=True)
+    environment_init.add_argument("--evidence-store-root", type=Path, required=True)
+    environment_init.add_argument("--evidence-store-config", type=Path, required=True)
+    environment_init.add_argument("--personal-vault-root", type=Path, required=True)
+    environment_init.add_argument("--lab-vault-root", type=Path, required=True)
+    environment_init.add_argument("--format", choices=["json", "text"], default="text")
+
+    environment_status = sub.add_parser("environment-status", help="inspect Hisys host-local environment/vault registry config")
+    environment_status.add_argument("--config", type=Path, default=DEFAULT_ENVIRONMENT_CONFIG, help="environment YAML config path")
+    environment_status.add_argument("--format", choices=["json", "text"], default="text")
+
     store_init = sub.add_parser("evidence-store-init", help="initialize a governed Hisys evidence store config and layout")
     store_init.add_argument("--config", type=Path, required=True, help="store YAML config path")
     store_init.add_argument("--root", type=Path, required=True, help="evidence store root directory")
@@ -2355,6 +2371,20 @@ def main(argv: list[str] | None = None) -> int:
             output=args.output,
             output_format=args.format,
         )
+    if args.command == "environment-init":
+        return _cmd_environment_init(
+            config_path=args.config,
+            host_id=args.host_id,
+            hisys_tool_root=args.hisys_tool_root,
+            hisys_source_repo=args.hisys_source_repo,
+            evidence_store_root=args.evidence_store_root,
+            evidence_store_config=args.evidence_store_config,
+            personal_vault_root=args.personal_vault_root,
+            lab_vault_root=args.lab_vault_root,
+            output_format=args.format,
+        )
+    if args.command == "environment-status":
+        return _cmd_environment_status(config_path=args.config, output_format=args.format)
     if args.command == "evidence-store-init":
         return _cmd_evidence_store_init(config_path=args.config, root=args.root, store_id=args.store_id, output_format=args.format)
     if args.command == "evidence-store-status":
@@ -3081,6 +3111,46 @@ def _print_json_or_text(report: dict[str, Any], *, output_format: str, text_line
     else:
         for line in text_lines or []:
             print(line)
+
+
+def _cmd_environment_init(
+    *,
+    config_path: Path,
+    host_id: str,
+    hisys_tool_root: Path,
+    hisys_source_repo: Path,
+    evidence_store_root: Path,
+    evidence_store_config: Path,
+    personal_vault_root: Path,
+    lab_vault_root: Path,
+    output_format: str,
+) -> int:
+    report = init_environment_config(
+        config_path=config_path,
+        host_id=host_id,
+        hisys_tool_root=hisys_tool_root,
+        hisys_source_repo=hisys_source_repo,
+        evidence_store_root=evidence_store_root,
+        evidence_store_config=evidence_store_config,
+        personal_vault_root=personal_vault_root,
+        lab_vault_root=lab_vault_root,
+    )
+    if output_format == "json":
+        print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"environment config initialized: {report['config_path']}")
+    return 0
+
+
+def _cmd_environment_status(*, config_path: Path, output_format: str) -> int:
+    report = environment_config_status(config_path)
+    if output_format == "json":
+        print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"environment config: {'safe' if report['safe_to_use'] else 'unsafe'}")
+        if report.get("issues"):
+            print("issues: " + ", ".join(report["issues"]))
+    return 0 if report["safe_to_use"] else 1
 
 
 def _cmd_evidence_store_init(*, config_path: Path, root: Path, store_id: str, output_format: str) -> int:
