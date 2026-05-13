@@ -1,0 +1,62 @@
+name: Hisys Hermes Tool Deploy
+
+"on":
+  workflow_run:
+    workflows:
+      - Hisys CI
+    types:
+      - completed
+  workflow_dispatch:
+
+concurrency:
+  group: hisys-hermes-tool-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-hermes-tool:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: none
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+
+      - name: Run release validation before deploy
+        run: |
+          python -m pytest -q
+          python scripts/validate_traceability.py
+          python scripts/scan_secrets.py
+          git diff --check
+
+      - name: Deploy Hermes tool snapshot into CI workspace
+        run: |
+          python -m hisys.cli.main deploy-hermes-tool \
+            --source-root "$GITHUB_WORKSPACE" \
+            --target "$RUNNER_TEMP/hisys-hermes-tool" \
+            --channel-id "1502110114704916501" \
+            --channel-name "develop / Hisys" \
+            --force
+
+      - name: Verify immutable snapshot deployment
+        run: |
+          python scripts/verify_hermes_tool_deploy.py \
+            --tool-root "$RUNNER_TEMP/hisys-hermes-tool" \
+            --upstream-source-root "$GITHUB_WORKSPACE" \
+            --expect-source-commit "$(git rev-parse HEAD)"
+
+      - name: Smoke test deployed wrapper
+        run: |
+          "$RUNNER_TEMP/hisys-hermes-tool/bin/hisys" --version
+          "$RUNNER_TEMP/hisys-hermes-tool/bin/hisys" validate-public-browser-profile \
+            --profile "$RUNNER_TEMP/hisys-hermes-tool/config/public-browser.yaml"

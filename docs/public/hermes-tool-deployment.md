@@ -64,6 +64,43 @@ and falls back to:
 PYTHONPATH="$HISYS_SOURCE_ROOT/src" python3 -m hisys.cli.main "$@"
 ```
 
+## CI/CD
+
+The deployment path is covered by GitHub Actions:
+
+- `.github/workflows/test.yml` runs `Hisys CI` on pushes and pull requests.
+- `.github/workflows/deploy-hermes-tool.yml` runs after successful `Hisys CI`
+  completion, and can also be started manually with `workflow_dispatch`.
+- The deploy workflow performs release validation, deploys a snapshot into the CI
+  runner workspace, verifies that the wrapper does not point at the live checkout,
+  and smoke-tests the deployed wrapper.
+
+The deploy workflow is intentionally side-effect bounded in CI: it validates the
+Hermes tool deployment artifact and wrapper layout inside the runner temporary
+directory. It does not mutate a production `~/.hermes/config.yaml` or publish
+external artifacts. Production installation remains an operator action using the
+same `deploy-hermes-tool` command after CI is green.
+
+Local equivalent:
+
+```bash
+python -m pytest -q
+python scripts/validate_traceability.py
+python scripts/scan_secrets.py
+git diff --check
+python -m hisys.cli.main deploy-hermes-tool \
+  --source-root "$PWD" \
+  --target /tmp/hisys-hermes-tool \
+  --channel-id 1502110114704916501 \
+  --channel-name "develop / Hisys" \
+  --force
+python scripts/verify_hermes_tool_deploy.py \
+  --tool-root /tmp/hisys-hermes-tool \
+  --upstream-source-root "$PWD" \
+  --expect-source-commit "$(git rev-parse HEAD)"
+/tmp/hisys-hermes-tool/bin/hisys --version
+```
+
 ## Verify the deployed wrapper
 
 ```bash
