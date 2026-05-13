@@ -75,6 +75,13 @@ from ..contracts.evaluator import EvidenceSummary, evaluate_pass_contract
 from ..contracts.pass_registry import PassContractRegistryEntry, candidate_from_proposal, find_contract, load_pass_contract_registry, promote_candidate
 from ..contracts.review_package import build_review_package
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
+from ..evidence_store import (
+    build_stone_candidates,
+    evidence_store_status,
+    import_investigation_artifacts,
+    init_evidence_store,
+    promote_stone_candidate,
+)
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..operations.lapidary_flow import build_weighted_alternative
@@ -1289,6 +1296,43 @@ def _build_parser() -> argparse.ArgumentParser:
     deploy_report.add_argument("--output", type=Path, help="optional JSON report output path")
     deploy_report.add_argument("--format", choices=["json", "text"], default="text")
 
+    store_init = sub.add_parser("evidence-store-init", help="initialize a governed Hisys evidence store config and layout")
+    store_init.add_argument("--config", type=Path, required=True, help="store YAML config path")
+    store_init.add_argument("--root", type=Path, required=True, help="evidence store root directory")
+    store_init.add_argument("--store-id", default="hisys-evidence-store", help="logical store id")
+    store_init.add_argument("--format", choices=["json", "text"], default="text")
+
+    store_status = sub.add_parser("evidence-store-status", help="inspect Hisys evidence store safety/config status")
+    store_status.add_argument("--config", type=Path, required=True, help="store YAML config path")
+    store_status.add_argument("--format", choices=["json", "text"], default="text")
+
+    store_import = sub.add_parser("evidence-store-import-investigation", help="copy investigation artifacts into governed evidence store layout")
+    store_import.add_argument("--config", type=Path, required=True, help="store YAML config path")
+    store_import.add_argument("--topic-id", required=True)
+    store_import.add_argument("--topic-slug", required=True)
+    store_import.add_argument("--investigation-id", required=True)
+    store_import.add_argument("--date", required=True, help="YYYY-MM-DD investigation partition")
+    store_import.add_argument("--include", action="append", required=True, help="file to copy; repeatable")
+    store_import.add_argument("--approval-ref", help="human approval ref for store mutation")
+    store_import.add_argument("--write", action="store_true", help="perform copy; without this only plans")
+    store_import.add_argument("--format", choices=["json", "text"], default="text")
+
+    stone_candidates = sub.add_parser("evidence-stone-candidates", help="propose Stone candidates from stored investigation evidence")
+    stone_candidates.add_argument("--config", type=Path, required=True, help="store YAML config path")
+    stone_candidates.add_argument("--topic-id", required=True)
+    stone_candidates.add_argument("--topic-slug", required=True)
+    stone_candidates.add_argument("--investigation-id", required=True)
+    stone_candidates.add_argument("--output", type=Path, help="optional JSON candidates output path")
+    stone_candidates.add_argument("--format", choices=["json", "text"], default="text")
+
+    promote_stone = sub.add_parser("evidence-promote-stone", help="approval-gated promotion of a Stone candidate into canonical stones")
+    promote_stone.add_argument("--config", type=Path, required=True, help="store YAML config path")
+    promote_stone.add_argument("--candidate", type=Path, required=True, help="candidate JSON file or report containing stone_candidates")
+    promote_stone.add_argument("--candidate-id", required=True, help="candidate id to promote")
+    promote_stone.add_argument("--approval-ref", help="human approval ref for Stone write")
+    promote_stone.add_argument("--write", action="store_true", help="perform Stone write; without this only plans")
+    promote_stone.add_argument("--format", choices=["json", "text"], default="text")
+
     public_profile = sub.add_parser(
         "validate-public-browser-profile",
         help="validate a governed public browser launch profile",
@@ -2311,6 +2355,40 @@ def main(argv: list[str] | None = None) -> int:
             output=args.output,
             output_format=args.format,
         )
+    if args.command == "evidence-store-init":
+        return _cmd_evidence_store_init(config_path=args.config, root=args.root, store_id=args.store_id, output_format=args.format)
+    if args.command == "evidence-store-status":
+        return _cmd_evidence_store_status(config_path=args.config, output_format=args.format)
+    if args.command == "evidence-store-import-investigation":
+        return _cmd_evidence_store_import_investigation(
+            config_path=args.config,
+            topic_id=args.topic_id,
+            topic_slug=args.topic_slug,
+            investigation_id=args.investigation_id,
+            date=args.date,
+            includes=args.include,
+            approval_ref=args.approval_ref,
+            write=args.write,
+            output_format=args.format,
+        )
+    if args.command == "evidence-stone-candidates":
+        return _cmd_evidence_stone_candidates(
+            config_path=args.config,
+            topic_id=args.topic_id,
+            topic_slug=args.topic_slug,
+            investigation_id=args.investigation_id,
+            output=args.output,
+            output_format=args.format,
+        )
+    if args.command == "evidence-promote-stone":
+        return _cmd_evidence_promote_stone(
+            config_path=args.config,
+            candidate_path=args.candidate,
+            candidate_id=args.candidate_id,
+            approval_ref=args.approval_ref,
+            write=args.write,
+            output_format=args.format,
+        )
     if args.command == "validate-public-browser-profile":
         try:
             profile = load_public_browser_profile(args.profile)
@@ -2995,6 +3073,135 @@ def _cmd_build_hermes_deploy_report(*, target_root: Path, validation_items: list
         print("promotion_allowed: false")
         print("human_approval_required_for_host_install: true")
     return 0 if report["deployment_status"].get("safe_to_use") else 2
+
+
+def _print_json_or_text(report: dict[str, Any], *, output_format: str, text_lines: list[str] | None = None) -> None:
+    if output_format == "json":
+        print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        for line in text_lines or []:
+            print(line)
+
+
+def _cmd_evidence_store_init(*, config_path: Path, root: Path, store_id: str, output_format: str) -> int:
+    report = init_evidence_store(config_path=config_path, root=root, store_id=store_id)
+    _print_json_or_text(
+        report,
+        output_format=output_format,
+        text_lines=[f"evidence_store: initialized", f"root: {report['root']}", f"config: {report['config_path']}"],
+    )
+    return 0
+
+
+def _cmd_evidence_store_status(*, config_path: Path, output_format: str) -> int:
+    report = evidence_store_status(config_path)
+    _print_json_or_text(
+        report,
+        output_format=output_format,
+        text_lines=[
+            f"evidence_store: {'safe' if report['safe_to_write'] else 'blocked'}",
+            f"root: {report['root']}",
+            f"issues: {','.join(report['issues']) if report['issues'] else 'none'}",
+        ],
+    )
+    return 0 if report.get("safe_to_write") else 1
+
+
+def _cmd_evidence_store_import_investigation(
+    *,
+    config_path: Path,
+    topic_id: str,
+    topic_slug: str,
+    investigation_id: str,
+    date: str,
+    includes: list[str],
+    approval_ref: str | None,
+    write: bool,
+    output_format: str,
+) -> int:
+    report = import_investigation_artifacts(
+        config_path=config_path,
+        topic_id=topic_id,
+        topic_slug=topic_slug,
+        investigation_id=investigation_id,
+        date=date,
+        includes=includes,
+        approval_ref=approval_ref,
+        write=write,
+    )
+    _print_json_or_text(
+        report,
+        output_format=output_format,
+        text_lines=[
+            f"evidence_store_import: {report['status']}",
+            f"topic_id: {report.get('topic_id')}",
+            f"investigation_id: {report.get('investigation_id')}",
+            f"copied_count: {report.get('copied_count', 0)}",
+        ],
+    )
+    return 0 if report.get("status") in {"planned", "imported"} else 1
+
+
+def _cmd_evidence_stone_candidates(
+    *,
+    config_path: Path,
+    topic_id: str,
+    topic_slug: str,
+    investigation_id: str,
+    output: Path | None,
+    output_format: str,
+) -> int:
+    report = build_stone_candidates(
+        config_path=config_path,
+        topic_id=topic_id,
+        topic_slug=topic_slug,
+        investigation_id=investigation_id,
+    )
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _print_json_or_text(
+        report,
+        output_format=output_format,
+        text_lines=[
+            f"stone_candidates: {report['candidate_count']}",
+            *(f"- {candidate['candidate_id']} {candidate['recommended_stone_type']} {candidate['source_ref']}" for candidate in report["stone_candidates"]),
+        ],
+    )
+    return 0
+
+
+def _load_candidate(candidate_path: Path, candidate_id: str) -> dict[str, Any]:
+    data = json.loads(candidate_path.read_text(encoding="utf-8"))
+    if isinstance(data, dict) and data.get("candidate_id") == candidate_id:
+        return data
+    for candidate in data.get("stone_candidates", []):
+        if candidate.get("candidate_id") == candidate_id:
+            return candidate
+    raise ValueError(f"candidate not found: {candidate_id}")
+
+
+def _cmd_evidence_promote_stone(
+    *,
+    config_path: Path,
+    candidate_path: Path,
+    candidate_id: str,
+    approval_ref: str | None,
+    write: bool,
+    output_format: str,
+) -> int:
+    try:
+        candidate = _load_candidate(candidate_path, candidate_id)
+    except Exception as exc:
+        print(f"error: {exc}")
+        return 2
+    report = promote_stone_candidate(config_path=config_path, candidate=candidate, write=write, approval_ref=approval_ref)
+    _print_json_or_text(
+        report,
+        output_format=output_format,
+        text_lines=[f"stone_promotion: {report['status']}", f"stone_ref: {report.get('stone_ref')}", f"approval_ref: {report.get('approval_ref')}"]
+    )
+    return 0 if report.get("status") in {"planned", "promoted"} else 1
 
 
 def _cmd_validate_config(instance_root: Path) -> int:
