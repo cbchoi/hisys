@@ -64,6 +64,59 @@ and falls back to:
 PYTHONPATH="$HISYS_SOURCE_ROOT/src" python3 -m hisys.cli.main "$@"
 ```
 
+## Deployment status, report, and rollback
+
+Inspect the currently installed tool snapshot:
+
+```bash
+hisys deployment-status \
+  --target /home/cbchoi/.hermes/tools/hisys \
+  --format json
+```
+
+Build a governed deploy report that can be attached to CI artifacts or operator
+approval packages:
+
+```bash
+hisys build-hermes-deploy-report \
+  --target /home/cbchoi/.hermes/tools/hisys \
+  --validation pytest=passed \
+  --validation traceability=passed \
+  --validation secret_scan=passed \
+  --output /tmp/hisys-hermes-tool-deploy-report.json \
+  --format json
+```
+
+The report preserves the boundary that CI can validate deployability but does not
+implicitly approve host installation:
+
+```text
+promotion_allowed=false
+human_approval_required_for_host_install=true
+external_call_made=false
+mutation_performed=false
+publication_or_live_action_approved=false
+```
+
+Rollback moves only the local `releases/current` pointer and rewrites the top
+manifest with rollback provenance. Use the previous release by default:
+
+```bash
+hisys rollback-hermes-tool \
+  --target /home/cbchoi/.hermes/tools/hisys \
+  --previous \
+  --format json
+```
+
+Or choose a specific release id from `deployment-status`:
+
+```bash
+hisys rollback-hermes-tool \
+  --target /home/cbchoi/.hermes/tools/hisys \
+  --to-release <release_id> \
+  --format json
+```
+
 ## CI/CD
 
 The deployment path is covered by GitHub Actions:

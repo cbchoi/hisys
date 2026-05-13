@@ -7,6 +7,7 @@ import subprocess
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 
 DEFAULT_HERMES_TOOL_ROOT = Path.home() / ".hermes" / "tools" / "hisys"
@@ -82,6 +83,7 @@ def _write_deployment_tree(
     deployed_source_root = target_root / "releases" / "current" / "source"
     for directory in (bin_dir, config_dir, staged_runtime_dir, docs_dir, releases_dir):
         directory.mkdir(parents=True, exist_ok=True)
+    _preserve_existing_releases(target_root=target_root, releases_dir=releases_dir)
     _copy_source_snapshot(source_root=source_root, snapshot_root=staged_snapshot_root)
     current_link = releases_dir / "current"
     os.symlink(release_id, current_link)
@@ -158,6 +160,37 @@ def _write_deployment_tree(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    (staged_release_dir / "deployment-manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _preserve_existing_releases(*, target_root: Path, releases_dir: Path) -> None:
+    existing_releases = target_root / "releases"
+    if not existing_releases.exists():
+        return
+    for child in existing_releases.iterdir():
+        if child.name == "current":
+            continue
+        destination = releases_dir / child.name
+        if child.is_dir() and not destination.exists():
+            shutil.copytree(child, destination, symlinks=True)
+    manifest_path = target_root / "manifest.json"
+    current_link = existing_releases / "current"
+    if manifest_path.exists() and current_link.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            current_release_id = current_link.readlink().name if current_link.is_symlink() else manifest.get("release_id")
+        except Exception:
+            return
+        if isinstance(current_release_id, str) and current_release_id:
+            release_manifest = releases_dir / current_release_id / "deployment-manifest.json"
+            if release_manifest.parent.exists() and not release_manifest.exists():
+                release_manifest.write_text(
+                    json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
 
 
 def _install_staged_tree(*, staging_root: Path, target_root: Path, backup_root: Path) -> None:
@@ -171,7 +204,7 @@ def _release_id(source_root: Path) -> str:
     commit = _git_commit(source_root)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     if commit:
-        return f"{timestamp}-{commit[:12]}"
+        return f"{timestamp}-{commit[:12]}-{uuid.uuid4().hex[:8]}"
     return f"{timestamp}-{uuid.uuid4().hex[:12]}"
 
 
@@ -284,6 +317,186 @@ channel_skill_bindings:
       - systematic-debugging
       - test-driven-development
 """
+
+
+def get_hermes_deployment_status(*, target_root: Path) -> dict[str, Any]:
+    target_root = target_root.expanduser().resolve()
+    manifest_path = target_root / "manifest.json"
+    wrapper_path = target_root / "bin" / "hisys"
+    releases_root = target_root / "releases"
+    current_link = releases_root / "current"
+    if not manifest_path.exists():
+        return {
+            "schema_id": "hisys.hermes_tool_deployment_status",
+            "schema_version": "0.1.0",
+            "status": "missing",
+            "target_root": str(target_root),
+            "safe_to_use": False,
+            "rollback_available": False,
+            "available_release_ids": [],
+        }
+    manifest = _read_json(manifest_path)
+    current_release_id = _current_release_id(current_link) or manifest.get("release_id")
+    available_release_ids = _available_release_ids(releases_root)
+    wrapper_text = wrapper_path.read_text(encoding="utf-8") if wrapper_path.exists() else ""
+    upstream_source_root = str(manifest.get("upstream_source_root") or "")
+    expected_source = str(target_root / "releases" / "current" / "source")
+    wrapper_points_to_snapshot = expected_source in wrapper_text
+    wrapper_references_live_source = bool(upstream_source_root and upstream_source_root in wrapper_text)
+    safety = manifest.get("safety_boundary") if isinstance(manifest.get("safety_boundary"), dict) else {}
+    safety_ok = (
+        manifest.get("deployment_mode") == "immutable_snapshot"
+        and safety.get("cli_first") is True
+        and safety.get("read_only_browser_default") is True
+        and safety.get("human_approval_required_for_consequential_use") is True
+        and safety.get("mutation_performed") is False
+        and safety.get("publication_or_live_action_approved") is False
+    )
+    safe_to_use = bool(
+        wrapper_path.exists()
+        and current_release_id
+        and (target_root / "releases" / str(current_release_id) / "source").exists()
+        and wrapper_points_to_snapshot
+        and not wrapper_references_live_source
+        and safety_ok
+    )
+    return {
+        "schema_id": "hisys.hermes_tool_deployment_status",
+        "schema_version": "0.1.0",
+        "status": "deployed" if safe_to_use else "unsafe",
+        "deployment_mode": manifest.get("deployment_mode"),
+        "target_root": str(target_root),
+        "current_release_id": current_release_id,
+        "available_release_ids": available_release_ids,
+        "source_commit": manifest.get("source_commit"),
+        "source_root": manifest.get("source_root"),
+        "upstream_source_root": manifest.get("upstream_source_root"),
+        "wrapper": str(wrapper_path),
+        "wrapper_exists": wrapper_path.exists(),
+        "wrapper_points_to_snapshot": wrapper_points_to_snapshot,
+        "wrapper_references_live_source": wrapper_references_live_source,
+        "rollback_available": len([r for r in available_release_ids if r != current_release_id]) > 0,
+        "safe_to_use": safe_to_use,
+        "manifest": str(manifest_path),
+    }
+
+
+def rollback_hisys_hermes_tool(
+    *,
+    target_root: Path,
+    to_release: str | None = None,
+    previous: bool = False,
+) -> dict[str, Any]:
+    target_root = target_root.expanduser().resolve()
+    releases_root = target_root / "releases"
+    current_link = releases_root / "current"
+    current_release_id = _current_release_id(current_link)
+    available = _available_release_ids(releases_root)
+    if not available or not current_release_id:
+        return {"status": "blocked", "reason": "no_release_available", "target_root": str(target_root)}
+    target_release = to_release
+    if previous:
+        candidates = [release_id for release_id in available if release_id != current_release_id]
+        target_release = candidates[-1] if candidates else None
+    if not target_release:
+        return {"status": "blocked", "reason": "target_release_required", "target_root": str(target_root)}
+    if target_release not in available:
+        return {
+            "status": "blocked",
+            "reason": "release_not_found",
+            "target_root": str(target_root),
+            "requested_release_id": target_release,
+            "available_release_ids": available,
+        }
+    tmp_link = releases_root / f".current.rollback-{uuid.uuid4().hex}"
+    os.symlink(target_release, tmp_link)
+    os.replace(tmp_link, current_link)
+    manifest = _manifest_for_release(target_root=target_root, release_id=target_release)
+    manifest["release_id"] = target_release
+    manifest["source_root"] = str(target_root / "releases" / "current" / "source")
+    manifest["target_root"] = str(target_root)
+    manifest["wrapper"] = str(target_root / "bin" / "hisys")
+    manifest["runtime_root"] = str(target_root / "runtime")
+    manifest["rollback"] = {
+        "rolled_back_at": datetime.now(timezone.utc).isoformat(),
+        "from_release_id": current_release_id,
+        "to_release_id": target_release,
+        "action_taken": "current_release_pointer_updated",
+        "external_call_made": False,
+        "mutation_scope": "local_hermes_tool_release_pointer",
+    }
+    (target_root / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    status = get_hermes_deployment_status(target_root=target_root)
+    return {
+        "status": "rolled_back",
+        "previous_release_id": current_release_id,
+        "current_release_id": target_release,
+        "target_root": str(target_root),
+        "deployment_status": status,
+    }
+
+
+def build_hermes_deploy_report(
+    *,
+    target_root: Path,
+    validations: dict[str, str] | None = None,
+    output: Path | None = None,
+) -> dict[str, Any]:
+    status = get_hermes_deployment_status(target_root=target_root)
+    report = {
+        "schema_id": "hisys.hermes_tool_deploy_report",
+        "schema_version": "0.1.0",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "deployment_status": status,
+        "source_commit": status.get("source_commit"),
+        "release_id": status.get("current_release_id"),
+        "verification": validations or {},
+        "promotion_allowed": False,
+        "human_approval_required_for_host_install": True,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+    if output is not None:
+        output = output.expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return report
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
+def _current_release_id(current_link: Path) -> str | None:
+    if not current_link.exists():
+        return None
+    if current_link.is_symlink():
+        return current_link.readlink().name
+    return None
+
+
+def _available_release_ids(releases_root: Path) -> list[str]:
+    if not releases_root.exists():
+        return []
+    return sorted(child.name for child in releases_root.iterdir() if child.is_dir() and child.name != "current")
+
+
+def _manifest_for_release(*, target_root: Path, release_id: str) -> dict[str, Any]:
+    release_manifest = target_root / "releases" / release_id / "deployment-manifest.json"
+    if release_manifest.exists():
+        return _read_json(release_manifest)
+    manifest_path = target_root / "manifest.json"
+    manifest = _read_json(manifest_path) if manifest_path.exists() else {}
+    manifest.setdefault("schema_id", "hisys.hermes_tool_deployment")
+    manifest.setdefault("schema_version", "0.1.0")
+    manifest.setdefault("tool_name", "hisys")
+    manifest.setdefault("deployment_mode", "immutable_snapshot")
+    return manifest
 
 
 def _render_readme(*, target_root: Path, source_root: Path) -> str:

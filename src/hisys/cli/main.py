@@ -51,7 +51,13 @@ from ..browser.reports import (
     _write_browser_investigation_report,
 )
 from ..browser.workflow import BrowserInvestigationRunConfig, run_browser_investigation
-from ..hermes_deploy import DEFAULT_HERMES_TOOL_ROOT, deploy_hisys_to_hermes
+from ..hermes_deploy import (
+    DEFAULT_HERMES_TOOL_ROOT,
+    build_hermes_deploy_report,
+    deploy_hisys_to_hermes,
+    get_hermes_deployment_status,
+    rollback_hisys_hermes_tool,
+)
 from ..browser.review_chain import (
     _build_browser_chief_editor_review,
     _build_browser_dars_review,
@@ -1266,6 +1272,23 @@ def _build_parser() -> argparse.ArgumentParser:
     deploy_hermes.add_argument("--channel-name", help="optional human-readable channel/thread name for generated prompt")
     deploy_hermes.add_argument("--force", action="store_true", help="replace an existing Hisys Hermes tool deployment")
 
+    deployment_status = sub.add_parser("deployment-status", help="inspect a Hermes Hisys tool snapshot deployment")
+    deployment_status.add_argument("--target", type=Path, default=DEFAULT_HERMES_TOOL_ROOT, help="Hermes Hisys tool deployment directory")
+    deployment_status.add_argument("--format", choices=["json", "text"], default="text")
+
+    rollback_hermes = sub.add_parser("rollback-hermes-tool", help="move releases/current back to a previous Hisys Hermes tool snapshot")
+    rollback_hermes.add_argument("--target", type=Path, default=DEFAULT_HERMES_TOOL_ROOT, help="Hermes Hisys tool deployment directory")
+    rollback_choice = rollback_hermes.add_mutually_exclusive_group(required=True)
+    rollback_choice.add_argument("--to-release", help="release id to promote to releases/current")
+    rollback_choice.add_argument("--previous", action="store_true", help="rollback to the most recent non-current release")
+    rollback_hermes.add_argument("--format", choices=["json", "text"], default="text")
+
+    deploy_report = sub.add_parser("build-hermes-deploy-report", help="write a governed Hermes tool deployment report")
+    deploy_report.add_argument("--target", type=Path, default=DEFAULT_HERMES_TOOL_ROOT, help="Hermes Hisys tool deployment directory")
+    deploy_report.add_argument("--validation", action="append", default=[], help="validation status as name=status; repeatable")
+    deploy_report.add_argument("--output", type=Path, help="optional JSON report output path")
+    deploy_report.add_argument("--format", choices=["json", "text"], default="text")
+
     public_profile = sub.add_parser(
         "validate-public-browser-profile",
         help="validate a governed public browser launch profile",
@@ -2272,6 +2295,22 @@ def main(argv: list[str] | None = None) -> int:
             channel_name=args.channel_name,
             force=args.force,
         )
+    if args.command == "deployment-status":
+        return _cmd_deployment_status(target_root=args.target, output_format=args.format)
+    if args.command == "rollback-hermes-tool":
+        return _cmd_rollback_hermes_tool(
+            target_root=args.target,
+            to_release=args.to_release,
+            previous=args.previous,
+            output_format=args.format,
+        )
+    if args.command == "build-hermes-deploy-report":
+        return _cmd_build_hermes_deploy_report(
+            target_root=args.target,
+            validation_items=args.validation,
+            output=args.output,
+            output_format=args.format,
+        )
     if args.command == "validate-public-browser-profile":
         try:
             profile = load_public_browser_profile(args.profile)
@@ -2908,6 +2947,54 @@ def _cmd_deploy_hermes_tool(
     )
     print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if result.get("status") == "deployed" else 2
+
+
+def _cmd_deployment_status(*, target_root: Path, output_format: str) -> int:
+    status = get_hermes_deployment_status(target_root=target_root)
+    if output_format == "json":
+        print(json.dumps(status, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"status: {status['status']}")
+        print(f"current_release_id: {status.get('current_release_id')}")
+        print(f"source_commit: {status.get('source_commit')}")
+        print(f"wrapper_points_to_snapshot: {str(status['wrapper_points_to_snapshot']).lower()}")
+        print(f"wrapper_references_live_source: {str(status['wrapper_references_live_source']).lower()}")
+        print(f"rollback_available: {str(status['rollback_available']).lower()}")
+        print(f"safe_to_use: {str(status['safe_to_use']).lower()}")
+    return 0 if status.get("safe_to_use") else 2
+
+
+def _cmd_rollback_hermes_tool(*, target_root: Path, to_release: str | None, previous: bool, output_format: str) -> int:
+    result = rollback_hisys_hermes_tool(target_root=target_root, to_release=to_release, previous=previous)
+    if output_format == "json":
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"status: {result['status']}")
+        if result.get("status") == "rolled_back":
+            print(f"previous_release_id: {result['previous_release_id']}")
+            print(f"current_release_id: {result['current_release_id']}")
+        else:
+            print(f"reason: {result.get('reason')}")
+    return 0 if result.get("status") == "rolled_back" else 2
+
+
+def _cmd_build_hermes_deploy_report(*, target_root: Path, validation_items: list[str], output: Path | None, output_format: str) -> int:
+    try:
+        validations = _parse_validation_status(validation_items)
+    except ValueError as exc:
+        print(f"error: {exc}")
+        return 2
+    report = build_hermes_deploy_report(target_root=target_root, validations=validations, output=output)
+    if output_format == "json":
+        print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        if output:
+            print(f"deploy_report: {output}")
+        print(f"status: {report['deployment_status']['status']}")
+        print(f"release_id: {report.get('release_id')}")
+        print("promotion_allowed: false")
+        print("human_approval_required_for_host_install: true")
+    return 0 if report["deployment_status"].get("safe_to_use") else 2
 
 
 def _cmd_validate_config(instance_root: Path) -> int:

@@ -60,3 +60,20 @@ jobs:
           "$RUNNER_TEMP/hisys-hermes-tool/bin/hisys" --version
           "$RUNNER_TEMP/hisys-hermes-tool/bin/hisys" validate-public-browser-profile \
             --profile "$RUNNER_TEMP/hisys-hermes-tool/config/public-browser.yaml"
+
+      - name: Build deploy report
+        run: |
+          python -m hisys.cli.main build-hermes-deploy-report \
+            --target "$RUNNER_TEMP/hisys-hermes-tool" \
+            --validation pytest=passed \
+            --validation traceability=passed \
+            --validation secret_scan=passed \
+            --validation snapshot_verifier=passed \
+            --validation wrapper_smoke=passed \
+            --output "$RUNNER_TEMP/hisys-hermes-tool-deploy-report.json" \
+            --format json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hisys-hermes-tool-deploy-report
+          path: ${{ runner.temp }}/hisys-hermes-tool-deploy-report.json

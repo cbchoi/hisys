@@ -36,6 +36,8 @@ def test_deploy_workflow_runs_after_ci_and_uses_snapshot_verifier():
     assert "deploy-hermes-tool" in joined_steps
     assert "--target" in joined_steps
     assert "verify_hermes_tool_deploy.py" in joined_steps
+    assert "build-hermes-deploy-report" in joined_steps
+    assert "actions/upload-artifact@v4" in str(workflow)
     assert "git diff --check" in joined_steps
     assert "scripts/validate_traceability.py" in joined_steps
     assert "scripts/scan_secrets.py" in joined_steps
