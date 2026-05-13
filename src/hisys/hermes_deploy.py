@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -74,12 +75,20 @@ def _write_deployment_tree(
     config_dir = staging_root / "config"
     staged_runtime_dir = staging_root / "runtime"
     docs_dir = staging_root / "docs"
-    for directory in (bin_dir, config_dir, staged_runtime_dir, docs_dir):
+    releases_dir = staging_root / "releases"
+    release_id = _release_id(source_root)
+    staged_release_dir = releases_dir / release_id
+    staged_snapshot_root = staged_release_dir / "source"
+    deployed_source_root = target_root / "releases" / "current" / "source"
+    for directory in (bin_dir, config_dir, staged_runtime_dir, docs_dir, releases_dir):
         directory.mkdir(parents=True, exist_ok=True)
+    _copy_source_snapshot(source_root=source_root, snapshot_root=staged_snapshot_root)
+    current_link = releases_dir / "current"
+    os.symlink(release_id, current_link)
 
     wrapper_path = target_root / "bin" / "hisys"
     staged_wrapper_path = bin_dir / "hisys"
-    staged_wrapper_path.write_text(_render_wrapper(source_root), encoding="utf-8")
+    staged_wrapper_path.write_text(_render_wrapper(deployed_source_root), encoding="utf-8")
     staged_wrapper_path.chmod(staged_wrapper_path.stat().st_mode | 0o755)
 
     profile_source = source_root / "examples" / "instance" / "config" / "profiles" / "public-browser.yaml"
@@ -92,27 +101,31 @@ def _write_deployment_tree(
 
     channel_prompt_path = target_root / "channel-prompt.md"
     (staging_root / "channel-prompt.md").write_text(
-        _render_channel_prompt(source_root=source_root, target_root=target_root, channel_name=channel_name),
+        _render_channel_prompt(source_root=deployed_source_root, target_root=target_root, channel_name=channel_name),
         encoding="utf-8",
     )
     snippet_path = target_root / "hermes-channel-snippet.yaml"
     (staging_root / "hermes-channel-snippet.yaml").write_text(
         _render_channel_snippet(
-            source_root=source_root,
+            source_root=deployed_source_root,
             target_root=target_root,
             channel_id=channel_id,
             channel_name=channel_name,
         ),
         encoding="utf-8",
     )
-    (staging_root / "README.md").write_text(_render_readme(target_root=target_root, source_root=source_root), encoding="utf-8")
+    (staging_root / "README.md").write_text(_render_readme(target_root=target_root, source_root=deployed_source_root), encoding="utf-8")
 
     manifest = {
         "schema_id": "hisys.hermes_tool_deployment",
         "schema_version": "0.1.0",
         "tool_name": "hisys",
         "deployed_at": datetime.now(timezone.utc).isoformat(),
-        "source_root": str(source_root),
+        "deployment_mode": "immutable_snapshot",
+        "release_id": release_id,
+        "source_commit": _git_commit(source_root),
+        "upstream_source_root": str(source_root),
+        "source_root": str(deployed_source_root),
         "target_root": str(target_root),
         "wrapper": str(wrapper_path),
         "public_browser_profile": str(profile_target),
@@ -152,6 +165,48 @@ def _install_staged_tree(*, staging_root: Path, target_root: Path, backup_root: 
     if target_root.exists():
         os.replace(target_root, backup_root)
     os.replace(staging_root, target_root)
+
+
+def _release_id(source_root: Path) -> str:
+    commit = _git_commit(source_root)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    if commit:
+        return f"{timestamp}-{commit[:12]}"
+    return f"{timestamp}-{uuid.uuid4().hex[:12]}"
+
+
+def _git_commit(source_root: Path) -> str | None:
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=source_root,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except Exception:
+        return None
+    return completed.stdout.strip() or None
+
+
+def _copy_source_snapshot(*, source_root: Path, snapshot_root: Path) -> None:
+    def ignore(directory: str, names: list[str]) -> set[str]:
+        ignored = {
+            ".git",
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".tox",
+            ".venv",
+            "__pycache__",
+            "dist",
+            "build",
+            "uv.lock",
+        }
+        return {name for name in names if name in ignored or name.endswith(".pyc")}
+
+    shutil.copytree(source_root, snapshot_root, ignore=ignore)
 
 
 def _render_wrapper(source_root: Path) -> str:

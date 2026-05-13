@@ -26,22 +26,28 @@ def test_deploy_hisys_to_hermes_writes_wrapper_manifest_and_channel_snippet(tmp_
 
     assert wrapper.exists()
     assert wrapper.stat().st_mode & 0o111
-    assert str(source_root) in wrapper.read_text()
-    assert "uv run --project" in wrapper.read_text()
-    assert "python -m hisys.cli.main" in wrapper.read_text()
+    wrapper_text = wrapper.read_text()
+    assert str(source_root) not in wrapper_text
+    assert "releases/current/source" in wrapper_text
+    assert "uv run --project" in wrapper_text
+    assert "python -m hisys.cli.main" in wrapper_text
 
     manifest_data = json.loads(manifest.read_text())
     assert manifest_data["tool_name"] == "hisys"
-    assert manifest_data["source_root"] == str(source_root)
+    assert manifest_data["upstream_source_root"] == str(source_root)
+    assert manifest_data["source_root"] == str(target_root / "releases" / "current" / "source")
+    assert manifest_data["deployment_mode"] == "immutable_snapshot"
     assert manifest_data["wrapper"] == str(wrapper)
     assert manifest_data["channel_id"] == "1502110114704916501"
     assert manifest_data["safety_boundary"]["mutation_performed"] is False
+    assert (target_root / "releases" / "current" / "source" / "src").exists()
 
     snippet_text = snippet.read_text()
     assert "1502110114704916501" in snippet_text
     assert "hisys-cli-tool" in snippet_text
     assert str(target_root) in snippet_text
-    assert str(source_root) in prompt.read_text()
+    assert str(target_root / "releases" / "current" / "source") in prompt.read_text()
+    assert str(source_root) not in prompt.read_text()
 
 
 def test_deploy_hisys_to_hermes_refuses_existing_without_force(tmp_path):

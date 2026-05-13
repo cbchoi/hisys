@@ -8,6 +8,8 @@ This guide installs a controlled Hermes-side wrapper for Hisys under a stable to
 
 The deployment is intentionally CLI-first. It does **not** require MCP and does not mutate Hermes configuration automatically. The script writes a wrapper, manifest, public browser profile copy, runtime directory, and channel configuration snippet for human review. Installs are staged in a sibling temporary directory and then renamed into place so failed writes do not leave a partial tool tree.
 
+The wrapper runs from an immutable deployment snapshot under `releases/<release_id>/source`, exposed through `releases/current/source`. It does **not** execute the live development checkout directly; this keeps uncommitted work, partial edits, or branch switches in the source repository from changing the deployed Hermes tool unexpectedly.
+
 ## Command
 
 From the Hisys repository:
@@ -46,9 +48,11 @@ uv run --extra browser python -m hisys.cli.main deploy-hermes-tool \
   config/public-browser.yaml        # copied public browser profile
   runtime/                          # suggested ad-hoc runtime root
   docs/                             # reserved for future tool-local docs
+  releases/<release_id>/source/      # immutable source snapshot for this deployment
+  releases/current -> <release_id>   # stable pointer used by the wrapper
 ```
 
-The wrapper runs Hisys from the controlled source repository. It unsets Hermes' active `VIRTUAL_ENV` before invoking `uv` so the project environment is selected cleanly. It prefers:
+The wrapper runs Hisys from the deployed snapshot, not the live development checkout. It unsets Hermes' active `VIRTUAL_ENV` before invoking `uv` so the snapshot project environment is selected cleanly. It prefers:
 
 ```bash
 uv run --project "$HISYS_SOURCE_ROOT" --extra browser python -m hisys.cli.main "$@"
