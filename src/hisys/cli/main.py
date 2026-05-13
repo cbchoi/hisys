@@ -74,6 +74,7 @@ from ..contracts.evidence_reasons import reason_codes
 from ..contracts.evaluator import EvidenceSummary, evaluate_pass_contract
 from ..contracts.pass_registry import PassContractRegistryEntry, candidate_from_proposal, find_contract, load_pass_contract_registry, promote_candidate
 from ..contracts.review_package import build_review_package
+from ..domain import DomainAdapterRegistry, DomainInvestigationContext
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..evidence_store import (
     build_stone_candidates,
@@ -6903,11 +6904,10 @@ def _cmd_investigate_domain(
                 quality_gate=evaluation.quality_gate,
             )
 
-    domain_result = None if pass_contract_tool_result is not None else _build_research_domain_result(
-        request,
-        instance,
-        boundary_dir,
-        yyyymmdd,
+    domain_context = DomainInvestigationContext(
+        instance_root=instance.root,
+        boundary_dir=boundary_dir,
+        yyyymmdd=yyyymmdd,
         promoted_pdf_evidence=promoted_pdf_evidence,
         source_quote_refs=source_quote_refs or [],
         claim_evidence_ledger_refs=claim_evidence_ledger_refs or [],
@@ -6917,6 +6917,9 @@ def _cmd_investigate_domain(
         live_source_access_refs=live_source_access_refs or [],
         live_source_evidence_refs=live_source_evidence_refs or [],
     )
+    domain_result = None if pass_contract_tool_result is not None else _default_domain_adapter_registry(
+        instance=instance
+    ).investigate(request, domain_context)
     if domain_result is not None:
         domain_result = _write_dars_fixture_for_domain_result(
             instance=instance,
@@ -6987,6 +6990,46 @@ def _cmd_investigate_domain(
     print(f"status: {tool_result.status}")
     print(f"tool_result: {result_artifact}")
     return 0
+
+
+class _ResearchGapDomainAdapter:
+    """Research-gap adapter kept behind the domain adapter registry."""
+
+    def __init__(self, *, instance: InstanceRoot) -> None:
+        self._instance = instance
+
+    def supports(self, request: DomainInvestigationRequest) -> bool:
+        objective = request.objective.lower()
+        return request.domain == "research" and "formalism" in objective and "gap" in objective
+
+    def investigate(
+        self,
+        request: DomainInvestigationRequest,
+        context: DomainInvestigationContext,
+    ) -> DomainInvestigationResult:
+        result = _build_research_domain_result(
+            request,
+            self._instance,
+            context.boundary_dir,
+            context.yyyymmdd,
+            promoted_pdf_evidence=context.promoted_pdf_evidence,
+            source_quote_refs=context.source_quote_refs,
+            claim_evidence_ledger_refs=context.claim_evidence_ledger_refs,
+            claim_evidence_summary_refs=context.claim_evidence_summary_refs,
+            claim_coverage_gate_refs=context.claim_coverage_gate_refs,
+            recommendation_claim_registry_refs=context.recommendation_claim_registry_refs,
+            live_source_access_refs=context.live_source_access_refs,
+            live_source_evidence_refs=context.live_source_evidence_refs,
+        )
+        if result is None:
+            raise ValueError("ResearchGapDomainAdapter received an unsupported request")
+        return result
+
+
+def _default_domain_adapter_registry(*, instance: InstanceRoot) -> DomainAdapterRegistry[DomainInvestigationResult]:
+    """Build the ordered registry for domain-specific investigation adapters."""
+
+    return DomainAdapterRegistry([_ResearchGapDomainAdapter(instance=instance)])
 
 
 def _build_research_domain_result(

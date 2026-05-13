@@ -122,10 +122,10 @@ A future Hermes-facing Hisys tool should accept a compact request such as:
     "max_rounds": 3
   },
   "output_contract": {
-    "include_evidence_package": true,
-    "include_alternative_set": true,
-    "include_dars_critique": true,
-    "include_recommendation_memo": true
+    "include_summary": true,
+    "include_recommended_alternative": true,
+    "include_runtime_boundary_refs": true,
+    "include_quality_gate": true
   }
 }
 ```
@@ -342,22 +342,26 @@ fixture-backed/read-only:
    `HisysToolResult` schemas exist.
 2. `hisys investigate-domain --request <json>` validates the request and writes
    runtime-boundary artifacts.
-3. `domain="research"` with an objective containing research gap/formalism
+3. `hisys.domain.adapters.DomainAdapterRegistry` and
+   `DomainInvestigationContext` now provide the dispatch seam for domain-specific
+   adapters. The CLI no longer needs to call one hardcoded domain builder
+   directly; it builds a context and resolves the ordered adapter registry.
+4. `domain="research"` with an objective containing research gap/formalism
    language generates a deterministic fixture recommendation for
    Self-organizing Dynamic Structure DEVS with graph-rewrite structural
-   transitions.
-4. DARS local loopback fixture critique writes advisory-only request, response,
+   transitions through the research-gap adapter.
+5. DARS local loopback fixture critique writes advisory-only request, response,
    and trace artifacts; it may recommend more evidence but cannot execute,
    mutate, block, or approve.
-5. Chief Editor writes a `research_recommendation_review` product with
+6. Chief Editor writes a `research_recommendation_review` product with
    `recommend_with_conditions`, human-review-required, and no external action.
-6. Tests cover artifact refs, safety flags, advisory-only DARS behavior, and the
-   Chief Editor research decision product.
-7. External calls and mutations remain disabled by default.
+7. Tests cover adapter dispatch, artifact refs, safety flags, advisory-only DARS
+   behavior, and the Chief Editor research decision product.
+8. External calls and mutations remain disabled by default.
 
 Next post-MVP increments should add file-backed ConfigRegistry/PromptRegistry
-snapshots, publisher-source research evidence harnesses, and the codebase domain
-adapter.
+snapshots, a requirements-analysis adapter for stakeholder-intent and
+requirement-candidate packets, and the codebase domain adapter.
 
 ## 11. Pass-Contract Self-Improvement
 
