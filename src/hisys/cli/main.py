@@ -222,6 +222,170 @@ def _safe_relative_ref(instance_root: Path, path: Path) -> str:
     return path.relative_to(instance_root).as_posix()
 
 
+def _slug(value: str) -> str:
+    return "".join(char.lower() if char.isalnum() else "-" for char in value).strip("-") or "unspecified"
+
+
+def _contract_fixture_name(domain: str, question_type: str) -> str:
+    return f"{_slug(domain).replace('-', '_')}_{_slug(question_type).replace('-', '_')}.yaml"
+
+
+def _build_pass_contract_proposal(
+    *,
+    yyyymmdd: str,
+    domain: str,
+    question_type: str,
+    failure_mode: str,
+    example_request_ids: list[str],
+) -> dict[str, object]:
+    fixture_name = _contract_fixture_name(domain, question_type)
+    proposal_id = f"CONTRACT-PROP-{_slug(domain).upper()}-{_slug(question_type).upper()}-{_slug(failure_mode).upper()}"
+    return {
+        "schema_id": "hisys.pass_contract.proposal",
+        "schema_version": "0.1.0",
+        "proposal_id": proposal_id,
+        "created_date": yyyymmdd,
+        "status": "proposed_for_human_review",
+        "domain": domain,
+        "question_type": question_type,
+        "dominant_failure_mode": failure_mode,
+        "example_request_ids": example_request_ids,
+        "self_improvement_boundary": (
+            "Hisys does not self-authorize lower standards; it proposes bounded pass criteria, "
+            "fixtures, tests, and review artifacts for human-reviewed promotion."
+        ),
+        "needs_more_evidence_reason_taxonomy": [
+            "adapter_missing",
+            "domain_contract_missing",
+            "source_count_insufficient",
+            "independent_corroboration_missing",
+            "contradiction_unchecked",
+            "claim_coverage_incomplete",
+            "confidence_below_threshold",
+            "human_approval_required",
+        ],
+        "candidate_contract": {
+            "contract_id": f"{_slug(domain).replace('-', '_')}_{_slug(question_type).replace('-', '_')}_v0_1_candidate",
+            "principle": "expand coverage by adding domain-specific evidence criteria, not by weakening evidence gates",
+            "minimum_evidence": {
+                "artifact_refs_required": True,
+                "alternative_set_required": True,
+                "claim_coverage_required": True,
+                "contradiction_check_required": True,
+                "dars_critique_required": True,
+            },
+            "blocked_if": [
+                "only_user_opinion",
+                "only_fixture_evidence_for_live_claims",
+                "no_traceable_artifact_refs",
+                "boundary_violation_detected",
+            ],
+            "promotion_gate": "human_reviewed_traceable_change",
+        },
+        "suggested_artifacts": [
+            f"tests/fixtures/pass-contracts/{fixture_name}",
+            f"tests/unit/test_pass_contract_{_slug(domain).replace('-', '_')}_{_slug(question_type).replace('-', '_')}.py",
+            "docs/contracts/pass-contract-self-improvement.md",
+            "docs/traceability/README.md",
+        ],
+        "required_validation": [
+            "focused pytest for generated contract fixture",
+            "domain adapter regression tests",
+            "traceability validation",
+            "secret scan",
+            "human approval before promotion to active registry",
+        ],
+        "automatic_promotion_allowed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+
+
+def _render_pass_contract_proposal_md(proposal: dict[str, object]) -> str:
+    candidate = proposal["candidate_contract"]
+    assert isinstance(candidate, dict)
+    lines = [
+        f"# Pass Contract Proposal: {proposal['proposal_id']}",
+        "",
+        "## Self-improvement boundary",
+        "",
+        "Hisys does not self-authorize lower standards. It proposes bounded pass criteria, fixture scenarios, tests, and review artifacts; promotion requires human-reviewed traceable change.",
+        "",
+        "## Scope",
+        "",
+        f"- Domain: {proposal['domain']}",
+        f"- Question type: {proposal['question_type']}",
+        f"- Dominant failure mode: {proposal['dominant_failure_mode']}",
+        f"- Status: {proposal['status']}",
+        f"- Automatic promotion allowed: {_bool_text(bool(proposal['automatic_promotion_allowed']))}",
+        "",
+        "## Candidate contract principle",
+        "",
+        str(candidate["principle"]),
+        "",
+        "## Required validation before promotion",
+        "",
+        *[f"- {item}" for item in proposal["required_validation"]],
+        "",
+        "## Boundary flags",
+        "",
+        f"- External call made: {_bool_text(bool(proposal['external_call_made']))}",
+        f"- Mutation performed: {_bool_text(bool(proposal['mutation_performed']))}",
+        f"- Publication/live action approved: {_bool_text(bool(proposal['publication_or_live_action_approved']))}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def _cmd_propose_pass_contract(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    domain: str,
+    question_type: str,
+    failure_mode: str,
+    example_request_ids: list[str],
+    output_format: str,
+) -> int:
+    instance = InstanceRoot(instance_root)
+    proposal = _build_pass_contract_proposal(
+        yyyymmdd=yyyymmdd,
+        domain=domain,
+        question_type=question_type,
+        failure_mode=failure_mode,
+        example_request_ids=example_request_ids,
+    )
+    proposal_dir = instance.root / "runtime-boundary" / "pass-contract-proposals" / yyyymmdd
+    proposal_dir.mkdir(parents=True, exist_ok=True)
+    proposal_path = proposal_dir / f"{proposal['proposal_id']}.json"
+    proposal_path.write_text(json.dumps(proposal, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    proposal_path.with_suffix(".md").write_text(_render_pass_contract_proposal_md(proposal), encoding="utf-8")
+
+    report_dir = instance.reports_dir / "run-summaries" / yyyymmdd
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report = {
+        "schema_id": "hisys.pass_contract.proposal_report",
+        "schema_version": "0.1.0",
+        "message": "pass contract proposal created",
+        "proposal_id": proposal["proposal_id"],
+        "proposal_ref": _safe_relative_ref(instance.root, proposal_path),
+        "proposal_markdown_ref": _safe_relative_ref(instance.root, proposal_path.with_suffix(".md")),
+        "status": proposal["status"],
+        "automatic_promotion_allowed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+    report_path = report_dir / "pass-contract-proposal-report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    if output_format == "json":
+        print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"pass contract proposal: {proposal_path}")
+    return 0
+
+
 def _render_investment_decision_packet_md(packet: InvestmentDecisionPacket) -> str:
     """Render a compact operator-facing investment packet boundary summary."""
 
@@ -1844,6 +2008,31 @@ def _build_parser() -> argparse.ArgumentParser:
     browser_final.add_argument("--date", required=True, help="YYYYMMDD review partition")
     browser_final.add_argument("--revision-resolution-ref", required=True, help="relative ref to REVISION-*-BROWSER.json")
     browser_final.add_argument("--producer-id", default="chief-editor-browser-final-cli", help="Chief Editor final-review producer id")
+    pass_contract = sub.add_parser(
+        "propose-pass-contract",
+        help="write a governed self-improvement proposal for a missing/insufficient pass contract",
+    )
+    pass_contract.add_argument("--instance", required=True, help="Hisys instance root")
+    pass_contract.add_argument("--date", required=True, help="YYYYMMDD proposal partition")
+    pass_contract.add_argument("--domain", required=True, help="domain needing a pass-contract proposal")
+    pass_contract.add_argument("--question-type", required=True, help="question type needing a pass-contract proposal")
+    pass_contract.add_argument(
+        "--failure-mode",
+        required=True,
+        choices=[
+            "adapter_missing",
+            "domain_contract_missing",
+            "source_count_insufficient",
+            "independent_corroboration_missing",
+            "contradiction_unchecked",
+            "claim_coverage_incomplete",
+            "confidence_below_threshold",
+            "human_approval_required",
+        ],
+        help="dominant needs_more_evidence reason driving the proposal",
+    )
+    pass_contract.add_argument("--example-request-id", action="append", default=[], help="example request id behind the proposal")
+    pass_contract.add_argument("--format", choices=["text", "json"], default="text")
     return parser
 
 
@@ -1853,6 +2042,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         parser.print_help()
         return 0
+    if args.command == "propose-pass-contract":
+        return _cmd_propose_pass_contract(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            domain=args.domain,
+            question_type=args.question_type,
+            failure_mode=args.failure_mode,
+            example_request_ids=args.example_request_id,
+            output_format=args.format,
+        )
     if args.command == "validate-config":
         return _cmd_validate_config(Path(args.instance))
     if args.command == "deploy-hermes-tool":

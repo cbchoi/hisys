@@ -358,3 +358,32 @@ fixture-backed/read-only:
 Next post-MVP increments should add file-backed ConfigRegistry/PromptRegistry
 snapshots, publisher-source research evidence harnesses, and the codebase domain
 adapter.
+
+## 11. Pass-Contract Self-Improvement
+
+Hisys now has a governed proposal path for broadening pass-contract coverage
+without weakening evidence standards. Repeated `needs_more_evidence` outcomes
+should first be classified by dominant reason, for example `adapter_missing`,
+`domain_contract_missing`, `independent_corroboration_missing`,
+`contradiction_unchecked`, or `claim_coverage_incomplete`. The
+`propose-pass-contract` CLI writes proposal artifacts that describe a candidate
+contract, expected fixture/test artifacts, validation gates, and the strict
+boundary that Hisys must not self-authorize lower standards.
+
+```bash
+hisys propose-pass-contract \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --domain product_architecture \
+  --question-type architecture_choice \
+  --failure-mode adapter_missing \
+  --example-request-id REQ-ARCH-001 \
+  --format json
+```
+
+The command writes only local proposal artifacts and a run-summary report. It
+sets `automatic_promotion_allowed=false`, `external_call_made=false`,
+`mutation_performed=false`, and `publication_or_live_action_approved=false`.
+Promotion from proposal to active contract remains a later human-reviewed,
+traceable change with focused tests, traceability validation, secret scan, and
+DARS/Chief Editor review where relevant.
