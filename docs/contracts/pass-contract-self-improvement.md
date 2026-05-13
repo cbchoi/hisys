@@ -58,6 +58,57 @@ hisys propose-pass-contract \
   --format json
 ```
 
+Run the full local governed improvement loop:
+
+```bash
+hisys convert-pass-contract-proposal \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --proposal-ref runtime-boundary/pass-contract-proposals/<YYYYMMDD>/CONTRACT-PROP-*.json \
+  --format json
+
+hisys evaluate-pass-contract \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --contract-ref runtime-boundary/pass-contract-candidates/<YYYYMMDD>/<contract_id>.json \
+  --evidence-summary evidence-summary.json \
+  --format json
+
+hisys request-pass-contract-review \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --candidate-ref runtime-boundary/pass-contract-candidates/<YYYYMMDD>/<contract_id>.json \
+  --reviewer chief_editor \
+  --reviewer dars_devil \
+  --format json
+
+hisys promote-pass-contract \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --candidate-ref runtime-boundary/pass-contract-candidates/<YYYYMMDD>/<contract_id>.json \
+  --review-ref runtime-boundary/pass-contract-reviews/<YYYYMMDD>/REVIEW-*.json \
+  --validation-ref reports/run-summaries/<YYYYMMDD>/pass-contract-evaluation-report.json \
+  --human-approval-ref APPROVAL-PASS-CONTRACT-<YYYYMMDD>-001 \
+  --format json
+
+hisys audit-needs-more-evidence \
+  --instance "$HISYS_INSTANCE" \
+  --date <YYYYMMDD> \
+  --format json
+```
+
+Active contracts can be consumed by `investigate-domain` only when an explicit registry and evidence summary are supplied:
+
+```bash
+hisys investigate-domain \
+  --instance "$HISYS_INSTANCE" \
+  --request request.json \
+  --date <YYYYMMDD> \
+  --pass-contract-registry active-registry.json \
+  --question-type architecture_choice \
+  --evidence-summary evidence-summary.json
+```
+
 Expected artifacts:
 
 ```text

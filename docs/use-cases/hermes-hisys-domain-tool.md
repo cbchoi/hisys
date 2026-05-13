@@ -387,3 +387,11 @@ sets `automatic_promotion_allowed=false`, `external_call_made=false`,
 Promotion from proposal to active contract remains a later human-reviewed,
 traceable change with focused tests, traceability validation, secret scan, and
 DARS/Chief Editor review where relevant.
+
+The full staged workflow is now CLI-backed: convert the proposal to an inactive
+candidate, evaluate it against a local evidence summary, request an advisory
+Chief Editor/DARS review package, promote only with a human approval ref plus
+local review/validation refs, and optionally let `investigate-domain` consume an
+explicit active registry for the scoped domain/question type. Routine proposal,
+evaluation, review, audit, and domain-evaluation paths remain local-only and do
+not perform external calls, mutations, publication, or live actions.

@@ -64,6 +64,10 @@ from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_pla
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, GeneralWebSearchConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, PlaywrightBrowserConnector, PlaywrightUnavailableError, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
 from ..connectors.live_source_evidence import SourceAccessRecord, SourceEvidenceItem
 from ..core.ids import IdNamespace, make_id
+from ..contracts.evidence_reasons import reason_codes
+from ..contracts.evaluator import EvidenceSummary, evaluate_pass_contract
+from ..contracts.pass_registry import PassContractRegistryEntry, candidate_from_proposal, find_contract, load_pass_contract_registry, promote_candidate
+from ..contracts.review_package import build_review_package
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
@@ -254,16 +258,7 @@ def _build_pass_contract_proposal(
             "Hisys does not self-authorize lower standards; it proposes bounded pass criteria, "
             "fixtures, tests, and review artifacts for human-reviewed promotion."
         ),
-        "needs_more_evidence_reason_taxonomy": [
-            "adapter_missing",
-            "domain_contract_missing",
-            "source_count_insufficient",
-            "independent_corroboration_missing",
-            "contradiction_unchecked",
-            "claim_coverage_incomplete",
-            "confidence_below_threshold",
-            "human_approval_required",
-        ],
+        "needs_more_evidence_reason_taxonomy": reason_codes(),
         "candidate_contract": {
             "contract_id": f"{_slug(domain).replace('-', '_')}_{_slug(question_type).replace('-', '_')}_v0_1_candidate",
             "principle": "expand coverage by adding domain-specific evidence criteria, not by weakening evidence gates",
@@ -383,6 +378,145 @@ def _cmd_propose_pass_contract(
         print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
     else:
         print(f"pass contract proposal: {proposal_path}")
+    return 0
+
+
+def _load_contract_json_ref(instance_root: Path, ref: str) -> dict[str, Any]:
+    path = Path(ref)
+    if not path.is_absolute():
+        path = instance_root / ref
+    resolved = path.resolve()
+    root = instance_root.resolve()
+    if root not in resolved.parents and resolved != root:
+        raise ValueError(f"ref escapes instance root: {ref}")
+    return json.loads(resolved.read_text(encoding="utf-8"))
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _cmd_evaluate_pass_contract(*, instance_root: Path, yyyymmdd: str, contract_ref: str, evidence_summary: str, output_format: str) -> int:
+    instance = InstanceRoot(instance_root)
+    contract_path = Path(contract_ref)
+    entries = load_pass_contract_registry(contract_path if contract_path.is_absolute() else instance.root / contract_ref)
+    if not entries:
+        raise ValueError("contract registry is empty")
+    summary_data = _load_contract_json_ref(instance.root, evidence_summary)
+    evaluation = evaluate_pass_contract(entries[0], EvidenceSummary.from_dict(summary_data))
+    eval_dir = instance.root / "runtime-boundary" / "pass-contract-evaluations" / yyyymmdd
+    eval_path = eval_dir / f"EVAL-{entries[0].contract_id}.json"
+    payload = evaluation.to_dict()
+    _write_json(eval_path, payload)
+    report = {
+        "schema_id": "hisys.pass_contract.evaluation_report",
+        "schema_version": "0.1.0",
+        "evaluation_ref": _safe_relative_ref(instance.root, eval_path),
+        **payload,
+    }
+    report_path = instance.reports_dir / "run-summaries" / yyyymmdd / "pass-contract-evaluation-report.json"
+    _write_json(report_path, report)
+    print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) if output_format == "json" else f"pass contract evaluation: {eval_path}")
+    return 0
+
+
+def _cmd_convert_pass_contract_proposal(*, instance_root: Path, yyyymmdd: str, proposal_ref: str, output_format: str) -> int:
+    instance = InstanceRoot(instance_root)
+    proposal = _load_contract_json_ref(instance.root, proposal_ref)
+    candidate = candidate_from_proposal(proposal)
+    candidate_dir = instance.root / "runtime-boundary" / "pass-contract-candidates" / yyyymmdd
+    candidate_path = candidate_dir / f"{candidate.contract_id}.json"
+    _write_json(candidate_path, candidate.to_dict())
+    report = {
+        "schema_id": "hisys.pass_contract.candidate_report",
+        "schema_version": "0.1.0",
+        "candidate_ref": _safe_relative_ref(instance.root, candidate_path),
+        "status": candidate.status,
+        "automatic_promotion_allowed": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+    report_path = instance.reports_dir / "run-summaries" / yyyymmdd / "pass-contract-candidate-report.json"
+    _write_json(report_path, report)
+    print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) if output_format == "json" else f"pass contract candidate: {candidate_path}")
+    return 0
+
+
+def _cmd_request_pass_contract_review(*, instance_root: Path, yyyymmdd: str, candidate_ref: str, reviewers: list[str], output_format: str) -> int:
+    instance = InstanceRoot(instance_root)
+    _load_contract_json_ref(instance.root, candidate_ref)
+    review = build_review_package(candidate_ref=candidate_ref, reviewers=reviewers)
+    review_dir = instance.root / "runtime-boundary" / "pass-contract-reviews" / yyyymmdd
+    review_path = review_dir / f"REVIEW-{_slug(Path(candidate_ref).stem)}.json"
+    _write_json(review_path, review)
+    report = {
+        "schema_id": "hisys.pass_contract.review_report",
+        "schema_version": "0.1.0",
+        "review_ref": _safe_relative_ref(instance.root, review_path),
+        **review,
+    }
+    report_path = instance.reports_dir / "run-summaries" / yyyymmdd / "pass-contract-review-report.json"
+    _write_json(report_path, report)
+    print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) if output_format == "json" else f"pass contract review: {review_path}")
+    return 0
+
+
+def _cmd_promote_pass_contract(*, instance_root: Path, yyyymmdd: str, candidate_ref: str, review_ref: str, validation_ref: str, human_approval_ref: str | None, output_format: str) -> int:
+    if not human_approval_ref:
+        print("human_approval_ref is required", file=sys.stderr)
+        return 2
+    instance = InstanceRoot(instance_root)
+    candidate_data = _load_contract_json_ref(instance.root, candidate_ref)
+    _load_contract_json_ref(instance.root, review_ref)
+    _load_contract_json_ref(instance.root, validation_ref)
+    candidate = PassContractRegistryEntry(**candidate_data)
+    active = promote_candidate(candidate, human_approval_ref=human_approval_ref, review_refs=[review_ref])
+    active_path = instance.root / "config" / "pass-contract-registry" / "active" / f"{active.contract_id}.json"
+    _write_json(active_path, active.to_dict())
+    promotion_path = instance.root / "runtime-boundary" / "pass-contract-promotions" / yyyymmdd / f"PROMOTION-{active.contract_id}.json"
+    promotion = {
+        "schema_id": "hisys.pass_contract.promotion",
+        "schema_version": "0.1.0",
+        "active_registry_ref": _safe_relative_ref(instance.root, active_path),
+        "human_approval_ref": human_approval_ref,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+    _write_json(promotion_path, promotion)
+    report = {"schema_id": "hisys.pass_contract.promotion_report", "schema_version": "0.1.0", "promotion_ref": _safe_relative_ref(instance.root, promotion_path), **promotion}
+    report_path = instance.reports_dir / "run-summaries" / yyyymmdd / "pass-contract-promotion-report.json"
+    _write_json(report_path, report)
+    print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) if output_format == "json" else f"pass contract promotion: {promotion_path}")
+    return 0
+
+
+def _cmd_audit_needs_more_evidence(*, instance_root: Path, yyyymmdd: str, output_format: str) -> int:
+    instance = InstanceRoot(instance_root)
+    proposal_dir = instance.root / "runtime-boundary" / "pass-contract-proposals" / yyyymmdd
+    counts: dict[str, int] = {}
+    by_scope: dict[str, int] = {}
+    for path in sorted(proposal_dir.glob("*.json")) if proposal_dir.exists() else []:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        reason = data.get("dominant_failure_mode", "unknown")
+        counts[reason] = counts.get(reason, 0) + 1
+        scope = f"{data.get('domain', 'unknown')}::{data.get('question_type', 'unknown')}"
+        by_scope[scope] = by_scope.get(scope, 0) + 1
+    report = {
+        "schema_id": "hisys.needs_more_evidence.audit_report",
+        "schema_version": "0.1.0",
+        "dominant_reasons": [{"reason": key, "count": value} for key, value in sorted(counts.items(), key=lambda item: (-item[1], item[0]))],
+        "scopes": [{"scope": key, "count": value} for key, value in sorted(by_scope.items())],
+        "recommended_next_actions": ["propose_pass_contract"] if counts else [],
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+    report_path = instance.reports_dir / "run-summaries" / yyyymmdd / "needs-more-evidence-audit-report.json"
+    _write_json(report_path, report)
+    print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) if output_format == "json" else f"needs-more-evidence audit: {report_path}")
     return 0
 
 
@@ -1349,6 +1483,9 @@ def _build_parser() -> argparse.ArgumentParser:
     investigate_domain.add_argument("--instance", required=True, help="runtime instance root for outputs")
     investigate_domain.add_argument("--request", required=True, help="DomainInvestigationRequest JSON path")
     investigate_domain.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    investigate_domain.add_argument("--pass-contract-registry", help="optional pass-contract registry JSON for domain/question evaluation")
+    investigate_domain.add_argument("--question-type", help="question type for pass-contract lookup")
+    investigate_domain.add_argument("--evidence-summary", help="optional evidence summary JSON for pass-contract evaluation")
     investigate_domain.add_argument(
         "--promote-pdf-source-access-ref",
         dest="promote_pdf_source_access_refs",
@@ -2033,6 +2170,40 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     pass_contract.add_argument("--example-request-id", action="append", default=[], help="example request id behind the proposal")
     pass_contract.add_argument("--format", choices=["text", "json"], default="text")
+
+    eval_contract = sub.add_parser("evaluate-pass-contract", help="evaluate a pass contract against a local evidence summary")
+    eval_contract.add_argument("--instance", required=True)
+    eval_contract.add_argument("--date", required=True)
+    eval_contract.add_argument("--contract-ref", required=True)
+    eval_contract.add_argument("--evidence-summary", required=True)
+    eval_contract.add_argument("--format", choices=["text", "json"], default="text")
+
+    convert_contract = sub.add_parser("convert-pass-contract-proposal", help="convert a proposal into an inactive candidate registry entry")
+    convert_contract.add_argument("--instance", required=True)
+    convert_contract.add_argument("--date", required=True)
+    convert_contract.add_argument("--proposal-ref", required=True)
+    convert_contract.add_argument("--format", choices=["text", "json"], default="text")
+
+    review_contract = sub.add_parser("request-pass-contract-review", help="write an advisory pass-contract review package")
+    review_contract.add_argument("--instance", required=True)
+    review_contract.add_argument("--date", required=True)
+    review_contract.add_argument("--candidate-ref", required=True)
+    review_contract.add_argument("--reviewer", action="append", default=[])
+    review_contract.add_argument("--format", choices=["text", "json"], default="text")
+
+    promote_contract = sub.add_parser("promote-pass-contract", help="promote a candidate contract after human approval")
+    promote_contract.add_argument("--instance", required=True)
+    promote_contract.add_argument("--date", required=True)
+    promote_contract.add_argument("--candidate-ref", required=True)
+    promote_contract.add_argument("--review-ref", required=True)
+    promote_contract.add_argument("--validation-ref", required=True)
+    promote_contract.add_argument("--human-approval-ref")
+    promote_contract.add_argument("--format", choices=["text", "json"], default="text")
+
+    audit_nme = sub.add_parser("audit-needs-more-evidence", help="summarize needs_more_evidence proposal patterns")
+    audit_nme.add_argument("--instance", required=True)
+    audit_nme.add_argument("--date", required=True)
+    audit_nme.add_argument("--format", choices=["text", "json"], default="text")
     return parser
 
 
@@ -2050,6 +2221,45 @@ def main(argv: list[str] | None = None) -> int:
             question_type=args.question_type,
             failure_mode=args.failure_mode,
             example_request_ids=args.example_request_id,
+            output_format=args.format,
+        )
+    if args.command == "evaluate-pass-contract":
+        return _cmd_evaluate_pass_contract(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            contract_ref=args.contract_ref,
+            evidence_summary=args.evidence_summary,
+            output_format=args.format,
+        )
+    if args.command == "convert-pass-contract-proposal":
+        return _cmd_convert_pass_contract_proposal(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            proposal_ref=args.proposal_ref,
+            output_format=args.format,
+        )
+    if args.command == "request-pass-contract-review":
+        return _cmd_request_pass_contract_review(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            candidate_ref=args.candidate_ref,
+            reviewers=args.reviewer,
+            output_format=args.format,
+        )
+    if args.command == "promote-pass-contract":
+        return _cmd_promote_pass_contract(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            candidate_ref=args.candidate_ref,
+            review_ref=args.review_ref,
+            validation_ref=args.validation_ref,
+            human_approval_ref=args.human_approval_ref,
+            output_format=args.format,
+        )
+    if args.command == "audit-needs-more-evidence":
+        return _cmd_audit_needs_more_evidence(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
             output_format=args.format,
         )
     if args.command == "validate-config":
@@ -2204,6 +2414,9 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             request_path=Path(args.request),
             yyyymmdd=args.date,
+            pass_contract_registry=Path(args.pass_contract_registry) if args.pass_contract_registry else None,
+            question_type=args.question_type,
+            evidence_summary=Path(args.evidence_summary) if args.evidence_summary else None,
             promote_pdf_source_access_refs=args.promote_pdf_source_access_refs,
             promote_pdf_source_evidence_refs=args.promote_pdf_source_evidence_refs,
             source_quote_refs=args.source_quote_refs,
@@ -6253,6 +6466,9 @@ def _cmd_investigate_domain(
     instance_root: Path,
     request_path: Path,
     yyyymmdd: str,
+    pass_contract_registry: Path | None = None,
+    question_type: str | None = None,
+    evidence_summary: Path | None = None,
     promote_pdf_source_access_refs: list[str] | None = None,
     promote_pdf_source_evidence_refs: list[str] | None = None,
     source_quote_refs: list[str] | None = None,
@@ -6282,7 +6498,48 @@ def _cmd_investigate_domain(
             source_evidence_refs=promote_pdf_source_evidence_refs or [],
         )
 
-    domain_result = _build_research_domain_result(
+    pass_contract_tool_result: HisysToolResult | None = None
+    if pass_contract_registry and question_type and evidence_summary:
+        registry_entries = load_pass_contract_registry(pass_contract_registry)
+        contract = find_contract(registry_entries, domain=request.domain, question_type=question_type, active_only=True)
+        result_ref = str((boundary_dir / f"hisys-tool-result-{request.request_id}.json").relative_to(instance.root))
+        if contract is None:
+            pass_contract_tool_result = HisysToolResult(
+                status="needs_more_evidence",
+                domain=request.domain,
+                summary="No active pass contract found for domain/question type.",
+                recommended_alternative_id=None,
+                requires_human_review=True,
+                external_call_made=False,
+                mutation_performed=False,
+                runtime_boundary_refs=[str(request_artifact.relative_to(instance.root)), str(request_markdown.relative_to(instance.root)), result_ref],
+                quality_gate="needs_more_evidence",
+            )
+        else:
+            summary_data = json.loads(evidence_summary.read_text(encoding="utf-8"))
+            evaluation = evaluate_pass_contract(contract, EvidenceSummary.from_dict(summary_data))
+            eval_dir = instance.root / "runtime-boundary" / "pass-contract-evaluations" / yyyymmdd
+            eval_path = eval_dir / f"EVAL-{contract.contract_id}.json"
+            _write_json(eval_path, evaluation.to_dict())
+            status = "completed" if evaluation.quality_gate == "passed" else evaluation.quality_gate
+            pass_contract_tool_result = HisysToolResult(
+                status=status,
+                domain=request.domain,
+                summary=f"Pass-contract evaluation for {contract.contract_id}: {evaluation.quality_gate}",
+                recommended_alternative_id=None,
+                requires_human_review=True,
+                external_call_made=False,
+                mutation_performed=False,
+                runtime_boundary_refs=[
+                    str(request_artifact.relative_to(instance.root)),
+                    str(request_markdown.relative_to(instance.root)),
+                    _safe_relative_ref(instance.root, eval_path),
+                    result_ref,
+                ],
+                quality_gate=evaluation.quality_gate,
+            )
+
+    domain_result = None if pass_contract_tool_result is not None else _build_research_domain_result(
         request,
         instance,
         boundary_dir,
@@ -6324,6 +6581,8 @@ def _cmd_investigate_domain(
         )
         domain_result_artifact.write_text(_record_json(domain_result), encoding="utf-8")
         tool_result = HisysToolResult.from_domain_result(domain_result)
+    elif pass_contract_tool_result is not None:
+        tool_result = pass_contract_tool_result
     else:
         result_ref = str((boundary_dir / f"hisys-tool-result-{request.request_id}.json").relative_to(instance.root))
         tool_result = HisysToolResult(
