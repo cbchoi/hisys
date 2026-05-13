@@ -154,16 +154,51 @@ Hisys should return a structured tool result:
 }
 ```
 
-## 5. Domain Adapter Model
+## 5. Three-Layer Domain Use-Case Model
 
-Hisys should not hardcode every domain into one workflow. Instead use domain adapters selected by configuration:
+Hisys should not hardcode every domain into one workflow. Each domain should be
+implemented as an object-oriented use case composed of three layers:
+
+```text
+DomainUseCase
+  -> InvestigationLayer
+  -> AggregationLayer
+  -> DecisionLayer
+```
+
+Layer responsibilities are separated:
+
+| Layer | Responsibility | Boundary |
+|---|---|---|
+| Investigation | Select/search local and approved source evidence | read-only evidence and memo refs |
+| Aggregation | Aggregate memos/evidence into a report | no decision authority |
+| Decision | Run DARS or another approved review over the report | advisory/human-review boundary |
+
+Base interfaces live under `hisys.domain.layers`:
+
+```text
+InvestigationLayer.investigate(request, context) -> InvestigationWorkProduct
+AggregationLayer.aggregate(request, context, investigation) -> AggregationWorkProduct
+DecisionLayer.decide(request, context, aggregation) -> DecisionWorkProduct
+DomainUseCase.run(request, context) -> DomainUseCaseResult
+```
+
+Concrete classes do the domain work. The current concrete use-case classes are:
+
+| Use case | Investigation | Aggregation | Decision |
+|---|---|---|---|
+| `ResearchAnalysisUseCase` | `ResearchInvestigationLayer`: search local `/home/cbchoi/me` memos and planned publisher-source evidence | `MemoReportAggregationLayer`: aggregate memos and evidence into a report | `DarsDecisionLayer(decision_type="research_review")` |
+| `CodeAnalysisUseCase` | `CodeInvestigationLayer`: search local `/home/cbchoi/me` plus a local requirements folder | `MemoReportAggregationLayer`: aggregate memos and evidence into a report | `DarsDecisionLayer(decision_type="code_evaluation_review")` |
+
+The existing `DomainAdapter` remains the CLI dispatch seam. A domain adapter may
+own one concrete `DomainUseCase`, call its three layers, then translate the
+`DomainUseCaseResult` into Hisys investigation artifacts and tool results.
 
 ```text
 DomainAdapter
   -> source policy
+  -> DomainUseCase(investigation, aggregation, decision)
   -> evidence schema
-  -> extraction/analyzer set
-  -> candidate generator
   -> rubric binding
   -> DARS critic panel
   -> recommendation memo template
@@ -346,18 +381,26 @@ fixture-backed/read-only:
    `DomainInvestigationContext` now provide the dispatch seam for domain-specific
    adapters. The CLI no longer needs to call one hardcoded domain builder
    directly; it builds a context and resolves the ordered adapter registry.
-4. `domain="research"` with an objective containing research gap/formalism
+4. `hisys.domain.layers` defines base interfaces for the three-layer object
+   model: `InvestigationLayer`, `AggregationLayer`, `DecisionLayer`, and
+   `DomainUseCase`.
+5. `hisys.domain.use_cases` provides concrete research and code use-case classes
+   with the requested layer split: investigation searches local me-vault plus
+   publisher or requirements sources, aggregation builds memo reports, and
+   decision runs the DARS boundary.
+6. `domain="research"` with an objective containing research gap/formalism
    language generates a deterministic fixture recommendation for
    Self-organizing Dynamic Structure DEVS with graph-rewrite structural
    transitions through the research-gap adapter.
-5. DARS local loopback fixture critique writes advisory-only request, response,
+7. DARS local loopback fixture critique writes advisory-only request, response,
    and trace artifacts; it may recommend more evidence but cannot execute,
    mutate, block, or approve.
-6. Chief Editor writes a `research_recommendation_review` product with
+8. Chief Editor writes a `research_recommendation_review` product with
    `recommend_with_conditions`, human-review-required, and no external action.
-7. Tests cover adapter dispatch, artifact refs, safety flags, advisory-only DARS
-   behavior, and the Chief Editor research decision product.
-8. External calls and mutations remain disabled by default.
+9. Tests cover adapter dispatch, three-layer use cases, artifact refs, safety
+   flags, advisory-only DARS behavior, and the Chief Editor research decision
+   product.
+10. External calls and mutations remain disabled by default.
 
 Next post-MVP increments should add file-backed ConfigRegistry/PromptRegistry
 snapshots, a requirements-analysis adapter for stakeholder-intent and
