@@ -8,9 +8,16 @@ fake.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
+import os
+
 import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+os.environ["PYTHONPATH"] = str(SRC) if not os.environ.get("PYTHONPATH") else f"{SRC}{os.pathsep}{os.environ['PYTHONPATH']}"
 
 from hisys.adapters import (
     AgentSystemMockSource,
