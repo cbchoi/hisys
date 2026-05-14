@@ -1,6 +1,7 @@
 """Domain-specific Hisys investigation adapters."""
 
 from .adapters import DomainAdapterRegistry, DomainInvestigationAdapter, DomainInvestigationContext
+from .runtime import DomainRuntimeArtifactRefs, DomainRuntimeArtifactWriter
 from .translation import (
     DomainUseCaseArtifactPacket,
     DomainUseCaseArtifactTranslator,
@@ -27,6 +28,8 @@ __all__ = [
     "DomainAdapterRegistry",
     "DomainInvestigationAdapter",
     "DomainInvestigationContext",
+    "DomainRuntimeArtifactRefs",
+    "DomainRuntimeArtifactWriter",
     "DomainUseCase",
     "DomainUseCaseArtifactPacket",
     "DomainUseCaseArtifactTranslator",
