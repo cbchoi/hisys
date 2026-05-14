@@ -6917,23 +6917,28 @@ def _cmd_investigate_domain(
         live_source_access_refs=live_source_access_refs or [],
         live_source_evidence_refs=live_source_evidence_refs or [],
     )
-    domain_result = None if pass_contract_tool_result is not None else _default_domain_adapter_registry(
-        instance=instance
-    ).investigate(request, domain_context)
+    domain_adapter = None
+    domain_result = None
+    if pass_contract_tool_result is None:
+        domain_registry = _default_domain_adapter_registry(instance=instance)
+        domain_adapter = domain_registry.resolve(request)
+        if domain_adapter is not None:
+            domain_result = domain_adapter.investigate(request, domain_context)
     if domain_result is not None:
-        domain_result = _write_dars_fixture_for_domain_result(
-            instance=instance,
-            request=request,
-            domain_result=domain_result,
-            boundary_dir=boundary_dir,
-            yyyymmdd=yyyymmdd,
-        )
-        domain_result = _write_chief_editor_research_review(
-            instance=instance,
-            request=request,
-            domain_result=domain_result,
-            yyyymmdd=yyyymmdd,
-        )
+        if _should_apply_research_gap_postprocessors(domain_adapter):
+            domain_result = _write_dars_fixture_for_domain_result(
+                instance=instance,
+                request=request,
+                domain_result=domain_result,
+                boundary_dir=boundary_dir,
+                yyyymmdd=yyyymmdd,
+            )
+            domain_result = _write_chief_editor_research_review(
+                instance=instance,
+                request=request,
+                domain_result=domain_result,
+                yyyymmdd=yyyymmdd,
+            )
         data_artifact = boundary_dir / f"investigation-data-{domain_result.investigation_data.investigation_id}.json"
         data_artifact.write_text(_record_json(domain_result.investigation_data), encoding="utf-8")
         alternatives_artifact = boundary_dir / f"alternative-decision-set-{domain_result.alternative_decision_set.alternative_set_id}.json"
@@ -7024,6 +7029,12 @@ class _ResearchGapDomainAdapter:
         if result is None:
             raise ValueError("ResearchGapDomainAdapter received an unsupported request")
         return result
+
+
+def _should_apply_research_gap_postprocessors(adapter: object | None) -> bool:
+    """Return true only for the legacy research-gap adapter path."""
+
+    return isinstance(adapter, _ResearchGapDomainAdapter)
 
 
 def _default_domain_adapter_registry(*, instance: InstanceRoot) -> DomainAdapterRegistry[DomainInvestigationResult]:
