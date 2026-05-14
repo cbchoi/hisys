@@ -527,3 +527,17 @@ python3 -m pytest -q
 ```
 
 Stop the Ralph loop if any gate fails; do not paper over a failure with broader try/except or fallbacks.
+
+## Investment Structured-Domain Adapter
+
+Traceability: HISYS-FR-DOM-006, HISYS-FR-DOM-003..004, HISYS-FR-AGT-003..004, HISYS-NFR-SEC-001..004, HISYS-T-028.
+
+The investment domain is migrated to the structured-domain substrate via `investment_spec()` (`src/hisys/domain/specs.py`) and `InvestmentAnalysisUseCase` (`src/hisys/domain/use_cases.py`). The adapter is advisory-only by construction:
+
+- The decision layer recommendation embeds the safety phrases `not financial advice` and `no autonomous execution` plus the governance flags `execution_authorized=false` and `publication_or_live_action_approved=false`, so the persisted runtime artifact surfaces the boundary without re-resolving the underlying investment packet.
+- `requires_human_review=true`, `external_call_made=false`, and `mutation_performed=false` are preserved.
+- The investigation layer is read-only over local me-vault and `runtime-boundary/investment-decisions` artifacts and performs no network, credential, or filesystem mutation.
+- The structured-domain adapter does not duplicate `InvestmentDecisionPacket` or `InvestmentWeightPolicy` schemas: it references existing packet/dry-run/weight-policy artifacts via `request.sources` and `request.config_snapshot_refs` so the existing `build-investment-decision-packet`, `run-investment-decision-dry-run`, and `review-investment-decision-packet` CLI workflows remain the system of record.
+- Registry order is `_ResearchGapDomainAdapter → StructuredDomainAdapter(research_spec()) → StructuredDomainAdapter(codebase_spec()) → StructuredDomainAdapter(investment_spec())`.
+
+Any future change that would set `execution_authorized=true`, `publication_or_live_action_approved=true`, allow live broker connectors, or perform autonomous order placement must come through a new controlled SRS/SDD/IDD/STD increment with explicit human-approved scopes and fixture-first tests. Hisys/Ralph must never enable these in code.

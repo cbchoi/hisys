@@ -3,7 +3,7 @@
 from .adapters import DomainAdapterRegistry, DomainInvestigationAdapter, DomainInvestigationContext
 from .domain_adapters import DomainAdapterSpec, StructuredDomainAdapter, build_use_case_context
 from .runtime import DomainRuntimeArtifactRefs, DomainRuntimeArtifactWriter
-from .specs import codebase_spec, research_spec
+from .specs import codebase_spec, investment_spec, research_spec
 from .translation import (
     DomainUseCaseArtifactPacket,
     DomainUseCaseArtifactTranslator,
@@ -45,5 +45,6 @@ __all__ = [
     "build_domain_investigation_result",
     "build_use_case_context",
     "codebase_spec",
+    "investment_spec",
     "research_spec",
 ]

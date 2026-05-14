@@ -1068,6 +1068,32 @@ Append one entry after each completed task, stop condition, or runtime limit.
 - Working tree: clean.
 
 
+### 2026-05-14 — M3 investment structured-domain migration completed
+
+- Phase completed: Prepare / RED / GREEN / Refactor / Gate / Commit for M3.1..M3.5.
+- Controlled anchors checked: SRS `HISYS-FR-DOM-006`, `HISYS-FR-DOM-003..004`, `HISYS-NFR-SEC-001..004`; SDD Domain Investigation Adapter Design; IDD `HISYS-IF-017`, `5.7 DomainInvestigationAdapter / DomainAdapterSpec`; STD `HISYS-T-028` (Investment domain migration governance), `HISYS-T-026..027`.
+- Codebase evidence: new `tests/unit/test_investment_structured_domain_spec.py` (13 tests); `src/hisys/domain/specs.py:investment_spec`; `src/hisys/domain/use_cases.py:InvestmentInvestigationLayer`, `InvestmentAdvisoryDecisionLayer`, `InvestmentAnalysisUseCase`; `src/hisys/domain/__init__.py` export; `src/hisys/cli/main.py:_default_domain_adapter_registry` registry order extended to include `StructuredDomainAdapter(investment_spec())`; docs updates in `docs/use-cases/hermes-hisys-domain-tool.md`, `docs/public/investment-decision-packet.md`, `docs/traceability/README.md`.
+- Quality gate result: pass — 552/552 full suite; investment+example/spec-collision/CLI/bridge/runtime focused suite 64/64; `validate_traceability.py` OK; `scan_secrets.py` hit_count=0; `git diff --check` clean.
+- Potential issues: (a) the structured-domain investment path does not yet copy `execution_authorized` / `publication_or_live_action_approved` from a real `InvestmentDecisionPacket` artifact — they are surfaced only as recommendation-summary governance text; a later controlled task can lift these into a typed runtime-artifact field if audit reviewers require structured booleans; (b) `docs/traceability/README.md` still carries a pre-existing line that re-uses `HISYS-T-028` for the Selenium harness — this conflict is out of M3 scope and should be reconciled in a separate controlled docs task.
+- `ralph.md` changes: M3 Reflection entry; next task M4.1.
+- Success likelihood: 88% — M4 is small (objective routing + work-product labeling under existing `codebase` spec), reuses already-validated structured-domain seam, and changes no schemas.
+- Continue decision: continue.
+- Stop reason: none.
+- Next task: Task M4.1 — Add RED test for requirements-analysis objective routing.
+- Commit: pending (`feat: migrate investment to structured domain adapter`).
+- Working tree: pending verification after commit.
+
+Resume checkpoint:
+- Current HEAD: ce79077 (pre-commit)
+- Working tree: 7 modified files + 1 untracked test file (listed in section above)
+- Last completed milestone/task: M3 (Investment Structured-Domain Migration)
+- Current in-progress task: none after commit
+- RED observed: `python3 -m pytest tests/unit/test_investment_structured_domain_spec.py -q` — initial ImportError for `investment_spec` / `InvestmentAnalysisUseCase`
+- GREEN observed: same command — 13/13 pass; with registry tests added later 13/13 still pass
+- Quality gate status: full pytest 552/552 pass; validate_traceability OK; scan_secrets hit_count=0; git diff --check clean
+- Next command to run: Prepare for Task M4.1 (RED test for `domain="codebase"` + `objective="requirements-analysis: ..."` routing — note `test_codebase_requirements_analysis_objective_resolves_to_codebase_spec` already exists in `test_domain_example_specs.py`; M4.1 should extend it with stricter objective-routing assertions or add a new focused test)
+- Stop condition: none
+
 ### 2026-05-14 — Hermes iteration resilience rule added
 
 - Phase completed: Prepare / Do / Reflection control update.

@@ -11,7 +11,11 @@ from typing import Iterable
 from hisys.domain.domain_adapters import DomainAdapterSpec
 from hisys.domain.runtime import DomainRuntimeArtifactWriter
 from hisys.domain.translation import DomainUseCaseArtifactTranslator
-from hisys.domain.use_cases import CodeAnalysisUseCase, ResearchAnalysisUseCase
+from hisys.domain.use_cases import (
+    CodeAnalysisUseCase,
+    InvestmentAnalysisUseCase,
+    ResearchAnalysisUseCase,
+)
 
 
 class DuplicateDomainSpecError(ValueError):
@@ -34,6 +38,15 @@ _RESEARCH_TRACEABILITY_IDS = (
 )
 
 _CODEBASE_TRACEABILITY_IDS = _RESEARCH_TRACEABILITY_IDS
+
+_INVESTMENT_TRACEABILITY_IDS = (
+    "HISYS-FR-DOM-003",
+    "HISYS-FR-DOM-004",
+    "HISYS-FR-DOM-006",
+    "HISYS-T-026",
+    "HISYS-T-027",
+    "HISYS-T-028",
+)
 
 
 def research_spec() -> DomainAdapterSpec:
@@ -68,6 +81,29 @@ def codebase_spec() -> DomainAdapterSpec:
     )
 
 
+def investment_spec() -> DomainAdapterSpec:
+    """Advisory-only structured spec for the investment domain migration.
+
+    The spec reuses the existing investment packet/dry-run/operator-review CLI
+    as the system of record and never authorizes live execution, publication,
+    credential use, or external mutation. The recommendation surfaced by this
+    spec is advisory, requires human review, and explicitly carries the
+    `execution_authorized=false` and `publication_or_live_action_approved=false`
+    governance flags so audit reviewers can confirm the boundary without
+    re-resolving the underlying investment packet.
+    """
+
+    return DomainAdapterSpec(
+        domain_id="investment",
+        aliases=("investment",),
+        use_case_factory=InvestmentAnalysisUseCase,
+        translator=DomainUseCaseArtifactTranslator(),
+        artifact_writer=DomainRuntimeArtifactWriter(),
+        traceability_ids=_INVESTMENT_TRACEABILITY_IDS,
+        safety_policy="advisory_only_no_live_action",
+    )
+
+
 def validate_spec_collisions(specs: Iterable[DomainAdapterSpec]) -> None:
     """Reject duplicate canonical domains or aliases across registered specs.
 
@@ -98,6 +134,7 @@ __all__ = [
     "DEFAULT_REQUIREMENTS_ROOT",
     "DuplicateDomainSpecError",
     "codebase_spec",
+    "investment_spec",
     "research_spec",
     "validate_spec_collisions",
 ]

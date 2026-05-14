@@ -224,3 +224,15 @@ This schema supports professor-controlled investment decision workflows while pr
 ```text
 Evidence packet -> Review gates -> Human insight -> Human approval -> Optional external action outside default Hisys execution
 ```
+
+## Structured-Domain Adapter Bridge
+
+Traceability: HISYS-FR-DOM-006, HISYS-FR-DOM-003..004, HISYS-T-028.
+
+`InvestmentDecisionPacket` is also reachable through the structured-domain adapter substrate via `investment_spec()` (`src/hisys/domain/specs.py`) and `InvestmentAnalysisUseCase` (`src/hisys/domain/use_cases.py`). The adapter is advisory-only:
+
+- The structured-domain adapter does not redefine `InvestmentDecisionPacket` or `InvestmentWeightPolicy`. Existing packet/dry-run/operator-review CLI commands (`build-investment-decision-packet`, `run-investment-decision-dry-run`, `review-investment-decision-packet`) remain the system of record for governed investment product artifacts.
+- The adapter forwards investment packet and weight-policy refs through `request.sources` and `request.config_snapshot_refs`. Refs flow into the bridged `DomainInvestigationResult` as evidence/source refs without copying packet contents into Hermes-facing tool results.
+- The adapter recommendation embeds the safety phrases `not financial advice` and `no autonomous execution` plus the governance flags `execution_authorized=false` and `publication_or_live_action_approved=false`, so audit reviewers can confirm advisory-only handling directly from the runtime artifact.
+- `requires_human_review=true`, `external_call_made=false`, and `mutation_performed=false` are preserved.
+- The adapter performs no order placement, publication, credential use, broker call, or other live external action. Enabling any consequential action still requires the existing `InvestmentDecisionPacket` human-approval boundary and a separate, controlled change with human-approved scopes and fixture-first tests.
