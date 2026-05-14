@@ -41,6 +41,15 @@ class ResearchInvestigationLayer:
         )
 
 
+REQUIREMENTS_ANALYSIS_OBJECTIVE_PREFIX = "requirements-analysis:"
+
+
+def _is_requirements_analysis_objective(objective: str) -> bool:
+    """Detect the requirements-analysis subtype convention under `codebase`."""
+
+    return objective.strip().lower().startswith(REQUIREMENTS_ANALYSIS_OBJECTIVE_PREFIX)
+
+
 class CodeInvestigationLayer:
     """Investigate code evidence from local memos and requirements folders."""
 
@@ -53,12 +62,23 @@ class CodeInvestigationLayer:
         request: DomainInvestigationRequest,
         context: DomainUseCaseContext,
     ) -> InvestigationWorkProduct:
+        # Requirements-analysis remains a codebase subtype via objective
+        # labeling so audit reviewers can distinguish it from generic codebase
+        # evaluation without expanding `DomainName`.
+        is_requirements_analysis = _is_requirements_analysis_objective(request.objective)
+        suffix = "REQUIREMENTS-ANALYSIS" if is_requirements_analysis else "CODE"
+        scope = "codebase:requirements-analysis" if is_requirements_analysis else "codebase"
+        memo_kind = (
+            "local-requirements-analysis-memos"
+            if is_requirements_analysis
+            else "local-code-and-requirements-memos"
+        )
         return InvestigationWorkProduct(
-            work_product_id=f"INVEST-{request.request_id}-CODE",
-            scope="codebase",
+            work_product_id=f"INVEST-{request.request_id}-{suffix}",
+            scope=scope,
             local_search_targets=[self._me_vault_root, self._requirements_root],
             data_source_targets=["local_requirements_folder"],
-            memo_refs=[f"memo://{request.request_id}/local-code-and-requirements-memos"],
+            memo_refs=[f"memo://{request.request_id}/{memo_kind}"],
             evidence_refs=[
                 *[source.source_id for source in request.sources],
                 f"requirements-folder://{self._requirements_root}",

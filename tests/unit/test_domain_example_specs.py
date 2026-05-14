@@ -15,6 +15,7 @@ from hisys.cli.main import (
 )
 from hisys.config import InstanceRoot
 from hisys.domain.domain_adapters import StructuredDomainAdapter
+from hisys.domain.layers import DomainUseCaseContext
 from hisys.domain.specs import codebase_spec, research_spec
 from hisys.domain.use_cases import CodeAnalysisUseCase, ResearchAnalysisUseCase
 from hisys.schemas.domain_investigation import DomainInvestigationRequest
@@ -110,3 +111,44 @@ def test_codebase_spec_factory_returns_code_analysis_use_case() -> None:
     assert spec.domain_id == "codebase"
     use_case = spec.use_case_factory()
     assert isinstance(use_case, CodeAnalysisUseCase)
+
+
+def _use_case_context(tmp_path: Path) -> DomainUseCaseContext:
+    return DomainUseCaseContext(
+        instance_root=tmp_path,
+        boundary_dir=tmp_path / "runtime-boundary" / "domain-investigation",
+        yyyymmdd="20260514",
+    )
+
+
+def test_codebase_requirements_analysis_objective_labels_investigation_work_product(tmp_path: Path) -> None:
+    use_case = CodeAnalysisUseCase(requirements_root="/home/cbchoi/me/requirements")
+    request = _request(
+        "codebase",
+        "requirements-analysis: review SRS coverage for module X",
+        request_id="REQ-CODEBASE-REQA-001",
+    )
+
+    result = use_case.run(request, _use_case_context(tmp_path))
+
+    # The investigation work product must distinguish requirements-analysis
+    # from generic codebase evaluation through objective/subtype labeling so
+    # runtime artifacts remain auditable without `DomainName` expansion.
+    assert "requirements-analysis" in result.investigation.scope.lower()
+    assert "REQUIREMENTS-ANALYSIS" in result.investigation.work_product_id
+
+
+def test_codebase_generic_objective_does_not_carry_requirements_analysis_label(tmp_path: Path) -> None:
+    use_case = CodeAnalysisUseCase(requirements_root="/home/cbchoi/me/requirements")
+    request = _request(
+        "codebase",
+        "evaluate current codebase implementation evidence",
+        request_id="REQ-CODEBASE-EVAL-001",
+    )
+
+    result = use_case.run(request, _use_case_context(tmp_path))
+
+    # Generic codebase objectives must not carry the requirements-analysis
+    # subtype, otherwise the label loses its meaning for audit reviewers.
+    assert "requirements-analysis" not in result.investigation.scope.lower()
+    assert "REQUIREMENTS-ANALYSIS" not in result.investigation.work_product_id

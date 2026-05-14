@@ -1068,6 +1068,32 @@ Append one entry after each completed task, stop condition, or runtime limit.
 - Working tree: clean.
 
 
+### 2026-05-14 — M4 requirements-analysis subtype labeling completed
+
+- Phase completed: Prepare / RED / GREEN / Refactor / Gate for M4.1..M4.2.
+- Controlled anchors checked: SRS `HISYS-FR-DOM-005`, `HISYS-FR-DOM-003..004`, `HISYS-DATA-003..005`; SDD Domain Investigation Adapter Design; IDD `HISYS-IF-017`, `5.7`; STD `HISYS-T-025..027`.
+- Codebase evidence: `tests/unit/test_domain_example_specs.py` adds two work-product labeling tests; `tests/unit/test_domain_runtime_artifacts.py` adds one runtime-artifact subtype label test; `src/hisys/domain/use_cases.py:CodeInvestigationLayer` now detects `requirements-analysis:` objective prefix and produces `scope="codebase:requirements-analysis"` + work-product-id suffix `REQUIREMENTS-ANALYSIS`; no schema or `DomainName` change.
+- Quality gate result: pass — 555/555 full suite; M4-relevant focused suite 58/58; `validate_traceability.py` OK; `scan_secrets.py` hit_count=0; `git diff --check` clean.
+- Potential issues: none structural. The work-product label is a string convention rather than a typed enum; if audit reviewers need machine-checked enums, a later controlled task can promote the subtype into a typed field. Generic codebase objectives that include the literal substring `requirements-analysis` *without* the prefix (e.g., a memo objective that mentions "requirements analysis" in prose) remain labeled `codebase` — this is intentional: only the `requirements-analysis:` *prefix* triggers the subtype, matching the documented objective/subtype convention.
+- `ralph.md` changes: M4 Reflection entry; no further milestone in current plan.
+- Success likelihood: n/a — plan-defined milestones complete; future loops will need a new ralph.md task queue.
+- Continue decision: stop after M4 commit; no remaining M-milestones in the current ralph.md plan.
+- Stop reason: planned milestone queue exhausted at M4.
+- Next task: none in current plan. Future ralph.md iterations may add (a) a controlled schema increment that promotes requirements-analysis to a typed subtype field; (b) a follow-up to reconcile the pre-existing `HISYS-T-028` collision in `docs/traceability/README.md` between the Selenium harness entry and the new Investment domain migration governance entry.
+- Commit: pending (`feat: label requirements-analysis codebase subtype`).
+- Working tree: pending verification after commit.
+
+Resume checkpoint:
+- Current HEAD: 8349295 (pre-M4-commit)
+- Working tree: 3 modified files (`src/hisys/domain/use_cases.py`, `tests/unit/test_domain_example_specs.py`, `tests/unit/test_domain_runtime_artifacts.py`, plus `ralph.md` for this entry)
+- Last completed milestone/task: M4 (Requirements-Analysis Example Under Codebase Domain)
+- Current in-progress task: none after commit
+- RED observed: `python3 -m pytest tests/unit/test_domain_example_specs.py -q` — `AssertionError: assert 'requirements-analysis' in 'codebase'`
+- GREEN observed: same command — 9/9 pass; runtime-artifact suite 11/11 pass
+- Quality gate status: full pytest 555/555 pass; validate_traceability OK; scan_secrets hit_count=0; git diff --check clean
+- Next command to run: stop — ralph.md milestone queue exhausted. Future Hermes/Claude iterations should update `ralph.md` Section 14 with a new milestone before continuing.
+- Stop condition: planned milestone queue exhausted at M4 (see Continue decision above)
+
 ### 2026-05-14 — M3 investment structured-domain migration completed
 
 - Phase completed: Prepare / RED / GREEN / Refactor / Gate / Commit for M3.1..M3.5.
