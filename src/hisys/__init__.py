@@ -6,7 +6,7 @@ controlled documents are in `pre-develop/Hisys/` and govern this code.
 
 from __future__ import annotations
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 CONTROLLED_PACKAGE = "pre-develop/Hisys"
 REQUIREMENTS_BASELINE = "HISYS-SRS-001 v0.6.2"
