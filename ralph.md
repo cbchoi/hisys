@@ -949,6 +949,36 @@ Append one entry after each completed task, stop condition, or runtime limit.
 - Commit: pending.
 - Working tree: pending verification.
 
+### 2026-05-14 — M2 collision validation and developer guide
+
+- Phase completed: Prepare / RED / GREEN / Refactor / Gate / Commit for M2.1..M2.3.
+- Controlled anchors checked: SRS `HISYS-FR-DOM-001..002`, `HISYS-NFR-MNT-001`; SDD Domain Investigation Adapter Design; IDD `HISYS-IF-017`, `5.7`; STD `HISYS-T-025`.
+- Codebase evidence: `src/hisys/domain/specs.py:validate_spec_collisions`, `src/hisys/cli/main.py:_default_domain_adapter_registry`, `docs/use-cases/hermes-hisys-domain-tool.md`.
+- Quality gate result: pass — collisions suite 4/4, example specs 7/7, full focused 19/19, traceability OK, secret_scan hit_count=0.
+- Potential issues: self-aliases (an alias equal to the spec's canonical `domain_id`) are accepted as redundancy; future specs may want stricter rejection.
+- `ralph.md` changes: M2 Reflection entry; next task M3.1.
+- Success likelihood: 85% — investment migration reuses existing schema/CLI so the structured-domain bridge only needs a translator/use-case seam.
+- Continue decision: continue.
+- Stop reason: none.
+- Next task: Task M3.1 — Add RED tests for investment structured-domain acceptance.
+- Commit: `5019ee7 docs: document structured domain spec extension workflow`.
+- Working tree: clean after this Reflection commit.
+
+### 2026-05-14 — M1 example specs registered
+
+- Phase completed: Prepare / RED / GREEN / Refactor / Gate / Commit for M1.1..M1.3.
+- Controlled anchors checked: SRS `HISYS-FR-DOM-001..005`; SDD Domain Investigation Adapter Design; IDD `HISYS-IF-017`, `5.7`; STD `HISYS-T-025..027`.
+- Codebase evidence checked: `src/hisys/cli/main.py:_default_domain_adapter_registry`, `src/hisys/domain/{adapters,domain_adapters,use_cases,layers}.py`, `tests/unit/test_domain_adapter_registry.py`, `tests/unit/test_domain_postprocessing_guard.py`.
+- Quality gate result: pass — 7 new tests, focused suite 22/22, full suite 535/535, traceability OK, secret_scan hit_count=0, `git diff --check` clean.
+- Potential issues: investment routing for `domain="investment"` still falls through to the legacy `needs_more_evidence` branch until M3 lands; `requirements-analysis` objective is currently routed under codebase but the M4 work-product label is not yet applied.
+- `ralph.md` changes: added M1 Reflection Log entry; next task is M2.1.
+- Success likelihood: 88% (clean registry seam, M2 collision-helper scope contained).
+- Continue decision: continue.
+- Stop reason: none.
+- Next task: Task M2.1 — Add RED tests for duplicate domain/alias collisions.
+- Commit: `2c41d39 feat: register research and codebase structured domain specs`.
+- Working tree: clean.
+
 ## 16. Initial Next Action
 
 Start with **Task M1.1 — Add RED tests for registry precedence**.
