@@ -147,6 +147,94 @@ Prepare -> Do -> Reflection -> Continue/Stop Decision
 
 The next Ralph loop starts again from Prepare and reuses the updated `ralph.md`.
 
+
+## 5.1 Hermes Iteration and Context-Compaction Resilience
+
+Ralph loops may span multiple Hermes or Claude Code iterations. A loop must be resumable from repository state, `ralph.md`, and committed/reflection checkpoints without relying on transient chat context.
+
+### 5.1.1 Durable State Rule
+
+At the start and end of every task, Ralph shall record enough durable state for the next Hermes iteration to resume safely:
+
+```text
+Resume checkpoint:
+- Current HEAD: <git rev-parse --short HEAD>
+- Working tree: <clean or exact file list>
+- Last completed milestone/task: <ID/title>
+- Current in-progress task: <ID/title or none>
+- RED observed: <command + expected failure or n/a>
+- GREEN observed: <command + pass result or n/a>
+- Quality gate status: <commands + pass/fail>
+- Next command to run: <single command or Prepare step>
+- Stop condition: <none or exact condition>
+```
+
+The checkpoint belongs in the Reflection Log after each completed task, after every stop condition, and before any expected long-running or interruption-prone phase.
+
+### 5.1.2 Iteration Budget Rule
+
+Before starting a task, estimate whether the task can finish within the current Hermes/Claude iteration budget. If not, split the task or stop at a clean checkpoint. Do not start production changes that cannot likely reach a focused GREEN state in the current iteration.
+
+Default per-iteration target:
+
+```text
+one RED/GREEN/reflection/commit unit per iteration
+```
+
+A single run may execute multiple tasks only when each task reaches a committed clean checkpoint before the next task begins.
+
+### 5.1.3 Resume-First Rule
+
+When a new Hermes iteration starts, Ralph shall not assume the previous message context is complete. It shall first reconstruct state from durable sources:
+
+```bash
+git status --short
+git rev-parse --short HEAD
+git log --oneline -12
+```
+
+Then read:
+
+```text
+ralph.md Reflection Log
+current milestone/task section
+modified tests/code from recent commits
+SRS/SDD/IDD/STD anchors for the next task
+```
+
+Only after this reconstruction may Ralph continue the next task.
+
+### 5.1.4 Interrupted-Run Handling
+
+If Hermes, Claude Code, or the user interrupts a loop:
+
+1. Inspect `git status --short`.
+2. If the working tree is clean, resume from the latest committed Reflection Log and next task.
+3. If the working tree has changes, classify them as:
+   - complete and passing checkpoint;
+   - partial but recoverable current task work;
+   - unrelated or unsafe changes.
+4. For partial current-task work, run the focused test for that task before editing further.
+5. For unrelated or unsafe changes, stop and report the exact files; do not overwrite or mix them into a commit.
+
+Never use `git reset`, `git checkout`, `git clean`, or history rewrite to recover without explicit user-executed approval under Section 2.
+
+### 5.1.5 Claude/Ralph Invocation Contract
+
+When delegating a Ralph loop to Claude Code or another implementation agent, the prompt shall require:
+
+```text
+- read ralph.md first;
+- reconstruct state from git and Reflection Log;
+- execute at most one coherent task before checkpoint unless explicitly safe;
+- commit each completed increment locally;
+- append Reflection Log before continuing;
+- stop with a resume checkpoint if permissions, iteration budget, tests, or traceability fail;
+- never rely on chat-only state for task selection or success claims.
+```
+
+This contract exists to overcome Hermes iteration limits and context compaction. The repository state and `ralph.md` are the source of truth.
+
 ## 6. Prepare Stage
 
 ### 6.1 Objective
@@ -978,6 +1066,22 @@ Append one entry after each completed task, stop condition, or runtime limit.
 - Next task: Task M2.1 — Add RED tests for duplicate domain/alias collisions.
 - Commit: `2c41d39 feat: register research and codebase structured domain specs`.
 - Working tree: clean.
+
+
+### 2026-05-14 — Hermes iteration resilience rule added
+
+- Phase completed: Prepare / Do / Reflection control update.
+- Controlled anchors checked: `ralph.md` control protocol, Ralph loop stop conditions, current repository state after Claude-run M1/M2 commits.
+- Codebase evidence checked: branch `feat/domain-adaptive-requirements-analysis`, HEAD `860d4da`, clean working tree before this edit.
+- Quality gate result: pass — `validate_traceability.py`, `scan_secrets.py`, `git diff --check`, and focused domain example/spec-collision/CLI tests passed for this control-plan edit.
+- Potential issues: long Claude runs can outlive Discord/Hermes iteration windows; durable checkpoints are required before each continuation.
+- `ralph.md` changes made: added Section 5.1 defining durable state checkpoints, iteration budget rule, resume-first rule, interrupted-run handling, and Claude/Ralph invocation contract.
+- Success likelihood: 90% after this control update; future loops should resume from git + Reflection Log even when chat context is compacted or interrupted.
+- Continue decision: continue after validation and commit.
+- Stop reason: none.
+- Next task: resume Ralph from latest committed task state; after M1/M2, next implementation milestone is M3 unless `ralph.md` Reflection Log says otherwise.
+- Commit: pending.
+- Working tree: pending verification.
 
 ## 16. Initial Next Action
 
