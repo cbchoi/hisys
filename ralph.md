@@ -918,20 +918,20 @@ git diff --check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
-### 2026-05-14 — Ralph control structure merged
+### 2026-05-14 16:58 KST — Ralph control structure merged and verified
 
-- Phase completed: Prepare / Do / Reflection control update.
+- Phase completed: Prepare / Do / Reflection / Gate for control-plan update.
 - Controlled anchors checked: existing `ralph.md`; standard Ralph template; Hisys controlled-document table preserved.
-- Codebase evidence checked: repository branch `feat/domain-adaptive-requirements-analysis`, current HEAD `b6ac4ed`, existing Hisys task queue.
-- Quality gate result: pending verification after merge.
+- Codebase evidence checked: repository branch `feat/domain-adaptive-requirements-analysis`, update baseline `b6ac4ed`, existing Hisys task queue.
+- Quality gate result: pass — required sections present, Markdown fences balanced, `git diff --check` passed, `scripts/validate_traceability.py` passed, `scripts/scan_secrets.py` reported `hit_count=0`.
 - Potential issues: none known; task queue preserved from prior plan.
 - `ralph.md` changes made: added non-delegable safety boundary, Prepare/Do/Reflection cycle, 75% success-likelihood stop rule, 5-hour default runtime, reflection log, and user-executed-command requirement.
 - Success likelihood: 90% for control-plan use after validation.
-- Continue decision: continue after docs/control validation.
+- Continue decision: continue.
 - Stop reason: none.
 - Next task: Task M1.1 — Add RED tests for registry precedence.
-- Commit: none yet.
-- Working tree: pending verification.
+- Commit: `c0d96a3 docs: complete investment ralph milestone`; this verification-log update will be committed as the next local docs/control increment.
+- Working tree: modified at entry time — expected clean after local verification commit.
 
 
 ### 2026-05-14 — M3 investment milestone completed as executable migration plan
