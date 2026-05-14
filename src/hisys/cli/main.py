@@ -74,7 +74,7 @@ from ..contracts.evidence_reasons import reason_codes
 from ..contracts.evaluator import EvidenceSummary, evaluate_pass_contract
 from ..contracts.pass_registry import PassContractRegistryEntry, candidate_from_proposal, find_contract, load_pass_contract_registry, promote_candidate
 from ..contracts.review_package import build_review_package
-from ..domain import DomainAdapterRegistry, DomainInvestigationContext
+from ..domain import DomainAdapterRegistry, DomainInvestigationContext, StructuredDomainAdapter, codebase_spec, research_spec
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
 from ..evidence_store import (
     build_stone_candidates,
@@ -7040,7 +7040,16 @@ def _should_apply_research_gap_postprocessors(adapter: object | None) -> bool:
 def _default_domain_adapter_registry(*, instance: InstanceRoot) -> DomainAdapterRegistry[DomainInvestigationResult]:
     """Build the ordered registry for domain-specific investigation adapters."""
 
-    return DomainAdapterRegistry([_ResearchGapDomainAdapter(instance=instance)])
+    # Keep the legacy research-gap adapter ahead of the generic research spec so
+    # existing DARS fixture and Chief Editor postprocessors remain the first
+    # match for formalism-gap objectives.
+    return DomainAdapterRegistry(
+        [
+            _ResearchGapDomainAdapter(instance=instance),
+            StructuredDomainAdapter(research_spec()),
+            StructuredDomainAdapter(codebase_spec()),
+        ]
+    )
 
 
 def _build_research_domain_result(
