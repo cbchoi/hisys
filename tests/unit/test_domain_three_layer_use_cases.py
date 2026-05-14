@@ -59,6 +59,9 @@ def test_research_use_case_runs_investigation_aggregation_decision_layers(tmp_pa
     assert result.decision.input_report_ref == result.aggregation.report_ref
     assert result.external_call_made is False
     assert result.mutation_performed is False
+    assert result.requires_human_review is True
+    assert result.quality_gate == "needs_more_evidence"
+    assert result.recommendation_summary == result.decision.recommendation
 
 
 def test_code_use_case_uses_local_me_vault_and_local_requirements_sources(tmp_path: Path) -> None:
@@ -78,3 +81,6 @@ def test_code_use_case_uses_local_me_vault_and_local_requirements_sources(tmp_pa
     assert result.decision.decision_type == "code_evaluation_review"
     assert result.external_call_made is False
     assert result.mutation_performed is False
+    assert result.requires_human_review is True
+    assert result.quality_gate == "needs_more_evidence"
+    assert result.recommendation_summary == result.decision.recommendation

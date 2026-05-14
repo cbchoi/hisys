@@ -91,6 +91,9 @@ class DomainUseCaseResult:
     aggregation: AggregationWorkProduct
     decision: DecisionWorkProduct
     layer_trace: list[LayerTraceStep] = field(default_factory=list)
+    recommendation_summary: str = ""
+    quality_gate: Literal["passed", "needs_more_evidence", "failed"] = "needs_more_evidence"
+    requires_human_review: bool = True
     external_call_made: bool = False
     mutation_performed: bool = False
 
@@ -181,6 +184,9 @@ class DomainUseCase:
                     output_ref=decision.decision_ref,
                 ),
             ],
+            recommendation_summary=decision.recommendation,
+            quality_gate="needs_more_evidence",
+            requires_human_review=decision.requires_human_review,
             external_call_made=external_call_made,
             mutation_performed=mutation_performed,
         )
