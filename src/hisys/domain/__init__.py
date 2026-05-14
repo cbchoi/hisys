@@ -1,6 +1,7 @@
 """Domain-specific Hisys investigation adapters."""
 
 from .adapters import DomainAdapterRegistry, DomainInvestigationAdapter, DomainInvestigationContext
+from .domain_adapters import DomainAdapterSpec, StructuredDomainAdapter, build_use_case_context
 from .runtime import DomainRuntimeArtifactRefs, DomainRuntimeArtifactWriter
 from .translation import (
     DomainUseCaseArtifactPacket,
@@ -26,6 +27,7 @@ __all__ = [
     "DecisionLayer",
     "DecisionWorkProduct",
     "DomainAdapterRegistry",
+    "DomainAdapterSpec",
     "DomainInvestigationAdapter",
     "DomainInvestigationContext",
     "DomainRuntimeArtifactRefs",
@@ -38,5 +40,7 @@ __all__ = [
     "InvestigationLayer",
     "InvestigationWorkProduct",
     "LayerTraceStep",
+    "StructuredDomainAdapter",
     "build_domain_investigation_result",
+    "build_use_case_context",
 ]
