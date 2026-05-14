@@ -48,6 +48,7 @@ class InvestigationWorkProduct:
     data_source_targets: list[str]
     memo_refs: list[str]
     evidence_refs: list[str]
+    domain_subtype: str | None = None
     external_call_made: bool = False
     mutation_performed: bool = False
 
@@ -77,6 +78,7 @@ class DecisionWorkProduct:
     decision_ref: str
     recommendation: str
     requires_human_review: bool = True
+    governance_flags: dict[str, bool] = field(default_factory=dict)
     external_call_made: bool = False
     mutation_performed: bool = False
 
@@ -91,9 +93,11 @@ class DomainUseCaseResult:
     aggregation: AggregationWorkProduct
     decision: DecisionWorkProduct
     layer_trace: list[LayerTraceStep] = field(default_factory=list)
+    domain_subtype: str | None = None
     recommendation_summary: str = ""
     quality_gate: Literal["passed", "needs_more_evidence", "failed"] = "needs_more_evidence"
     requires_human_review: bool = True
+    governance_flags: dict[str, bool] = field(default_factory=dict)
     external_call_made: bool = False
     mutation_performed: bool = False
 
@@ -184,9 +188,11 @@ class DomainUseCase:
                     output_ref=decision.decision_ref,
                 ),
             ],
+            domain_subtype=investigation.domain_subtype,
             recommendation_summary=decision.recommendation,
             quality_gate="needs_more_evidence",
             requires_human_review=decision.requires_human_review,
+            governance_flags=dict(decision.governance_flags),
             external_call_made=external_call_made,
             mutation_performed=mutation_performed,
         )

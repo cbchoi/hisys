@@ -1030,6 +1030,127 @@ python3 scripts/scan_secrets.py
 git diff --check
 ```
 
+
+### Milestone M5 — Resolve Post-M4 Traceability Identifier Risk
+
+**Goal:** Remove the ambiguous local traceability title collision around `HISYS-T-028` so controlled `HISYS-T-028` is uniquely associated with investment domain migration governance.
+
+**Controlled anchors:**
+
+- SRS: `HISYS-FR-DOM-006`, `HISYS-FR-DOM-003..004`
+- SDD: `Domain Investigation Adapter Design`
+- IDD: `HISYS-IF-017`, `5.7`
+- STD: `HISYS-T-028`
+- TDD: RED/GREEN/REFACTOR procedure
+
+#### Task M5.1 — Add RED test for unique `HISYS-T-028` ownership in traceability summary
+
+**Objective:** Ensure the Selenium read-only harness no longer uses the same local increment-title identifier as controlled investment migration governance.
+
+**Files:**
+
+- Modify: `tests/unit/test_domain_risk_resolution.py`
+- Modify: `docs/traceability/README.md`
+- Possibly modify: `tests/unit/test_traceability_docs_status.py`
+
+**Required test behavior:**
+
+```text
+Investment structured-domain adapter migration row remains the controlled `HISYS-T-028` owner.
+Selenium read-only research harness uses `HISYS-T-028-SEL` as a historical/local traceability label.
+```
+
+**Quality gate:**
+
+```bash
+python3 -m pytest tests/unit/test_domain_risk_resolution.py tests/unit/test_traceability_docs_status.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+### Milestone M6 — Typed Investment Governance Runtime Fields
+
+**Goal:** Promote investment governance flags from recommendation-summary text into typed runtime-artifact fields while preserving the existing advisory-only investment product workflow.
+
+**Controlled anchors:**
+
+- SRS: `HISYS-FR-DOM-006`, `HISYS-FR-DOM-004`, `HISYS-NFR-SEC-001..004`
+- SDD: `Domain Investigation Adapter Design`
+- IDD: `HISYS-IF-017`, `5.7`
+- STD: `HISYS-T-027`, `HISYS-T-028`
+- TDD: RED/GREEN/REFACTOR procedure
+
+#### Task M6.1 — Add RED test for typed investment governance flags
+
+**Objective:** Runtime artifacts for `investment_spec()` must expose machine-checkable booleans for the no-execution/no-publication/no-credential/no-live-action boundary.
+
+**Files:**
+
+- Modify: `tests/unit/test_domain_risk_resolution.py`
+- Modify: `src/hisys/domain/layers.py`
+- Modify: `src/hisys/domain/use_cases.py`
+- Modify: `src/hisys/domain/translation.py`
+
+**Required test behavior:**
+
+```text
+record["governance_flags"] == {
+  "execution_authorized": false,
+  "publication_or_live_action_approved": false,
+  "autonomous_execution_allowed": false,
+  "credential_use_allowed": false,
+  "live_external_action_allowed": false
+}
+```
+
+**Quality gate:**
+
+```bash
+python3 -m pytest tests/unit/test_domain_risk_resolution.py tests/unit/test_investment_structured_domain_spec.py tests/unit/test_domain_runtime_artifacts.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+### Milestone M7 — Typed Requirements-Analysis Subtype and Explicit Marker
+
+**Goal:** Preserve `domain="codebase"` while making requirements-analysis subtype classification machine-checkable and slightly more explicit than prefix-only matching.
+
+**Controlled anchors:**
+
+- SRS: `HISYS-FR-DOM-005`, `HISYS-FR-DOM-003..004`
+- SDD: `Domain Investigation Adapter Design`
+- IDD: `HISYS-IF-017`, `5.7`
+- STD: `HISYS-T-025`, `HISYS-T-027`
+- TDD: RED/GREEN/REFACTOR procedure
+
+#### Task M7.1 — Add RED tests for typed subtype field and explicit marker classifier
+
+**Objective:** Requirements-analysis artifacts must carry `domain_subtype="requirements-analysis"`, and the classifier must accept both the original `requirements-analysis:` prefix and an explicit `[requirements-analysis]` marker.
+
+**Files:**
+
+- Modify: `tests/unit/test_domain_risk_resolution.py`
+- Modify: `src/hisys/domain/layers.py`
+- Modify: `src/hisys/domain/use_cases.py`
+- Modify: `src/hisys/domain/translation.py`
+
+**Implementation constraints:**
+
+- Do not add a new `DomainName` value.
+- Do not classify generic prose mentions of requirements analysis unless the prefix or explicit marker is present.
+- Preserve no external call and no mutation defaults.
+
+**Quality gate:**
+
+```bash
+python3 -m pytest tests/unit/test_domain_risk_resolution.py tests/unit/test_domain_runtime_artifacts.py tests/unit/test_domain_example_specs.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
 ## 15. Reflection Log
 
 Append one entry after each completed task, stop condition, or runtime limit.
@@ -1177,6 +1298,31 @@ Resume checkpoint:
 - Next task: none in current completed plan unless a new milestone queue is added.
 - Commit: pending for this `ralph.md` docs/control update.
 - Working tree: `ralph.md` plus unrelated domain-risk files before commit; commit must stage only `ralph.md`.
+
+
+### 2026-05-14 — M5-M7 post-M4 risk resolution completed
+
+- Phase completed: Prepare / RED / GREEN / Refactor / Gate for M5.1, M6.1, and M7.1.
+- Controlled anchors checked: SRS `HISYS-FR-DOM-003..006`, `HISYS-NFR-SEC-001..004`; SDD Domain Investigation Adapter Design; IDD `HISYS-IF-017`, `5.7`; STD `HISYS-T-025`, `HISYS-T-027`, `HISYS-T-028`.
+- Codebase evidence: `tests/unit/test_domain_risk_resolution.py` added risk-resolution regressions; `docs/traceability/README.md` now renames the historical Selenium local label to `HISYS-T-028-SEL`; `src/hisys/domain/layers.py` and `src/hisys/domain/translation.py` carry `domain_subtype` and `governance_flags`; `src/hisys/domain/use_cases.py` emits typed investment governance booleans and recognizes the explicit `[requirements-analysis]` marker while preserving the original `requirements-analysis:` prefix.
+- Quality gate result: focused pass — 52/52 tests passed for domain risk resolution, runtime artifacts, investment structured-domain spec, example specs, and traceability-doc status; `validate_traceability.py` OK; `scan_secrets.py` hit_count=0; `git diff --check` clean.
+- Potential issues: none open for these three risks; controlled document IDs were not expanded because the fixes are within existing `HISYS-FR-DOM-004..006` and `HISYS-T-025/T-027/T-028` scope.
+- `ralph.md` changes: added M5, M6, and M7 milestones and this reflection entry.
+- Success likelihood: n/a — M5-M7 risk-resolution queue complete after full validation.
+- Continue decision: stop after local commit; no open post-M4 risk-resolution milestone remains.
+- Stop reason: M5-M7 risk-resolution queue complete.
+- Next task: none until a new Ralph milestone is defined.
+
+Resume checkpoint:
+- Current HEAD: 17853d4
+- Working tree: modified files for M5-M7 risk resolution plus new focused test file
+- Last completed milestone/task: M7.1
+- Current in-progress task: none after commit
+- RED observed: `python3 -m pytest tests/unit/test_domain_risk_resolution.py -q` initially failed 4/4 before implementation
+- GREEN observed: focused domain risk suite 52/52 passed
+- Quality gate status: focused gate passed; full gate passed (`validate_traceability.py`, `scan_secrets.py`, `git diff --check`, `python3 -m pytest -q` -> 559 passed)
+- Next command to run: stop — M5-M7 risk-resolution queue complete
+- Stop condition: M5-M7 risk-resolution queue complete
 
 ## 16. Initial Next Action
 

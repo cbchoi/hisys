@@ -38,9 +38,11 @@ class DomainUseCaseArtifactPacket:
     config_snapshot_refs: list[str]
     prompt_bundle_refs: list[str]
     traceability_ids: tuple[str, ...]
+    domain_subtype: str | None
     recommendation_summary: str
     quality_gate: QualityGate
     requires_human_review: bool
+    governance_flags: dict[str, bool]
     external_call_made: bool
     mutation_performed: bool
 
@@ -60,9 +62,11 @@ class DomainUseCaseArtifactPacket:
             "config_snapshot_refs": self.config_snapshot_refs,
             "prompt_bundle_refs": self.prompt_bundle_refs,
             "traceability_ids": list(self.traceability_ids),
+            "domain_subtype": self.domain_subtype,
             "recommendation_summary": self.recommendation_summary,
             "quality_gate": self.quality_gate,
             "requires_human_review": self.requires_human_review,
+            "governance_flags": dict(self.governance_flags),
             "external_call_made": self.external_call_made,
             "mutation_performed": self.mutation_performed,
         }
@@ -91,9 +95,11 @@ class DomainUseCaseArtifactTranslator:
             config_snapshot_refs=list(request.config_snapshot_refs),
             prompt_bundle_refs=list(request.prompt_bundle_refs),
             traceability_ids=traceability_ids,
+            domain_subtype=result.domain_subtype,
             recommendation_summary=result.recommendation_summary,
             quality_gate=result.quality_gate,
             requires_human_review=result.requires_human_review,
+            governance_flags=dict(result.governance_flags),
             external_call_made=result.external_call_made,
             mutation_performed=result.mutation_performed,
         )

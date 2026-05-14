@@ -17,7 +17,7 @@ def test_traceability_summary_marks_investigator_tasks_as_implemented_not_planne
     text = TRACEABILITY_DOC.read_text(encoding="utf-8")
 
     assert "| HISYS-T-027 Investigator multi-agent fixture research |" in text
-    assert "| HISYS-T-028 Selenium read-only research harness |" in text
+    assert "| HISYS-T-028-SEL Selenium read-only research harness |" in text
     assert "| HISYS-T-032 Configurable Investigator connector registry |" in text
     assert "| Planned HISYS-T-027" not in text
     assert "| Planned HISYS-T-028" not in text

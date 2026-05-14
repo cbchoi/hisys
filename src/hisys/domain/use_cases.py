@@ -42,12 +42,16 @@ class ResearchInvestigationLayer:
 
 
 REQUIREMENTS_ANALYSIS_OBJECTIVE_PREFIX = "requirements-analysis:"
+REQUIREMENTS_ANALYSIS_OBJECTIVE_MARKER = "[requirements-analysis]"
 
 
 def _is_requirements_analysis_objective(objective: str) -> bool:
     """Detect the requirements-analysis subtype convention under `codebase`."""
 
-    return objective.strip().lower().startswith(REQUIREMENTS_ANALYSIS_OBJECTIVE_PREFIX)
+    normalized = objective.strip().lower()
+    return normalized.startswith(REQUIREMENTS_ANALYSIS_OBJECTIVE_PREFIX) or normalized.startswith(
+        REQUIREMENTS_ANALYSIS_OBJECTIVE_MARKER
+    )
 
 
 class CodeInvestigationLayer:
@@ -83,6 +87,7 @@ class CodeInvestigationLayer:
                 *[source.source_id for source in request.sources],
                 f"requirements-folder://{self._requirements_root}",
             ],
+            domain_subtype="requirements-analysis" if is_requirements_analysis else None,
         )
 
 
@@ -219,6 +224,13 @@ class InvestmentAdvisoryDecisionLayer:
             decision_ref=decision_ref,
             recommendation=recommendation,
             requires_human_review=True,
+            governance_flags={
+                "execution_authorized": False,
+                "publication_or_live_action_approved": False,
+                "autonomous_execution_allowed": False,
+                "credential_use_allowed": False,
+                "live_external_action_allowed": False,
+            },
         )
 
 
