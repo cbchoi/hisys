@@ -46,7 +46,8 @@ The Hisys Ralph loop is successful when all applicable criteria are met:
 - [ ] Milestone/global validation passes before milestone completion.
 - [ ] Reflection updates this `ralph.md` with quality-gate result, potential issues, next-loop implications, and success-likelihood estimate.
 - [ ] Ralph loop continuation success likelihood remains at least 75%; otherwise the loop stops.
-- [ ] Each coherent increment is committed locally when safe and authorized.
+- [ ] Each coherent task increment is committed locally when safe and authorized.
+- [ ] Remote push is considered only at milestone completion and remains a user-executed command.
 - [ ] The loop stops when the configured runtime limit is reached.
 
 ## 2. Non-Delegable Safety Boundary
@@ -472,6 +473,30 @@ Acceptance:
 - `git diff --check` reports no whitespace errors.
 - `git status --short` is clean after commit.
 - Each new behavior has a RED test observed before production implementation.
+- If this gate completes a milestone, Ralph prepares but does not execute the user-run push command.
+
+### 10.3 Milestone Push Checkpoint
+
+After a Hisys milestone is complete:
+
+1. Confirm all milestone tasks have local commits.
+2. Run the Global Gate in Section 10.2.
+3. Confirm `git status --short` is clean.
+4. Prepare a user-executed push instruction.
+5. Do not start the next milestone until the user either confirms the push result or explicitly says to continue without pushing.
+
+Required push instruction format:
+
+```text
+Action requires user execution.
+Reason: milestone is complete and remote push changes shared repository state.
+Risk: publishes local commits and may affect collaborators, CI, or release automation.
+Recommended command for user to run manually:
+  git push <remote> <branch>
+Expected safe result:
+  remote reports the branch was pushed successfully.
+After running it, reply with the output or confirmation so Ralph can continue.
+```
 
 ## 11. Commit Rule
 
@@ -487,11 +512,14 @@ git rev-parse --short HEAD
 
 Rules:
 
-- Commit exactly one coherent increment.
+- Commit exactly one coherent task increment locally after its required gates pass.
 - Do not commit unrelated user changes.
 - Do not commit secrets.
 - Do not commit generated heavy artifacts unless explicitly authorized.
-- If commit would require risky Git state manipulation, stop and give user-run instructions.
+- Do not push after every task.
+- At milestone completion, run the milestone/global gate, ensure local commits are complete, then prepare a user-executed push instruction.
+- Remote push remains non-delegable: Ralph/Hermes must not execute `git push`; it must ask the user to run the exact command manually.
+- If commit or milestone push preparation would require risky Git state manipulation, stop and give user-run instructions.
 
 ## 12. Stop Conditions
 
@@ -1134,6 +1162,21 @@ Resume checkpoint:
 - Next task: resume Ralph from latest committed task state; after M1/M2, next implementation milestone is M3 unless `ralph.md` Reflection Log says otherwise.
 - Commit: pending.
 - Working tree: pending verification.
+
+### 2026-05-14 18:35 KST — Milestone push checkpoint rule added
+
+- Phase completed: Prepare / Do / Reflection control update.
+- Controlled anchors checked: user instruction in Discord Ralph thread; `ralph-loop-control` skill; standard Ralph template; Hisys `ralph.md` Commit Rule and Global Gate sections.
+- Codebase evidence checked: branch `feat/domain-adaptive-requirements-analysis`, HEAD `17853d4`, clean working tree before this edit.
+- Quality gate result: pass — required sections present, Markdown fences balanced, `git diff --check` passed, `scripts/validate_traceability.py` passed, `scripts/scan_secrets.py` reported `hit_count=0`.
+- Potential issues: remote push remains non-delegable; Ralph must prepare the push instruction only after a milestone/global gate passes and must not execute `git push` directly. Current working tree also contains unrelated uncommitted domain-risk files that must be excluded from this docs/control commit.
+- `ralph.md` changes made: updated Commit Rule and Global Gate with milestone-completion push checkpoint; local commits remain per completed task increment.
+- Success likelihood: 95% for control-plan consistency after validation.
+- Continue decision: continue after local commit.
+- Stop reason: none.
+- Next task: none in current completed plan unless a new milestone queue is added.
+- Commit: pending for this `ralph.md` docs/control update.
+- Working tree: `ralph.md` plus unrelated domain-risk files before commit; commit must stage only `ralph.md`.
 
 ## 16. Initial Next Action
 
