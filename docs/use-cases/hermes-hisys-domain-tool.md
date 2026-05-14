@@ -450,3 +450,5 @@ Traceability: HISYS-DOM-005, HISYS-DOM-006, HISYS-DOM-012.
 For the first structured-domain Ralph loop, the canonical domain is `codebase` for development/codebase evaluation. `development` is not accepted as a direct `DomainName` unless a future pre-validation alias-normalization seam is explicitly added.
 
 Requirements-analysis uses `domain="codebase"` with an explicit objective convention such as `requirements-analysis: ...` until a later governed schema increment decides whether `requirements_analysis` should become a first-class `DomainName`.
+
+Compatibility sentence: requirements-analysis uses `domain="codebase"` for the first structured-domain loop.
