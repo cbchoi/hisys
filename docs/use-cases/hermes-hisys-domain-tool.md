@@ -452,3 +452,78 @@ For the first structured-domain Ralph loop, the canonical domain is `codebase` f
 Requirements-analysis uses `domain="codebase"` with an explicit objective convention such as `requirements-analysis: ...` until a later governed schema increment decides whether `requirements_analysis` should become a first-class `DomainName`.
 
 Compatibility sentence: requirements-analysis uses `domain="codebase"` for the first structured-domain loop.
+
+## Adding a New Structured-Domain Spec
+
+Traceability: HISYS-FR-DOM-001..005, HISYS-NFR-MNT-001, HISYS-T-025..027.
+
+Follow these steps to register a new example domain spec without adding ad-hoc `if domain == ...` CLI branches.
+
+### Step 1 — Cite controlled-document anchors
+
+Before writing code or tests, record the relevant anchors for the new spec in the Ralph task header:
+
+- SRS requirements that justify the spec (`HISYS-FR-DOM-001..005` for example domains; `HISYS-FR-DOM-006` for investment).
+- SDD design entry under `Domain Investigation Adapter Design`.
+- IDD interface `HISYS-IF-017` and section `5.7 DomainInvestigationAdapter / DomainAdapterSpec`.
+- STD tests `HISYS-T-025..028` covering registration, bridge, and runtime-artifact governance.
+
+### Step 2 — Define the spec fields
+
+A new spec is a `DomainAdapterSpec` (`src/hisys/domain/domain_adapters.py`) declaring:
+
+- `domain_id`: canonical domain string from `DomainName` (`codebase`, `research`, `investment`, ...). Do not add new `DomainName` entries without a controlled schema increment.
+- `aliases`: extra accepted `request.domain` strings. Must not collide with any other spec's canonical domain or alias.
+- `use_case_factory`: zero-argument callable returning a `DomainUseCase` (`investigation_layer`, `aggregation_layer`, `decision_layer`).
+- `translator`: `DomainUseCaseArtifactTranslator()`.
+- `artifact_writer`: `DomainRuntimeArtifactWriter()`.
+- `traceability_ids`: tuple of `HISYS-*` IDs the spec must trace to.
+- `safety_policy`: keep `read_only_advisory` unless a controlled task lifts the boundary.
+
+### Step 3 — Implement the three-layer use case
+
+Add the new use case in `src/hisys/domain/use_cases.py` as three classes (investigation, aggregation, decision) plus a `DomainUseCase` subclass that wires them together. Keep all evidence references as governed memo/ref strings; do not perform filesystem, network, or credential access.
+
+### Step 4 — Write RED tests before code
+
+Create `tests/unit/test_<domain>_structured_domain_spec.py` and write failing tests for:
+
+- `<domain>_spec()` exists and returns `DomainAdapterSpec(domain_id="<domain>", ...)`.
+- The structured adapter accepts `DomainInvestigationRequest(domain="<domain>")` and returns a bridgeable `DomainInvestigationResult` with `requires_human_review=true`, `external_call_made=false`, `mutation_performed=false`.
+- The registry resolves the request to `StructuredDomainAdapter(<domain>_spec())` (and not to the legacy research-gap adapter for non-formalism objectives).
+
+Confirm RED by running the focused command:
+
+```bash
+python3 -m pytest tests/unit/test_<domain>_structured_domain_spec.py -q
+```
+
+### Step 5 — Check alias collisions
+
+After adding the spec to `_default_domain_adapter_registry` in `src/hisys/cli/main.py`, `validate_spec_collisions()` (`src/hisys/domain/specs.py`) rejects:
+
+- Duplicate canonical domains.
+- An alias that equals another spec's canonical domain.
+- An alias duplicated across specs.
+
+Aliases identical to the spec's own `domain_id` are allowed redundancy. Cover the rejection cases with at least one focused test in `tests/unit/test_domain_spec_collisions.py`.
+
+### Step 6 — Run quality gates
+
+Run focused, milestone, and global gates from `ralph.md` Section 10 before reporting the new spec ready:
+
+```bash
+python3 -m pytest \
+  tests/unit/test_<domain>_structured_domain_spec.py \
+  tests/unit/test_domain_example_specs.py \
+  tests/unit/test_domain_spec_collisions.py \
+  tests/unit/test_domain_cli.py \
+  tests/unit/test_structured_domain_adapter.py \
+  -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+python3 -m pytest -q
+```
+
+Stop the Ralph loop if any gate fails; do not paper over a failure with broader try/except or fallbacks.

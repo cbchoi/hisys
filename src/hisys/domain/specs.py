@@ -6,10 +6,16 @@ HISYS-FR-DOM-004, HISYS-FR-DOM-005, HISYS-T-025, HISYS-T-026, HISYS-T-027.
 
 from __future__ import annotations
 
+from typing import Iterable
+
 from hisys.domain.domain_adapters import DomainAdapterSpec
 from hisys.domain.runtime import DomainRuntimeArtifactWriter
 from hisys.domain.translation import DomainUseCaseArtifactTranslator
 from hisys.domain.use_cases import CodeAnalysisUseCase, ResearchAnalysisUseCase
+
+
+class DuplicateDomainSpecError(ValueError):
+    """Raised when registered specs collide on canonical domain or alias."""
 
 # Read-only default search ref. Concrete instances may override the requirements
 # root through a future spec factory parameter; the value is recorded only as a
@@ -62,4 +68,36 @@ def codebase_spec() -> DomainAdapterSpec:
     )
 
 
-__all__ = ["DEFAULT_REQUIREMENTS_ROOT", "codebase_spec", "research_spec"]
+def validate_spec_collisions(specs: Iterable[DomainAdapterSpec]) -> None:
+    """Reject duplicate canonical domains or aliases across registered specs.
+
+    Validation is deterministic and local: it never touches the filesystem or
+    network. The first collision is reported with the offending name so domain
+    developers can fix the spec definition before registry construction.
+    """
+
+    claimed_names: dict[str, str] = {}
+
+    for spec in specs:
+        candidates: list[tuple[str, str]] = [("domain_id", spec.domain_id)]
+        # An alias that equals the spec's own canonical domain is harmless
+        # redundancy; only cross-spec collisions are rejected.
+        candidates.extend(
+            ("alias", alias) for alias in spec.aliases if alias != spec.domain_id
+        )
+        for kind, name in candidates:
+            if name in claimed_names:
+                raise DuplicateDomainSpecError(
+                    f"Domain spec collision on {kind} {name!r}: "
+                    f"already registered by {claimed_names[name]!r}; rename or remove the alias."
+                )
+            claimed_names[name] = spec.domain_id
+
+
+__all__ = [
+    "DEFAULT_REQUIREMENTS_ROOT",
+    "DuplicateDomainSpecError",
+    "codebase_spec",
+    "research_spec",
+    "validate_spec_collisions",
+]
