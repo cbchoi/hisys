@@ -1929,6 +1929,34 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-16 — M15.1 pure codebase inventory builder (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M15.1 (deterministic inventory excludes transient/generated paths).
+- Controlled anchors checked: ralph.md Section 14 Milestone M15 task list and required-inventory-fields paragraph; the M14.1 spec-first packet evidence contract (`raw_source_content_persisted=false`, instance-relative refs); current `src/hisys/operations/` layout (`agent_workflow.py`, `lapidary_flow.py`, etc.) and the `tests/unit/test_agent_workflow_packets.py` pytest pattern.
+- RED observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> `ModuleNotFoundError: No module named 'hisys.operations.codebase_analysis'` (intentional missing module).
+- Implementation: added `src/hisys/operations/codebase_analysis.py` containing `CodebaseInventory` (Pydantic, `schema_id=hisys.codebase.inventory`, `raw_source_content_persisted=false` default) and `build_codebase_inventory`. The walk is depth-first, name-sorted, recursive, and prunes directories whose basename is in `DEFAULT_EXCLUDED_DIRS = {.git, .hg, .svn, .venv, venv, env, __pycache__, .pytest_cache, .mypy_cache, .ruff_cache, .tox, .cache, .eggs, build, dist, htmlcov, node_modules}`. Symlinks are skipped silently in M15.1 (M15.2 will promote them to a `path_policy` event). Files are recorded as repo-relative POSIX strings; the result is sorted to enforce determinism. The module docstring records the explicit M15.1 scope and what M15.2..M15.5 will extend.
+- GREEN observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> 1 passed. The test seeds a fixture repo containing `src/pkg/{__init__.py, module.py}`, `tests/test_module.py`, `docs/readme.md`, and decoy `.git/objects/deadbeef`, `.venv/lib/noise.py`, `__pycache__`, `.pytest_cache`, `.mypy_cache`, `build/lib`, `dist`, `node_modules` trees, then asserts (a) `files == sorted(files)`, (b) the exact kept set, (c) every transient name appears in `excluded_paths`, (d) `schema_id == "hisys.codebase.inventory"`, (e) `raw_source_content_persisted is False`, and (f) `build_codebase_inventory(...).model_dump()` is byte-identical across two invocations.
+- Quality gate result: pass — `git diff --check` OK; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` `scanned_files=434 skipped_files=0 hit_count=0`; full unit suite `python3 -m pytest tests/unit -q` -> 612 passed (611 prior + 1 new); no other tests regressed.
+- Potential issues: (a) `DEFAULT_EXCLUDED_DIRS` is a name-only match — a user may legitimately keep a directory called `build/` that contains source. The current contract is acceptable for M15.1 because the inventory is advisory and the future M15.2 path-policy will record exclusion reasons. (b) The walk skips symlinks silently; M15.2 must convert that into a `path_policy` event with the reason, and may also reject outside-repo symlink targets. (c) The model intentionally omits git/realpath/counts fields listed under M15 — those belong to M15.2/M15.3 and would otherwise have been added without a failing test, violating TDD.
+- `ralph.md` changes: this Reflection entry only.
+- Success likelihood: 84% for M15.2 — the next increment is bounded (binary/large/generated/symlink/outside-repo cases plus `path_policy` recording) and reuses the same fixture pattern. Slight risk: cross-platform symlink behavior under tmp_path may need a platform-skip guard.
+- Continue decision: continue to Task M15.2 after this Reflection is committed.
+- Stop reason: none. Stop conditions for the next loop are the standard non-delegable safety boundary (Section 2) plus any inability to produce a RED for M15.2 within a single coherent increment.
+- Next task: Task M15.2 — RED/GREEN path policy and no raw source persistence in `tests/unit/test_codebase_analysis_inventory.py` (outside-repo symlink, binary, large file, generated file, source-text fixture; produce `path_policy`, skip-reasons, counts, and `raw_source_content_persisted=false`).
+- Commit: `d055788 feat: add pure codebase inventory builder` (already on HEAD); this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: d055788 feat: add pure codebase inventory builder
+- Working tree: `ralph.md` modified for M15.1 Reflection entry
+- Last completed milestone/task: M15.1 (pure codebase inventory builder with deterministic transient-path excludes)
+- Current in-progress task: ralph.md Reflection commit for M15.1
+- RED observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> `ModuleNotFoundError: No module named 'hisys.operations.codebase_analysis'`
+- GREEN observed: same command -> 1 passed; full unit suite 612 passed
+- Quality gate status: pass — `git diff --check` OK; `validate_traceability.py` OK; `scan_secrets.py` hit_count=0; full unit suite 612 passed
+- Next command to run: commit this Reflection as `docs: record M15.1 inventory builder reflection`; then prepare M15.2 (RED test for path policy and no-raw-source-persistence).
+- Stop condition: none — continue to M15.2.
+
 ### 2026-05-16 — M14.1 spec-first packet built for codebase analysis
 
 - Phase completed: Prepare / Do / Gate for Task M14.1 (`SPEC-HISYS-CODEBASE-ANALYSIS-001`).
