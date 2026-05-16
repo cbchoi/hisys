@@ -6,6 +6,8 @@
 
 **Architecture:** Keep DARS advisory-only. Add a localhost-restricted `openai_compatible` adapter with fake HTTP server tests before any live local model. Treat local LLM calls as local model-boundary events that require explicit approval but do not count as live external calls when endpoint authority is localhost-only. Add a provenance/weight policy so generated or ungrounded evidence is explicitly sourced as `ByeSys` and assigned weight 0 in Hisys and Hermes-facing guidance.
 
+**Hisys review result:** A read-only `investigate-domain` review of this plan on 2026-05-16 returned `status=needs_more_evidence`, `quality_gate=needs_more_evidence`, `summary=human_review_required`, `external_call_made=false`, and `mutation_performed=false`. Treat this plan as implementation-ready only after the hardening items below are reflected in tests: strict localhost parsing, explicit local-model boundary fields, fake-server fail-closed coverage, machine-readable DARS provenance, and DARS decision artifact integrity.
+
 **Tech Stack:** Python 3.11, pytest, `http.server`/threaded fake HTTP server fixtures, Pydantic config schemas, Hisys runtime artifacts, Hermes `SOUL.md` for global generation policy.
 
 ---
@@ -13,11 +15,14 @@
 ## Accepted Requirements
 
 1. **Localhost-only local LLM boundary**
-   - Local DARS endpoints must resolve to `127.0.0.1`, `::1`, or `localhost`.
+   - Local DARS endpoints must resolve to loopback only: `127.0.0.1`, `::1`, or the hostname `localhost` after URL parsing.
    - Any non-localhost endpoint configured as local must fail closed.
+   - Reject deceptive or ambiguous authorities such as `localhost.evil.com`, `127.0.0.1.evil.com`, user-info host tricks, empty hosts, unsupported schemes, and remote IPs.
+   - Do not rely on substring matching. Parse with `urllib.parse`, normalize host/port, and use `ipaddress` for IP literals.
    - Local LLM dispatch requires an explicit `approval_ref` even though it remains local.
-   - Hisys records the distinction:
+   - Hisys records the distinction in boundary artifacts and critique records:
      - `model_boundary_crossed=true`
+     - `local_model_call_made=true`
      - `endpoint_scope=localhost_only`
      - `external_call_made=false` for localhost-only local model calls
      - `mutation_performed=false`
@@ -87,13 +92,22 @@ python3 -m pytest tests/unit/test_source_weighting.py -q
 
 **RED tests:**
 - `test_local_openai_compatible_backend_accepts_localhost_endpoint()`
+- `test_local_openai_compatible_backend_accepts_ipv4_loopback_endpoint()`
+- `test_local_openai_compatible_backend_accepts_ipv6_loopback_endpoint()`
 - `test_local_openai_compatible_backend_rejects_remote_endpoint()`
+- `test_local_openai_compatible_backend_rejects_deceptive_localhost_suffix()`
+- `test_local_openai_compatible_backend_rejects_userinfo_host_trick()`
+- `test_local_openai_compatible_backend_rejects_missing_or_unsupported_scheme()`
 - `test_local_llm_backend_requires_policy_enabled_and_approval_gate()`
 
 **Rules:**
-- `kind="openai_compatible"`, `mode="local_network_only"` permits only localhost authorities.
+- `kind="openai_compatible"`, `mode="local_network_only"` permits only parsed loopback authorities.
+- `http` and `https` are the only URL schemes allowed at config validation time; production local smoke should prefer `http://127.0.0.1:<port>/v1/chat/completions` unless TLS is explicitly configured.
+- `localhost` is allowed as a hostname only when parsed as the full hostname. Strings containing `localhost` as a prefix/suffix are not local.
+- IP literals are allowed only when `ipaddress.ip_address(host).is_loopback` is true.
 - `mode="external_api"` remains external and requires the existing external approval path.
 - `credential_ref` must be optional for local models and must not be required for localhost.
+- The selected backend should expose deterministic metadata for downstream dispatch: `endpoint_scope="localhost_only"`, `model_boundary_required=true`, and `external_call_expected=false`.
 
 **Validation:**
 ```bash
@@ -115,12 +129,22 @@ python3 -m pytest tests/unit/test_dars_config.py -q
 - `test_dars_runtime_rejects_local_backend_without_approval_ref()`
 - `test_dars_runtime_records_local_model_boundary_not_external_call()`
 - `test_dars_runtime_fails_closed_on_malformed_local_llm_response()`
+- `test_dars_runtime_fails_closed_on_missing_message_content()`
+- `test_dars_runtime_fails_closed_on_non_2xx_local_llm_response()`
+- `test_dars_runtime_fails_closed_on_local_llm_timeout()`
+- `test_dars_runtime_rejects_remote_endpoint_before_http_request()`
 
 **Fake server behavior:**
 - Listen on `127.0.0.1` with an ephemeral port.
 - Assert request path `/v1/chat/completions`.
 - Capture request JSON for assertions.
-- Return:
+- Record whether the fake server was contacted so remote-endpoint rejection can prove no HTTP request was attempted.
+- Return one response fixture per failure class: success, non-2xx, malformed JSON, missing content, delayed timeout.
+- Assert the request body contains:
+  - configured model;
+  - DARS advisory/no-mutation instructions;
+  - provenance instructions for internal sources, external DOI/URL only when allowed, and ByeSys unsupported synthesis;
+  - no tool/search/browser authorization.
 ```json
 {
   "choices": [
@@ -132,11 +156,38 @@ python3 -m pytest tests/unit/test_dars_config.py -q
 **Expected artifacts:**
 - Critique JSON records `dars_backend="local_llm_dars"`.
 - Critique JSON records `external_call_made=false`.
-- Boundary JSON records approval ref, `endpoint_scope="localhost_only"`, and no mutation.
+- Critique JSON records `model_boundary_crossed=true`, `local_model_call_made=true`, and `endpoint_scope="localhost_only"`.
+- Boundary JSON records approval ref, `endpoint_scope="localhost_only"`, `model_boundary_crossed=true`, `external_call_made=false`, and no mutation.
+- Failure artifacts record a safe error summary without raw model credentials, stack traces, or prompt secrets.
 
 **Validation:**
 ```bash
 python3 -m pytest tests/unit/test_dars_runtime.py::test_dars_runtime_calls_local_openai_compatible_backend -q
+```
+
+---
+
+## Milestone 2.5: DARS decision artifact integrity guard
+
+**Objective:** Prevent Hisys from recording DARS decision refs that do not exist. The Hisys plan review found a `runtime-boundary/dars/.../dars-decision-...json` ref in the domain result without a corresponding artifact.
+
+**Files:**
+- Modify/create tests around the domain decision layer or runtime artifact writer.
+- Likely inspect: `src/hisys/domain/use_cases.py`, `src/hisys/domain/runtime.py`, `src/hisys/domain/layers.py`, and `src/hisys/cli/main.py`.
+
+**RED tests:**
+- `test_domain_investigation_writes_every_dars_decision_ref_it_records()`
+- `test_domain_investigation_fails_or_omits_missing_dars_refs()`
+- `test_run_summary_runtime_boundary_refs_exist_under_instance()`
+
+**Acceptance:**
+- Every `runtime_boundary_refs` entry in `domain-investigation-result`, `hisys-tool-result`, and run summary resolves to a real artifact under the instance root.
+- Missing optional DARS output is represented as an explicit skipped/unavailable status, not as a dangling ref.
+- No artifact integrity fix should introduce external calls or mutation outside the instance root.
+
+**Validation:**
+```bash
+python3 -m pytest tests/unit/test_domain_runtime_artifacts.py tests/unit/test_cli_runtime.py -q
 ```
 
 ---
@@ -173,7 +224,7 @@ python3 -m pytest tests/unit/test_dars_runtime.py tests/unit/test_dars_dispatch.
 - Modify tests: `tests/unit/test_dars_runtime.py`
 
 **Prompt requirements:**
-DARS must include these sections or equivalent structured fields:
+DARS must include these sections or equivalent structured fields. Prefer machine-readable fields in the persisted critique so Jeweler can enforce source weights without re-parsing prose:
 
 ```text
 Internal knowledge-management sources:
@@ -194,6 +245,8 @@ ByeSys generated/unsupported synthesis:
 - `test_dars_prompt_requires_byesys_for_unsupported_generated_evidence()`
 - `test_dars_prompt_requires_doi_or_url_for_external_sources_when_allowed()`
 - `test_dars_critique_records_byesys_evidence_weight_zero()`
+- `test_dars_critique_records_machine_readable_source_weights()`
+- `test_dars_critique_does_not_mark_byesys_as_corroborating_source()`
 
 **Validation:**
 ```bash
@@ -295,6 +348,9 @@ hermes config check
 ```text
 dars_backend: local_llm_dars
 external_call_made: false
+model_boundary_crossed: true
+local_model_call_made: true
+endpoint_scope: localhost_only
 ```
 
 ---
@@ -321,9 +377,10 @@ PYTHONPATH=src python3 -m hisys.cli.main deploy-hermes-tool \
 1. `docs: plan local dars and byesys provenance`
 2. `feat: add byesys source weighting policy`
 3. `feat: validate localhost dars endpoints`
-4. `feat: add openai-compatible local dars adapter`
-5. `feat: enforce byesys zero weight in jeweler review`
-6. `docs: normalize jeweler appraiser terminology`
+4. `test: guard dars decision artifact integrity`
+5. `feat: add openai-compatible local dars adapter`
+6. `feat: enforce byesys zero weight in jeweler review`
+7. `docs: normalize jeweler appraiser terminology`
 
 ---
 
