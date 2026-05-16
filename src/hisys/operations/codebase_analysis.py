@@ -16,6 +16,7 @@ across those increments.
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import re
@@ -352,6 +353,229 @@ def write_codebase_inventory(
     }
 
 
+class SymbolImport(BaseModel):
+    module: str
+    name: str
+    asname: str | None = None
+    line: int
+
+
+class SymbolFunction(BaseModel):
+    name: str
+    line_start: int
+    line_end: int
+    is_async: bool = False
+    parameters: list[str] = Field(default_factory=list)
+
+
+class SymbolClass(BaseModel):
+    name: str
+    line_start: int
+    line_end: int
+    methods: list[SymbolFunction] = Field(default_factory=list)
+    nested_classes: list["SymbolClass"] = Field(default_factory=list)
+
+
+SymbolClass.model_rebuild()
+
+
+class SymbolModule(BaseModel):
+    path: str
+    module_qualname: str
+    imports: list[SymbolImport] = Field(default_factory=list)
+    functions: list[SymbolFunction] = Field(default_factory=list)
+    classes: list[SymbolClass] = Field(default_factory=list)
+
+
+class PythonSymbolIndex(BaseModel):
+    schema_id: str = "hisys.codebase.symbol_index"
+    repo_root: str
+    analysis_scope: str | None = None
+    modules: list[SymbolModule] = Field(default_factory=list)
+    module_count: int = 0
+    import_count: int = 0
+    class_count: int = 0
+    function_count: int = 0
+    raw_source_content_persisted: bool = False
+
+
+def _module_qualname(rel_path: str) -> str:
+    parts = rel_path.split("/")
+    if parts and parts[-1] == "__init__.py":
+        parts = parts[:-1]
+    elif parts and parts[-1].endswith(".py"):
+        parts[-1] = parts[-1][:-3]
+    return ".".join(parts)
+
+
+def _parameter_names(args: ast.arguments) -> list[str]:
+    names: list[str] = []
+    for arg in args.posonlyargs:
+        names.append(arg.arg)
+    for arg in args.args:
+        names.append(arg.arg)
+    if args.vararg is not None:
+        names.append(args.vararg.arg)
+    for arg in args.kwonlyargs:
+        names.append(arg.arg)
+    if args.kwarg is not None:
+        names.append(args.kwarg.arg)
+    return names
+
+
+def _function_node_to_symbol(
+    node: ast.AsyncFunctionDef | ast.FunctionDef,
+) -> SymbolFunction:
+    end_line = getattr(node, "end_lineno", None) or node.lineno
+    return SymbolFunction(
+        name=node.name,
+        line_start=node.lineno,
+        line_end=end_line,
+        is_async=isinstance(node, ast.AsyncFunctionDef),
+        parameters=_parameter_names(node.args),
+    )
+
+
+def _class_node_to_symbol(node: ast.ClassDef) -> SymbolClass:
+    methods: list[SymbolFunction] = []
+    nested_classes: list[SymbolClass] = []
+    for child in node.body:
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            methods.append(_function_node_to_symbol(child))
+        elif isinstance(child, ast.ClassDef):
+            nested_classes.append(_class_node_to_symbol(child))
+    methods.sort(key=lambda m: m.name)
+    nested_classes.sort(key=lambda c: c.name)
+    end_line = getattr(node, "end_lineno", None) or node.lineno
+    return SymbolClass(
+        name=node.name,
+        line_start=node.lineno,
+        line_end=end_line,
+        methods=methods,
+        nested_classes=nested_classes,
+    )
+
+
+def _import_nodes_to_symbols(node: ast.Import | ast.ImportFrom) -> list[SymbolImport]:
+    if isinstance(node, ast.Import):
+        return [
+            SymbolImport(
+                module=alias.name,
+                name=alias.name,
+                asname=alias.asname,
+                line=node.lineno,
+            )
+            for alias in node.names
+        ]
+    # ImportFrom — `from module import name [as asname]`. `node.module` is
+    # None for purely relative imports such as `from . import x`; preserve the
+    # relative dot prefix so the record is unambiguous.
+    base = node.module or ""
+    prefix = "." * (node.level or 0)
+    module_label = f"{prefix}{base}" if prefix else base
+    return [
+        SymbolImport(
+            module=module_label,
+            name=alias.name,
+            asname=alias.asname,
+            line=node.lineno,
+        )
+        for alias in node.names
+    ]
+
+
+def _build_module_symbols(rel_path: str, source: str) -> SymbolModule:
+    tree = ast.parse(source)
+    imports: list[SymbolImport] = []
+    functions: list[SymbolFunction] = []
+    classes: list[SymbolClass] = []
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            imports.extend(_import_nodes_to_symbols(node))
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            functions.append(_function_node_to_symbol(node))
+        elif isinstance(node, ast.ClassDef):
+            classes.append(_class_node_to_symbol(node))
+    imports.sort(key=lambda imp: (imp.module, imp.name, imp.asname or ""))
+    functions.sort(key=lambda fn: fn.name)
+    classes.sort(key=lambda cls: cls.name)
+    return SymbolModule(
+        path=rel_path,
+        module_qualname=_module_qualname(rel_path),
+        imports=imports,
+        functions=functions,
+        classes=classes,
+    )
+
+
+def _count_class_symbols(cls: SymbolClass) -> tuple[int, int]:
+    class_count = 1
+    method_count = len(cls.methods)
+    for nested in cls.nested_classes:
+        nested_classes, nested_methods = _count_class_symbols(nested)
+        class_count += nested_classes
+        method_count += nested_methods
+    return class_count, method_count
+
+
+def build_python_symbol_index(
+    repo_root: Path,
+    *,
+    analysis_scope: str | None = None,
+    path_policy: PathPolicy | None = None,
+) -> PythonSymbolIndex:
+    """Build a deterministic Python AST symbol index for a local repository.
+
+    M16.1 records modules, top-level imports, classes (with nested classes
+    and methods), and free functions. Parse errors are out of scope for M16.1
+    and will be added as evidence in M16.2.
+    """
+
+    inventory = build_codebase_inventory(
+        repo_root=repo_root,
+        analysis_scope=analysis_scope,
+        path_policy=path_policy,
+    )
+
+    modules: list[SymbolModule] = []
+    import_total = 0
+    class_total = 0
+    function_total = 0
+    for rel_path in inventory.files:
+        if not rel_path.endswith(".py"):
+            continue
+        source_path = Path(inventory.repo_root) / rel_path
+        try:
+            source = source_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        try:
+            module = _build_module_symbols(rel_path, source)
+        except SyntaxError:
+            # Parse-error evidence is the M16.2 responsibility; M16.1 simply
+            # skips unparseable modules so the deterministic baseline holds.
+            continue
+        modules.append(module)
+        import_total += len(module.imports)
+        function_total += len(module.functions)
+        for cls in module.classes:
+            class_count, method_count = _count_class_symbols(cls)
+            class_total += class_count
+            function_total += method_count
+
+    modules.sort(key=lambda mod: mod.path)
+    return PythonSymbolIndex(
+        repo_root=inventory.repo_root,
+        analysis_scope=analysis_scope,
+        modules=modules,
+        module_count=len(modules),
+        import_count=import_total,
+        class_count=class_total,
+        function_count=function_total,
+        raw_source_content_persisted=False,
+    )
+
+
 __all__ = [
     "CodebaseInventory",
     "DEFAULT_EXCLUDED_DIRS",
@@ -359,7 +583,13 @@ __all__ = [
     "DEFAULT_GENERATED_SUFFIXES",
     "INVENTORY_RUNTIME_PREFIX",
     "PathPolicy",
+    "PythonSymbolIndex",
     "SkippedPath",
+    "SymbolClass",
+    "SymbolFunction",
+    "SymbolImport",
+    "SymbolModule",
     "build_codebase_inventory",
+    "build_python_symbol_index",
     "write_codebase_inventory",
 ]
