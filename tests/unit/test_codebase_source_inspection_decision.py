@@ -491,3 +491,268 @@ def test_review_missing_artifact_skips_dependent_consistency_finding():
     for finding in decision.validation_findings:
         assert "inventory_schema_id" not in finding
         assert "symbol_index_schema_id" not in finding
+
+
+# ---------------------------------------------------------------------------
+# M19.3 — runtime refs must resolve under instance root.
+# ---------------------------------------------------------------------------
+
+from hisys.operations.codebase_analysis import (  # noqa: E402
+    CodebaseReviewBundle,
+    build_codebase_inventory,
+    build_codebase_scope_map,
+    build_codebase_validation_plan,
+    build_python_symbol_index,
+    load_codebase_review_bundle,
+    scan_codebase_risk_boundaries,
+    write_codebase_inventory,
+    write_codebase_risk_scan,
+    write_codebase_scope_map,
+    write_python_symbol_index,
+)
+
+
+_FIXTURE_DATE = "20260517"
+_FIXTURE_REQUEST_ID = "m19_3_fixture"
+
+
+def _seed_review_repo(repo: Path) -> None:
+    """Seed a minimal local repo so the artifact writers produce real bundles."""
+
+    (repo / "pkg").mkdir()
+    (repo / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "pkg" / "mod.py").write_text(
+        "def add(a, b):\n    return a + b\n", encoding="utf-8"
+    )
+
+
+def _materialize_bundle(
+    instance_root: Path, repo: Path
+) -> tuple[str, str, str, str]:
+    """Write all four artifacts and return their relative refs."""
+
+    inventory = build_codebase_inventory(repo_root=repo)
+    inv_ref = write_codebase_inventory(
+        instance_root=instance_root,
+        date=_FIXTURE_DATE,
+        request_id=_FIXTURE_REQUEST_ID,
+        inventory=inventory,
+    )["json_ref"]
+
+    symbol_index = build_python_symbol_index(repo_root=repo)
+    sym_ref = write_python_symbol_index(
+        instance_root=instance_root,
+        date=_FIXTURE_DATE,
+        request_id=_FIXTURE_REQUEST_ID,
+        symbol_index=symbol_index,
+    )["json_ref"]
+
+    scope_map = build_codebase_scope_map(
+        inventory=inventory, symbol_index=symbol_index
+    )
+    validation_plan = build_codebase_validation_plan(scope_map)
+    scope_ref = write_codebase_scope_map(
+        instance_root=instance_root,
+        date=_FIXTURE_DATE,
+        request_id=_FIXTURE_REQUEST_ID,
+        scope_map=scope_map,
+        validation_plan=validation_plan,
+    )["json_ref"]
+
+    risk_scan = scan_codebase_risk_boundaries(repo_root=repo)
+    risk_ref = write_codebase_risk_scan(
+        instance_root=instance_root,
+        date=_FIXTURE_DATE,
+        request_id=_FIXTURE_REQUEST_ID,
+        scan=risk_scan,
+    )["json_ref"]
+
+    return inv_ref, sym_ref, scope_ref, risk_ref
+
+
+def test_load_review_bundle_round_trip_returns_pydantic_bundle(tmp_path: Path):
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_review_repo(repo)
+
+    inv_ref, sym_ref, scope_ref, risk_ref = _materialize_bundle(instance_root, repo)
+
+    bundle = load_codebase_review_bundle(
+        instance_root=instance_root,
+        inventory_ref=inv_ref,
+        symbol_index_ref=sym_ref,
+        scope_map_ref=scope_ref,
+        risk_scan_ref=risk_ref,
+    )
+
+    assert isinstance(bundle, CodebaseReviewBundle)
+    assert bundle.schema_id == "hisys.codebase.review_bundle"
+    assert isinstance(bundle.inventory, CodebaseInventory)
+    assert isinstance(bundle.symbol_index, PythonSymbolIndex)
+    assert isinstance(bundle.scope_map, CodebaseScopeMap)
+    assert isinstance(bundle.validation_plan, CodebaseValidationPlan)
+    assert isinstance(bundle.risk_scan, CodebaseRiskScan)
+    assert bundle.scope_map.inventory_schema_id == bundle.inventory.schema_id
+    assert bundle.scope_map.symbol_index_schema_id == bundle.symbol_index.schema_id
+    # The bundle envelope inherits the no-live-action invariants.
+    assert bundle.raw_source_content_persisted is False
+    assert bundle.action_authorized is False
+
+
+def test_load_review_bundle_then_review_returns_human_reviewable(tmp_path: Path):
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_review_repo(repo)
+
+    inv_ref, sym_ref, scope_ref, risk_ref = _materialize_bundle(instance_root, repo)
+    bundle = load_codebase_review_bundle(
+        instance_root=instance_root,
+        inventory_ref=inv_ref,
+        symbol_index_ref=sym_ref,
+        scope_map_ref=scope_ref,
+        risk_scan_ref=risk_ref,
+    )
+
+    decision = review_codebase_source_inspection(
+        inventory=bundle.inventory,
+        symbol_index=bundle.symbol_index,
+        scope_map=bundle.scope_map,
+        validation_plan=bundle.validation_plan,
+        risk_scan=bundle.risk_scan,
+    )
+
+    assert decision.decision == "complete_for_human_review"
+    assert decision.missing_evidence == []
+    assert decision.validation_findings == []
+
+
+@pytest.mark.parametrize(
+    "ref_kwarg",
+    [
+        "inventory_ref",
+        "symbol_index_ref",
+        "scope_map_ref",
+        "risk_scan_ref",
+    ],
+)
+def test_load_review_bundle_rejects_absolute_ref(tmp_path: Path, ref_kwarg):
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_review_repo(repo)
+    inv_ref, sym_ref, scope_ref, risk_ref = _materialize_bundle(instance_root, repo)
+    kwargs = {
+        "inventory_ref": inv_ref,
+        "symbol_index_ref": sym_ref,
+        "scope_map_ref": scope_ref,
+        "risk_scan_ref": risk_ref,
+    }
+    kwargs[ref_kwarg] = "/etc/passwd"
+
+    with pytest.raises(ValueError, match="absolute"):
+        load_codebase_review_bundle(instance_root=instance_root, **kwargs)
+
+
+@pytest.mark.parametrize(
+    "ref_kwarg",
+    [
+        "inventory_ref",
+        "symbol_index_ref",
+        "scope_map_ref",
+        "risk_scan_ref",
+    ],
+)
+def test_load_review_bundle_rejects_traversal_ref(tmp_path: Path, ref_kwarg):
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_review_repo(repo)
+    inv_ref, sym_ref, scope_ref, risk_ref = _materialize_bundle(instance_root, repo)
+    kwargs = {
+        "inventory_ref": inv_ref,
+        "symbol_index_ref": sym_ref,
+        "scope_map_ref": scope_ref,
+        "risk_scan_ref": risk_ref,
+    }
+    kwargs[ref_kwarg] = "../escape/inventory.json"
+
+    with pytest.raises(ValueError, match="traversal"):
+        load_codebase_review_bundle(instance_root=instance_root, **kwargs)
+
+
+@pytest.mark.parametrize(
+    "ref_kwarg",
+    [
+        "inventory_ref",
+        "symbol_index_ref",
+        "scope_map_ref",
+        "risk_scan_ref",
+    ],
+)
+def test_load_review_bundle_rejects_empty_ref(tmp_path: Path, ref_kwarg):
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_review_repo(repo)
+    inv_ref, sym_ref, scope_ref, risk_ref = _materialize_bundle(instance_root, repo)
+    kwargs = {
+        "inventory_ref": inv_ref,
+        "symbol_index_ref": sym_ref,
+        "scope_map_ref": scope_ref,
+        "risk_scan_ref": risk_ref,
+    }
+    kwargs[ref_kwarg] = ""
+
+    with pytest.raises(ValueError, match="non-empty"):
+        load_codebase_review_bundle(instance_root=instance_root, **kwargs)
+
+
+def test_load_review_bundle_rejects_dangling_ref(tmp_path: Path):
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_review_repo(repo)
+    inv_ref, sym_ref, scope_ref, risk_ref = _materialize_bundle(instance_root, repo)
+
+    # Replace inventory_ref with a syntactically valid path that does not exist.
+    dangling_ref = inv_ref.rsplit("/", 1)[0] + "/missing-inventory.json"
+
+    with pytest.raises(FileNotFoundError):
+        load_codebase_review_bundle(
+            instance_root=instance_root,
+            inventory_ref=dangling_ref,
+            symbol_index_ref=sym_ref,
+            scope_map_ref=scope_ref,
+            risk_scan_ref=risk_ref,
+        )
+
+
+def test_load_review_bundle_rejects_symlink_escape(tmp_path: Path):
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_review_repo(repo)
+    inv_ref, sym_ref, scope_ref, risk_ref = _materialize_bundle(instance_root, repo)
+
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}", encoding="utf-8")
+    escape_link = instance_root / "escape-inventory.json"
+    escape_link.symlink_to(outside)
+
+    with pytest.raises(ValueError, match="outside instance root"):
+        load_codebase_review_bundle(
+            instance_root=instance_root,
+            inventory_ref="escape-inventory.json",
+            symbol_index_ref=sym_ref,
+            scope_map_ref=scope_ref,
+            risk_scan_ref=risk_ref,
+        )

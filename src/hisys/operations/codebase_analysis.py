@@ -1793,6 +1793,90 @@ _REQUIRED_ARTIFACT_NAMES: tuple[str, ...] = (
 )
 
 
+class CodebaseReviewBundle(BaseModel):
+    """Loaded four-file codebase-analysis bundle ready for review.
+
+    The bundle is the in-memory form of the artifacts written by
+    `write_codebase_inventory`, `write_python_symbol_index`,
+    `write_codebase_scope_map`, and `write_codebase_risk_scan`. The scope-
+    map JSON file persists both the scope map and its matching validation
+    plan together; the loader unwraps that pair so a downstream reviewer
+    sees five typed records.
+    """
+
+    schema_id: str = "hisys.codebase.review_bundle"
+    inventory: CodebaseInventory
+    symbol_index: PythonSymbolIndex
+    scope_map: CodebaseScopeMap
+    validation_plan: CodebaseValidationPlan
+    risk_scan: CodebaseRiskScan
+    raw_source_content_persisted: bool = False
+    action_authorized: bool = False
+
+
+def load_codebase_review_bundle(
+    *,
+    instance_root: Path,
+    inventory_ref: str,
+    symbol_index_ref: str,
+    scope_map_ref: str,
+    risk_scan_ref: str,
+) -> CodebaseReviewBundle:
+    """Resolve, read, and validate the four codebase-analysis artifact files.
+
+    Every caller-supplied ref passes through `resolve_instance_runtime_ref`
+    so absolute paths, empty refs, `..` traversal segments, and symlinks
+    that escape the instance root fail closed before any read. The scope-
+    map JSON is the `{scope_map, validation_plan}` wrapper the M17.4
+    writer produces; the loader unpacks both records from that file.
+    """
+
+    inv_path = resolve_instance_runtime_ref(
+        instance_root=instance_root, relative_ref=inventory_ref
+    )
+    sym_path = resolve_instance_runtime_ref(
+        instance_root=instance_root, relative_ref=symbol_index_ref
+    )
+    scope_path = resolve_instance_runtime_ref(
+        instance_root=instance_root, relative_ref=scope_map_ref
+    )
+    risk_path = resolve_instance_runtime_ref(
+        instance_root=instance_root, relative_ref=risk_scan_ref
+    )
+
+    inventory = CodebaseInventory.model_validate(
+        json.loads(inv_path.read_text(encoding="utf-8"))
+    )
+    symbol_index = PythonSymbolIndex.model_validate(
+        json.loads(sym_path.read_text(encoding="utf-8"))
+    )
+    scope_payload = json.loads(scope_path.read_text(encoding="utf-8"))
+    if not isinstance(scope_payload, dict):
+        raise ValueError(
+            f"scope-map artifact at {scope_map_ref!r} is not a JSON object"
+        )
+    if "scope_map" not in scope_payload or "validation_plan" not in scope_payload:
+        raise ValueError(
+            f"scope-map artifact at {scope_map_ref!r} must contain "
+            "'scope_map' and 'validation_plan' keys"
+        )
+    scope_map = CodebaseScopeMap.model_validate(scope_payload["scope_map"])
+    validation_plan = CodebaseValidationPlan.model_validate(
+        scope_payload["validation_plan"]
+    )
+    risk_scan = CodebaseRiskScan.model_validate(
+        json.loads(risk_path.read_text(encoding="utf-8"))
+    )
+
+    return CodebaseReviewBundle(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=scope_map,
+        validation_plan=validation_plan,
+        risk_scan=risk_scan,
+    )
+
+
 def _aggregate_validation_findings(
     *,
     inventory: CodebaseInventory | None,
@@ -1919,6 +2003,7 @@ def review_codebase_source_inspection(
 
 __all__ = [
     "CodebaseInventory",
+    "CodebaseReviewBundle",
     "CodebaseRiskScan",
     "CodebaseScopeMap",
     "CodebaseScopeMapEntry",
@@ -1951,6 +2036,7 @@ __all__ = [
     "build_python_symbol_index",
     "get_codebase_scope_profile",
     "list_codebase_scope_profiles",
+    "load_codebase_review_bundle",
     "resolve_instance_runtime_ref",
     "review_codebase_source_inspection",
     "scan_codebase_risk_boundaries",
