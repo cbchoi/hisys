@@ -136,6 +136,26 @@ Subagents may inspect bounded paths and return artifacts or verification handles
 
 ## 5. Implementation roadmap
 
+
+### Roadmap execution protocol
+
+Each increment below should be executed as a separate RED -> GREEN -> validation ->
+commit loop. Do not batch two increments into one commit. Each increment must record:
+
+- exact scope and non-goals;
+- files touched;
+- first failing test command and expected failure reason;
+- minimal implementation path;
+- produced runtime-boundary artifact refs, when applicable;
+- focused validation command;
+- repository validation gate;
+- commit message.
+
+For schema or persisted-artifact changes, update `docs/traceability/README.md` in
+the same increment. For CLI changes, add a subprocess/CLI roundtrip test, not only
+a pure-function test. All artifacts stay local, read-only, and no-live-action by
+default.
+
 ### Increment 1: Codebase inventory packet
 
 **Objective:** Add deterministic local repository inventory artifacts.
@@ -234,6 +254,30 @@ python3 scripts/validate_traceability.py
 git diff --check
 ```
 
+**Ralph-ready task queue:**
+
+- **M13.1 RED — deterministic inventory excludes transient paths.**
+  - Test: `tests/unit/test_codebase_analysis_inventory.py::test_inventory_excludes_transient_and_generated_paths`.
+  - Expected RED: `build_codebase_inventory` is missing.
+  - GREEN: add pure path walk with stable sorting and default excludes.
+  - Commit: `feat: add pure codebase inventory builder`.
+- **M13.2 RED/GREEN — path policy and no raw source persistence.**
+  - Test outside-repo symlink, binary file, large file, generated file, and source text fixture.
+  - GREEN: record `path_policy`, skip reasons, counts, and `raw_source_content_persisted=false`; do not store raw file contents.
+  - Commit: `feat: add safe codebase inventory policy`.
+- **M13.3 RED/GREEN — JSON/Markdown writer.**
+  - Test safe instance-relative refs under `runtime-boundary/codebase-analysis/<date>/<request>/`.
+  - GREEN: write deterministic JSON and Markdown renderers.
+  - Commit: `feat: write codebase inventory artifacts`.
+- **M13.4 RED/GREEN — CLI wrapper.**
+  - Test subprocess CLI with fixture repo and `PYTHONPATH=src`.
+  - GREEN: add `build-codebase-inventory` parser/handler.
+  - Commit: `feat: add codebase inventory CLI`.
+- **M13.5 DOC/GATE — docs, traceability, finish packet.**
+  - Update `docs/public/codebase-analysis.md` and `docs/traceability/README.md`.
+  - Build `FINISH-HISYS-CODEBASE-ANALYSIS-001` after gates pass.
+  - Commit: `docs: document codebase inventory packet`.
+
 ### Increment 2: Python AST symbol index packet
 
 **Objective:** Add local symbol-level code intelligence before any LSP dependency.
@@ -283,6 +327,38 @@ runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/symbol-index.md
 - CLI symbols include file and line;
 - output is deterministic and sorted.
 
+**Ralph-ready task queue:**
+
+- **M14.1 RED — AST parser records modules, imports, classes, functions.**
+  - Test: fixture package with nested class/function/import cases.
+  - Expected RED: symbol index builder missing.
+  - GREEN: add pure `build_python_symbol_index` using stdlib `ast`.
+  - Commit: `feat: add python symbol index builder`.
+- **M14.2 RED/GREEN — parse errors are evidence, not run failures.**
+  - Test syntax-error file plus valid file in same repo.
+  - GREEN: record parse error entries with file path, message, and line; continue indexing valid files.
+  - Commit: `feat: preserve symbol parse errors`.
+- **M14.3 RED/GREEN — CLI/test/doc symbol discovery.**
+  - Test argparse parser builders and pytest functions in fixtures.
+  - GREEN: add heuristic tags such as `cli_handler`, `parser_builder`, `pytest_test`.
+  - Commit: `feat: classify codebase symbols`.
+- **M14.4 RED/GREEN — symbol index artifact writer and CLI.**
+  - Test JSON/Markdown refs and subprocess command.
+  - GREEN: add `build-code-symbol-index`.
+  - Commit: `feat: add code symbol index CLI`.
+- **M14.5 DOC/GATE — public docs and traceability.**
+  - Update codebase-analysis docs and traceability row with symbol-index artifact.
+  - Commit: `docs: document code symbol index`.
+
+**Validation:**
+
+```bash
+python3 -m pytest tests/unit/test_codebase_symbol_index.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
 ### Increment 3: Scope map and validation plan
 
 **Objective:** Convert inventory and symbol index into a scope-specific code map and validation plan.
@@ -325,6 +401,37 @@ PYTHONPATH=src python3 -m hisys.cli.main build-codebase-map \
 - spec-first workflow: `tests/unit/test_agent_workflow_packets.py`
 - source connectors: connector-specific tests plus secret scan and traceability validation.
 
+**Ralph-ready task queue:**
+
+- **M15.1 RED — scope profile registry maps scope IDs to entry files.**
+  - Test known scopes such as `domain-adapter`, `runtime-boundary`, and `docs-traceability`.
+  - GREEN: add static scope profiles with entry files, expected tests, and docs.
+  - Commit: `feat: add codebase scope profiles`.
+- **M15.2 RED/GREEN — scope map builder consumes inventory and symbol refs.**
+  - Test it links files, symbols, tests, docs, and traceability refs by scope.
+  - GREEN: add pure builder that accepts loaded artifact dictionaries, not raw prompts.
+  - Commit: `feat: build codebase scope maps`.
+- **M15.3 RED/GREEN — validation plan synthesis.**
+  - Test focused/full command selection for known scopes.
+  - GREEN: add deterministic validation plan rules.
+  - Commit: `feat: derive codebase validation plans`.
+- **M15.4 RED/GREEN — scope-map writer and CLI.**
+  - Test safe input refs under instance root and reject unsafe refs.
+  - GREEN: add `build-codebase-map`.
+  - Commit: `feat: add codebase map CLI`.
+- **M15.5 DOC/GATE — docs, traceability, examples.**
+  - Add examples for `domain-adapter` and `runtime-boundary` scopes.
+  - Commit: `docs: document codebase scope maps`.
+
+**Validation:**
+
+```bash
+python3 -m pytest tests/unit/test_codebase_scope_map.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
 ### Increment 4: Risk-boundary scanner
 
 **Objective:** Detect code paths likely to cross sensitive boundaries.
@@ -359,6 +466,37 @@ runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/risk-boundary-scan.md
 - scanner classifies findings conservatively;
 - no finding authorizes action.
 
+**Ralph-ready task queue:**
+
+- **M16.1 RED — scanner identifies external-call and mutation signals.**
+  - Test `requests.get`, `httpx`, browser calls, `Path.write_text`, and `subprocess.run`.
+  - GREEN: add conservative string/AST scanner with category labels and line refs.
+  - Commit: `feat: add codebase risk boundary scanner`.
+- **M16.2 RED/GREEN — safe local artifact writes are separate from live effects.**
+  - Test runtime-boundary writer fixture and ordinary filesystem mutation fixture.
+  - GREEN: classify `runtime_boundary_artifact_write` separately and keep `action_authorized=false`.
+  - Commit: `feat: classify runtime boundary writes`.
+- **M16.3 RED/GREEN — model/LLM and ByeSys categories.**
+  - Test `openai`, `anthropic`, local model endpoint, and generated-evidence markers.
+  - GREEN: add `model_llm_boundary` and `byesys_generated_evidence` categories.
+  - Commit: `feat: scan model and byesys boundaries`.
+- **M16.4 RED/GREEN — risk scan artifact writer and CLI.**
+  - Test JSON/Markdown refs and subprocess command.
+  - GREEN: add `scan-codebase-boundaries`.
+  - Commit: `feat: add risk boundary scan CLI`.
+- **M16.5 DOC/GATE — docs and traceability.**
+  - State that scanner findings are review evidence, not vulnerability verdicts.
+  - Commit: `docs: document risk boundary scanner`.
+
+**Validation:**
+
+```bash
+python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
 ### Increment 5: Codebase source-inspection decision packet
 
 **Objective:** Review codebase-analysis artifacts and decide whether the evidence is complete enough for human review.
@@ -386,6 +524,37 @@ blocked_needs_more_evidence
 
 Do not add `approved`, `safe_to_deploy`, or `ready_for_live_action` decision values.
 
+**Ralph-ready task queue:**
+
+- **M17.1 RED — decision packet rejects incomplete artifact set.**
+  - Test missing inventory/symbol/scope/risk refs returns `blocked_needs_more_evidence`.
+  - GREEN: add pure reviewer that checks artifact presence, schema IDs, boundary fields, and unresolved blockers.
+  - Commit: `feat: review codebase artifact completeness`.
+- **M17.2 RED/GREEN — complete fixture set becomes human-reviewable.**
+  - Test complete fixture artifacts yield `complete_for_human_review` with no live-action approval.
+  - GREEN: implement decision aggregation and missing-evidence list.
+  - Commit: `feat: build codebase inspection decisions`.
+- **M17.3 RED/GREEN — runtime refs must resolve under instance root.**
+  - Test dangling, absolute, and path-traversal refs fail closed.
+  - GREEN: reuse safe-ref resolution helpers or add a narrow resolver.
+  - Commit: `feat: guard codebase decision artifact refs`.
+- **M17.4 RED/GREEN — review CLI and Markdown summary.**
+  - Test `review-codebase-analysis` subprocess output and persisted artifacts.
+  - GREEN: add CLI handler and JSON/Markdown writer.
+  - Commit: `feat: add codebase analysis review CLI`.
+- **M17.5 DOC/GATE — docs, traceability, finish packet.**
+  - Update docs with decision values and no-live-action boundary.
+  - Commit: `docs: document codebase review packet`.
+
+**Validation:**
+
+```bash
+python3 -m pytest tests/unit/test_codebase_source_inspection_decision.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
 ### Increment 6: Bridge into `investigate-domain --domain codebase`
 
 **Objective:** Make the structured domain adapter consume local codebase-analysis artifacts rather than merely preserving broad evidence refs.
@@ -396,6 +565,37 @@ Do not add `approved`, `safe_to_deploy`, or `ready_for_live_action` decision val
 - Extend `CodeInvestigationLayer` to optionally read explicit inventory/symbol/scope/risk refs from request sources or config snapshot refs.
 - Preserve formal `needs_more_evidence` when required artifacts are missing.
 - Report advisory synthesis separately from formal Hisys result.
+
+**Ralph-ready task queue:**
+
+- **M18.1 RED — codebase request can reference local artifact bundle.**
+  - Test `DomainInvestigationRequest.sources` with inventory/symbol/scope/risk artifact refs.
+  - GREEN: add artifact bundle extraction in the codebase use-case layer.
+  - Commit: `feat: accept codebase artifact bundle refs`.
+- **M18.2 RED/GREEN — adapter preserves formal `needs_more_evidence` when bundle is incomplete.**
+  - Test missing refs and stale schema IDs.
+  - GREEN: map incomplete bundle to formal Hisys `needs_more_evidence` with missing evidence categories.
+  - Commit: `feat: gate incomplete codebase artifact bundles`.
+- **M18.3 RED/GREEN — complete bundle enriches codebase result.**
+  - Test result contains inventory summary, scope map refs, risk categories, validation plan refs, and advisory-only synthesis fields.
+  - GREEN: extend `CodeInvestigationLayer` without changing registry dispatch semantics.
+  - Commit: `feat: enrich codebase domain results from artifacts`.
+- **M18.4 RED/GREEN — CLI integration smoke.**
+  - Test `investigate-domain --domain codebase` fixture request with local artifact bundle.
+  - GREEN: wire request parsing, safe ref resolution, and run summary refs.
+  - Commit: `feat: bridge codebase artifacts into investigate-domain`.
+- **M18.5 DOC/GATE — docs, traceability, finish packet.**
+  - Update `docs/use-cases/codebase-analysis-design-candidates.md`, public docs, and traceability.
+  - Commit: `docs: document codebase domain artifact bridge`.
+
+**Validation:**
+
+```bash
+python3 -m pytest tests/unit/test_domain_runtime_artifacts.py tests/unit/test_structured_domain_adapter.py tests/unit/test_codebase_domain_artifact_bridge.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
 
 ### Increment 7: Advanced codebase-analysis features after the foundation
 
@@ -657,8 +857,9 @@ python3 -m pytest -q
 
 - [x] The plan is saved as `revision_plan_v004.md` in the Hisys repository.
 - [ ] The plan has been converted into `SPEC-HISYS-CODEBASE-ANALYSIS-001`.
-- [ ] Increment 1 has been split into 1A-1E Ralph tasks.
-- [ ] The plan includes advanced post-foundation codebase-analysis features.
-- [ ] The plan includes Hermes applicability analysis.
-- [ ] The plan preserves Hisys governance boundaries.
-- [ ] The plan does not authorize live external actions, mutation, publication, or gate weakening.
+- [x] Increment 1 has been split into 1A-1E Ralph tasks.
+- [x] Increment 2-6 have Ralph-ready task queues and validation commands.
+- [x] The plan includes advanced post-foundation codebase-analysis features.
+- [x] The plan includes Hermes applicability analysis.
+- [x] The plan preserves Hisys governance boundaries.
+- [x] The plan does not authorize live external actions, mutation, publication, or gate weakening.
