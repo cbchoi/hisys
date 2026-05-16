@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-16 — M16.2 symbol parse errors as evidence (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M16.2 (parse errors recorded as evidence; valid modules continue to index).
+- Controlled anchors checked: ralph.md M16.2 task header; existing `SPEC-HISYS-CODEBASE-ANALYSIS-001` packet (allows analyzer evidence as long as `raw_source_content_persisted=false` holds and no live action is enabled); existing `PythonSymbolIndex` schema introduced in M16.1.
+- Implementation: (a) added `SymbolParseError(path, line, column, message)` Pydantic model. (b) Extended `PythonSymbolIndex` with `parse_errors: list[SymbolParseError]` and `parse_error_count: int`, defaulted to empty/0 so existing callers remain compatible. (c) `build_python_symbol_index` now catches `SyntaxError` per file, captures `lineno`/`offset`/`msg` (defensively coerced when absent), and continues. (d) `parse_errors` is sorted by `path` for determinism. (e) New test `test_symbol_index_records_parse_errors_as_evidence` writes a `bad.py` with a syntax error alongside a valid `good.py` and asserts `good.py` is indexed, `bad.py` is the lone parse-error record, aggregate `module_count` covers only parsed modules, and re-running yields a byte-identical model.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` -> 4 passed; full unit suite `PYTHONPATH=src python3 -m pytest tests/unit -q` -> 622 passed; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py --json src/hisys/operations/codebase_analysis.py tests/unit/test_codebase_symbol_index.py` -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) `SyntaxError.offset` can be `None` on some Python versions for incomplete tokens — handled defensively with a `0` fallback; the test does not pin column. (b) No CLI/test/doc tag classification yet (that is M16.3). (c) Schema still not surfaced in `docs/public/codebase-analysis.md` — M16.5 will land docs + traceability rows.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 80% for continuing into M16.3 (heuristic classification: `cli_handler`, `parser_builder`, `pytest_test`). The increment stays inside the same module and only adds an optional `tags: list[str]` field to `SymbolFunction` plus a small AST classifier.
+- Continue decision: continue locally to M16.3 within the tmux Ralph runtime budget. Section 10.3 push checkpoint from M15 remains pending but does not block local M16 work.
+- Stop condition: none for the active increment loop.
+- Next task: M16.3 — RED/GREEN CLI/test/doc symbol discovery (heuristic tags such as `cli_handler`, `parser_builder`, `pytest_test`).
+- Commit: `b8fb959 feat: preserve symbol parse errors`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: b8fb959 feat: preserve symbol parse errors
+- Working tree: `ralph.md` modified for M16.2 Reflection entry
+- Last completed milestone/task: M16.2 (parse errors recorded as evidence)
+- Current in-progress task: ralph.md Reflection commit for M16.2
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` failed at collection with `ImportError: cannot import name 'SymbolParseError'` before the model was added
+- GREEN observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` -> 4 passed; full unit suite -> 622 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), and `git diff --check` all clean
+- Next command to run: commit this Reflection as `docs: record M16.2 symbol parse errors reflection`; then start M16.3 RED test for heuristic symbol tags.
+- Stop condition: none. Continue into M16.3.
+
 ### 2026-05-16 — M16.1 build_python_symbol_index (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M16.1 (deterministic Python AST symbol index recording modules, imports, classes, and functions).
