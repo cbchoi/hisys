@@ -10,6 +10,8 @@ This document defines the evaluation matrix used by DARS critic agents in the pr
 
 The matrix is a controlled artifact. LLM agents should receive a referenced rubric snapshot as part of the DARS request package rather than relying on hidden prompt memory.
 
+For reviews of AI-assisted work process quality, persona/governance boundaries, prompt-as-work-structure design, collaboration-log safety, and large-codebase context hygiene, use the companion rubric in `docs/contracts/ai-collaboration-rubrics.md`. Keep the DARS progressive decision rubric focused on decision critique; do not overload it with every process-quality axis.
+
 ## 2. File Loading Rule
 
 Yes: each DARS agent should load a **separate rubric file** selected by Hisys and referenced in the request envelope.
