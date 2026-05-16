@@ -12,7 +12,7 @@
 | Default working directory | `/home/cbchoi/workspaces/sysailab/develop/repos/hisys` |
 | Target branch | `feat/domain-adaptive-requirements-analysis` |
 | Original baseline commit | `04d6b01 test: propagate src path to subprocess CLI tests` |
-| Current update baseline | `68ce3bb` |
+| Current update baseline | `69f924f` |
 | Execution mode | `on-demand Discord Ralph loop unless explicitly scheduled` |
 | Default runtime limit | `5 hours` |
 | User-specified runtime limit | `<none unless stated in the invoking message>` |
@@ -1801,10 +1801,83 @@ Resume checkpoint:
 - Next command to run: `git add ralph.md && git commit -m "docs: record M11 byesys provenance reflection"`, then Prepare M12.1 (read the Local DARS plan Milestones 7..8 + ralph.md Section M12 stop conditions to confirm the docs-only smoke artifact does not authorize live local runners).
 - Stop condition: none; continue to M12.1 Prepare if iteration budget remains, otherwise stop at this clean Reflection checkpoint.
 
+### 2026-05-16 — M12.1 local DARS smoke procedure committed
+
+- Phase completed: Prepare / Do / Gate / Commit for M12.1 as a docs/control-only checkpoint (no behavior change, fixture-backed).
+- Controlled anchors checked: SRS/SDD/IDD/STD anchors from M8..M11; Local DARS plan Milestones 7 and 8; ralph.md Section 14 M12 stop conditions; ralph.md Section 2 non-delegable safety boundary.
+- Codebase evidence: new file `docs/operations/local-dars-smoke.md` documenting the fixture-backed smoke procedure, citing the existing nine pytest cases (success / missing-approval-ref / remote-endpoint / non-2xx / malformed JSON / missing content / timeout / no-secret-leak / boundary-record) in `tests/unit/test_dars_runtime.py`, the loopback fake server in `tests/unit/helpers/fake_openai_server.py`, and the expected persisted artifact shape. No production code or runtime config was modified.
+- Quality gate result: pass — `python3 -m pytest tests/unit -q` 611 passed (full unit suite; the integration test set is not part of the M12.1 gate per Local DARS plan Section 8); `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=431 hit_count=0; `git diff --check` clean.
+- Potential issues: (a) The M12 task list (Section 14) lists this milestone as preparing rather than enabling Local DARS in a controlled runtime instance — that further task (replacing the working Claude DARS config with a Local DARS config) is non-delegable per the M12 stop conditions and must be performed by the user. (b) The smoke procedure documents an executable pytest cohort but does not yet expose a single end-user CLI subcommand; a follow-up task could thread the smoke cohort behind a `hisys smoke local-dars` invocation, but doing so would expand scope into CLI changes.
+- `ralph.md` changes: added this Reflection entry; updated `Current update baseline` to `69f924f`; rewrote Section 16 Initial Next Action.
+- Success likelihood: n/a — Section 14 milestone queue (M1..M12) is exhausted by this commit. Future Ralph loops must add a new milestone via the controlled-document amendment checkpoint in Section 3.2 before continuing.
+- Continue decision: stop after this Reflection commit.
+- Stop reason: planned milestone queue (M1..M12) is exhausted; the only remaining M12 task (replacing the working Claude DARS runtime config with a Local DARS config and running a live smoke against a real local runner) is non-delegable under Section 2 and the M12 stop conditions, and therefore requires user-executed commands.
+- Next task: none in current plan; a future Ralph loop must define a new milestone (e.g., "Live Local DARS Cutover" or "Thread evidence-sufficiency gate into Chief Editor review path") with SRS/SDD/IDD/STD anchors and user confirmation per Sections 3.1 / 6.4 / 12.
+
+Resume checkpoint:
+- Current HEAD: 69f924f docs: prepare local DARS runtime smoke
+- Working tree: `ralph.md` modified for this Reflection entry; commit the docs/control increment, then stop.
+- Last completed milestone/task: M12.1 (Local DARS runtime smoke procedure)
+- Current in-progress task: ralph.md Reflection commit
+- RED observed: n/a (docs/control checkpoint, no behavior change)
+- GREEN observed: full unit suite 611/611 at HEAD 69f924f
+- Quality gate status: pass — `python3 -m pytest tests/unit -q` 611 passed; validate_traceability OK; scan_secrets hit_count=0; `git diff --check` clean
+- Next command to run: stop — Section 14 milestone queue (M1..M12) is exhausted. Future iterations must add a new milestone with SRS/SDD/IDD/STD anchors and user confirmation before resuming.
+- Stop condition: M1..M12 milestone queue exhausted; live-runner cutover requires user-executed commands under Section 2 and the M12 stop conditions.
+
+### Hisys milestone push checkpoint — Local DARS line (M8..M12)
+
+Per Section 10.3, after M12 completes the milestone line, Ralph must
+prepare a user-executed push instruction without executing the push.
+
+```text
+Action requires user execution.
+Reason: the Local DARS / ByeSys provenance milestone line (M8..M12)
+  is complete; pushing the branch shares the local commits with the
+  remote repository and may affect collaborators, CI, or release
+  automation.
+Risk: publishes local commits ba255b9..69f924f on branch
+  feat/domain-adaptive-requirements-analysis.
+Recommended command for user to run manually:
+  git push origin feat/domain-adaptive-requirements-analysis
+Expected safe result:
+  remote reports the branch was pushed successfully.
+After running it, reply with the output or confirmation so Ralph can
+continue.
+```
+
+This block is informational for the next iteration. Ralph/Hermes does
+not execute `git push` itself.
+
 ## 16. Initial Next Action
 
-Start with **Task M12.1 — Add controlled runtime config example and fake-server smoke**.
+Section 14 milestone queue (M1..M12) is exhausted by HEAD `69f924f`.
 
-The first Ralph-loop action shall be Prepare: inspect Git state, read SRS/SDD/IDD/STD, read this `ralph.md`, inspect `docs/plans/2026-05-16-local-dars-byesys-provenance.md` Milestones 7 and 8, and inspect `docs/use-cases/hermes-hisys-domain-tool.md`, `docs/traceability/README.md`, and any existing runtime config examples. M12.1 must remain docs/control-only and fixture-backed: it must not install `ollama`, `llama.cpp`, vLLM, or LM Studio; must not download any model; must not replace the working Claude DARS runtime config before fake-server tests pass; and must not authorize any non-localhost endpoint or live external search.
+A future Ralph loop must add a new milestone via the controlled-document
+amendment checkpoint in Section 3.2 before continuing. Candidate next
+milestones the user may authorize:
+
+1. Thread `claim_has_sufficient_non_byesys_evidence` into the Chief
+   Editor / Jeweler review path so production review gates honor the
+   ByeSys-zero invariant without prose parsing.
+2. Define a controlled CLI subcommand (e.g., `hisys smoke local-dars`)
+   that runs the fake-server cohort end-to-end and writes a smoke
+   report artifact under the instance root.
+3. Reconcile the `dars-decision-<request_id>.json` placeholder produced
+   by the structured domain decision layer with the
+   `dars-local-llm-boundary-<request_id>.json` artifact written by the
+   openai-compatible adapter so audit reviewers see a single resolved
+   DARS-decision record when the local LLM path is exercised.
+4. Schema-promote `DarsCritiqueRecord.source_weights` parsing from the
+   model response (currently the adapter persists an empty list) so
+   the machine-readable provenance gate has live data once a real
+   local runner is enabled by user-executed command.
+5. Live Local DARS cutover: switch a controlled runtime instance to a
+   user-installed local runner. This task is non-delegable under
+   Section 2 and the M12 stop conditions and must be initiated by the
+   user.
+
+Until one of these milestones is authorized, the Ralph loop remains in
+the stopped state recorded by the latest Reflection entry.
 
 Do not start by editing production code. The first implementation action must be a failing test that proves local `openai_compatible` DARS config does not yet enforce strict localhost-only endpoint policy or does not yet expose the required local model-boundary metadata.
