@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-17 — M18.2 runtime-boundary writer classification (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M18.2 (separate `runtime_boundary_artifact_write` category from generic `filesystem_mutation` while keeping `action_authorized=false`).
+- Controlled anchors checked: ralph.md M18.2 (lines 1796–1800); M18.1 scanner machinery committed at `1f41568`; the controlled `runtime-boundary/...` artifact subtree token used by Hisys writers (`INVENTORY_RUNTIME_PREFIX`, scope-map writer, agent-workflow writer).
+- Implementation: (a) added `_RUNTIME_BOUNDARY_LITERAL_TOKEN = "runtime-boundary"` plus `_module_has_runtime_boundary_literal(tree)` that walks the module AST and returns True iff any string constant contains the controlled marker token. (b) threaded a `runtime_boundary_module: bool` flag through `_classify_attribute_call`; when True, `<receiver>.write_text`/`.write_bytes` calls in that module are emitted as `runtime_boundary_artifact_write` instead of `filesystem_mutation`. The classification stays exclusive per call site so the same line cannot report both categories. (c) `_scan_module_findings` computes the flag once per file before the AST walk for determinism. (d) `action_authorized=false` remains asserted on the runtime-boundary category at the finding level. (e) extended `tests/unit/test_codebase_risk_boundary_scan.py` with three new tests covering: a `write_artifact` fixture that resolves `f'{INVENTORY_RUNTIME_PREFIX}/...'` and only emits `runtime_boundary_artifact_write` (never `filesystem_mutation`), an ordinary `target.write_text('hello')` fixture that remains `filesystem_mutation`, and an indirect-literal `SCOPE_TOKEN = 'runtime-boundary/codebase-analysis'` fixture confirming the rule is module-scoped on any literal containing the controlled token. The pre-existing M18.1 finding-category union assertion was widened to include the new category.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py -q` -> 15 passed; combined `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py tests/unit/test_codebase_scope_map.py tests/unit/test_codebase_analysis_inventory.py tests/unit/test_codebase_symbol_index.py -q` -> 67 passed; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py --json` on the two touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The classification is module-scoped on the presence of the marker token anywhere in the module's string literals. This means a module that *mentions* `runtime-boundary` in a comment-like literal (e.g., a docstring discussing the policy) without writing to that subtree would be reclassified. The trade-off is intentional: a docstring mention is usually a signal that the module owns that contract, so the conservative reclassification still serves a reviewer. M18.5 docs should pin the convention so a maintainer notices if they want to discuss `runtime-boundary` in a module that performs non-runtime-boundary writes. (b) The rule does not split per-call site (e.g., a writer module that also performs an unrelated `.write_text` to a logs file). M18.3+ may revisit a per-call rule if needed; the M18.2 contract explicitly chose module-scoped separation for simplicity and determinism.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 80% for continuing into M18.3 (model/LLM + ByeSys categories). M18.3 extends the same `_classify_attribute_call` table with `openai`/`anthropic`/local-model patterns and a string-token check for `ByeSys` generated-evidence markers; both follow the same conservative AST pattern.
+- Continue decision: continue locally to M18.3 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M18.3 — RED/GREEN model/LLM and ByeSys categories.
+- Commit: `2d3d463 feat: classify runtime boundary writes`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: 2d3d463 feat: classify runtime boundary writes
+- Working tree: `ralph.md` modified for M18.2 Reflection entry
+- Last completed milestone/task: M18.2 (runtime_boundary_artifact_write category separation)
+- Current in-progress task: ralph.md Reflection commit for M18.2
+- RED observed: focused risk-boundary tests `test_scan_classifies_runtime_boundary_writer_separately` and `test_scan_runtime_boundary_classification_uses_string_literal_signal` failed with `AssertionError: 'runtime_boundary_artifact_write' in {'filesystem_mutation'}` before the rule was added
+- GREEN observed: focused risk-boundary suite -> 15 passed; combined risk-boundary + scope-map + inventory + symbol-index -> 67 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), `git diff --check` clean
+- Next command to run: commit this Reflection as `docs: record M18.2 runtime-boundary classification reflection`; then start M18.3 Prepare.
+- Stop condition: none. Continue into M18.3.
+
 ### 2026-05-17 — M18.1 codebase risk-boundary scanner (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M18.1 (conservative AST scanner that flags external-call and mutation signals as review evidence).
