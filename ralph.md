@@ -1929,6 +1929,35 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-16 — M15.3 inventory writer with safe instance-relative refs (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M15.3 (JSON/Markdown inventory writer with safe instance-relative refs).
+- Controlled anchors checked: ralph.md M15.3 task header (`runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/`); M14.1 expected-artifacts list pinning `inventory.json` and `inventory.md` at that exact prefix; the agent-workflow writer pattern in `src/hisys/operations/agent_workflow.py` (`_write_packet`).
+- RED observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> `ImportError: cannot import name 'write_codebase_inventory' from 'hisys.operations.codebase_analysis'`.
+- Implementation: added `write_codebase_inventory(*, instance_root, date, request_id, inventory)` plus two helpers: `_validate_slug` (regex + explicit `{".", ".."}` rejection — see iteration note) and `_render_inventory_markdown`. The writer writes `<instance>/runtime-boundary/codebase-analysis/<date>/<request_id>/inventory.json` (Pydantic `model_dump(mode="json")` serialized with `sort_keys=True`, `indent=2`, trailing newline) and `inventory.md` (deterministic section order: Provenance, Counts, Path Policy, Excluded Paths, Skipped Paths, Files). The returned dict carries `schema_id`, `json_ref`, `markdown_ref`, and the safety-boundary fields `raw_source_content_persisted`, `external_call_made=False`, `mutation_performed=False`, `publication_or_live_action_approved=False`. `INVENTORY_RUNTIME_PREFIX` was exported so M15.4 (CLI) and M15.5 (docs) reuse the same anchor without duplicating the string.
+- GREEN observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> 5 passed (the previous three plus `test_write_codebase_inventory_persists_json_and_markdown` and `test_write_codebase_inventory_rejects_traversal_in_request_id`).
+- Iteration note: the regex `^[A-Za-z0-9._-]+$` initially accepted `".."` because it matches one-or-more dots. The fix was an explicit `value in {".", ".."}` rejection. Lesson recorded: when validating a path-segment slug, the character-class regex alone is insufficient — traversal segments must be excluded by literal comparison even if the character class would otherwise allow them.
+- Quality gate result: pass — `git diff --check` OK; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` `scanned_files=434 skipped_files=0 hit_count=0`; full unit suite `python3 -m pytest tests/unit -q` -> 616 passed (614 prior + 2 new).
+- Potential issues: (a) the writer does not yet emit the optional `git_branch`/`git_commit`/`git_status_short` fields from the M15 milestone field list — those are still scoped for a later increment that wires runtime provenance through. The writer's output already includes everything currently on `CodebaseInventory`, so adding those later remains forward-compatible. (b) the Markdown renderer is order-fixed; adding fields will require updating the renderer in lockstep with the model, but the JSON output is automatically consistent via `model_dump(mode="json")`. (c) the writer does not currently truncate or verify file sizes for very large inventories; M15 fixtures stay small.
+- `ralph.md` changes: this Reflection entry only.
+- Success likelihood: 82% for M15.4 — the CLI seam pattern is well-established (`build-spec-first-packet` in `src/hisys/cli/main.py`), the writer + builder are already in place, and the M15.4 test is a subprocess smoke. Slight risk: argparse default precedence around optional `--scope` may require careful handling.
+- Continue decision: continue to Task M15.4 after this Reflection is committed.
+- Stop reason: none. Standard stop conditions apply.
+- Next task: Task M15.4 — RED/GREEN `build-codebase-inventory` CLI wrapper invoked via `PYTHONPATH=src python3 -m hisys.cli.main build-codebase-inventory --repo ... --instance ... --date ... --request-id REQ-CODEBASE-001 --scope ... --format json`.
+- Commit: `d1de7a3 feat: write codebase inventory artifacts` (already on HEAD); this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: d1de7a3 feat: write codebase inventory artifacts
+- Working tree: `ralph.md` modified for M15.3 Reflection entry
+- Last completed milestone/task: M15.3 (`write_codebase_inventory` JSON/Markdown writer with deterministic refs and traversal-resistant slug validation)
+- Current in-progress task: ralph.md Reflection commit for M15.3
+- RED observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> `ImportError: cannot import name 'write_codebase_inventory'`
+- GREEN observed: same command -> 5 passed; full unit suite 616 passed
+- Quality gate status: pass — `git diff --check` OK; `validate_traceability.py` OK; `scan_secrets.py` hit_count=0; full unit suite 616 passed
+- Next command to run: commit this Reflection as `docs: record M15.3 inventory writer reflection`; then prepare M15.4 (RED test for `build-codebase-inventory` CLI subprocess invocation against a tmp fixture repo, with `PYTHONPATH=src`).
+- Stop condition: none — continue to M15.4.
+
 ### 2026-05-16 — M15.2 path policy and safety counts (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M15.2 (path policy, safety counts, skip reasons, no raw source persistence).
