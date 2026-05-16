@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-17 — M17.2 codebase scope map builder (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M17.2 (pure scope-map builder over already-loaded `CodebaseInventory`, `PythonSymbolIndex`, and `CodebaseScopeProfile` records).
+- Controlled anchors checked: ralph.md M17.2 (lines 1750–1754); the M17.1 `CodebaseScopeProfile` shape committed at `3fbb6fc`; existing `CodebaseInventory` and `PythonSymbolIndex` shapes from M15/M16; SPEC-HISYS-CODEBASE-ANALYSIS-001 contract ("no source content read, no live action, no mutation") which the pure builder honors by construction.
+- Implementation: (a) added `CodebaseScopeMapEntry` and `CodebaseScopeMap` Pydantic records with stable `schema_id`s, deterministic sorted list fields, and `raw_source_content_persisted=false`. (b) added `build_codebase_scope_map(*, inventory, symbol_index, profiles=None)` that partitions each profile's declared entry files, expected tests, and docs refs into `in_scope` and `missing_*` lists against the inventory's `files`. (c) added a docs-vs-traceability split using the `docs/traceability/` path token so reviewers can locate the RTM anchor for a scope without re-walking the docs tree. (d) filtered the symbol-index modules and parse errors per scope's `files_in_scope` (the intersection with inventory), recomputed `module_count`, `import_count`, `class_count`, `function_count` for the filtered modules, and exposed both `modules` and `parse_errors_in_scope` on each entry. (e) when `profiles=None`, the default registry from M17.1 is used; explicit profile lists override and are sorted by `scope_id` for deterministic output. (f) extended `tests/unit/test_codebase_scope_map.py` with eight new tests covering default-registry use, present-vs-missing partition for `domain-adapter`, symbol filter per scope, parse-error isolation, docs-vs-traceability split, determinism across two builds, alphabetical scope ordering, and safety invariant preservation.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py -q` -> 20 passed; combined `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py tests/unit/test_codebase_analysis_inventory.py tests/unit/test_codebase_symbol_index.py -q` -> 36 passed; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py --json` on the two touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The scope-map filter for symbol modules and parse errors uses inventory presence — i.e., only files that exist in the inventory can be in scope. A future scope profile that declares an `entry_files` ref outside the inventory's `analysis_scope` is surfaced via `missing_entry_files` rather than silently dropped; M17.3 will use that signal when synthesizing the validation plan. (b) The traceability-refs split uses a substring token (`docs/traceability/`). If the repo ever adds a docs subtree whose path includes that substring for non-traceability content, the split would over-include it. M17.5 docs should pin the convention explicitly and reviewers must catch new docs that violate it.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 82% for continuing into M17.3 (validation plan synthesis). The synthesis rules are deterministic and consume the now-existing scope-map entries; risk is mainly in cleanly mapping `tests_in_scope` to the correct pytest invocation per scope.
+- Continue decision: continue locally to M17.3 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M17.3 — RED/GREEN validation plan synthesis.
+- Commit: `4315d82 feat: build codebase scope maps`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: 4315d82 feat: build codebase scope maps
+- Working tree: `ralph.md` modified for M17.2 Reflection entry
+- Last completed milestone/task: M17.2 (scope-map builder)
+- Current in-progress task: ralph.md Reflection commit for M17.2
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py -q` failed at collection with `ImportError: cannot import name 'CodebaseScopeMap'` before the builder was added
+- GREEN observed: focused scope-map suite -> 20 passed; combined codebase-analysis + symbol-index + scope-map -> 36 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), `git diff --check` clean
+- Next command to run: commit this Reflection as `docs: record M17.2 scope map builder reflection`; then start M17.3 Prepare.
+- Stop condition: none. Continue into M17.3.
+
 ### 2026-05-17 — M17.1 codebase scope profile registry (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M17.1 (static scope-profile registry for `domain-adapter`, `runtime-boundary`, and `docs-traceability`).
