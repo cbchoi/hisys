@@ -121,6 +121,22 @@ class DarsDispatchGate:
                 intent=intent,
                 policy_ref=policy_ref,
             )
+        elif (
+            backend.kind == "openai_compatible"
+            and backend.mode == "local_network_only"
+            and not approval_ref
+        ):
+            decision = self._blocked(
+                request_id=request_id,
+                backend_id=backend_id,
+                backend=backend,
+                config=config,
+                approval_ref=approval_ref,
+                reason_code="local_llm_requires_approval_ref",
+                reason="Local LLM DARS dispatch requires an explicit approval_ref before contacting any model boundary.",
+                intent=intent,
+                policy_ref=policy_ref,
+            )
         elif backend.external_call_allowed and approval_ref:
             decision = self._allowed(
                 request_id=request_id,

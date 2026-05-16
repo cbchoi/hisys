@@ -2,6 +2,9 @@
 
 Traceability: HISYS-FR-AGT-001..005, HISYS-DARS-CONTRACT-001,
 HISYS-D-015, HISYS-T-023, HISYS-T-024.
+
+Local DARS adapter tests trace to the Local DARS / ByeSys Provenance plan
+Milestones 2 and 3 (`docs/plans/2026-05-16-local-dars-byesys-provenance.md`).
 """
 
 from __future__ import annotations
@@ -10,8 +13,12 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from hisys.agents.dars import DarsRuntime
 from hisys.config.instance import InstanceRoot
+
+from helpers.fake_openai_server import FakeOpenAIServer
 
 
 def test_dars_runtime_loopback_placeholder_returns_without_implemented_dars(tmp_path: Path):
@@ -225,3 +232,298 @@ def test_dars_runtime_uses_configured_cli_agent_backend(tmp_path: Path):
     assert "--model sonnet" in critique["critique_text"]
     assert dispatch["decision"] == "allowed"
     assert dispatch["backend_id"] == "claude_dars"
+
+
+# ---------------------------------------------------------------------------
+# Local DARS / ByeSys provenance plan — Milestones 2 and 3 (Ralph M9.1, M9.2)
+# openai_compatible local-network adapter behavior against a fake loopback
+# HTTP server. Each test uses an ephemeral 127.0.0.1 port and asserts the
+# pre-HTTP rejection paths never contact the server.
+# ---------------------------------------------------------------------------
+
+
+def _seed_local_llm_instance(
+    tmp_path: Path,
+    *,
+    endpoint: str,
+    model: str = "qwen2.5:14b-instruct",
+    max_runtime_seconds: int = 30,
+) -> tuple[InstanceRoot, str]:
+    """Create an instance whose configured DARS backend is a local LLM endpoint."""
+    execution_dir = tmp_path / "data" / "alert-connector-executions" / "20260516"
+    execution_dir.mkdir(parents=True)
+    source_execution_id = "EXEC-LOCAL-LLM-001"
+    (execution_dir / f"{source_execution_id}.json").write_text(
+        json.dumps(
+            {
+                "execution_id": source_execution_id,
+                "action_plan_ref": "PLAN-LOCAL-LLM-001",
+                "alert_decision_ref": "ALERT-LOCAL-LLM-001",
+                "connector_id": "disabled-fixture-connector",
+                "target_channel": "discord:#ops",
+                "would_send": True,
+                "live_delivery_permitted": False,
+                "execution_status": "blocked",
+                "blocked_reason": "live_delivery_disabled",
+                "action_taken": "none",
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "dars.json").write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.dars.config",
+                "schema_version": "0.1.0",
+                "config_id": "dars-local-llm-runtime",
+                "config_version": "0.1.0",
+                "owner": "sysailab",
+                "status": "active",
+                "classification": "runtime_config",
+                "traceability": {
+                    "requirements": ["HISYS-FR-AGT-001", "HISYS-T-019", "HISYS-T-020"],
+                    "constraints": ["HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"],
+                },
+                "spec": {
+                    "default_backend": "local_llm_dars",
+                    "policy": {
+                        "enabled": True,
+                        "allowed_actions": "advisory_only",
+                        "require_human_approval_for_external_call": True,
+                        "require_structured_output_schema": "DarsCritiqueRecord",
+                        "allow_external_side_effects": False,
+                        "max_runtime_seconds": max_runtime_seconds,
+                        "redact_markdown_outputs": True,
+                    },
+                    "roles": {
+                        "default_devil_advocate": {
+                            "kind": "devil_advocate",
+                            "profession": "systems_safety_reviewer",
+                            "stance": "skeptical_but_constructive",
+                            "strictness": "high",
+                            "creativity": "medium",
+                            "verbosity": "concise_structured",
+                            "critique_dimensions": ["unsupported_claims", "risk_findings"],
+                            "prompt": {"objective": "Challenge unsupported claims."},
+                            "sampling": {"temperature": 0.2, "top_p": 0.9, "max_output_tokens": 2000},
+                            "output_contract": "DarsCritiqueRecord",
+                        }
+                    },
+                    "backends": {
+                        "local_llm_dars": {
+                            "kind": "openai_compatible",
+                            "enabled": True,
+                            "mode": "local_network_only",
+                            "endpoint": endpoint,
+                            "model": model,
+                            "external_call_allowed": False,
+                            "output_contract": "DarsCritiqueRecord",
+                        }
+                    },
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    return InstanceRoot(tmp_path), source_execution_id
+
+
+def _read_critique(tmp_path: Path, source_execution_id: str) -> dict:
+    suffix = source_execution_id.removeprefix("EXEC-")
+    path = tmp_path / "data" / "agent-critiques" / "20260516" / f"CRITIQUE-DARS-{suffix}.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _read_local_llm_boundary(tmp_path: Path, source_execution_id: str) -> dict:
+    path = (
+        tmp_path
+        / "runtime-boundary"
+        / "dars"
+        / "20260516"
+        / f"dars-local-llm-boundary-{source_execution_id}.json"
+    )
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_dars_runtime_calls_local_openai_compatible_backend(tmp_path: Path):
+    with FakeOpenAIServer() as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        report = DarsRuntime(instance=instance).run_configured_critique(
+            yyyymmdd="20260516",
+            source_execution_id=source_execution_id,
+            producer_id="dars-local-llm-test",
+            approval_ref="APPROVAL-DARS-LOCAL-LLM-001",
+        )
+
+    assert server.contacted is True
+    assert len(server.requests) == 1
+    request = server.requests[0]
+    assert request.path == "/v1/chat/completions"
+    assert request.method == "POST"
+    payload = request.json
+    assert payload["model"] == "qwen2.5:14b-instruct"
+    messages = payload.get("messages", [])
+    assert messages and messages[0]["role"] == "system"
+    combined_prompt = "\n".join(msg.get("content", "") for msg in messages)
+    assert "advisory" in combined_prompt.lower()
+    assert "no mutation" in combined_prompt.lower() or "do not mutate" in combined_prompt.lower()
+    # Provenance instructions must be present in the prompt.
+    assert "internal source" in combined_prompt.lower() or "internal knowledge" in combined_prompt.lower()
+    assert "byesys" in combined_prompt.lower()
+    # The adapter must not authorize tools, search, or browser actions.
+    assert "tool_choice" not in payload
+    assert "tools" not in payload
+    assert report.critique_refs
+
+    critique = _read_critique(tmp_path, source_execution_id)
+    assert critique["dars_backend"] == "local_llm_dars"
+    assert critique["external_call_made"] is False
+    assert critique["model_boundary_crossed"] is True
+    assert critique["local_model_call_made"] is True
+    assert critique["endpoint_scope"] == "localhost_only"
+
+
+def test_dars_runtime_records_local_model_boundary_not_external_call(tmp_path: Path):
+    with FakeOpenAIServer() as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        DarsRuntime(instance=instance).run_configured_critique(
+            yyyymmdd="20260516",
+            source_execution_id=source_execution_id,
+            producer_id="dars-local-llm-boundary",
+            approval_ref="APPROVAL-DARS-LOCAL-LLM-002",
+        )
+
+    boundary = _read_local_llm_boundary(tmp_path, source_execution_id)
+    assert boundary["approval_ref"] == "APPROVAL-DARS-LOCAL-LLM-002"
+    assert boundary["endpoint_scope"] == "localhost_only"
+    assert boundary["model_boundary_crossed"] is True
+    assert boundary["local_model_call_made"] is True
+    assert boundary["external_call_made"] is False
+    assert boundary["mutation_performed"] is False
+
+
+def test_dars_runtime_rejects_local_backend_without_approval_ref(tmp_path: Path):
+    with FakeOpenAIServer() as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        with pytest.raises(ValueError) as exc_info:
+            DarsRuntime(instance=instance).run_configured_critique(
+                yyyymmdd="20260516",
+                source_execution_id=source_execution_id,
+                producer_id="dars-local-llm-missing-approval",
+                approval_ref=None,
+            )
+
+    assert "approval" in str(exc_info.value).lower()
+    assert server.contacted is False, "must fail closed before contacting the local server"
+
+
+def test_dars_runtime_rejects_remote_endpoint_before_http_request(tmp_path: Path):
+    # Seed a config whose endpoint config validation would fail; reuse a stand-in
+    # remote host that the fake server never binds to so the test fails closed
+    # purely from URL classification.
+    with FakeOpenAIServer() as server:
+        instance, source_execution_id = _seed_local_llm_instance(
+            tmp_path,
+            endpoint="http://203.0.113.5:11434/v1/chat/completions",
+        )
+        with pytest.raises(Exception) as exc_info:
+            DarsRuntime(instance=instance).run_configured_critique(
+                yyyymmdd="20260516",
+                source_execution_id=source_execution_id,
+                producer_id="dars-local-llm-remote",
+                approval_ref="APPROVAL-DARS-LOCAL-LLM-REMOTE",
+            )
+        assert server.contacted is False
+    text = str(exc_info.value).lower()
+    assert "local" in text or "endpoint" in text or "non_local" in text
+
+
+def test_dars_runtime_fails_closed_on_non_2xx_local_llm_response(tmp_path: Path):
+    with FakeOpenAIServer(mode="non_2xx", non_2xx_status=503) as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        with pytest.raises(ValueError) as exc_info:
+            DarsRuntime(instance=instance).run_configured_critique(
+                yyyymmdd="20260516",
+                source_execution_id=source_execution_id,
+                producer_id="dars-local-llm-non2xx",
+                approval_ref="APPROVAL-DARS-LOCAL-LLM-503",
+            )
+
+    assert server.contacted is True
+    message = str(exc_info.value).lower()
+    assert "non-2xx" in message or "503" in message or "http" in message
+
+
+def test_dars_runtime_fails_closed_on_malformed_local_llm_response(tmp_path: Path):
+    with FakeOpenAIServer(mode="malformed_json") as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        with pytest.raises(ValueError) as exc_info:
+            DarsRuntime(instance=instance).run_configured_critique(
+                yyyymmdd="20260516",
+                source_execution_id=source_execution_id,
+                producer_id="dars-local-llm-malformed",
+                approval_ref="APPROVAL-DARS-LOCAL-LLM-MALFORMED",
+            )
+
+    assert server.contacted is True
+    assert "malformed" in str(exc_info.value).lower() or "json" in str(exc_info.value).lower()
+
+
+def test_dars_runtime_fails_closed_on_missing_message_content(tmp_path: Path):
+    with FakeOpenAIServer(mode="missing_content") as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        with pytest.raises(ValueError) as exc_info:
+            DarsRuntime(instance=instance).run_configured_critique(
+                yyyymmdd="20260516",
+                source_execution_id=source_execution_id,
+                producer_id="dars-local-llm-missing-content",
+                approval_ref="APPROVAL-DARS-LOCAL-LLM-MISSING",
+            )
+
+    assert server.contacted is True
+    assert "content" in str(exc_info.value).lower() or "missing" in str(exc_info.value).lower()
+
+
+def test_dars_runtime_fails_closed_on_local_llm_timeout(tmp_path: Path):
+    with FakeOpenAIServer(mode="timeout", timeout_delay_seconds=2.0) as server:
+        instance, source_execution_id = _seed_local_llm_instance(
+            tmp_path,
+            endpoint=server.endpoint,
+            max_runtime_seconds=1,
+        )
+        with pytest.raises(ValueError) as exc_info:
+            DarsRuntime(instance=instance).run_configured_critique(
+                yyyymmdd="20260516",
+                source_execution_id=source_execution_id,
+                producer_id="dars-local-llm-timeout",
+                approval_ref="APPROVAL-DARS-LOCAL-LLM-TIMEOUT",
+            )
+
+    assert server.contacted is True
+    message = str(exc_info.value).lower()
+    assert "timeout" in message or "timed out" in message
+
+
+def test_dars_runtime_local_llm_failure_does_not_leak_secrets(tmp_path: Path):
+    with FakeOpenAIServer(mode="non_2xx") as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        with pytest.raises(ValueError) as exc_info:
+            DarsRuntime(instance=instance).run_configured_critique(
+                yyyymmdd="20260516",
+                source_execution_id=source_execution_id,
+                producer_id="dars-local-llm-leak-check",
+                approval_ref="APPROVAL-DARS-LOCAL-LLM-LEAK-secret-do-not-log",
+            )
+
+    message = str(exc_info.value)
+    # The error must not echo the approval ref, prompts, or response body verbatim.
+    assert "secret-do-not-log" not in message
+    assert "server_error" not in message

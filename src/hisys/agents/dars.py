@@ -4,6 +4,12 @@ DARS is intentionally not implemented here. This module records the handoff
 contract and returns a local loopback placeholder so a future DARS adapter can be
 attached without changing downstream artifact shapes.
 
+The optional ``openai_compatible`` adapter implements the Local DARS / ByeSys
+Provenance plan Milestones 2 and 3: it accepts requests only against loopback
+endpoints, requires an explicit ``approval_ref`` even for localhost dispatch,
+and treats a local LLM call as a model-boundary event rather than a live
+external call.
+
 Traceability: HISYS-FR-AGT-001..005, HISYS-DARS-CONTRACT-001,
 HISYS-D-015, HISYS-T-023, HISYS-T-024.
 """
@@ -11,16 +17,24 @@ HISYS-D-015, HISYS-T-023, HISYS-T-024.
 from __future__ import annotations
 
 import json
+import socket
 import subprocess
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from ..config.instance import InstanceRoot
 from ..schemas import AgentHandoffPackage
-from .dars_config import DarsBackendConfig, load_dars_config
+from .dars_config import (
+    DarsBackendConfig,
+    _classify_local_endpoint,
+    derive_local_backend_metadata,
+    load_dars_config,
+)
 from .dars_dispatch import DarsDispatchGate
 
 
@@ -32,6 +46,9 @@ class DarsCritiqueRecord(BaseModel):
     critique_text: str
     dars_backend: str = "loopback_placeholder"
     external_call_made: bool = False
+    model_boundary_crossed: bool = False
+    local_model_call_made: bool = False
+    endpoint_scope: str | None = None
     allowed_actions: Literal["advisory_only"] = "advisory_only"
     action_taken: Literal["none"] = "none"
     status: Literal["received"] = "received"
@@ -82,6 +99,10 @@ class DarsRuntime:
         producer_id: str,
         dars_backend: str = "loopback_placeholder",
         external_call_made: bool = False,
+        model_boundary_crossed: bool = False,
+        local_model_call_made: bool = False,
+        endpoint_scope: str | None = None,
+        extra_constraints: list[str] | None = None,
     ) -> DarsCritiqueReport:
         execution = _load_connector_execution(self.instance, yyyymmdd, source_execution_id)
         report = DarsCritiqueReport(report_ref=str(_report_json_path(self.instance, yyyymmdd).relative_to(self.instance.root)))
@@ -93,6 +114,15 @@ class DarsRuntime:
         suffix = _suffix(source_execution_id)
         handoff_id = f"HANDOFF-DARS-{suffix}"
         critique_id = f"CRITIQUE-DARS-{suffix}"
+        constraints = [
+            "advisory_only",
+            "no live external action",
+            f"dars_backend={dars_backend}",
+            f"external_call_made={str(external_call_made).lower()}",
+            "do not mutate alert decisions or connector executions",
+        ]
+        if extra_constraints:
+            constraints.extend(extra_constraints)
         handoff = AgentHandoffPackage(
             handoff_id=handoff_id,
             target_agent_system="DARS",
@@ -102,13 +132,7 @@ class DarsRuntime:
                 f"execution={source_execution_id}; alert_decision={execution.get('alert_decision_ref', '')}."
             ),
             evidence_bundle=[source_execution_id],
-            constraints=[
-                "advisory_only",
-                "no live external action",
-                f"dars_backend={dars_backend}",
-                f"external_call_made={str(external_call_made).lower()}",
-                "do not mutate alert decisions or connector executions",
-            ],
+            constraints=constraints,
             expected_output="advisory critique text and optional improvement notes",
             allowed_actions="advisory_only",
             approval_state="not_required",
@@ -124,6 +148,9 @@ class DarsRuntime:
             producer_id=producer_id,
             dars_backend=dars_backend,
             external_call_made=external_call_made,
+            model_boundary_crossed=model_boundary_crossed,
+            local_model_call_made=local_model_call_made,
+            endpoint_scope=endpoint_scope,
         )
         _write_handoff(self.instance, yyyymmdd, handoff)
         _write_critique(self.instance, yyyymmdd, critique)
@@ -176,7 +203,99 @@ class DarsRuntime:
                 dars_backend=backend_id,
                 external_call_made=backend.external_call_allowed,
             )
+        if backend.kind == "openai_compatible":
+            critique_text = self._run_openai_compatible_backend(
+                yyyymmdd=yyyymmdd,
+                source_execution_id=source_execution_id,
+                backend=backend,
+                timeout_seconds=config.spec.policy.max_runtime_seconds,
+            )
+            metadata = derive_local_backend_metadata(backend)
+            # `derive_local_backend_metadata` describes the boundary class for
+            # the backend (model_boundary_required, external_call_expected);
+            # after a successful local LLM call we record that the boundary was
+            # actually crossed.
+            endpoint_scope = str(metadata.get("endpoint_scope") or "localhost_only")
+            report = self.run_fixture_critique(
+                yyyymmdd=yyyymmdd,
+                source_execution_id=source_execution_id,
+                critique_text=critique_text,
+                producer_id=producer_id,
+                dars_backend=backend_id,
+                external_call_made=False,
+                model_boundary_crossed=True,
+                local_model_call_made=True,
+                endpoint_scope=endpoint_scope,
+                extra_constraints=[
+                    f"endpoint_scope={endpoint_scope}",
+                    "model_boundary_crossed=true",
+                    "local_model_call_made=true",
+                ],
+            )
+            _write_local_llm_boundary(
+                self.instance,
+                yyyymmdd=yyyymmdd,
+                request_id=source_execution_id,
+                backend_id=backend_id,
+                approval_ref=approval_ref,
+                metadata={
+                    "endpoint_scope": endpoint_scope,
+                    "model_boundary_crossed": True,
+                    "local_model_call_made": True,
+                    "external_call_made": False,
+                },
+            )
+            return report
         raise ValueError(f"unsupported DARS backend kind: {backend.kind}")
+
+    def _run_openai_compatible_backend(
+        self,
+        *,
+        yyyymmdd: str,
+        source_execution_id: str,
+        backend: DarsBackendConfig,
+        timeout_seconds: int,
+    ) -> str:
+        # Defense-in-depth: reject non-loopback endpoints before any socket
+        # is opened, even though dars_config validation also rejects them.
+        if _classify_local_endpoint(backend.endpoint) is not None:
+            raise ValueError("local DARS endpoint failed loopback policy")
+        payload = _build_openai_chat_payload(
+            backend=backend,
+            yyyymmdd=yyyymmdd,
+            source_execution_id=source_execution_id,
+        )
+        body = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            backend.endpoint,
+            method="POST",
+            data=body,
+            headers={
+                "content-type": "application/json",
+                "accept": "application/json",
+                "user-agent": "hisys-dars-local-llm/0.1",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                raw = response.read()
+        except urllib.error.HTTPError:
+            raise ValueError("local DARS non-2xx HTTP response") from None
+        except (socket.timeout, TimeoutError):
+            raise ValueError("local DARS request timed out") from None
+        except (urllib.error.URLError, ConnectionError, OSError):
+            raise ValueError("local DARS HTTP request failed") from None
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            raise ValueError("local DARS response is malformed JSON") from None
+        try:
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError):
+            raise ValueError("local DARS response is missing message content") from None
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("local DARS response is missing message content")
+        return content
 
     def _run_cli_agent(
         self,
@@ -335,6 +454,75 @@ def _suffix(source_execution_id: str) -> str:
     if raw.startswith("DARS-"):
         return raw.removeprefix("DARS-")
     return raw
+
+
+def _build_openai_chat_payload(
+    *,
+    backend: DarsBackendConfig,
+    yyyymmdd: str,
+    source_execution_id: str,
+) -> dict[str, Any]:
+    system_prompt = (
+        "You are DARS, an advisory-only critique role for Hisys. "
+        "Your output is advisory_only with no autonomous execution. "
+        "Do not mutate state, browse the web, place orders, or approve "
+        "live external action.\n\n"
+        "Provenance instructions:\n"
+        "- Internal knowledge-management sources: cite each source_ref and the supported claim.\n"
+        "- External sources are forbidden in this localhost-only review unless explicitly allowed; "
+        "if used, cite the DOI/URL/location and the claim supported.\n"
+        "- ByeSys generated/unsupported synthesis: label any generated or unsupported claim with "
+        "source=ByeSys and evidential_weight=0.0 so reviewers can ignore it as corroboration."
+    )
+    user_prompt = (
+        f"Critique the connector execution recorded under date={yyyymmdd}, "
+        f"source_execution_id={source_execution_id}. "
+        "Return a concise, structured critique with explicit source provenance."
+    )
+    return {
+        "model": backend.model or "",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "stream": False,
+    }
+
+
+def _write_local_llm_boundary(
+    instance: InstanceRoot,
+    *,
+    yyyymmdd: str,
+    request_id: str,
+    backend_id: str,
+    approval_ref: str | None,
+    metadata: dict[str, Any],
+) -> None:
+    output_dir = instance.runtime_boundary_dir / "dars" / yyyymmdd
+    output_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_id": "hisys.dars.local_llm_boundary",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "backend_id": backend_id,
+        "approval_ref": approval_ref,
+        "endpoint_scope": metadata.get("endpoint_scope", "localhost_only"),
+        "model_boundary_crossed": bool(metadata.get("model_boundary_crossed", True)),
+        "local_model_call_made": bool(metadata.get("local_model_call_made", True)),
+        "external_call_made": bool(metadata.get("external_call_expected", False)),
+        "mutation_performed": False,
+        "policy_refs": [
+            "HISYS-FR-AGT-001",
+            "HISYS-FR-AGT-003",
+            "HISYS-CON-010",
+            "HISYS-CON-012",
+        ],
+    }
+    json_path = output_dir / f"dars-local-llm-boundary-{request_id}.json"
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 __all__ = ["DarsCritiqueRecord", "DarsCritiqueReport", "DarsRuntime"]
