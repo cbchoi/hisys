@@ -21,6 +21,7 @@ from hisys.operations.codebase_analysis import (
     SymbolClass,
     SymbolImport,
     SymbolModule,
+    SymbolParseError,
     build_python_symbol_index,
 )
 
@@ -202,6 +203,42 @@ def test_symbol_index_skips_non_python_files(tmp_path: Path):
 
     module_paths = [m.path for m in index.modules]
     assert module_paths == ["a.py"]
+
+
+def test_symbol_index_records_parse_errors_as_evidence(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "good.py").write_text(
+        "def alive():\n    return 'ok'\n", encoding="utf-8"
+    )
+    (repo / "bad.py").write_text(
+        "def broken(:\n    return 0\n", encoding="utf-8"
+    )
+
+    index = build_python_symbol_index(repo_root=repo)
+
+    # The valid module is still indexed; parse failure must not halt the build.
+    module_paths = [m.path for m in index.modules]
+    assert "good.py" in module_paths
+    assert "bad.py" not in module_paths
+
+    # The bad module is preserved as evidence with a stable shape.
+    assert index.parse_error_count == 1
+    assert len(index.parse_errors) == 1
+    err = index.parse_errors[0]
+    assert isinstance(err, SymbolParseError)
+    assert err.path == "bad.py"
+    assert err.line >= 1
+    assert isinstance(err.message, str) and err.message  # SyntaxError text is non-empty
+
+    # Aggregate counts only cover successfully parsed modules.
+    assert index.module_count == len(index.modules)
+    assert index.module_count == 1
+    assert index.raw_source_content_persisted is False
+
+    # The aggregated parse_errors list is sorted by path for determinism.
+    twice = build_python_symbol_index(repo_root=repo)
+    assert twice.model_dump() == index.model_dump()
 
 
 def test_symbol_index_supports_analysis_scope(tmp_path: Path):

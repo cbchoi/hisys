@@ -387,15 +387,24 @@ class SymbolModule(BaseModel):
     classes: list[SymbolClass] = Field(default_factory=list)
 
 
+class SymbolParseError(BaseModel):
+    path: str
+    line: int
+    column: int = 0
+    message: str
+
+
 class PythonSymbolIndex(BaseModel):
     schema_id: str = "hisys.codebase.symbol_index"
     repo_root: str
     analysis_scope: str | None = None
     modules: list[SymbolModule] = Field(default_factory=list)
+    parse_errors: list[SymbolParseError] = Field(default_factory=list)
     module_count: int = 0
     import_count: int = 0
     class_count: int = 0
     function_count: int = 0
+    parse_error_count: int = 0
     raw_source_content_persisted: bool = False
 
 
@@ -538,6 +547,7 @@ def build_python_symbol_index(
     )
 
     modules: list[SymbolModule] = []
+    parse_errors: list[SymbolParseError] = []
     import_total = 0
     class_total = 0
     function_total = 0
@@ -551,9 +561,15 @@ def build_python_symbol_index(
             continue
         try:
             module = _build_module_symbols(rel_path, source)
-        except SyntaxError:
-            # Parse-error evidence is the M16.2 responsibility; M16.1 simply
-            # skips unparseable modules so the deterministic baseline holds.
+        except SyntaxError as exc:
+            parse_errors.append(
+                SymbolParseError(
+                    path=rel_path,
+                    line=exc.lineno or 0,
+                    column=exc.offset or 0,
+                    message=exc.msg or "syntax error",
+                )
+            )
             continue
         modules.append(module)
         import_total += len(module.imports)
@@ -564,14 +580,17 @@ def build_python_symbol_index(
             function_total += method_count
 
     modules.sort(key=lambda mod: mod.path)
+    parse_errors.sort(key=lambda err: err.path)
     return PythonSymbolIndex(
         repo_root=inventory.repo_root,
         analysis_scope=analysis_scope,
         modules=modules,
+        parse_errors=parse_errors,
         module_count=len(modules),
         import_count=import_total,
         class_count=class_total,
         function_count=function_total,
+        parse_error_count=len(parse_errors),
         raw_source_content_persisted=False,
     )
 
@@ -589,6 +608,7 @@ __all__ = [
     "SymbolFunction",
     "SymbolImport",
     "SymbolModule",
+    "SymbolParseError",
     "build_codebase_inventory",
     "build_python_symbol_index",
     "write_codebase_inventory",
