@@ -25,9 +25,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from ..config.instance import InstanceRoot
+from ..provenance.source_weighting import is_byesys_source, source_evidence_weight
 from ..schemas import AgentHandoffPackage
 from .dars_config import (
     DarsBackendConfig,
@@ -36,6 +37,31 @@ from .dars_config import (
     load_dars_config,
 )
 from .dars_dispatch import DarsDispatchGate
+
+
+class DarsCritiqueSourceWeight(BaseModel):
+    """Machine-readable provenance entry persisted alongside a DARS critique.
+
+    The ByeSys-zero invariant is enforced at validation time so callers cannot
+    accidentally record a non-zero weight for a ByeSys source, even if the
+    underlying model output mislabels the entry.
+    """
+
+    source_id: str
+    evidential_weight: float = 1.0
+    kind: Literal["internal", "external", "byesys"] = "internal"
+    note: str | None = None
+
+    @model_validator(mode="after")
+    def _enforce_byesys_zero_and_kind(self) -> "DarsCritiqueSourceWeight":
+        normalized_weight = source_evidence_weight(
+            source_id=self.source_id, configured_weight=self.evidential_weight
+        )
+        if normalized_weight != self.evidential_weight:
+            object.__setattr__(self, "evidential_weight", normalized_weight)
+        if is_byesys_source(self.source_id) and self.kind != "byesys":
+            object.__setattr__(self, "kind", "byesys")
+        return self
 
 
 class DarsCritiqueRecord(BaseModel):
@@ -53,6 +79,7 @@ class DarsCritiqueRecord(BaseModel):
     action_taken: Literal["none"] = "none"
     status: Literal["received"] = "received"
     producer_id: str
+    source_weights: list[DarsCritiqueSourceWeight] = Field(default_factory=list)
     policy_refs: list[str] = Field(default_factory=lambda: ["HISYS-FR-AGT-001", "HISYS-FR-AGT-002", "HISYS-FR-AGT-003", "HISYS-T-023", "HISYS-T-024"])
 
 
@@ -525,4 +552,9 @@ def _write_local_llm_boundary(
     )
 
 
-__all__ = ["DarsCritiqueRecord", "DarsCritiqueReport", "DarsRuntime"]
+__all__ = [
+    "DarsCritiqueRecord",
+    "DarsCritiqueReport",
+    "DarsCritiqueSourceWeight",
+    "DarsRuntime",
+]

@@ -512,6 +512,51 @@ def test_dars_runtime_fails_closed_on_local_llm_timeout(tmp_path: Path):
     assert "timeout" in message or "timed out" in message
 
 
+def test_dars_critique_record_normalizes_byesys_weight_to_zero():
+    # M11.1: a DarsCritiqueRecord persisted with a ByeSys source entry must
+    # always read back with evidential_weight=0.0 regardless of the configured
+    # weight, so Jeweler review cannot accidentally treat ByeSys as
+    # corroboration.
+    from hisys.agents.dars import DarsCritiqueRecord
+
+    record = DarsCritiqueRecord(
+        critique_id="CRITIQUE-WEIGHTS-001",
+        handoff_ref="HANDOFF-WEIGHTS-001",
+        source_execution_ref="EXEC-WEIGHTS-001",
+        critique_text="weighted advisory critique",
+        producer_id="weights-test",
+        source_weights=[
+            {"source_id": "internal:obsidian:claim-001", "evidential_weight": 0.6, "kind": "internal"},
+            {"source_id": "ByeSys", "evidential_weight": 0.9, "kind": "byesys"},
+        ],
+    )
+
+    weights_by_source = {entry.source_id: entry.evidential_weight for entry in record.source_weights}
+    assert weights_by_source["internal:obsidian:claim-001"] == 0.6
+    assert weights_by_source["ByeSys"] == 0.0
+
+
+def test_dars_critique_record_byesys_kind_is_recorded_when_byesys_source_id_given():
+    # M11.1: even if the caller forgets to set `kind="byesys"`, the persisted
+    # record should still classify ByeSys entries deterministically so Jeweler
+    # review can recognize them without prose parsing.
+    from hisys.agents.dars import DarsCritiqueRecord
+
+    record = DarsCritiqueRecord(
+        critique_id="CRITIQUE-WEIGHTS-002",
+        handoff_ref="HANDOFF-WEIGHTS-002",
+        source_execution_ref="EXEC-WEIGHTS-002",
+        critique_text="weighted advisory critique",
+        producer_id="weights-test",
+        source_weights=[
+            {"source_id": "ByeSys", "evidential_weight": 0.5},
+        ],
+    )
+
+    assert record.source_weights[0].kind == "byesys"
+    assert record.source_weights[0].evidential_weight == 0.0
+
+
 def test_dars_runtime_local_llm_failure_does_not_leak_secrets(tmp_path: Path):
     with FakeOpenAIServer(mode="non_2xx") as server:
         instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
