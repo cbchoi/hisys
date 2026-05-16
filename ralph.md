@@ -12,7 +12,7 @@
 | Default working directory | `/home/cbchoi/workspaces/sysailab/develop/repos/hisys` |
 | Target branch | `feat/domain-adaptive-requirements-analysis` |
 | Original baseline commit | `04d6b01 test: propagate src path to subprocess CLI tests` |
-| Current update baseline | `f3e4281` |
+| Current update baseline | `6901fea` |
 | Execution mode | `on-demand Discord Ralph loop unless explicitly scheduled` |
 | Default runtime limit | `5 hours` |
 | User-specified runtime limit | `<none unless stated in the invoking message>` |
@@ -1749,10 +1749,36 @@ Resume checkpoint:
 - Next command to run: `python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check`, then `git add ralph.md && git commit -m "docs: record M9 local DARS adapter reflection"`, then Prepare M10.1 (inspect `src/hisys/domain/use_cases.py`, `src/hisys/domain/runtime.py`, `src/hisys/domain/layers.py`, `src/hisys/cli/main.py`, and the existing dangling-DARS-ref evidence in `/tmp/hisys-local-dars-plan-review` if still present).
 - Stop condition: none; continue to M10.1 Prepare if iteration budget remains, otherwise stop at this clean Reflection checkpoint.
 
+### 2026-05-16 — M10 DARS runtime artifact integrity guard committed
+
+- Phase completed: Prepare / RED / GREEN / Refactor-skipped / Gate / Commit for M10.1 + M10.2 as one coherent increment.
+- Controlled anchors checked: SRS `HISYS-DATA-003..005`, `HISYS-NFR-MNT-001`; SDD Domain Investigation Adapter Design (runtime writer, DARS decision layer, runtime-boundary artifact design); IDD `HISYS-IF-017` and `5.7`; STD `HISYS-T-025..028`; Local DARS plan Milestone 2.5.
+- Codebase evidence: `src/hisys/domain/use_cases.py` adds `_write_aggregation_report` and `_write_dars_decision_placeholder` helpers and threads `MemoReportAggregationLayer.aggregate` / `DarsDecisionLayer.decide` through them; `tests/unit/test_domain_runtime_artifacts.py` adds 6 RED tests covering aggregation-report file resolution, DARS decision file resolution, advisory placeholder schema, end-to-end ref-resolution for research and codebase specs, and "no writer escapes the instance root" containment.
+- Quality gate result: pass — focused gate `python3 -m pytest tests/unit/test_domain_runtime_artifacts.py tests/unit/test_cli_runtime.py -q` 43 passed (8 runtime-artifacts + 35 cli_runtime); full suite `python3 -m pytest -q` 613 passed (was 607; +6 new tests); `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=430 hit_count=0; `git diff --check` clean.
+- RED observed: 4 of 6 new tests failing at first run (`test_structured_adapter_aggregation_report_ref_resolves_to_file`, `test_structured_adapter_dars_decision_ref_resolves_to_file`, `test_structured_adapter_dars_decision_ref_is_advisory_placeholder`, `test_structured_adapter_codebase_runtime_boundary_refs_all_resolve`) because the prior code constructed ref strings without writing files. The other 2 tests passed because the existing domain-use-case-result writer already produced real files on disk.
+- GREEN observed: 8/8 in `test_domain_runtime_artifacts.py`; 43/43 in the focused gate; 613/613 full suite.
+- Potential issues: (a) the DARS decision artifact is a placeholder (`status=pending_human_review`) — the new M9 local-LLM adapter writes its own `dars-local-llm-boundary-*.json` under a separate path and does not yet replace the placeholder when an actual local LLM decision is produced; reconciling those two artifact families is candidate scope for M11 or a later milestone. (b) The aggregation report is a minimal markdown summary; it is intentionally not parameterized over use-case-specific report templates because that would expand the scope beyond Milestone 2.5. (c) Writers now create directories under `instance_root` for every structured-domain run; under pytest each test uses a fresh `tmp_path`, but a production instance that already has these directories must not have its other artifacts overwritten — the writers use deterministic per-request filenames so collisions only happen on a re-run of the same `request_id`, which mirrors the prior behavior.
+- `ralph.md` changes: added this Reflection entry; updated `Current update baseline` to `6901fea`; rewrote Section 16 Initial Next Action to point at M11.1.
+- Success likelihood: 80% for M11 — DARS provenance contract + Jeweler/ByeSys enforcement requires touching the DARS prompt/persistence contract and the existing review/weight code paths under `src/hisys/chief_editor/`, `src/hisys/provenance/source_weighting.py`, and `tests/unit/test_dars_runtime.py`. Risk is moderate because the affected modules already have substantial test coverage and any change to source weighting must preserve existing assertions.
+- Continue decision: continue to M11.1 Prepare in a future iteration; this iteration stops at the M10 clean checkpoint per Section 5.1.2.
+- Stop reason: planned checkpoint after coherent increment; runtime budget remains; no non-delegable action required.
+- Next task: Task M11.1 — Add RED tests for machine-readable DARS source weights.
+
+Resume checkpoint:
+- Current HEAD: 6901fea fix: guard DARS runtime artifact references
+- Working tree: `ralph.md` modified for this Reflection entry; commit as docs/control increment before continuing or stopping
+- Last completed milestone/task: M10 (DARS Runtime Artifact Integrity Guard — M10.1 + M10.2 combined)
+- Current in-progress task: ralph.md Reflection commit
+- RED observed: 4/6 new tests initially failing on dangling refs; 2 trivially passing because the existing domain-use-case-result writer already produced real files
+- GREEN observed: focused 43/43, full 613/613
+- Quality gate status: pass — see Quality gate result above
+- Next command to run: `git add ralph.md && git commit -m "docs: record M10 runtime artifact integrity reflection"`, then Prepare M11.1 (inspect `src/hisys/agents/dars.py`, `src/hisys/provenance/source_weighting.py`, `tests/unit/test_dars_runtime.py`, `tests/unit/test_source_weighting.py`, and the existing chief_editor/Jeweler review paths to identify the smallest seam for machine-readable DARS source weights and ByeSys-zero enforcement).
+- Stop condition: none; continue to M11.1 Prepare if iteration budget remains, otherwise stop at this clean Reflection checkpoint.
+
 ## 16. Initial Next Action
 
-Start with **Task M10.1 — Add RED tests for recorded DARS/runtime refs resolving to artifacts**.
+Start with **Task M11.1 — Add RED tests for machine-readable DARS source weights**.
 
-The first Ralph-loop action shall be Prepare: inspect Git state, read SRS/SDD/IDD/STD, read this `ralph.md`, inspect `docs/plans/2026-05-16-local-dars-byesys-provenance.md` Milestone 2.5, and inspect `src/hisys/domain/use_cases.py`, `src/hisys/domain/runtime.py`, `src/hisys/domain/layers.py`, `src/hisys/cli/main.py`, plus the existing `tests/unit/test_domain_runtime_artifacts.py` and `tests/unit/test_cli_runtime.py`. The guard must ensure every `runtime_boundary_refs` entry in `domain-investigation-result`, `hisys-tool-result`, and the run summary resolves to an existing file under the instance root, and that missing optional DARS output is recorded as `skipped`/`unavailable` rather than as a dangling path. The new M9 boundary artifact (`runtime-boundary/dars/<yyyymmdd>/dars-local-llm-boundary-<request_id>.json`) is one of the refs the integrity check should sweep.
+The first Ralph-loop action shall be Prepare: inspect Git state, read SRS/SDD/IDD/STD, read this `ralph.md`, inspect `docs/plans/2026-05-16-local-dars-byesys-provenance.md` Milestones 4..5, and inspect `src/hisys/agents/dars.py` (`_build_openai_chat_payload` and `DarsCritiqueRecord`), `src/hisys/provenance/source_weighting.py`, `tests/unit/test_dars_runtime.py`, `tests/unit/test_source_weighting.py`, and the existing Chief Editor / Jeweler review code under `src/hisys/chief_editor/`. DARS persisted critique records must surface machine-readable source weights; ByeSys evidence weight must be `0.0` and Jeweler review must not accept ByeSys as corroborating evidence. Preserve legacy import names where a broad rename is risky.
 
 Do not start by editing production code. The first implementation action must be a failing test that proves local `openai_compatible` DARS config does not yet enforce strict localhost-only endpoint policy or does not yet expose the required local model-boundary metadata.
