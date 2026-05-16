@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import pytest
 from hisys.operations.codebase_analysis import (
     PathPolicy,
     build_codebase_inventory,
+    write_codebase_inventory,
 )
 
 
@@ -138,3 +140,83 @@ def test_inventory_records_realpath_anchors(tmp_path: Path):
     assert inventory.repo_root == str(repo)
     assert inventory.repo_root_realpath == os.path.realpath(repo)
     assert inventory.repo_root_realpath == str(real)
+
+
+def test_write_codebase_inventory_persists_json_and_markdown(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "src.py").write_text("x = 1\n", encoding="utf-8")
+    (repo / "image.bin").write_bytes(b"\x00\x01ABC")
+
+    inventory = build_codebase_inventory(repo_root=repo)
+
+    instance = tmp_path / "instance"
+    result = write_codebase_inventory(
+        instance_root=instance,
+        date="20260516",
+        request_id="REQ-CODEBASE-001",
+        inventory=inventory,
+    )
+
+    assert result["external_call_made"] is False
+    assert result["mutation_performed"] is False
+    assert result["publication_or_live_action_approved"] is False
+    assert result["raw_source_content_persisted"] is False
+    assert result["json_ref"] == (
+        "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/inventory.json"
+    )
+    assert result["markdown_ref"] == (
+        "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/inventory.md"
+    )
+
+    json_path = instance / result["json_ref"]
+    md_path = instance / result["markdown_ref"]
+    assert json_path.is_file()
+    assert md_path.is_file()
+
+    loaded = json.loads(json_path.read_text(encoding="utf-8"))
+    assert loaded["schema_id"] == "hisys.codebase.inventory"
+    assert loaded["raw_source_content_persisted"] is False
+    assert loaded["files"] == sorted(loaded["files"])
+
+    # JSON is deterministic: re-rendering the same model yields byte-identical
+    # content and the same listed refs.
+    other_instance = tmp_path / "instance_two"
+    other_result = write_codebase_inventory(
+        instance_root=other_instance,
+        date="20260516",
+        request_id="REQ-CODEBASE-001",
+        inventory=inventory,
+    )
+    other_json = (other_instance / other_result["json_ref"]).read_text(encoding="utf-8")
+    assert other_json == json_path.read_text(encoding="utf-8")
+
+    markdown = md_path.read_text(encoding="utf-8")
+    assert "hisys.codebase.inventory" in markdown
+    assert "src.py" in markdown
+
+
+def test_write_codebase_inventory_rejects_traversal_in_request_id(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "src.py").write_text("x = 1\n", encoding="utf-8")
+    inventory = build_codebase_inventory(repo_root=repo)
+    instance = tmp_path / "instance"
+
+    for bad in ("../escape", "REQ/with/slash", "REQ\\back", ".."):
+        with pytest.raises(ValueError):
+            write_codebase_inventory(
+                instance_root=instance,
+                date="20260516",
+                request_id=bad,
+                inventory=inventory,
+            )
+
+    for bad_date in ("2026/05/16", "..", "20260516/extra"):
+        with pytest.raises(ValueError):
+            write_codebase_inventory(
+                instance_root=instance,
+                date=bad_date,
+                request_id="REQ-CODEBASE-001",
+                inventory=inventory,
+            )

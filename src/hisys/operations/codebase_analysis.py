@@ -16,7 +16,9 @@ across those increments.
 
 from __future__ import annotations
 
+import json
 import os
+import re
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -208,12 +210,140 @@ def build_codebase_inventory(
     )
 
 
+# Limit `date` and `request_id` to a conservative slug shape so the writer
+# cannot be tricked into writing outside the `<instance>/runtime-boundary/...`
+# subtree via traversal segments. Callers that need richer characters must
+# normalize before invocation.
+_DATE_PATTERN = re.compile(r"^\d{8}$")
+_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
+
+INVENTORY_RUNTIME_PREFIX = "runtime-boundary/codebase-analysis"
+
+
+def _validate_slug(name: str, value: str, pattern: re.Pattern[str]) -> None:
+    if not pattern.fullmatch(value):
+        raise ValueError(
+            f"invalid {name} for inventory writer: {value!r}; "
+            f"must match {pattern.pattern}"
+        )
+    if value in {".", ".."}:
+        raise ValueError(
+            f"invalid {name} for inventory writer: {value!r}; "
+            "traversal segments are not allowed"
+        )
+
+
+def _render_inventory_markdown(inventory: CodebaseInventory) -> str:
+    policy = inventory.path_policy
+    lines: list[str] = []
+    lines.append(f"# Codebase Inventory — {inventory.schema_id}")
+    lines.append("")
+    lines.append("## Provenance")
+    lines.append("")
+    lines.append(f"- repo_root: `{inventory.repo_root}`")
+    lines.append(f"- repo_root_realpath: `{inventory.repo_root_realpath or ''}`")
+    lines.append(
+        f"- analysis_scope: `{inventory.analysis_scope}`"
+        if inventory.analysis_scope is not None
+        else "- analysis_scope: (whole repo)"
+    )
+    lines.append(f"- raw_source_content_persisted: {inventory.raw_source_content_persisted}")
+    lines.append("")
+    lines.append("## Counts")
+    lines.append("")
+    lines.append(f"- file_count: {inventory.file_count}")
+    lines.append(f"- binary_file_count: {inventory.binary_file_count}")
+    lines.append(f"- large_file_count: {inventory.large_file_count}")
+    lines.append(f"- generated_file_count: {inventory.generated_file_count}")
+    lines.append("")
+    lines.append("## Path Policy")
+    lines.append("")
+    lines.append(f"- follow_symlinks: {policy.follow_symlinks}")
+    lines.append(f"- reject_outside_repo: {policy.reject_outside_repo}")
+    lines.append(f"- max_file_size_bytes: {policy.max_file_size_bytes}")
+    lines.append(f"- binary_null_byte_probe_bytes: {policy.binary_null_byte_probe_bytes}")
+    lines.append("- excluded_dirs:")
+    for entry in policy.excluded_dirs:
+        lines.append(f"  - `{entry}`")
+    lines.append("- generated_suffixes:")
+    for entry in policy.generated_suffixes:
+        lines.append(f"  - `{entry}`")
+    lines.append("- generated_marker_substrings:")
+    for entry in policy.generated_marker_substrings:
+        lines.append(f"  - `{entry}`")
+    lines.append("")
+    lines.append("## Excluded Paths")
+    lines.append("")
+    if inventory.excluded_paths:
+        for entry in inventory.excluded_paths:
+            lines.append(f"- `{entry}`")
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    lines.append("## Skipped Paths")
+    lines.append("")
+    if inventory.skipped_paths:
+        for entry in inventory.skipped_paths:
+            lines.append(f"- `{entry.path}` — {entry.reason}")
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    lines.append("## Files")
+    lines.append("")
+    if inventory.files:
+        for entry in inventory.files:
+            lines.append(f"- `{entry}`")
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_codebase_inventory(
+    *,
+    instance_root: Path,
+    date: str,
+    request_id: str,
+    inventory: CodebaseInventory,
+) -> dict[str, object]:
+    _validate_slug("date", date, _DATE_PATTERN)
+    _validate_slug("request_id", request_id, _REQUEST_ID_PATTERN)
+
+    rel_dir = f"{INVENTORY_RUNTIME_PREFIX}/{date}/{request_id}"
+    out_dir = Path(instance_root) / rel_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    json_rel = f"{rel_dir}/inventory.json"
+    md_rel = f"{rel_dir}/inventory.md"
+    json_path = Path(instance_root) / json_rel
+    md_path = Path(instance_root) / md_rel
+
+    payload = inventory.model_dump(mode="json")
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_path.write_text(_render_inventory_markdown(inventory), encoding="utf-8")
+
+    return {
+        "schema_id": inventory.schema_id,
+        "json_ref": json_rel,
+        "markdown_ref": md_rel,
+        "raw_source_content_persisted": inventory.raw_source_content_persisted,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+
+
 __all__ = [
     "CodebaseInventory",
     "DEFAULT_EXCLUDED_DIRS",
     "DEFAULT_GENERATED_MARKERS",
     "DEFAULT_GENERATED_SUFFIXES",
+    "INVENTORY_RUNTIME_PREFIX",
     "PathPolicy",
     "SkippedPath",
     "build_codebase_inventory",
+    "write_codebase_inventory",
 ]
