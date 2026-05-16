@@ -202,6 +202,80 @@ same `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` bundle
 and downstream M19/M20 consumers should treat them as a single review
 bundle.
 
+## Increment 4 — Risk-boundary scanner
+
+`hisys.operations.codebase_analysis.scan_codebase_risk_boundaries`
+conservatively flags AST call sites that look like they cross sensitive
+boundaries — network calls, browser calls, filesystem mutation,
+runtime-boundary artifact writes, subprocess execution, model/LLM
+boundary crossings, and ByeSys generated-evidence markers — without
+making any live call itself. Each finding is **review evidence, not a
+vulnerability or action verdict**: `action_authorized=false` is asserted
+at both the scan and finding level so a reviewer cannot infer authority
+from absence.
+
+### Detected categories
+
+- `network_external_call` — `requests.<verb>`, `httpx.<verb>`,
+  `urllib3.<verb>`
+- `browser_external_call` — `webbrowser.{open,open_new,open_new_tab}`
+- `filesystem_mutation` — `<receiver>.write_text` / `.write_bytes` in a
+  module that does **not** contain a `runtime-boundary` string literal
+- `runtime_boundary_artifact_write` — `<receiver>.write_text` /
+  `.write_bytes` in a module that contains a `runtime-boundary` string
+  literal (the controlled Hisys writers)
+- `subprocess_execution` — `subprocess.{run,Popen,call,check_call,check_output,getoutput}`
+  and `os.{system,spawnX}`
+- `model_llm_boundary` — `openai.*`, `anthropic.*` (attribute-chain
+  rooted), and `requests.<verb>` / `httpx.<verb>` calls in a module
+  whose string literals contain a model endpoint token
+  (`/v1/chat/completions`, `/v1/completions`, `/v1/messages`,
+  `/v1/embeddings`)
+- `byesys_generated_evidence` — one finding per string literal that
+  contains the controlled markers `ByeSys` or `byesys_generated`
+
+### Captured fields
+
+- `scan.findings[].category`, `path`, `line`, `signal`,
+  `action_authorized=false`
+- `scan.category_counts` — deterministic dict keyed by category
+- `scan.parse_errors[]` — `SymbolParseError` records so a single broken
+  module never halts the scan
+- `scan.action_authorized=false` and `scan.raw_source_content_persisted=false`
+  at the top level
+
+### Safety invariants
+
+- The scanner is AST-only. It makes no live call, no network access,
+  no subprocess execution, and no source content persistence.
+- `action_authorized=false` is asserted at both the scan and the
+  finding level. Findings are review evidence, not vulnerability
+  verdicts; a reviewer must perform separate analysis before acting.
+- The writer emits artifacts only under the caller's instance root at
+  `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/risk-scan.json`
+  and `risk-scan.md`. `date` and `request_id` reuse the inventory slug
+  validation, rejecting traversal segments so the writer cannot escape
+  the runtime-boundary subtree.
+- The writer return value records `external_call_made=false`,
+  `mutation_performed=false`, and `publication_or_live_action_approved=false`.
+
+### Command
+
+```bash
+PYTHONPATH=src python3 -m hisys.cli.main scan-codebase-boundaries \
+  --repo /path/to/repo \
+  --instance /tmp/hisys-codebase-analysis \
+  --date 20260517 \
+  --request-id REQ-CODEBASE-RISK-001 \
+  --scope src \
+  --format json
+```
+
+The optional `--scope` flag restricts the scanner walk to a repo-relative
+subdirectory; findings are still keyed relative to the repository root.
+The risk-scan artifact joins the same `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/`
+bundle as the inventory, symbol-index, and scope-map artifacts.
+
 ## Spec packet
 
 The codebase-analysis surface is governed by a Hisys spec-first packet:
@@ -220,13 +294,14 @@ gates; the symbol-index increment is recorded as
 `FINISH-HISYS-CODEBASE-ANALYSIS-002` after M16 completes its local
 gates; the scope-map-and-validation-plan increment is recorded as
 `FINISH-HISYS-CODEBASE-ANALYSIS-003` after M17 completes its local
+gates; the risk-boundary scanner is recorded as
+`FINISH-HISYS-CODEBASE-ANALYSIS-004` after M18 completes its local
 gates.
 
 ## What is intentionally out of scope
 
-Increments 1, 2, and 3 do not implement and do not authorize:
+Increments 1, 2, 3, and 4 do not implement and do not authorize:
 
-- Risk-boundary scanning (Increment 4 / M18).
 - Source-inspection decision packet (Increment 5 / M19).
 - `investigate-domain --domain codebase` bridge (Increment 6 / M20).
 - External repository clone, raw source content archiving, live network
