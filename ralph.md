@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-16 — M16.1 build_python_symbol_index (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M16.1 (deterministic Python AST symbol index recording modules, imports, classes, and functions).
+- Controlled anchors checked: ralph.md M16 / M16.1 task header; `SPEC-HISYS-CODEBASE-ANALYSIS-001` packet (M14.1) covers the symbol-index increment under the same governed evidence/safety contract; existing inventory schema in `src/hisys/operations/codebase_analysis.py` (deterministic walk + `raw_source_content_persisted=false`); existing tests/unit/test_codebase_analysis_inventory.py conventions (tmp fixture repos, sorted lists, deterministic re-runs).
+- Implementation: (a) added `SymbolImport`, `SymbolFunction`, `SymbolClass` (recursive, with `model_rebuild`), `SymbolModule`, and `PythonSymbolIndex` Pydantic models with `schema_id="hisys.codebase.symbol_index"` and `raw_source_content_persisted=False`. (b) `build_python_symbol_index` reuses `build_codebase_inventory` for the deterministic walk + transient-path exclusion, filters to `.py` files, and uses stdlib `ast` to extract top-level imports, top-level functions (sync + async, with parameter list and line range), and classes with their methods and nested classes. (c) Imports are sorted by `(module, name, asname)`, functions and classes by `name`, for byte-deterministic JSON down the line. (d) Module qualnames are derived from the repo-relative path (stripping `__init__.py` and `.py`). (e) `SyntaxError` is silently skipped here — M16.2 will convert that into evidence records. (f) Added `tests/unit/test_codebase_symbol_index.py` with three RED-then-GREEN tests covering full module shape, non-Python skip, and `analysis_scope` filtering.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` -> 3 passed; focused pair `tests/unit/test_codebase_symbol_index.py tests/unit/test_codebase_analysis_inventory.py -q` -> 10 passed; full unit suite `PYTHONPATH=src python3 -m pytest tests/unit -q` -> 621 passed; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py --json` on the two touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) parse errors are skipped silently — this is the documented M16.2 boundary, not a regression. (b) Symbol classification tags (`cli_handler`, `parser_builder`, `pytest_test`) are M16.3 work; module/class/function records here intentionally do not classify yet. (c) The new schema (`hisys.codebase.symbol_index`) is not yet documented in `docs/public/codebase-analysis.md` or added to the traceability table — that update is the M16.5 DOC/GATE row and is intentionally deferred until M16.2..M16.4 stabilize the artifact shape.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 80% for continuing into M16.2 (parse errors as evidence). The next test introduces a syntax-error file plus a valid file; the change is purely additive (collect `SyntaxError` into a `parse_errors: list[ParseError]` field) and uses the same fixture-only pattern.
+- Continue decision: continue locally to M16.2 within the tmux Ralph runtime budget. Section 10.3 milestone push checkpoint from M15 remains pending; per the tmux-mode invocation contract the push instruction is recorded as a user-executed command without blocking M16-line local work.
+- Stop condition: none yet. The loop will keep running task-level increments until a per-task RED cannot be reached without a non-delegable action, until success likelihood drops below 75%, until the runtime budget is exhausted, or until ralph.md or safety gates require stopping.
+- Next task: M16.2 — RED/GREEN parse errors are evidence, not run failures.
+- Commit: `d2d56c0 feat: add python symbol index builder`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: d2d56c0 feat: add python symbol index builder
+- Working tree: `ralph.md` modified for M16.1 Reflection entry
+- Last completed milestone/task: M16.1 (`build_python_symbol_index` records modules, imports, classes, functions)
+- Current in-progress task: ralph.md Reflection commit for M16.1
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` failed at collection with `ImportError: cannot import name 'PythonSymbolIndex'` before the new symbols were added
+- GREEN observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` -> 3 passed; focused pair -> 10 passed; full unit suite -> 621 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), and `git diff --check` all clean
+- Next command to run: commit this Reflection as `docs: record M16.1 symbol index reflection`; then start M16.2 RED test for parse-error evidence.
+- Stop condition: none for the active increment loop. Section 10.3 push checkpoint from M15 milestone remains pending but does not block local work in tmux mode.
+
 ### 2026-05-16 — M15.5 docs/traceability + FINISH packet; M15 milestone complete
 
 - Phase completed: Prepare / Do / Gate / Commit for Task M15.5 (docs/traceability rows + `FINISH-HISYS-CODEBASE-ANALYSIS-001` packet); plus Section 10.2 milestone global gate for the full M15 milestone.
