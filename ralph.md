@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-16 — M16.4 symbol index writer + build-code-symbol-index CLI (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M16.4 (deterministic JSON + Markdown writer and CLI for the Python AST symbol index).
+- Controlled anchors checked: ralph.md M16.4 task header; `SPEC-HISYS-CODEBASE-ANALYSIS-001` packet allowed-action "write local runtime-boundary artifacts under the provided instance root"; existing `write_codebase_inventory` slug validation, runtime-boundary prefix, and result envelope; Hisys CLI `_cmd_*` handler convention and subparser registration pattern.
+- Implementation: (a) added `write_python_symbol_index(*, instance_root, date, request_id, symbol_index)` reusing `_validate_slug`, `_DATE_PATTERN`, `_REQUEST_ID_PATTERN`, and `INVENTORY_RUNTIME_PREFIX`; writes `symbol-index.json` (UTF-8, sorted, indent=2) and `symbol-index.md`. (b) added `_render_symbol_index_markdown` and `_render_symbol_class_markdown` for human-readable provenance / counts / parse-errors / per-module summary (imports, functions w/ tags, classes with nested classes and methods). (c) Wired `_cmd_build_code_symbol_index` and `build-code-symbol-index` subparser in `src/hisys/cli/main.py`; the CLI shape mirrors `build-codebase-inventory` (`--repo`, `--instance`, `--date`, `--request-id`, optional `--scope`, `--format`). (d) Result envelope records `external_call_made=false`, `mutation_performed=false`, `publication_or_live_action_approved=false`, `raw_source_content_persisted=false`, plus the per-artifact `json_ref` and `markdown_ref`. (e) Added four new tests: writer happy path (deterministic byte-identical re-render, JSON round-trip, markdown content), writer rejects traversal in date/request_id, CLI subprocess writes the expected artifacts and preserves heuristic tags, and CLI honors `--scope src` to filter to the requested subtree.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` -> 9 passed; full unit suite `PYTHONPATH=src python3 -m pytest tests/unit -q` -> 627 passed; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py --json` on the three touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) the writer reuses the same `INVENTORY_RUNTIME_PREFIX` so both inventory and symbol-index artifacts coexist under `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/`. The filenames (`inventory.{json,md}` vs `symbol-index.{json,md}`) keep them separate — this is by design but should be reflected in the docs and traceability update in M16.5. (b) The `build_python_symbol_index` definition still trails the writer in `codebase_analysis.py` order; works at runtime under `from __future__ import annotations`, but a future refactor may want to reorder for readability.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 80% for continuing into M16.5 (docs + traceability + FINISH packet). The DOC/GATE row reuses the existing `docs/public/codebase-analysis.md` and `docs/traceability/README.md` patterns from M15.5.
+- Continue decision: continue locally to M16.5 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M16.5 — DOC/GATE public docs and traceability (and the milestone FINISH packet).
+- Commit: `90a1c73 feat: add code symbol index CLI`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: 90a1c73 feat: add code symbol index CLI
+- Working tree: `ralph.md` modified for M16.4 Reflection entry
+- Last completed milestone/task: M16.4 (writer + CLI)
+- Current in-progress task: ralph.md Reflection commit for M16.4
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` failed at collection with `ImportError: cannot import name 'write_python_symbol_index'` before the writer was added
+- GREEN observed: focused symbol-index suite -> 9 passed; full unit suite -> 627 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), and `git diff --check` all clean
+- Next command to run: commit this Reflection as `docs: record M16.4 symbol writer reflection`; then start M16.5 DOC/GATE.
+- Stop condition: none. Continue into M16.5.
+
 ### 2026-05-16 — M16.3 heuristic symbol tags (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M16.3 (heuristic `cli_handler`, `parser_builder`, `pytest_test` tags on `SymbolFunction`).
