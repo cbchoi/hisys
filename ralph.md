@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-17 — M17.1 codebase scope profile registry (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M17.1 (static scope-profile registry for `domain-adapter`, `runtime-boundary`, and `docs-traceability`).
+- Controlled anchors checked: ralph.md M17 milestone header and M17.1..M17.5 sub-tasks (lines 1738–1780); existing `src/hisys/operations/codebase_analysis.py` registry conventions (Pydantic models, `schema_id` field, deterministic ordering, safety invariants); `SPEC-HISYS-CODEBASE-ANALYSIS-001` allowed-action contract (no source content read, no live action, no mutation); the existing test-file convention from M15/M16 milestones; the milestone validation file `tests/unit/test_codebase_scope_map.py` named in Task M17.5.
+- Implementation: (a) added a `CodebaseScopeProfile` Pydantic model with `schema_id="hisys.codebase.scope_profile"`, `scope_id`, `description`, `entry_files`, `expected_tests`, and `docs_refs` fields. (b) added a private `_CODEBASE_SCOPE_PROFILES` tuple containing three profiles sorted by `scope_id` (`docs-traceability`, `domain-adapter`, `runtime-boundary`); each profile names repo-relative entry files, focused tests, and controlled docs. (c) added `list_codebase_scope_profiles()` returning deep copies in deterministic order, and `get_codebase_scope_profile(scope_id)` that fails closed with `KeyError` on unknown IDs. (d) exposed the new symbols via `__all__`. (e) created `tests/unit/test_codebase_scope_map.py` with 12 RED tests covering model shape and safety, deterministic sorted ordering, deep-copy independence (mutations do not leak back into the registry), per-scope content for the three known scopes, unknown-scope `KeyError`, POSIX/relative/no-traversal ref shape, that every declared ref currently resolves under the repo root, and per-field sorted/unique invariants. The registry deliberately performs no source content read and never opens files at module load.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py -q` -> 12 passed; `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py tests/unit/test_codebase_analysis_inventory.py tests/unit/test_codebase_symbol_index.py -q` -> 28 passed; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py --json src/hisys/operations/codebase_analysis.py tests/unit/test_codebase_scope_map.py` -> `scanned_files=2 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) M17.5 docs/traceability still needs to register the scope-profile registry as an implemented increment and add a `docs/public/codebase-analysis.md` "Increment 3" section once M17 reaches its full milestone gate; the registry is currently only documented via inline docstrings and tests. (b) The `docs-traceability` profile has an empty `expected_tests` list because no unit test directly exercises `scripts/validate_traceability.py` — it is itself the gate. M17.2 and downstream consumers must treat an empty list as "no focused tests in scope" rather than "tests missing". (c) The registry pins exactly three scopes. If a future milestone adds a fourth scope (for example `runtime-boundary-evidence` or `cli-runtime`), the tuple plus the M17.5 docs row must be updated together to keep the contract consistent.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 85% for continuing into M17.2 (scope-map builder consumes inventory and symbol refs). The M17.2 task is a pure builder over already-existing `CodebaseInventory` and `PythonSymbolIndex` artifacts plus the new profile registry, so the inputs and contracts are fully in place.
+- Continue decision: continue locally to M17.2 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M17.2 — RED/GREEN scope map builder consumes inventory and symbol refs.
+- Commit: `3fbb6fc feat: add codebase scope profiles`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: 3fbb6fc feat: add codebase scope profiles
+- Working tree: `ralph.md` modified for M17.1 Reflection entry
+- Last completed milestone/task: M17.1 (static scope-profile registry)
+- Current in-progress task: ralph.md Reflection commit for M17.1
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py -q` failed at collection with `ImportError: cannot import name 'CodebaseScopeProfile' from 'hisys.operations.codebase_analysis'` before the registry was added
+- GREEN observed: focused scope-map suite -> 12 passed; combined codebase-analysis + symbol-index + scope-map -> 28 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), and `git diff --check` all clean
+- Next command to run: commit this Reflection as `docs: record M17.1 scope profile registry reflection`; then start M17.2 Prepare.
+- Stop condition: none. Continue into M17.2.
+
 ### 2026-05-16 — M16.5 docs/traceability + FINISH packet; M16 milestone complete
 
 - Phase completed: Prepare / Do / Gate / Commit for Task M16.5 (docs + traceability rows + `FINISH-HISYS-CODEBASE-ANALYSIS-002` packet); plus Section 10.2 milestone global gate for the full M16 milestone.
