@@ -75,6 +75,62 @@ The optional `--scope` flag restricts the walk to a repository-relative
 subdirectory. Files in the inventory are still keyed relative to the
 repository root.
 
+## Increment 2 — Python AST symbol index
+
+`hisys.operations.codebase_analysis.build_python_symbol_index` extends the
+inventory walk with a stdlib-only Python AST pass that records, per file,
+the module qualname, top-level imports, classes (with nested classes and
+methods), and free functions, along with line ranges. The output is a
+deterministic `PythonSymbolIndex` Pydantic model with
+`schema_id=hisys.codebase.symbol_index` and
+`raw_source_content_persisted=false`.
+
+### Captured fields
+
+- `modules[].path`, `modules[].module_qualname`
+- `modules[].imports[]` with `module`, `name`, `asname`, and `line`, sorted by `(module, name, asname)`
+- `modules[].functions[]` with `name`, `line_start`, `line_end`, `is_async`, `parameters`, and `tags`, sorted by `name`
+- `modules[].classes[]` (recursive `nested_classes`) with `methods` and `line_start`/`line_end`
+- `parse_errors[]` with `path`, `line`, `column`, and `message` for files the AST rejects; the build continues past those files so a single broken module never halts the walk
+- aggregate counters: `module_count`, `import_count`, `class_count`, `function_count`, `parse_error_count`
+
+### Heuristic tags
+
+`SymbolFunction.tags` is sorted and may include the following labels based
+on AST-only signals (no execution, no model call):
+
+- `cli_handler` — function name starts with `_cmd_` (Hisys CLI convention).
+- `parser_builder` — function body builds an `argparse.ArgumentParser` (via attribute or imported name).
+- `pytest_test` — function name starts with `test_`, including methods inside `TestXxx` classes.
+
+### Safety invariants
+
+- `raw_source_content_persisted=false` is asserted on every `PythonSymbolIndex` and surfaced on the writer return value.
+- The writer emits artifacts only under the caller's instance root at
+  `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/symbol-index.json`
+  and `symbol-index.md`. Both `date` and `request_id` reuse the inventory
+  slug validation, rejecting traversal segments so the writer cannot
+  escape the runtime-boundary subtree.
+- The writer return value records `external_call_made=false`,
+  `mutation_performed=false`, and
+  `publication_or_live_action_approved=false`.
+
+### Command
+
+```bash
+PYTHONPATH=src python3 -m hisys.cli.main build-code-symbol-index \
+  --repo /path/to/repo \
+  --instance /tmp/hisys-codebase-analysis \
+  --date 20260516 \
+  --request-id REQ-CODEBASE-001 \
+  --scope src \
+  --format json
+```
+
+The optional `--scope` flag restricts the walk to a repository-relative
+subdirectory; entries in the index are still keyed relative to the
+repository root.
+
 ## Spec packet
 
 The codebase-analysis surface is governed by a Hisys spec-first packet:
@@ -89,13 +145,14 @@ It pins the bounded objective, scope, non-goals, allowed actions,
 evidence contract, expected artifacts, gate criteria, and human-approval
 boundary. The matching `FINISH-HISYS-CODEBASE-ANALYSIS-001` finish
 packet is produced after the M15 inventory milestone passes its local
+gates; the symbol-index increment is recorded as
+`FINISH-HISYS-CODEBASE-ANALYSIS-002` after M16 completes its local
 gates.
 
 ## What is intentionally out of scope
 
-Increment 1 does not implement and does not authorize:
+Increments 1 and 2 do not implement and do not authorize:
 
-- Python AST symbol indexing (Increment 2 / Milestone M16).
 - Scope-and-validation-plan synthesis (Increment 3 / M17).
 - Risk-boundary scanning (Increment 4 / M18).
 - Source-inspection decision packet (Increment 5 / M19).
