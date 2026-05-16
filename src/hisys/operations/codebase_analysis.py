@@ -1041,25 +1041,150 @@ def build_codebase_scope_map(
     )
 
 
+# Scope IDs whose validation rationale crosses many subsystems. The synthesis
+# rule escalates these scopes to the full pytest suite even when their
+# focused tests pass, because focused coverage cannot represent the surface
+# they protect (e.g. every runtime-boundary writer is observed by callers in
+# many other test files).
+_CROSS_CUTTING_SCOPE_IDS: frozenset[str] = frozenset({"runtime-boundary"})
+
+
+class ValidationPlanCommand(BaseModel):
+    """One concrete validation command in a scope's validation plan.
+
+    `argv` is the command tokens (no shell), `kind` is one of the controlled
+    kinds, and `purpose` is a short human-readable explanation that flows
+    into the M17.4 writer output.
+    """
+
+    schema_id: str = "hisys.codebase.validation_plan_command"
+    kind: str
+    argv: list[str]
+    purpose: str
+
+
+class ScopeValidationPlan(BaseModel):
+    schema_id: str = "hisys.codebase.scope_validation_plan"
+    scope_id: str
+    commands: list[ValidationPlanCommand] = Field(default_factory=list)
+    requires_full_suite: bool = False
+
+
+class CodebaseValidationPlan(BaseModel):
+    schema_id: str = "hisys.codebase.validation_plan"
+    scope_plans: list[ScopeValidationPlan] = Field(default_factory=list)
+    raw_source_content_persisted: bool = False
+
+
+def _plan_for_scope_entry(entry: CodebaseScopeMapEntry) -> ScopeValidationPlan:
+    has_drift = bool(entry.missing_entry_files) or bool(entry.missing_expected_tests)
+    cross_cutting = entry.scope_id in _CROSS_CUTTING_SCOPE_IDS
+    requires_full_suite = has_drift or cross_cutting
+
+    commands: list[ValidationPlanCommand] = []
+
+    commands.append(
+        ValidationPlanCommand(
+            kind="git_diff_check",
+            argv=["git", "diff", "--check"],
+            purpose="reject whitespace and conflict markers before commit",
+        )
+    )
+    commands.append(
+        ValidationPlanCommand(
+            kind="traceability",
+            argv=["python3", "scripts/validate_traceability.py"],
+            purpose="re-validate controlled-document traceability for the scope",
+        )
+    )
+
+    if entry.tests_in_scope:
+        commands.append(
+            ValidationPlanCommand(
+                kind="focused_tests",
+                argv=[
+                    "python3",
+                    "-m",
+                    "pytest",
+                    *entry.tests_in_scope,
+                    "-q",
+                ],
+                purpose="run the focused pytest suite that governs this scope",
+            )
+        )
+
+    # Secret scan is appropriate whenever a scope owns code or docs; an
+    # entirely empty scope (no inventory hits) skips it to keep the plan
+    # honest about what it actually touches.
+    if entry.files_in_scope or entry.docs_in_scope:
+        commands.append(
+            ValidationPlanCommand(
+                kind="secret_scan",
+                argv=["python3", "scripts/scan_secrets.py"],
+                purpose="scan touched files for secret-like content",
+            )
+        )
+
+    if requires_full_suite:
+        commands.append(
+            ValidationPlanCommand(
+                kind="full_tests",
+                argv=["python3", "-m", "pytest", "-q"],
+                purpose=(
+                    "run the full pytest suite to cover scope drift or "
+                    "cross-cutting surface that the focused gate cannot"
+                ),
+            )
+        )
+
+    commands.sort(key=lambda cmd: cmd.kind)
+
+    return ScopeValidationPlan(
+        scope_id=entry.scope_id,
+        commands=commands,
+        requires_full_suite=requires_full_suite,
+    )
+
+
+def build_codebase_validation_plan(
+    scope_map: CodebaseScopeMap,
+) -> CodebaseValidationPlan:
+    """Synthesize a deterministic validation plan from a scope map.
+
+    The plan never executes commands and never reads source content. It is
+    pure data that the M17.4 writer can persist and a human reviewer can run.
+    """
+
+    scope_plans = [_plan_for_scope_entry(entry) for entry in scope_map.scope_entries]
+    return CodebaseValidationPlan(
+        scope_plans=scope_plans,
+        raw_source_content_persisted=False,
+    )
+
+
 __all__ = [
     "CodebaseInventory",
     "CodebaseScopeMap",
     "CodebaseScopeMapEntry",
     "CodebaseScopeProfile",
+    "CodebaseValidationPlan",
     "DEFAULT_EXCLUDED_DIRS",
     "DEFAULT_GENERATED_MARKERS",
     "DEFAULT_GENERATED_SUFFIXES",
     "INVENTORY_RUNTIME_PREFIX",
     "PathPolicy",
     "PythonSymbolIndex",
+    "ScopeValidationPlan",
     "SkippedPath",
     "SymbolClass",
     "SymbolFunction",
     "SymbolImport",
     "SymbolModule",
     "SymbolParseError",
+    "ValidationPlanCommand",
     "build_codebase_inventory",
     "build_codebase_scope_map",
+    "build_codebase_validation_plan",
     "build_python_symbol_index",
     "get_codebase_scope_profile",
     "list_codebase_scope_profiles",

@@ -25,12 +25,16 @@ from hisys.operations.codebase_analysis import (
     CodebaseScopeMap,
     CodebaseScopeMapEntry,
     CodebaseScopeProfile,
+    CodebaseValidationPlan,
     PythonSymbolIndex,
+    ScopeValidationPlan,
     SymbolFunction,
     SymbolImport,
     SymbolModule,
     SymbolParseError,
+    ValidationPlanCommand,
     build_codebase_scope_map,
+    build_codebase_validation_plan,
     get_codebase_scope_profile,
     list_codebase_scope_profiles,
 )
@@ -483,3 +487,199 @@ def test_scope_map_preserves_safety_invariants_from_inputs():
     assert scope_map.raw_source_content_persisted is False
     for entry in scope_map.scope_entries:
         assert isinstance(entry, CodebaseScopeMapEntry)
+
+
+# ---------------------------------------------------------------------------
+# M17.3 — validation plan synthesis
+# ---------------------------------------------------------------------------
+
+
+def _scope_map_for_validation_plan(
+    profiles: list[CodebaseScopeProfile], file_set: list[str]
+) -> CodebaseScopeMap:
+    repo = "/fake/repo"
+    inventory = _make_inventory(repo, file_set)
+    py_files = [path for path in file_set if path.endswith(".py")]
+    symbol_index = _make_symbol_index(repo, py_files)
+    return build_codebase_scope_map(
+        inventory=inventory, symbol_index=symbol_index, profiles=profiles
+    )
+
+
+def _find_command(plan: ScopeValidationPlan, kind: str) -> ValidationPlanCommand:
+    matches = [cmd for cmd in plan.commands if cmd.kind == kind]
+    assert matches, f"validation plan for {plan.scope_id} missing {kind} command"
+    assert len(matches) == 1, (
+        f"validation plan for {plan.scope_id} has multiple {kind} commands"
+    )
+    return matches[0]
+
+
+def test_validation_plan_top_level_envelope_records_safety_invariants():
+    profile = CodebaseScopeProfile(
+        scope_id="example",
+        description="x",
+        entry_files=["src/example.py"],
+    )
+    scope_map = _scope_map_for_validation_plan([profile], ["src/example.py"])
+
+    plan = build_codebase_validation_plan(scope_map)
+
+    assert isinstance(plan, CodebaseValidationPlan)
+    assert plan.schema_id == "hisys.codebase.validation_plan"
+    assert plan.raw_source_content_persisted is False
+    assert [sp.scope_id for sp in plan.scope_plans] == ["example"]
+
+
+def test_validation_plan_for_docs_traceability_scope_skips_focused_pytest():
+    docs_profile = get_codebase_scope_profile("docs-traceability")
+    scope_map = _scope_map_for_validation_plan(
+        [docs_profile],
+        [
+            "scripts/validate_traceability.py",
+            "docs/traceability/README.md",
+        ],
+    )
+
+    plan = build_codebase_validation_plan(scope_map)
+    scope_plan = plan.scope_plans[0]
+    assert scope_plan.scope_id == "docs-traceability"
+
+    kinds = [cmd.kind for cmd in scope_plan.commands]
+    assert "focused_tests" not in kinds  # no expected_tests in this scope
+    assert "traceability" in kinds
+    assert "git_diff_check" in kinds
+    assert "secret_scan" in kinds
+
+    traceability_cmd = _find_command(scope_plan, "traceability")
+    assert traceability_cmd.argv == [
+        "python3",
+        "scripts/validate_traceability.py",
+    ]
+    git_cmd = _find_command(scope_plan, "git_diff_check")
+    assert git_cmd.argv == ["git", "diff", "--check"]
+
+
+def test_validation_plan_for_domain_adapter_emits_focused_pytest_invocation():
+    domain_profile = get_codebase_scope_profile("domain-adapter")
+    file_set = list(domain_profile.entry_files) + list(domain_profile.expected_tests) + [
+        "docs/traceability/README.md",
+    ]
+    scope_map = _scope_map_for_validation_plan([domain_profile], file_set)
+
+    plan = build_codebase_validation_plan(scope_map)
+    scope_plan = plan.scope_plans[0]
+    assert scope_plan.scope_id == "domain-adapter"
+
+    focused = _find_command(scope_plan, "focused_tests")
+    assert focused.argv[:3] == ["python3", "-m", "pytest"]
+    assert focused.argv[-1] == "-q"
+    selected_tests = focused.argv[3:-1]
+    assert selected_tests == sorted(selected_tests)  # deterministic ordering
+    assert selected_tests == list(domain_profile.expected_tests)
+
+    # No drift -> the focused suite is sufficient and the full suite is not
+    # required for this scope.
+    assert scope_plan.requires_full_suite is False
+    kinds = [cmd.kind for cmd in scope_plan.commands]
+    assert "full_tests" not in kinds
+
+
+def test_validation_plan_marks_runtime_boundary_scope_as_cross_cutting():
+    runtime_profile = get_codebase_scope_profile("runtime-boundary")
+    file_set = list(runtime_profile.entry_files) + list(runtime_profile.expected_tests) + [
+        "docs/public/codebase-analysis.md",
+    ]
+    scope_map = _scope_map_for_validation_plan([runtime_profile], file_set)
+
+    plan = build_codebase_validation_plan(scope_map)
+    scope_plan = plan.scope_plans[0]
+    assert scope_plan.scope_id == "runtime-boundary"
+    assert scope_plan.requires_full_suite is True
+
+    full = _find_command(scope_plan, "full_tests")
+    assert full.argv == ["python3", "-m", "pytest", "-q"]
+
+
+def test_validation_plan_requires_full_suite_when_inventory_drift_detected():
+    # The inventory deliberately omits one of the profile's expected_tests so
+    # `missing_expected_tests` is non-empty; the plan must escalate to the
+    # full suite so a reviewer notices the drift instead of trusting a
+    # partial focused gate.
+    profile = CodebaseScopeProfile(
+        scope_id="drifted",
+        description="drift signal",
+        entry_files=["src/example.py"],
+        expected_tests=[
+            "tests/unit/test_example_a.py",
+            "tests/unit/test_example_b.py",
+        ],
+    )
+    scope_map = _scope_map_for_validation_plan(
+        [profile],
+        [
+            "src/example.py",
+            "tests/unit/test_example_a.py",
+            # test_example_b.py intentionally missing
+        ],
+    )
+
+    plan = build_codebase_validation_plan(scope_map)
+    scope_plan = plan.scope_plans[0]
+    assert scope_plan.requires_full_suite is True
+    assert "tests/unit/test_example_b.py" in (
+        scope_map.scope_entries[0].missing_expected_tests
+    )
+
+
+def test_validation_plan_commands_are_sorted_by_kind_and_deterministic():
+    profile = get_codebase_scope_profile("domain-adapter")
+    file_set = list(profile.entry_files) + list(profile.expected_tests) + [
+        "docs/traceability/README.md",
+    ]
+    scope_map = _scope_map_for_validation_plan([profile], file_set)
+
+    plan_once = build_codebase_validation_plan(scope_map)
+    plan_twice = build_codebase_validation_plan(scope_map)
+    assert plan_once.model_dump() == plan_twice.model_dump()
+
+    for scope_plan in plan_once.scope_plans:
+        kinds = [cmd.kind for cmd in scope_plan.commands]
+        assert kinds == sorted(kinds)
+
+
+def test_validation_plan_secret_scan_only_added_when_scope_has_content():
+    empty_profile = CodebaseScopeProfile(
+        scope_id="empty",
+        description="empty",
+        entry_files=[],
+        expected_tests=[],
+        docs_refs=[],
+    )
+    scope_map = _scope_map_for_validation_plan([empty_profile], [])
+
+    plan = build_codebase_validation_plan(scope_map)
+    scope_plan = plan.scope_plans[0]
+    kinds = [cmd.kind for cmd in scope_plan.commands]
+    assert "secret_scan" not in kinds
+    # traceability and git_diff_check remain mandatory.
+    assert "traceability" in kinds
+    assert "git_diff_check" in kinds
+
+
+def test_validation_plan_command_carries_purpose_string():
+    profile = CodebaseScopeProfile(
+        scope_id="explainer",
+        description="x",
+        entry_files=["src/example.py"],
+        expected_tests=["tests/unit/test_example.py"],
+    )
+    scope_map = _scope_map_for_validation_plan(
+        [profile], ["src/example.py", "tests/unit/test_example.py"]
+    )
+    plan = build_codebase_validation_plan(scope_map)
+    scope_plan = plan.scope_plans[0]
+
+    for cmd in scope_plan.commands:
+        assert isinstance(cmd, ValidationPlanCommand)
+        assert cmd.purpose, f"{cmd.kind} command must carry a non-empty purpose"
