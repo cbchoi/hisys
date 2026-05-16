@@ -22,6 +22,7 @@ import os
 import re
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -1747,12 +1748,104 @@ def build_codebase_validation_plan(
     )
 
 
+# Allowed decision values for the codebase source-inspection reviewer.
+# Per ralph.md Milestone M19, the reviewer must not adopt `approved`,
+# `safe_to_deploy`, or `ready_for_live_action`; those would cross the no-
+# live-action boundary the Hisys domain adapter protects.
+CodebaseSourceInspectionDecisionValue = Literal[
+    "complete_for_human_review",
+    "blocked_needs_more_evidence",
+]
+
+
+class CodebaseSourceInspectionDecision(BaseModel):
+    """Pure review verdict over the codebase-analysis four-file bundle.
+
+    The reviewer never executes commands, never reads source content, and
+    never authorizes a live action. The safety envelope below repeats the
+    invariants the upstream artifact writers already assert so a reviewer
+    grepping a persisted decision sees the boundary at the top level.
+    """
+
+    schema_id: str = "hisys.codebase.source_inspection_decision"
+    decision: CodebaseSourceInspectionDecisionValue = (
+        "blocked_needs_more_evidence"
+    )
+    missing_evidence: list[str] = Field(default_factory=list)
+    validation_findings: list[str] = Field(default_factory=list)
+    unresolved_blockers: list[str] = Field(default_factory=list)
+    raw_source_content_persisted: bool = False
+    action_authorized: bool = False
+    external_call_made: bool = False
+    mutation_performed: bool = False
+    publication_or_live_action_approved: bool = False
+
+
+# Canonical names of the four artifacts the M19 reviewer expects. The
+# order here is not a presentation order — the reviewer sorts the missing
+# list before emitting it so downstream writers see a deterministic shape.
+_REQUIRED_ARTIFACT_NAMES: tuple[str, ...] = (
+    "inventory",
+    "symbol_index",
+    "scope_map",
+    "validation_plan",
+    "risk_scan",
+)
+
+
+def review_codebase_source_inspection(
+    *,
+    inventory: CodebaseInventory | None,
+    symbol_index: PythonSymbolIndex | None,
+    scope_map: CodebaseScopeMap | None,
+    validation_plan: CodebaseValidationPlan | None,
+    risk_scan: CodebaseRiskScan | None,
+    unresolved_blockers: Iterable[str] | None = None,
+) -> CodebaseSourceInspectionDecision:
+    """Decide whether the codebase-analysis bundle is complete for human review.
+
+    The function is pure: it inspects already-loaded artifact records and
+    returns a `CodebaseSourceInspectionDecision`. It does no filesystem read,
+    no source content read, and no live action. M19.1 covers the missing-
+    artifact case; M19.2..M19.5 will add full-bundle review, safe-ref
+    resolution, the CLI, and docs/traceability.
+    """
+
+    artifact_by_name: dict[str, object | None] = {
+        "inventory": inventory,
+        "symbol_index": symbol_index,
+        "scope_map": scope_map,
+        "validation_plan": validation_plan,
+        "risk_scan": risk_scan,
+    }
+    missing = sorted(
+        name for name in _REQUIRED_ARTIFACT_NAMES if artifact_by_name[name] is None
+    )
+
+    blockers = [blocker for blocker in (unresolved_blockers or []) if blocker]
+
+    if missing or blockers:
+        decision_value: CodebaseSourceInspectionDecisionValue = (
+            "blocked_needs_more_evidence"
+        )
+    else:
+        decision_value = "complete_for_human_review"
+
+    return CodebaseSourceInspectionDecision(
+        decision=decision_value,
+        missing_evidence=missing,
+        unresolved_blockers=blockers,
+    )
+
+
 __all__ = [
     "CodebaseInventory",
     "CodebaseRiskScan",
     "CodebaseScopeMap",
     "CodebaseScopeMapEntry",
     "CodebaseScopeProfile",
+    "CodebaseSourceInspectionDecision",
+    "CodebaseSourceInspectionDecisionValue",
     "CodebaseValidationPlan",
     "DEFAULT_EXCLUDED_DIRS",
     "DEFAULT_GENERATED_MARKERS",
@@ -1780,6 +1873,7 @@ __all__ = [
     "get_codebase_scope_profile",
     "list_codebase_scope_profiles",
     "resolve_instance_runtime_ref",
+    "review_codebase_source_inspection",
     "scan_codebase_risk_boundaries",
     "write_codebase_inventory",
     "write_codebase_risk_scan",
