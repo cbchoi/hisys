@@ -12,7 +12,7 @@
 | Default working directory | `/home/cbchoi/workspaces/sysailab/develop/repos/hisys` |
 | Target branch | `feat/domain-adaptive-requirements-analysis` |
 | Original baseline commit | `04d6b01 test: propagate src path to subprocess CLI tests` |
-| Current update baseline | `ba255b9` |
+| Current update baseline | `f3e4281` |
 | Execution mode | `on-demand Discord Ralph loop unless explicitly scheduled` |
 | Default runtime limit | `5 hours` |
 | User-specified runtime limit | `<none unless stated in the invoking message>` |
@@ -1723,10 +1723,36 @@ Resume checkpoint:
 - Next command to run: `python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check`, then `git add ralph.md && git commit -m "docs: record M8 local DARS endpoint policy reflection"`, then Prepare M9.1 (inspect `src/hisys/agents/dars.py`, `src/hisys/agents/dars_dispatch.py`, existing `tests/unit/test_dars_runtime.py`, and decide whether the fake HTTP server harness needs a new `tests/unit/helpers/` module per the Local DARS plan Milestone 2).
 - Stop condition: none yet; continue to M9.1 Prepare if iteration budget remains, otherwise stop at this clean Reflection checkpoint.
 
+### 2026-05-16 — M9 openai-compatible local DARS adapter committed
+
+- Phase completed: Prepare / RED / GREEN / Refactor-skipped / Gate / Commit for M9.1 + M9.2 as one coherent increment.
+- Controlled anchors checked: SRS `HISYS-FR-AGT-001..005`; SDD DARS configurable backend / runtime-boundary writer / advisory-only no-mutation design; IDD `HISYS-IF-012/013` plus the new local-LLM boundary artifact shape derived from `HISYS-IDD-001` Section 5.7; STD `HISYS-T-019/T-020/T-023/T-024`; Local DARS plan Milestones 2 and 3.
+- Codebase evidence: `tests/unit/helpers/fake_openai_server.py` (new threaded loopback fake OpenAI chat-completions server), `tests/unit/conftest.py` (new — registers `tests/unit/` on `sys.path` so helpers can be imported as `helpers.<module>`); `tests/unit/test_dars_runtime.py` adds 9 local-LLM tests (success/request shape, boundary artifact, missing approval ref, remote endpoint, non-2xx, malformed JSON, missing message content, timeout, no-secret-leak); `src/hisys/agents/dars.py` adds `DarsRuntime._run_openai_compatible_backend`, extends `DarsCritiqueRecord` with `model_boundary_crossed`/`local_model_call_made`/`endpoint_scope`, writes `runtime-boundary/dars/<yyyymmdd>/dars-local-llm-boundary-<request_id>.json`, and adds `_build_openai_chat_payload` with provenance instructions including ByeSys unsupported-synthesis labeling; `src/hisys/agents/dars_dispatch.py` adds the `local_llm_requires_approval_ref` block branch.
+- Quality gate result: pass — focused gate `python3 -m pytest tests/unit/test_dars_runtime.py tests/unit/test_dars_dispatch.py tests/unit/test_dars_config.py -q` 49 passed (12 dars_runtime + 32 dars_config + 5 dars_dispatch); full suite `python3 -m pytest -q` 607 passed (was 598; +9 local-LLM tests); `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=430 hit_count=0; `git diff --check` clean.
+- RED observed: 7 of 9 new tests failed at first run (the remaining 2 trivially passed only because the existing `ValueError("unsupported DARS backend kind: openai_compatible")` happened to satisfy negative substring checks; both were verified to flip to genuine GREEN after implementation).
+- GREEN observed: 12/12 in `test_dars_runtime.py` after implementation; 49/49 in the focused gate; 607/607 full suite.
+- Potential issues: (a) the runtime adapter uses stdlib `urllib.request.urlopen`; a future task may want to switch to a small custom HTTP client if richer cancellation or chunked-response handling is needed. (b) The local LLM boundary artifact uses a new schema id `hisys.dars.local_llm_boundary` (`0.1.0`); it is currently written but not yet linked from run summaries or domain runtime artifacts — that aggregation is part of M10 (DARS Runtime Artifact Integrity Guard). (c) Sanitized error messages intentionally do not echo the response body or approval_ref; this means operators investigating failures will need to consult the boundary artifact for context. (d) The fake HTTP server fixture uses a 2-second join timeout on shutdown to keep the suite responsive; if a future test exercises long-running responses, the fixture may need a more aggressive cancellation path.
+- `ralph.md` changes: added this Reflection entry; updated `Current update baseline` to `f3e4281`; rewrote Section 16 Initial Next Action to point at M10.1.
+- Success likelihood: 84% for M10.1 — runtime artifact integrity guard requires reading existing domain runtime/use-case writer code to find the DARS decision ref handling, then adding RED tests that walk every `runtime_boundary_refs` and assert each path exists; the surface area is comparable to M8 in complexity but lives across more files (`src/hisys/domain/use_cases.py`, `src/hisys/domain/runtime.py`, `src/hisys/domain/layers.py`, `src/hisys/cli/main.py`). The new local-LLM boundary artifact from M9 is one of the refs that M10 should sweep into the integrity check, so M10 builds on M9.
+- Continue decision: continue to M10.1 Prepare in a future iteration; this iteration stops at the M9 clean checkpoint per Section 5.1.2.
+- Stop reason: planned checkpoint after coherent increment; runtime budget remains; no non-delegable action required. Per Section 10.3 the milestone push checkpoint is not yet reached; the Local DARS milestone line is M8..M12.
+- Next task: Task M10.1 — Add RED tests for recorded DARS/runtime refs resolving to artifacts.
+
+Resume checkpoint:
+- Current HEAD: f3e4281 feat: add openai-compatible local DARS adapter
+- Working tree: `ralph.md` modified for this Reflection entry; commit as docs/control increment before continuing or stopping
+- Last completed milestone/task: M9 (Fake OpenAI-Compatible Server and Local DARS Adapter — M9.1 + M9.2 combined)
+- Current in-progress task: ralph.md Reflection commit
+- RED observed: 7/9 new tests initially failing; 2 superficially passing under the previous generic-rejection error
+- GREEN observed: focused 49/49, full 607/607
+- Quality gate status: pass — see Quality gate result above
+- Next command to run: `python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check`, then `git add ralph.md && git commit -m "docs: record M9 local DARS adapter reflection"`, then Prepare M10.1 (inspect `src/hisys/domain/use_cases.py`, `src/hisys/domain/runtime.py`, `src/hisys/domain/layers.py`, `src/hisys/cli/main.py`, and the existing dangling-DARS-ref evidence in `/tmp/hisys-local-dars-plan-review` if still present).
+- Stop condition: none; continue to M10.1 Prepare if iteration budget remains, otherwise stop at this clean Reflection checkpoint.
+
 ## 16. Initial Next Action
 
-Start with **Task M9.1 — Add fake HTTP server RED tests for local adapter behavior**.
+Start with **Task M10.1 — Add RED tests for recorded DARS/runtime refs resolving to artifacts**.
 
-The first Ralph-loop action shall be Prepare: inspect Git state, read SRS/SDD/IDD/STD, read this `ralph.md`, inspect `docs/plans/2026-05-16-local-dars-byesys-provenance.md` Milestones 2 and 2.5, inspect `src/hisys/agents/dars.py`, `src/hisys/agents/dars_dispatch.py`, and existing `tests/unit/test_dars_runtime.py`, and decide whether existing controlled anchors are sufficient for M9.1. If anchors are insufficient but consistent with Hisys safety/provenance goals, perform the controlled-document amendment checkpoint before product code. The fake HTTP server must bind only to `127.0.0.1` with an ephemeral port; tests must prove remote endpoints fail closed **before any HTTP request is sent** and that missing approval refs fail closed before contacting the server.
+The first Ralph-loop action shall be Prepare: inspect Git state, read SRS/SDD/IDD/STD, read this `ralph.md`, inspect `docs/plans/2026-05-16-local-dars-byesys-provenance.md` Milestone 2.5, and inspect `src/hisys/domain/use_cases.py`, `src/hisys/domain/runtime.py`, `src/hisys/domain/layers.py`, `src/hisys/cli/main.py`, plus the existing `tests/unit/test_domain_runtime_artifacts.py` and `tests/unit/test_cli_runtime.py`. The guard must ensure every `runtime_boundary_refs` entry in `domain-investigation-result`, `hisys-tool-result`, and the run summary resolves to an existing file under the instance root, and that missing optional DARS output is recorded as `skipped`/`unavailable` rather than as a dangling path. The new M9 boundary artifact (`runtime-boundary/dars/<yyyymmdd>/dars-local-llm-boundary-<request_id>.json`) is one of the refs the integrity check should sweep.
 
 Do not start by editing production code. The first implementation action must be a failing test that proves local `openai_compatible` DARS config does not yet enforce strict localhost-only endpoint policy or does not yet expose the required local model-boundary metadata.
