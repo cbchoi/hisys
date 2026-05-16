@@ -102,9 +102,15 @@ from ..operations.agent_workflow import (
     write_spec_first_run_packet,
 )
 from ..operations.codebase_analysis import (
+    CodebaseInventory,
+    PythonSymbolIndex,
     build_codebase_inventory,
+    build_codebase_scope_map,
+    build_codebase_validation_plan,
     build_python_symbol_index,
+    resolve_instance_runtime_ref,
     write_codebase_inventory,
+    write_codebase_scope_map,
     write_python_symbol_index,
 )
 from ..operations.backup import create_backup, restore_backup_dry_run
@@ -1244,6 +1250,52 @@ def _cmd_build_code_symbol_index(
     return 0
 
 
+def _cmd_build_codebase_map(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    inventory_ref: str,
+    symbol_index_ref: str,
+    output_format: str,
+) -> int:
+    """Assemble a codebase scope map + validation plan from local artifact refs."""
+
+    inventory_path = resolve_instance_runtime_ref(
+        instance_root=instance_root, relative_ref=inventory_ref
+    )
+    symbol_path = resolve_instance_runtime_ref(
+        instance_root=instance_root, relative_ref=symbol_index_ref
+    )
+
+    inventory_payload = json.loads(inventory_path.read_text(encoding="utf-8"))
+    symbol_payload = json.loads(symbol_path.read_text(encoding="utf-8"))
+
+    inventory = CodebaseInventory.model_validate(inventory_payload)
+    symbol_index = PythonSymbolIndex.model_validate(symbol_payload)
+
+    scope_map = build_codebase_scope_map(
+        inventory=inventory, symbol_index=symbol_index
+    )
+    validation_plan = build_codebase_validation_plan(scope_map)
+    result = write_codebase_scope_map(
+        instance_root=instance_root,
+        date=yyyymmdd,
+        request_id=request_id,
+        scope_map=scope_map,
+        validation_plan=validation_plan,
+    )
+    if output_format == "json":
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(
+            "codebase scope map: "
+            f"schema={result['schema_id']} json={result['json_ref']} "
+            f"markdown={result['markdown_ref']}"
+        )
+    return 0
+
+
 def _cmd_build_finish_packet(
     *,
     instance_root: Path,
@@ -1637,6 +1689,25 @@ def _build_parser() -> argparse.ArgumentParser:
     symbol_index_parser.add_argument("--request-id", required=True, help="symbol index request id slug, e.g. REQ-CODEBASE-001")
     symbol_index_parser.add_argument("--scope", default=None, help="optional repo-relative subdirectory to restrict the walk")
     symbol_index_parser.add_argument("--format", choices=["text", "json"], default="text")
+
+    scope_map_parser = sub.add_parser(
+        "build-codebase-map",
+        help="assemble a scope map and validation plan from local inventory and symbol-index refs",
+    )
+    scope_map_parser.add_argument("--instance", required=True, help="Hisys instance root for artifact output")
+    scope_map_parser.add_argument("--date", required=True, help="YYYYMMDD")
+    scope_map_parser.add_argument("--request-id", required=True, help="scope-map request id slug, e.g. REQ-CODEBASE-001")
+    scope_map_parser.add_argument(
+        "--inventory-ref",
+        required=True,
+        help="instance-relative path to an inventory JSON artifact previously written by build-codebase-inventory",
+    )
+    scope_map_parser.add_argument(
+        "--symbol-index-ref",
+        required=True,
+        help="instance-relative path to a symbol-index JSON artifact previously written by build-code-symbol-index",
+    )
+    scope_map_parser.add_argument("--format", choices=["text", "json"], default="text")
 
     finish_packet = sub.add_parser("build-finish-packet", help="write a finish packet separating completion from live approval")
     finish_packet.add_argument("--instance", required=True, help="Hisys instance root")
@@ -2729,6 +2800,15 @@ def main(argv: list[str] | None = None) -> int:
             yyyymmdd=args.date,
             request_id=args.request_id,
             analysis_scope=args.scope,
+            output_format=args.format,
+        )
+    if args.command == "build-codebase-map":
+        return _cmd_build_codebase_map(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            inventory_ref=args.inventory_ref,
+            symbol_index_ref=args.symbol_index_ref,
             output_format=args.format,
         )
     if args.command == "build-finish-packet":

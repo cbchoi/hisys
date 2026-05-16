@@ -15,6 +15,7 @@ contract that later M17 increments consume.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -33,13 +34,24 @@ from hisys.operations.codebase_analysis import (
     SymbolModule,
     SymbolParseError,
     ValidationPlanCommand,
+    build_codebase_inventory,
     build_codebase_scope_map,
     build_codebase_validation_plan,
+    build_python_symbol_index,
     get_codebase_scope_profile,
     list_codebase_scope_profiles,
+    resolve_instance_runtime_ref,
+    write_codebase_inventory,
+    write_codebase_scope_map,
+    write_python_symbol_index,
 )
 
+import os
+import subprocess
+import sys
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src"
 
 
 KNOWN_SCOPE_IDS: tuple[str, ...] = (
@@ -683,3 +695,321 @@ def test_validation_plan_command_carries_purpose_string():
     for cmd in scope_plan.commands:
         assert isinstance(cmd, ValidationPlanCommand)
         assert cmd.purpose, f"{cmd.kind} command must carry a non-empty purpose"
+
+
+# ---------------------------------------------------------------------------
+# M17.4 — writer and CLI (`build-codebase-map`)
+# ---------------------------------------------------------------------------
+
+
+def _seed_writer_fixture(repo: Path) -> None:
+    (repo / "src" / "hisys" / "domain").mkdir(parents=True)
+    (repo / "src" / "hisys" / "domain" / "adapters.py").write_text(
+        "def f():\n    return 1\n", encoding="utf-8"
+    )
+    (repo / "tests" / "unit").mkdir(parents=True)
+    (repo / "tests" / "unit" / "test_domain_adapter_registry.py").write_text(
+        "def test_x():\n    assert True\n", encoding="utf-8"
+    )
+    (repo / "docs" / "traceability").mkdir(parents=True)
+    (repo / "docs" / "traceability" / "README.md").write_text("# trace\n", encoding="utf-8")
+
+
+def test_resolve_instance_runtime_ref_accepts_safe_subpath(tmp_path: Path):
+    instance = tmp_path / "instance"
+    instance.mkdir()
+    target = (
+        instance
+        / "runtime-boundary"
+        / "codebase-analysis"
+        / "20260517"
+        / "REQ-A"
+        / "inventory.json"
+    )
+    target.parent.mkdir(parents=True)
+    target.write_text("{}", encoding="utf-8")
+
+    resolved = resolve_instance_runtime_ref(
+        instance_root=instance,
+        relative_ref=(
+            "runtime-boundary/codebase-analysis/20260517/REQ-A/inventory.json"
+        ),
+    )
+    assert resolved == target.resolve()
+
+
+def test_resolve_instance_runtime_ref_rejects_absolute_and_traversal(tmp_path: Path):
+    instance = tmp_path / "instance"
+    instance.mkdir()
+
+    for bad in (
+        "/etc/passwd",
+        "../escape.json",
+        "runtime-boundary/../../etc/passwd",
+        "",
+    ):
+        with pytest.raises(ValueError):
+            resolve_instance_runtime_ref(
+                instance_root=instance, relative_ref=bad
+            )
+
+
+def test_resolve_instance_runtime_ref_rejects_symlink_outside_instance(tmp_path: Path):
+    instance = tmp_path / "instance"
+    instance.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.json").write_text("{}", encoding="utf-8")
+
+    # A symlinked subpath that leaves the instance root must fail closed.
+    link = instance / "leak.json"
+    os.symlink(outside / "secret.json", link)
+
+    with pytest.raises(ValueError):
+        resolve_instance_runtime_ref(instance_root=instance, relative_ref="leak.json")
+
+
+def test_write_codebase_scope_map_persists_json_and_markdown(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_writer_fixture(repo)
+    inventory = build_codebase_inventory(repo_root=repo)
+    symbol_index = build_python_symbol_index(repo_root=repo)
+    profile = get_codebase_scope_profile("domain-adapter")
+    scope_map = build_codebase_scope_map(
+        inventory=inventory, symbol_index=symbol_index, profiles=[profile]
+    )
+    validation_plan = build_codebase_validation_plan(scope_map)
+
+    instance = tmp_path / "instance"
+    result = write_codebase_scope_map(
+        instance_root=instance,
+        date="20260517",
+        request_id="REQ-CODEBASE-001",
+        scope_map=scope_map,
+        validation_plan=validation_plan,
+    )
+
+    assert result["external_call_made"] is False
+    assert result["mutation_performed"] is False
+    assert result["publication_or_live_action_approved"] is False
+    assert result["raw_source_content_persisted"] is False
+    assert result["schema_id"] == "hisys.codebase.scope_map"
+    assert result["validation_plan_schema_id"] == "hisys.codebase.validation_plan"
+    assert result["json_ref"] == (
+        "runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-001/scope-map.json"
+    )
+    assert result["markdown_ref"] == (
+        "runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-001/scope-map.md"
+    )
+
+    json_path = instance / result["json_ref"]
+    md_path = instance / result["markdown_ref"]
+    assert json_path.is_file()
+    assert md_path.is_file()
+
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["scope_map"]["schema_id"] == "hisys.codebase.scope_map"
+    assert payload["validation_plan"]["schema_id"] == "hisys.codebase.validation_plan"
+    assert payload["scope_map"]["raw_source_content_persisted"] is False
+
+    # Determinism: re-writing yields a byte-identical JSON file.
+    other_instance = tmp_path / "instance_two"
+    other_result = write_codebase_scope_map(
+        instance_root=other_instance,
+        date="20260517",
+        request_id="REQ-CODEBASE-001",
+        scope_map=scope_map,
+        validation_plan=validation_plan,
+    )
+    other_json = (other_instance / other_result["json_ref"]).read_text(encoding="utf-8")
+    assert other_json == json_path.read_text(encoding="utf-8")
+
+    markdown = md_path.read_text(encoding="utf-8")
+    assert "hisys.codebase.scope_map" in markdown
+    assert "domain-adapter" in markdown
+
+
+def test_write_codebase_scope_map_rejects_traversal_in_request_id(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_writer_fixture(repo)
+    inventory = build_codebase_inventory(repo_root=repo)
+    symbol_index = build_python_symbol_index(repo_root=repo)
+    profile = get_codebase_scope_profile("domain-adapter")
+    scope_map = build_codebase_scope_map(
+        inventory=inventory, symbol_index=symbol_index, profiles=[profile]
+    )
+    validation_plan = build_codebase_validation_plan(scope_map)
+
+    instance = tmp_path / "instance"
+    for bad in ("../escape", "REQ/with/slash", ".."):
+        with pytest.raises(ValueError):
+            write_codebase_scope_map(
+                instance_root=instance,
+                date="20260517",
+                request_id=bad,
+                scope_map=scope_map,
+                validation_plan=validation_plan,
+            )
+
+    for bad_date in ("2026/05/17", "..", "20260517/extra"):
+        with pytest.raises(ValueError):
+            write_codebase_scope_map(
+                instance_root=instance,
+                date=bad_date,
+                request_id="REQ-CODEBASE-001",
+                scope_map=scope_map,
+                validation_plan=validation_plan,
+            )
+
+
+def _run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{SRC_ROOT}{os.pathsep}{env.get('PYTHONPATH', '')}"
+    return subprocess.run(
+        [sys.executable, "-m", "hisys.cli.main", *args],
+        cwd=str(cwd),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _prepare_cli_inputs(tmp_path: Path) -> tuple[Path, Path, str, str]:
+    fixture_repo = tmp_path / "fixture_repo"
+    fixture_repo.mkdir()
+    _seed_writer_fixture(fixture_repo)
+    instance = tmp_path / "instance"
+
+    inventory_result = _run_cli(
+        "build-codebase-inventory",
+        "--repo",
+        str(fixture_repo),
+        "--instance",
+        str(instance),
+        "--date",
+        "20260517",
+        "--request-id",
+        "REQ-CODEBASE-001",
+        "--format",
+        "json",
+        cwd=REPO_ROOT,
+    )
+    assert inventory_result.returncode == 0, inventory_result.stderr
+    inventory_payload = json.loads(inventory_result.stdout)
+
+    symbol_result = _run_cli(
+        "build-code-symbol-index",
+        "--repo",
+        str(fixture_repo),
+        "--instance",
+        str(instance),
+        "--date",
+        "20260517",
+        "--request-id",
+        "REQ-CODEBASE-001",
+        "--format",
+        "json",
+        cwd=REPO_ROOT,
+    )
+    assert symbol_result.returncode == 0, symbol_result.stderr
+    symbol_payload = json.loads(symbol_result.stdout)
+
+    return (
+        fixture_repo,
+        instance,
+        inventory_payload["json_ref"],
+        symbol_payload["json_ref"],
+    )
+
+
+def test_build_codebase_map_cli_writes_artifacts(tmp_path: Path):
+    _, instance, inventory_ref, symbol_ref = _prepare_cli_inputs(tmp_path)
+
+    completed = _run_cli(
+        "build-codebase-map",
+        "--instance",
+        str(instance),
+        "--date",
+        "20260517",
+        "--request-id",
+        "REQ-CODEBASE-001",
+        "--inventory-ref",
+        inventory_ref,
+        "--symbol-index-ref",
+        symbol_ref,
+        "--format",
+        "json",
+        cwd=REPO_ROOT,
+    )
+    assert completed.returncode == 0, (
+        f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
+    )
+    payload = json.loads(completed.stdout)
+    assert payload["schema_id"] == "hisys.codebase.scope_map"
+    assert payload["validation_plan_schema_id"] == "hisys.codebase.validation_plan"
+    assert payload["external_call_made"] is False
+    assert payload["mutation_performed"] is False
+    assert payload["publication_or_live_action_approved"] is False
+    assert payload["raw_source_content_persisted"] is False
+    assert payload["json_ref"] == (
+        "runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-001/scope-map.json"
+    )
+
+    json_path = instance / payload["json_ref"]
+    loaded = json.loads(json_path.read_text(encoding="utf-8"))
+    scope_ids = [entry["scope_id"] for entry in loaded["scope_map"]["scope_entries"]]
+    assert scope_ids == ["docs-traceability", "domain-adapter", "runtime-boundary"]
+
+
+def test_build_codebase_map_cli_rejects_absolute_input_refs(tmp_path: Path):
+    _, instance, inventory_ref, symbol_ref = _prepare_cli_inputs(tmp_path)
+
+    abs_path = str((instance / inventory_ref).resolve())
+    completed = _run_cli(
+        "build-codebase-map",
+        "--instance",
+        str(instance),
+        "--date",
+        "20260517",
+        "--request-id",
+        "REQ-CODEBASE-002",
+        "--inventory-ref",
+        abs_path,  # absolute path is rejected by the safe ref resolver
+        "--symbol-index-ref",
+        symbol_ref,
+        "--format",
+        "json",
+        cwd=REPO_ROOT,
+    )
+    assert completed.returncode != 0
+    assert "inventory" in (completed.stderr + completed.stdout).lower() or (
+        "absolute" in (completed.stderr + completed.stdout).lower()
+    )
+
+
+def test_build_codebase_map_cli_rejects_traversal_input_refs(tmp_path: Path):
+    _, instance, _, symbol_ref = _prepare_cli_inputs(tmp_path)
+
+    completed = _run_cli(
+        "build-codebase-map",
+        "--instance",
+        str(instance),
+        "--date",
+        "20260517",
+        "--request-id",
+        "REQ-CODEBASE-003",
+        "--inventory-ref",
+        "../escape/inventory.json",
+        "--symbol-index-ref",
+        symbol_ref,
+        "--format",
+        "json",
+        cwd=REPO_ROOT,
+    )
+    assert completed.returncode != 0
+    assert "traversal" in (completed.stderr + completed.stdout).lower() or (
+        "outside" in (completed.stderr + completed.stdout).lower()
+    )

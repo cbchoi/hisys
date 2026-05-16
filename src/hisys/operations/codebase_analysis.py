@@ -1146,6 +1146,178 @@ def _plan_for_scope_entry(entry: CodebaseScopeMapEntry) -> ScopeValidationPlan:
     )
 
 
+def resolve_instance_runtime_ref(
+    *, instance_root: Path, relative_ref: str
+) -> Path:
+    """Return an absolute path inside ``instance_root`` for a safe local ref.
+
+    The function rejects empty refs, absolute paths, ``..`` traversal
+    segments, and symlinks whose real target escapes the instance root. It
+    is the single chokepoint M17.4+ consumers use before reading a caller-
+    supplied artifact path, so an unsafe ref cannot reach the filesystem.
+    """
+
+    if not relative_ref:
+        raise ValueError("instance runtime ref must be a non-empty string")
+    if relative_ref.startswith("/"):
+        raise ValueError(
+            f"instance runtime ref must be relative, got absolute: {relative_ref!r}"
+        )
+    parts = relative_ref.replace("\\", "/").split("/")
+    if any(part in {"", ".."} for part in parts):
+        raise ValueError(
+            f"instance runtime ref contains traversal segments: {relative_ref!r}"
+        )
+
+    instance_real = Path(os.path.realpath(instance_root))
+    candidate = Path(os.path.realpath(instance_root / relative_ref))
+    try:
+        candidate.relative_to(instance_real)
+    except ValueError as exc:
+        raise ValueError(
+            f"instance runtime ref resolves outside instance root: {relative_ref!r}"
+        ) from exc
+    return candidate
+
+
+def _render_scope_map_markdown(
+    scope_map: CodebaseScopeMap, validation_plan: CodebaseValidationPlan
+) -> str:
+    lines: list[str] = []
+    lines.append(f"# Codebase Scope Map — {scope_map.schema_id}")
+    lines.append("")
+    lines.append("## Provenance")
+    lines.append("")
+    lines.append(f"- repo_root: `{scope_map.repo_root}`")
+    if scope_map.analysis_scope is not None:
+        lines.append(f"- analysis_scope: `{scope_map.analysis_scope}`")
+    else:
+        lines.append("- analysis_scope: (whole repo)")
+    lines.append(f"- inventory_schema_id: `{scope_map.inventory_schema_id}`")
+    lines.append(f"- symbol_index_schema_id: `{scope_map.symbol_index_schema_id}`")
+    lines.append(
+        f"- raw_source_content_persisted: {scope_map.raw_source_content_persisted}"
+    )
+    lines.append("")
+    plan_by_scope = {sp.scope_id: sp for sp in validation_plan.scope_plans}
+    for entry in scope_map.scope_entries:
+        lines.append(f"## Scope `{entry.scope_id}`")
+        lines.append("")
+        if entry.description:
+            lines.append(entry.description)
+            lines.append("")
+        lines.append(
+            f"- module_count: {entry.module_count}, "
+            f"function_count: {entry.function_count}, "
+            f"class_count: {entry.class_count}, "
+            f"import_count: {entry.import_count}"
+        )
+        lines.append("- Files in scope:")
+        if entry.files_in_scope:
+            for path in entry.files_in_scope:
+                lines.append(f"  - `{path}`")
+        else:
+            lines.append("  - (none)")
+        if entry.missing_entry_files:
+            lines.append("- Missing entry files:")
+            for path in entry.missing_entry_files:
+                lines.append(f"  - `{path}`")
+        lines.append("- Tests in scope:")
+        if entry.tests_in_scope:
+            for path in entry.tests_in_scope:
+                lines.append(f"  - `{path}`")
+        else:
+            lines.append("  - (none)")
+        if entry.missing_expected_tests:
+            lines.append("- Missing expected tests:")
+            for path in entry.missing_expected_tests:
+                lines.append(f"  - `{path}`")
+        lines.append("- Docs in scope:")
+        if entry.docs_in_scope:
+            for path in entry.docs_in_scope:
+                lines.append(f"  - `{path}`")
+        else:
+            lines.append("  - (none)")
+        if entry.traceability_refs_in_scope:
+            lines.append("- Traceability refs:")
+            for path in entry.traceability_refs_in_scope:
+                lines.append(f"  - `{path}`")
+        if entry.parse_errors_in_scope:
+            lines.append("- Parse errors:")
+            for err in entry.parse_errors_in_scope:
+                lines.append(
+                    f"  - `{err.path}` line {err.line}: {err.message}"
+                )
+        lines.append("")
+        plan = plan_by_scope.get(entry.scope_id)
+        if plan is not None:
+            lines.append(
+                f"### Validation plan for `{entry.scope_id}` "
+                f"(requires_full_suite={plan.requires_full_suite})"
+            )
+            lines.append("")
+            for cmd in plan.commands:
+                argv = " ".join(cmd.argv)
+                lines.append(f"- {cmd.kind}: `{argv}` — {cmd.purpose}")
+            lines.append("")
+    return "\n".join(lines)
+
+
+SCOPE_MAP_ARTIFACT_FILENAME = "scope-map.json"
+SCOPE_MAP_MARKDOWN_FILENAME = "scope-map.md"
+
+
+def write_codebase_scope_map(
+    *,
+    instance_root: Path,
+    date: str,
+    request_id: str,
+    scope_map: CodebaseScopeMap,
+    validation_plan: CodebaseValidationPlan,
+) -> dict[str, object]:
+    """Persist a scope map and matching validation plan as JSON + Markdown.
+
+    Both artifacts are written under the inventory runtime-boundary subtree
+    so a downstream review CLI can locate them next to the inventory and
+    symbol-index that produced them.
+    """
+
+    _validate_slug("date", date, _DATE_PATTERN)
+    _validate_slug("request_id", request_id, _REQUEST_ID_PATTERN)
+
+    rel_dir = f"{INVENTORY_RUNTIME_PREFIX}/{date}/{request_id}"
+    out_dir = Path(instance_root) / rel_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    json_rel = f"{rel_dir}/{SCOPE_MAP_ARTIFACT_FILENAME}"
+    md_rel = f"{rel_dir}/{SCOPE_MAP_MARKDOWN_FILENAME}"
+    json_path = Path(instance_root) / json_rel
+    md_path = Path(instance_root) / md_rel
+
+    payload = {
+        "scope_map": scope_map.model_dump(mode="json"),
+        "validation_plan": validation_plan.model_dump(mode="json"),
+    }
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_path.write_text(
+        _render_scope_map_markdown(scope_map, validation_plan), encoding="utf-8"
+    )
+
+    return {
+        "schema_id": scope_map.schema_id,
+        "validation_plan_schema_id": validation_plan.schema_id,
+        "json_ref": json_rel,
+        "markdown_ref": md_rel,
+        "raw_source_content_persisted": scope_map.raw_source_content_persisted,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+
+
 def build_codebase_validation_plan(
     scope_map: CodebaseScopeMap,
 ) -> CodebaseValidationPlan:
@@ -1174,6 +1346,8 @@ __all__ = [
     "INVENTORY_RUNTIME_PREFIX",
     "PathPolicy",
     "PythonSymbolIndex",
+    "SCOPE_MAP_ARTIFACT_FILENAME",
+    "SCOPE_MAP_MARKDOWN_FILENAME",
     "ScopeValidationPlan",
     "SkippedPath",
     "SymbolClass",
@@ -1188,6 +1362,8 @@ __all__ = [
     "build_python_symbol_index",
     "get_codebase_scope_profile",
     "list_codebase_scope_profiles",
+    "resolve_instance_runtime_ref",
     "write_codebase_inventory",
+    "write_codebase_scope_map",
     "write_python_symbol_index",
 ]
