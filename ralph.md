@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-16 — M16.3 heuristic symbol tags (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M16.3 (heuristic `cli_handler`, `parser_builder`, `pytest_test` tags on `SymbolFunction`).
+- Controlled anchors checked: ralph.md M16.3 task header (CLI/test/doc symbol discovery); `SPEC-HISYS-CODEBASE-ANALYSIS-001` packet (no live action, no raw source persistence); existing Hisys CLI convention in `src/hisys/cli/main.py` where command handlers use the `_cmd_<name>` prefix.
+- Implementation: (a) added `tags: list[str]` (sorted, default empty) to `SymbolFunction`. (b) Added `_classify_function_tags` that records `pytest_test` when the function name starts with `test_`, `cli_handler` when it starts with `_cmd_`, and `parser_builder` when `_function_builds_argparse_parser` detects an `argparse.ArgumentParser(...)` call anywhere inside the function body (matches both `argparse.ArgumentParser` attribute calls and a bare `ArgumentParser` after a `from argparse import ArgumentParser` import). (c) Tagging runs on both top-level functions and class methods so test methods inside `TestXxx` classes also receive `pytest_test`. (d) Added `test_symbol_index_classifies_cli_parser_and_pytest_functions` covering one CLI module (parser builder, `_cmd_*` handler, untagged `main()`) and one test module (free `test_*`, helper, and `TestThing.test_method` / `TestThing.helper`).
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` -> 5 passed; full unit suite `PYTHONPATH=src python3 -m pytest tests/unit -q` -> 623 passed; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py --json` on the touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) `parser_builder` uses an AST signal on `argparse.ArgumentParser(...)` calls; functions that build subparsers indirectly through helpers will currently miss the tag — acceptable for the M16.3 heuristic boundary. (b) Tags do not yet include Pydantic/BaseModel-class detection promised in the M16.5 docs row; that classification belongs to classes, not functions, and will be added in a later sub-task before M16.5 if needed. (c) Schema still not surfaced in `docs/public/codebase-analysis.md` (deferred to M16.5).
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 80% for continuing into M16.4 (symbol-index artifact writer + CLI). The increment reuses `_validate_slug` and the `runtime-boundary/...` layout already established by `write_codebase_inventory`.
+- Continue decision: continue locally to M16.4 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M16.4 — RED/GREEN symbol index artifact writer and `build-code-symbol-index` CLI.
+- Commit: `aa8d373 feat: classify codebase symbols`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: aa8d373 feat: classify codebase symbols
+- Working tree: `ralph.md` modified for M16.3 Reflection entry
+- Last completed milestone/task: M16.3 (heuristic symbol tags)
+- Current in-progress task: ralph.md Reflection commit for M16.3
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_symbol_index.py -q` failed with `AttributeError: 'SymbolFunction' object has no attribute 'tags'` before the field was added
+- GREEN observed: focused symbol-index suite -> 5 passed; full unit suite -> 623 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), and `git diff --check` all clean
+- Next command to run: commit this Reflection as `docs: record M16.3 symbol tag reflection`; then start M16.4 RED for the artifact writer and CLI.
+- Stop condition: none. Continue into M16.4.
+
 ### 2026-05-16 — M16.2 symbol parse errors as evidence (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M16.2 (parse errors recorded as evidence; valid modules continue to index).
