@@ -7,12 +7,12 @@
 | Field | Value |
 |---|---|
 | Plan ID | `RALPH-HISYS-DOMAIN-ADAPTER` |
-| Scope | Hisys domain-adapter registration, hardening, migration preparation, requirements-analysis example work, and Local DARS / ByeSys provenance implementation |
+| Scope | Hisys domain-adapter registration, Local DARS / ByeSys provenance implementation, and codebase-analysis harness execution |
 | Owner | Choi Changbeom / SysAI Lab |
 | Default working directory | `/home/cbchoi/workspaces/sysailab/develop/repos/hisys` |
 | Target branch | `feat/domain-adaptive-requirements-analysis` |
 | Original baseline commit | `04d6b01 test: propagate src path to subprocess CLI tests` |
-| Current update baseline | `3ecc2be` |
+| Current update baseline | `a21bbc8` |
 | Execution mode | `on-demand Discord Ralph loop unless explicitly scheduled` |
 | Default runtime limit | `5 hours` |
 | User-specified runtime limit | `<none unless stated in the invoking message>` |
@@ -21,7 +21,7 @@
 
 ## 0.1 Purpose and Existing Baseline
 
-This Ralph loop advances the Hisys domain-refactoring line from the pre-Ralph hardening state to governed example-domain registration and migration. The active continuation now adds Local DARS / ByeSys provenance milestones after the completed M1..M7 domain-adapter queue.
+This Ralph loop advances the Hisys domain-refactoring line from the pre-Ralph hardening state to governed example-domain registration, Local DARS / ByeSys provenance, and the codebase-analysis harness. The active continuation converts `revision_plan_v004.md` into this single authoritative `ralph.md` queue so `/rloo` can start from a concrete spec-first next action rather than from a separate planning document.
 
 Current baseline before this loop:
 
@@ -31,7 +31,7 @@ baseline HEAD: 04d6b01 test: propagate src path to subprocess CLI tests
 pre-Ralph gate: 528 passed, traceability OK, secret scan hit_count=0, git diff --check OK
 ```
 
-The first executable milestone is Increment 5 from the master plan: register `research_spec` and `codebase_spec` as example structured domain specs while preserving the legacy research-gap adapter path.
+The next executable milestone is M14.1: build `SPEC-HISYS-CODEBASE-ANALYSIS-001` as the spec-first precondition for the codebase-analysis harness. M15.1 is the first implementation task after the spec packet is recorded and reflected.
 
 ## 1. Success Criteria
 
@@ -103,7 +103,9 @@ Every milestone and every task shall cite the controlled document anchors below 
 | STD | `HISYS-STD-001` | `/home/cbchoi/workspaces/sysailab/pre-develop/Hisys/software-test-description.md` |
 | TDD procedure | `test-driven-development` skill | `software-development/test-driven-development` |
 | Local DARS plan | Local DARS and ByeSys Provenance Implementation Plan | `docs/plans/2026-05-16-local-dars-byesys-provenance.md` |
+| Codebase analysis source plan | Revision plan v004; now merged into this Ralph queue as M14..M20 | `revision_plan_v004.md` |
 | Hisys review artifact summary | Read-only `investigate-domain` review returned `needs_more_evidence` and hardening requirements | `/tmp/hisys-local-dars-plan-review` |
+| RLOO readiness review | Read-only codebase investigation for Ralph start readiness | `/tmp/hisys-rloo-readiness-analysis` |
 
 ### 3.1 Mandatory task-start checklist
 
@@ -1555,9 +1557,404 @@ python3 scripts/scan_secrets.py
 git commit -m "docs: sync RTM for local DARS / byesys provenance surfaces"
 ```
 
+
+### Milestone M14 — Codebase Analysis Spec-First Launch
+
+**Goal:** Convert the codebase-analysis roadmap from `revision_plan_v004.md` into an executable Ralph queue and create the required spec-first packet before any implementation task.
+
+**Controlled anchors:**
+
+- Plan: `revision_plan_v004.md` Section 5 and Section 7.
+- SRS/SDD/IDD/STD: existing domain-adapter, runtime-boundary, traceability, no-live-action, and auditability anchors from Section 3; if a missing HOW-level anchor is found during Prepare, update the controlled document first under Section 3.2.
+- Existing implementation seam: `src/hisys/operations/agent_workflow.py` (`SpecFirstRunPacket`, `FinishPacket`, `build_spec_first_run_packet`, `build_finish_packet`).
+- CLI seam: `src/hisys/cli/main.py` commands `build-spec-first-packet` and `build-finish-packet`.
+
+#### Task M14.1 — Build `SPEC-HISYS-CODEBASE-ANALYSIS-001` spec-first packet
+
+**Objective:** Materialize the codebase-analysis implementation boundary before inventory code is written.
+
+**Files:**
+
+- Read: `revision_plan_v004.md`
+- Read: `src/hisys/operations/agent_workflow.py`
+- Read: `src/hisys/cli/main.py`
+- Modify: `ralph.md` Reflection Log after packet creation
+- Runtime artifacts only under an instance root such as `/tmp/hisys-codebase-analysis`
+
+**Command:**
+
+```bash
+PYTHONPATH=src python3 -m hisys.cli.main build-spec-first-packet \
+  --instance /tmp/hisys-codebase-analysis \
+  --date 20260516 \
+  --packet-id SPEC-HISYS-CODEBASE-ANALYSIS-001 \
+  --objective "Implement deterministic local codebase-analysis inventory foundation before symbol, scope, risk, review, or investigate-domain bridge work" \
+  --scope "Increment 1 inventory foundation only for first implementation loop" \
+  --scope "local repo reads, deterministic tests, docs, traceability, runtime-boundary artifacts" \
+  --non-goal "symbol index, LSP, external repo clone, raw source content archiving, Devil/Jeweler final review, live external action" \
+  --allowed-action "read local repository files subject to path policy" \
+  --allowed-action "write local runtime-boundary artifacts under the provided instance root" \
+  --allowed-action "write tests, product code, docs, and ralph.md reflection in this repository" \
+  --evidence-contract "inventory JSON and Markdown refs; raw_source_content_persisted=false; repo/analysis realpath fields; path policy; focused tests; traceability; secret scan; git diff check" \
+  --expected-artifact "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/inventory.json" \
+  --expected-artifact "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/inventory.md" \
+  --gate-criterion "python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q" \
+  --gate-criterion "python3 scripts/validate_traceability.py" \
+  --gate-criterion "python3 scripts/scan_secrets.py" \
+  --gate-criterion "git diff --check" \
+  --human-approval-boundary "No live external action, publication, remote push, credential use, model call, or raw source archival is approved" \
+  --format json
+```
+
+**Quality gate:**
+
+```bash
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+**Commit message:**
+
+```bash
+git commit -m "docs: start codebase analysis ralph queue"
+```
+
+### Milestone M15 — Codebase Inventory Packet
+
+**Goal:** Add deterministic local repository inventory artifacts while preserving no-live-action and no-raw-source-content boundaries.
+
+**Source-plan mapping:** `revision_plan_v004.md` Increment 1 / original M13.1..M13.5, renumbered here as M15.1..M15.5 to avoid collision with the completed Local DARS M13.
+
+**Files:**
+
+- Create: `src/hisys/operations/codebase_analysis.py`
+- Create: `tests/unit/test_codebase_analysis_inventory.py`
+- Modify: `src/hisys/cli/main.py`
+- Modify: `docs/traceability/README.md`
+- Create: `docs/public/codebase-analysis.md`
+- Modify: `ralph.md` Reflection Log after each coherent task
+
+**Required inventory fields:** `schema_id=hisys.codebase.inventory`, `repo_root`, `git_branch`, `git_commit`, `git_status_short`, `analysis_scope`, `excluded_paths`, `file_count`, `suffix_counts`, `line_counts`, `source_file_count`, `test_file_count`, `doc_file_count`, `required_path_existence`, `repo_root_realpath`, `analysis_root_realpath`, `path_policy`, `binary_file_count`, `large_file_count`, `generated_file_count`, skip reasons, safety boundary fields, and `raw_source_content_persisted=false`.
+
+#### Task M15.1 — RED/GREEN deterministic inventory excludes transient paths
+
+- Test: `tests/unit/test_codebase_analysis_inventory.py::test_inventory_excludes_transient_and_generated_paths`.
+- Expected RED: `build_codebase_inventory` is missing.
+- GREEN: add pure path walk with stable sorting and default excludes for `.git`, `.venv`, `__pycache__`, build/cache paths, and generated-heavy paths.
+- Commit: `feat: add pure codebase inventory builder`.
+
+#### Task M15.2 — RED/GREEN path policy and no raw source persistence
+
+- Test outside-repo symlink, binary file, large file, generated file, and source text fixture.
+- GREEN: record `path_policy`, skip reasons, counts, and `raw_source_content_persisted=false`; reject outside-repo paths and record symlinks without following by default.
+- Commit: `feat: add safe codebase inventory policy`.
+
+#### Task M15.3 — RED/GREEN JSON/Markdown inventory writer
+
+- Test safe instance-relative refs under `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/`.
+- GREEN: write deterministic JSON and Markdown renderers.
+- Commit: `feat: write codebase inventory artifacts`.
+
+#### Task M15.4 — RED/GREEN CLI wrapper
+
+- Test subprocess CLI with fixture repo and `PYTHONPATH=src`.
+- GREEN: add `build-codebase-inventory` parser/handler.
+- CLI shape:
+
+```bash
+PYTHONPATH=src python3 -m hisys.cli.main build-codebase-inventory \
+  --repo /path/to/repo \
+  --instance /tmp/hisys-codebase-analysis \
+  --date <YYYYMMDD> \
+  --request-id REQ-CODEBASE-001 \
+  --scope src/hisys/domain \
+  --format json
+```
+
+- Commit: `feat: add codebase inventory CLI`.
+
+#### Task M15.5 — DOC/GATE docs, traceability, finish packet
+
+- Update `docs/public/codebase-analysis.md` and `docs/traceability/README.md`.
+- Build `FINISH-HISYS-CODEBASE-ANALYSIS-001` after gates pass and reference `SPEC-HISYS-CODEBASE-ANALYSIS-001`.
+- Validation:
+
+```bash
+python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q
+python3 scripts/scan_secrets.py --json src/hisys/operations/codebase_analysis.py tests/unit/test_codebase_analysis_inventory.py docs/public/codebase-analysis.md docs/traceability/README.md
+python3 scripts/validate_traceability.py
+git diff --check
+```
+
+- Commit: `docs: document codebase inventory packet`.
+
+### Milestone M16 — Python AST Symbol Index Packet
+
+**Goal:** Add local symbol-level code intelligence before any LSP dependency.
+
+**Source-plan mapping:** `revision_plan_v004.md` Increment 2 / original M14.1..M14.5, renumbered here as M16.1..M16.5.
+
+**Files:** modify `src/hisys/operations/codebase_analysis.py`, create `tests/unit/test_codebase_symbol_index.py`, modify `src/hisys/cli/main.py`, and update `docs/public/codebase-analysis.md` / traceability when schema or persisted artifact rows change.
+
+#### Task M16.1 — RED/GREEN AST parser records modules, imports, classes, functions
+
+- Test fixture package with nested class/function/import cases.
+- GREEN: add pure `build_python_symbol_index` using stdlib `ast`.
+- Commit: `feat: add python symbol index builder`.
+
+#### Task M16.2 — RED/GREEN parse errors are evidence, not run failures
+
+- Test syntax-error file plus valid file in the same repo.
+- GREEN: record parse-error entries with file path, message, and line while indexing valid files.
+- Commit: `feat: preserve symbol parse errors`.
+
+#### Task M16.3 — RED/GREEN CLI/test/doc symbol discovery
+
+- Test argparse parser builders and pytest functions in fixtures.
+- GREEN: add heuristic tags such as `cli_handler`, `parser_builder`, and `pytest_test`.
+- Commit: `feat: classify codebase symbols`.
+
+#### Task M16.4 — RED/GREEN symbol index artifact writer and CLI
+
+- Test JSON/Markdown refs and subprocess command.
+- GREEN: add `build-code-symbol-index`.
+- Commit: `feat: add code symbol index CLI`.
+
+#### Task M16.5 — DOC/GATE public docs and traceability
+
+- Update codebase-analysis docs and traceability rows with symbol-index artifact fields: modules, classes, functions, imports, Pydantic/BaseModel-like classes, argparse builders, pytest tests, line ranges, and parse errors.
+- Validation:
+
+```bash
+python3 -m pytest tests/unit/test_codebase_symbol_index.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+- Commit: `docs: document code symbol index`.
+
+### Milestone M17 — Scope Map and Validation Plan
+
+**Goal:** Convert inventory and symbol index artifacts into a scope-specific code map and validation plan.
+
+**Source-plan mapping:** `revision_plan_v004.md` Increment 3 / original M15.1..M15.5, renumbered here as M17.1..M17.5.
+
+#### Task M17.1 — RED/GREEN scope profile registry maps scope IDs to entry files
+
+- Test known scopes such as `domain-adapter`, `runtime-boundary`, and `docs-traceability`.
+- GREEN: add static scope profiles with entry files, expected tests, and docs.
+- Commit: `feat: add codebase scope profiles`.
+
+#### Task M17.2 — RED/GREEN scope map builder consumes inventory and symbol refs
+
+- Test linking files, symbols, tests, docs, and traceability refs by scope.
+- GREEN: add a pure builder that accepts loaded artifact dictionaries, not raw prompts.
+- Commit: `feat: build codebase scope maps`.
+
+#### Task M17.3 — RED/GREEN validation plan synthesis
+
+- Test focused/full command selection for known scopes.
+- GREEN: add deterministic validation plan rules.
+- Commit: `feat: derive codebase validation plans`.
+
+#### Task M17.4 — RED/GREEN scope-map writer and CLI
+
+- Test safe input refs under instance root and reject unsafe refs.
+- GREEN: add `build-codebase-map`.
+- Commit: `feat: add codebase map CLI`.
+
+#### Task M17.5 — DOC/GATE docs, traceability, examples
+
+- Add examples for `domain-adapter` and `runtime-boundary` scopes.
+- Validation:
+
+```bash
+python3 -m pytest tests/unit/test_codebase_scope_map.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+- Commit: `docs: document codebase scope maps`.
+
+### Milestone M18 — Risk-Boundary Scanner
+
+**Goal:** Detect code paths likely to cross sensitive boundaries while preserving the distinction between review evidence and vulnerability/action verdicts.
+
+**Source-plan mapping:** `revision_plan_v004.md` Increment 4 / original M16.1..M16.5, renumbered here as M18.1..M18.5.
+
+**Detected categories:** network/browser/API external call, filesystem mutation, Git mutation, credential/environment access, publication/upload/post/send action, subprocess/shell execution, vault write, runtime-boundary artifact write, model/LLM boundary crossing including local model calls and external model/API calls, and generated/unsupported evidence-like content that must be marked as `ByeSys`.
+
+#### Task M18.1 — RED/GREEN scanner identifies external-call and mutation signals
+
+- Test `requests.get`, `httpx`, browser calls, `Path.write_text`, and `subprocess.run`.
+- GREEN: add conservative string/AST scanner with category labels and line refs.
+- Commit: `feat: add codebase risk boundary scanner`.
+
+#### Task M18.2 — RED/GREEN safe local artifact writes are separate from live effects
+
+- Test runtime-boundary writer fixture and ordinary filesystem mutation fixture.
+- GREEN: classify `runtime_boundary_artifact_write` separately and keep `action_authorized=false`.
+- Commit: `feat: classify runtime boundary writes`.
+
+#### Task M18.3 — RED/GREEN model/LLM and ByeSys categories
+
+- Test `openai`, `anthropic`, local model endpoint, and generated-evidence markers.
+- GREEN: add `model_llm_boundary` and `byesys_generated_evidence` categories.
+- Commit: `feat: scan model and byesys boundaries`.
+
+#### Task M18.4 — RED/GREEN risk scan artifact writer and CLI
+
+- Test JSON/Markdown refs and subprocess command.
+- GREEN: add `scan-codebase-boundaries`.
+- Commit: `feat: add risk boundary scan CLI`.
+
+#### Task M18.5 — DOC/GATE docs and traceability
+
+- State that scanner findings are review evidence, not vulnerability verdicts.
+- Validation:
+
+```bash
+python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+- Commit: `docs: document risk boundary scanner`.
+
+### Milestone M19 — Codebase Source-Inspection Decision Packet
+
+**Goal:** Review codebase-analysis artifacts and decide whether the evidence is complete enough for human review.
+
+**Source-plan mapping:** `revision_plan_v004.md` Increment 5 / original M17.1..M17.5, renumbered here as M19.1..M19.5.
+
+**Allowed decision values:** `complete_for_human_review` and `blocked_needs_more_evidence`. Do not add `approved`, `safe_to_deploy`, or `ready_for_live_action` decision values.
+
+#### Task M19.1 — RED/GREEN decision packet rejects incomplete artifact set
+
+- Test missing inventory/symbol/scope/risk refs returns `blocked_needs_more_evidence`.
+- GREEN: add pure reviewer that checks artifact presence, schema IDs, boundary fields, and unresolved blockers.
+- Commit: `feat: review codebase artifact completeness`.
+
+#### Task M19.2 — RED/GREEN complete fixture set becomes human-reviewable
+
+- Test complete fixture artifacts yield `complete_for_human_review` with no live-action approval.
+- GREEN: implement decision aggregation and missing-evidence list.
+- Commit: `feat: build codebase inspection decisions`.
+
+#### Task M19.3 — RED/GREEN runtime refs must resolve under instance root
+
+- Test dangling, absolute, and path-traversal refs fail closed.
+- GREEN: reuse safe-ref resolution helpers or add a narrow resolver.
+- Commit: `feat: guard codebase decision artifact refs`.
+
+#### Task M19.4 — RED/GREEN review CLI and Markdown summary
+
+- Test `review-codebase-analysis` subprocess output and persisted artifacts.
+- GREEN: add CLI handler and JSON/Markdown writer.
+- Commit: `feat: add codebase analysis review CLI`.
+
+#### Task M19.5 — DOC/GATE docs, traceability, finish packet
+
+- Update docs with decision values and no-live-action boundary.
+- Validation:
+
+```bash
+python3 -m pytest tests/unit/test_codebase_source_inspection_decision.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+- Commit: `docs: document codebase review packet`.
+
+### Milestone M20 — Bridge Codebase Artifacts into `investigate-domain --domain codebase`
+
+**Goal:** Make the structured domain adapter consume local codebase-analysis artifacts rather than merely preserving broad evidence refs.
+
+**Source-plan mapping:** `revision_plan_v004.md` Increment 6 / original M18.1..M18.5, renumbered here as M20.1..M20.5.
+
+**Implementation direction:** keep `DomainAdapterRegistry` as the dispatch seam; extend `CodeInvestigationLayer` to optionally read explicit inventory/symbol/scope/risk refs; preserve formal `needs_more_evidence` when required artifacts are missing; report advisory synthesis separately from formal Hisys result.
+
+#### Task M20.1 — RED/GREEN codebase request can reference local artifact bundle
+
+- Test `DomainInvestigationRequest.sources` with inventory/symbol/scope/risk artifact refs.
+- GREEN: add artifact-bundle extraction in the codebase use-case layer.
+- Commit: `feat: accept codebase artifact bundle refs`.
+
+#### Task M20.2 — RED/GREEN incomplete bundle preserves formal `needs_more_evidence`
+
+- Test missing refs and stale schema IDs.
+- GREEN: map incomplete bundle to formal Hisys `needs_more_evidence` with missing evidence categories.
+- Commit: `feat: gate incomplete codebase artifact bundles`.
+
+#### Task M20.3 — RED/GREEN complete bundle enriches codebase result
+
+- Test result contains inventory summary, scope map refs, risk categories, validation plan refs, and advisory-only synthesis fields.
+- GREEN: extend `CodeInvestigationLayer` without changing registry dispatch semantics.
+- Commit: `feat: enrich codebase domain results from artifacts`.
+
+#### Task M20.4 — RED/GREEN CLI integration smoke
+
+- Test `investigate-domain --domain codebase` fixture request with local artifact bundle.
+- GREEN: wire request parsing, safe ref resolution, and run summary refs.
+- Commit: `feat: bridge codebase artifacts into investigate-domain`.
+
+#### Task M20.5 — DOC/GATE docs, traceability, finish packet
+
+- Update `docs/use-cases/codebase-analysis-design-candidates.md`, public docs, and traceability.
+- Validation:
+
+```bash
+python3 -m pytest tests/unit/test_domain_runtime_artifacts.py tests/unit/test_structured_domain_adapter.py tests/unit/test_codebase_domain_artifact_bridge.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+- Commit: `docs: document codebase domain artifact bridge`.
+
+### Milestone M21 — Advanced Codebase-Analysis Backlog
+
+**Goal:** Preserve post-foundation candidates from `revision_plan_v004.md` without making them active before M15..M20 are green and documented.
+
+These candidates are backlog-only until M20.5 completes and a queue-refill checkpoint converts one candidate into a spec-first task: change-impact analyzer, traceability coverage checker, runtime-boundary consistency checker, code-analysis pass-contract loop, architecture candidate generator, approved OSS comparison adapter, optional local LSP adapter, subagent evidence collector protocol, regression benchmark fixture repositories, and codebase map freshness/drift review.
+
+**Stop condition:** Do not begin M21 work while any M15..M20 foundation task remains pending, while the working tree is dirty, or while the candidate would require live external access, credential/security authority, publication, remote push, or raw source archival.
+
 ## 15. Reflection Log
 
 Append one entry after each completed task, stop condition, or runtime limit.
+
+### 2026-05-16 — Codebase-analysis roadmap merged into active Ralph queue
+
+- Phase completed: Prepare / Do / Gate for `ralph.md` control-plan update.
+- Controlled anchors checked: existing `ralph.md`; `revision_plan_v004.md`; `src/hisys/operations/agent_workflow.py`; `src/hisys/cli/main.py`; read-only Hisys RLOO readiness artifacts under `/tmp/hisys-rloo-readiness-analysis`.
+- Codebase evidence checked: `revision_plan_v004.md` Increment 1..6 Ralph-ready queues, recommended `SPEC-HISYS-CODEBASE-ANALYSIS-001` packet, current CLI support for `build-spec-first-packet` and `build-finish-packet`, and current Section 16 stopped-state wording.
+- `ralph.md` changes: updated metadata/purpose and traceability anchors; merged the codebase-analysis roadmap into Section 14 as M14..M21; renumbered the original `revision_plan_v004.md` M13..M18 queue to M15..M20 to avoid collision with completed Local DARS M13; added M14.1 as the active spec-first precondition; rewrote Section 16 to make this file the authoritative `/rloo` queue.
+- Numbering decision: completed Local DARS / ByeSys M13 remains unchanged; codebase-analysis starts at M14, with inventory as M15, symbol index as M16, scope map as M17, risk scanner as M18, source-inspection decision as M19, investigate-domain bridge as M20, and advanced backlog as M21.
+- Quality gate result: pending final validation for this docs/control update. Required gate: `git diff --check`; `python3 scripts/validate_traceability.py`; `python3 scripts/scan_secrets.py`; focused/unit validation if required by traceability.
+- Potential issues: `revision_plan_v004.md` remains as historical/source planning context, but `/rloo` must treat this `ralph.md` queue as authoritative. M14.1 writes runtime-boundary artifacts under `/tmp/hisys-codebase-analysis`; those artifacts are local evidence and do not authorize live action or publication.
+- Success likelihood: 86% for M14.1 because the spec-first packet CLI already exists and this task is a bounded docs/runtime-artifact checkpoint; likelihood for M15.1 is 80% because the inventory builder is new product code but has a narrow fixture-local RED test.
+- Continue decision: continue after this control-plan update is validated, committed, and pushed.
+- Stop reason: none for planning. Stop before M15.1 if M14.1 fails, if controlled anchors are insufficient and cannot be amended safely, or if any task would require live external action, credential/security authority, remote push, publication, or raw source archival.
+- Next task: Task M14.1 — Build `SPEC-HISYS-CODEBASE-ANALYSIS-001` spec-first packet.
+- Commit: pending (`docs: merge codebase analysis into ralph queue`).
+- Working tree: `ralph.md` modified until this control-plan update is committed.
+
+Resume checkpoint:
+- Current HEAD: a21bbc8 docs: detail codebase analysis increments
+- Working tree: `ralph.md` modified for codebase-analysis queue merge
+- Last completed milestone/task: M13.1 Local DARS / ByeSys RTM sync and `revision_plan_v004.md` increment concretization
+- Current in-progress task: control-plan update for codebase-analysis queue
+- RED observed: n/a (docs/control checkpoint)
+- GREEN observed: pending validation
+- Quality gate status: pending
+- Next command to run: validate this docs/control edit, commit, push, then start M14.1 in a future `/rloo start` run.
+- Stop condition: none after validation; this edit supplies the missing active queue that the Hisys RLOO-readiness run previously found absent.
 
 
 ### 2026-05-16 — QUEUE-REFILL-PREP and M13.1 RTM sync for Local DARS surfaces
@@ -2032,46 +2429,27 @@ continue.
 This block is informational for the next iteration. Ralph/Hermes does
 not execute `git push` itself.
 
+
 ## 16. Initial Next Action
 
-Section 14 milestone queue (M1..M13) is exhausted by HEAD `3ecc2be` plus
-the pending M13.1 docs/control commit. QUEUE-REFILL-PREP has been run
-and found no further safe docs/control or fixture-only candidate
-without product-scope/live/credential/security/destructive/publication/
-user-data authority.
+The active authoritative `/rloo` queue is now this `ralph.md` file. The codebase-analysis content from `revision_plan_v004.md` has been merged into Section 14 as M14..M21, with the original `revision_plan_v004.md` numbering deliberately renumbered to avoid collision with the completed Local DARS / ByeSys M13.
 
-A future Ralph loop must either:
+Start with the spec-first precondition, not product code:
 
-- discover a new docs/control gap (e.g., a missing RTM row for code
-  committed after this checkpoint) and seed it through another
-  QUEUE-REFILL-PREP iteration, or
-- obtain user authorization for one of the product-scope or
-  non-delegable candidates listed below via the controlled-document
-  amendment checkpoint in Section 3.2.
+```text
+Task M14.1 — Build SPEC-HISYS-CODEBASE-ANALYSIS-001 spec-first packet.
+```
 
-Candidate next milestones the user may authorize:
+After M14.1 passes its local gate and reflection is committed, continue to:
 
-1. Thread `claim_has_sufficient_non_byesys_evidence` into the Chief
-   Editor / Jeweler review path so production review gates honor the
-   ByeSys-zero invariant without prose parsing.
-2. Define a controlled CLI subcommand (e.g., `hisys smoke local-dars`)
-   that runs the fake-server cohort end-to-end and writes a smoke
-   report artifact under the instance root.
-3. Reconcile the `dars-decision-<request_id>.json` placeholder produced
-   by the structured domain decision layer with the
-   `dars-local-llm-boundary-<request_id>.json` artifact written by the
-   openai-compatible adapter so audit reviewers see a single resolved
-   DARS-decision record when the local LLM path is exercised.
-4. Schema-promote `DarsCritiqueRecord.source_weights` parsing from the
-   model response (currently the adapter persists an empty list) so
-   the machine-readable provenance gate has live data once a real
-   local runner is enabled by user-executed command.
-5. Live Local DARS cutover: switch a controlled runtime instance to a
-   user-installed local runner. This task is non-delegable under
-   Section 2 and the M12 stop conditions and must be initiated by the
-   user.
+```text
+Task M15.1 — RED/GREEN deterministic inventory excludes transient paths.
+```
 
-Until one of these milestones is authorized, the Ralph loop remains in
-the stopped state recorded by the latest Reflection entry.
+Do not start by editing production code. The first implementation action after the spec packet must be a failing test in `tests/unit/test_codebase_analysis_inventory.py` proving that deterministic inventory excludes transient/generated paths and that `build_codebase_inventory` does not yet exist.
 
-Do not start by editing production code. The first implementation action must be a failing test that proves local `openai_compatible` DARS config does not yet enforce strict localhost-only endpoint policy or does not yet expose the required local model-boundary metadata.
+Runtime boundary for this queue:
+
+- allowed: local repository reads, tests, docs/traceability edits, runtime-boundary artifacts under an explicit instance root, and local commits after green gates;
+- not allowed without explicit user-executed approval: remote push, publication/release/deploy, credential changes, external repository clone, live external network/browser/API actions, model calls, or raw source-content archival;
+- formal Hisys status must remain separate from Hermes advisory synthesis when `investigate-domain` reports `needs_more_evidence`.
