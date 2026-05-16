@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-17 — M17.3 codebase validation plan synthesis (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M17.3 (deterministic validation-plan synthesis over `CodebaseScopeMap`).
+- Controlled anchors checked: ralph.md M17.3 (lines 1756–1760); existing M17.2 `CodebaseScopeMap` and `CodebaseScopeMapEntry`; Section 10.2 Global Gate commands (focused pytest, traceability, secret scan, git diff check, full pytest) used as the source of truth for command argv shapes.
+- Implementation: (a) added `ValidationPlanCommand`, `ScopeValidationPlan`, and `CodebaseValidationPlan` Pydantic records with stable `schema_id`s. (b) added `_CROSS_CUTTING_SCOPE_IDS={"runtime-boundary"}` because the runtime-boundary writers are observed by callers in many other test files and the focused gate cannot represent that surface. (c) added `_plan_for_scope_entry(entry)` that always emits `git_diff_check` and `traceability` commands, emits `focused_tests` (`python3 -m pytest <tests_in_scope> -q`) when the scope has tests in inventory, emits `secret_scan` when the scope touches code or docs, and emits a `full_tests` (`python3 -m pytest -q`) command iff `requires_full_suite = (missing_entry_files or missing_expected_tests or scope_id in _CROSS_CUTTING_SCOPE_IDS)`. (d) added `build_codebase_validation_plan(scope_map)` which is pure data over already-loaded records (no execution, no source read). (e) extended `tests/unit/test_codebase_scope_map.py` with eight new tests covering top-level envelope safety invariants, the docs-traceability-without-focused-tests case, the domain-adapter focused-pytest selection (deterministic argv order), the runtime-boundary cross-cutting escalation, the inventory-drift escalation, command kind-sort determinism across two builds, the empty-scope secret-scan suppression, and that each command carries a non-empty `purpose` string.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py -q` -> 28 passed; combined `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py tests/unit/test_codebase_analysis_inventory.py tests/unit/test_codebase_symbol_index.py -q` -> 44 passed; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py --json` on the two touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The `_CROSS_CUTTING_SCOPE_IDS` set is currently a hard-coded singleton (`runtime-boundary`). If M21 adds a future scope that also crosses subsystems (e.g. `cli-runtime`), both the set and the M17.5 docs must change together; for now this keeps the rule deterministic and explicit. (b) The plan does not yet include the full Section 10.2 focused command list (the nine `tests/unit/test_domain_*.py` files used in the milestone global gate). M17.3's contract is per-scope: it emits a focused command per scope from `tests_in_scope`. Combining multiple scopes into a single milestone-level invocation is M17.4's writer/CLI concern, not the plan-synthesis concern. (c) `git_diff_check` uses `["git", "diff", "--check"]` and assumes the working tree is a Git checkout. The M17.4 writer must document this prerequisite alongside the artifact.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 78% for continuing into M17.4 (scope-map writer and CLI). M17.4 is materially similar to the M15.4/M16.4 writer+CLI increments; the main risk is wiring the safe-input-ref rejection (the M17.4 description requires "safe input refs under instance root").
+- Continue decision: continue locally to M17.4 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M17.4 — RED/GREEN scope-map writer and CLI.
+- Commit: `9b6d71e feat: derive codebase validation plans`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: 9b6d71e feat: derive codebase validation plans
+- Working tree: `ralph.md` modified for M17.3 Reflection entry
+- Last completed milestone/task: M17.3 (validation plan synthesis)
+- Current in-progress task: ralph.md Reflection commit for M17.3
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py -q` failed at collection with `ImportError: cannot import name 'CodebaseValidationPlan'` before the synthesizer was added
+- GREEN observed: focused scope-map suite -> 28 passed; combined codebase-analysis + symbol-index + scope-map -> 44 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), `git diff --check` clean
+- Next command to run: commit this Reflection as `docs: record M17.3 validation plan reflection`; then start M17.4 Prepare.
+- Stop condition: none. Continue into M17.4.
+
 ### 2026-05-17 — M17.2 codebase scope map builder (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M17.2 (pure scope-map builder over already-loaded `CodebaseInventory`, `PythonSymbolIndex`, and `CodebaseScopeProfile` records).
