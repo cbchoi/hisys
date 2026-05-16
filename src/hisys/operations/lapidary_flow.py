@@ -6,7 +6,7 @@ HISYS-FR-CE-004, HISYS-DARS-CONTRACT-001, HISYS-T-024.
 This module connects the already-governed schema/runtime records into small,
 fixture-safe operational routing helpers. It does not perform live external
 calls, mutation outside the provided audit writer, or authority transfer from
-DARS Devil/DARS reviewer advisory roles to decision roles.
+Devil/DARS reviewer advisory roles to decision roles.
 """
 
 from __future__ import annotations

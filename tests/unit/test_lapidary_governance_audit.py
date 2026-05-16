@@ -120,7 +120,7 @@ def test_governance_audit_writer_persists_appraiser_separation_policy(tmp_path: 
         policy_id="APPRAISER-POLICY-AUDIT-001",
         producer_id="lapidary-audit-test",
         status="active",
-        appraiser_role="DARS/Appraiser",
+        appraiser_role="DARS/Devil",
         separate_from_roles=["Chief Editor", "Jeweler"],
         advisory_only=True,
         may_approve_decision=False,

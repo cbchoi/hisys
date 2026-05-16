@@ -28,7 +28,7 @@ def _appraiser_policy() -> AppraiserSeparationPolicy:
         policy_id="APPRAISER-POLICY-DARS-001",
         producer_id="test",
         status="active",
-        appraiser_role="DARS/Appraiser",
+        appraiser_role="DARS/Devil",
         separate_from_roles=["Chief Editor", "Jeweler", "Hisys Core Synthesizer"],
         advisory_only=True,
         may_approve_decision=False,

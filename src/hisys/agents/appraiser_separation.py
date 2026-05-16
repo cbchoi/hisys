@@ -1,6 +1,6 @@
-"""Shared DARS appraiser-separation guard.
+"""Shared DARS Devil-separation guard.
 
-Hisys preserves DARS/Appraiser as advisory-only and separate from Chief
+Hisys preserves DARS/Devil as advisory-only and separate from Chief
 Editor / Jeweler decision authority (HISYS-DARS-CONTRACT-001). This module
 centralises the policy: which intents are advisory, which are authority, and
 how non-dispatch DARS paths (backends, adapters, protocol consumers) must
@@ -34,7 +34,7 @@ POLICY_VIOLATION_REASON_CODE = "appraiser_separation_policy_violation"
 
 @dataclass(frozen=True)
 class AppraiserSeparationVerdict:
-    """Result of evaluating an intent against the appraiser-separation policy."""
+    """Result of evaluating an intent against the Devil-separation policy."""
 
     decision: Literal["allowed", "blocked"]
     reason_code: str
@@ -82,10 +82,10 @@ def classify_intent(
     *,
     appraiser_policy: AppraiserSeparationPolicy | None = None,
 ) -> AppraiserSeparationVerdict:
-    """Classify an intent against the advisory-only appraiser policy.
+    """Classify an intent against the advisory-only Devil policy.
 
     Any intent not present in :data:`ADVISORY_INTENTS` is fail-closed and
-    rejected as an appraiser-separation policy violation. Unknown intents
+    rejected as an Devil-separation policy violation. Unknown intents
     (typos, new authority intents added by callers without policy review) are
     treated as authority intents to preserve the fail-closed boundary.
     """
@@ -100,7 +100,7 @@ def classify_intent(
             policy_ref=policy_ref,
         )
     reason = (
-        "DARS/Appraiser is advisory-only and may not be dispatched for "
+        "DARS/Devil is advisory-only and may not be dispatched for "
         f"authority intent {intent!r}; refer to {policy_ref}."
     )
     return AppraiserSeparationVerdict(
@@ -121,7 +121,7 @@ def enforce_advisory_intent(
 
     Use this at non-dispatch DARS boundaries (backends, adapters, future
     runtime hooks) so a forged dispatch decision or an alternate code path
-    cannot route an authority intent past the appraiser-separation policy.
+    cannot route an authority intent past the Devil-separation policy.
     """
 
     verdict = classify_intent(intent, appraiser_policy=appraiser_policy)

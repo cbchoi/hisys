@@ -29,13 +29,14 @@ def test_non_byesys_source_preserves_configured_weight():
     assert source_evidence_weight(source_id="internal:obsidian:claim-001", configured_weight=0.5) == 0.5
 
 
-def test_reviewer_metaphor_alias_maps_chief_editor_to_jeweler_and_keeps_dars_devil():
+def test_reviewer_metaphor_alias_maps_chief_editor_to_jeweler_and_dars_terms_to_devil():
     assert reviewer_metaphor_alias("Chief Editor") == "Jeweler"
     assert reviewer_metaphor_alias("chief_editor") == "Jeweler"
-    assert reviewer_metaphor_alias("DARS devil") == "DARS Devil"
-    assert reviewer_metaphor_alias("dars_devil") == "DARS Devil"
-    assert reviewer_metaphor_alias("dars_reviewer") == "DARS Reviewer"
-    assert reviewer_metaphor_alias("Appraiser") == "DARS Devil"
+    assert reviewer_metaphor_alias("Devil") == "Devil"
+    assert reviewer_metaphor_alias("DARS devil") == "Devil"
+    assert reviewer_metaphor_alias("dars_devil") == "Devil"
+    assert reviewer_metaphor_alias("dars_reviewer") == "Devil"
+    assert reviewer_metaphor_alias("Appraiser") == "Devil"
     assert BYESYS_SOURCE_ID == "ByeSys"
 
 

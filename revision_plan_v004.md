@@ -23,7 +23,7 @@ spec-first packet
   -> scope-first codebase inventory
   -> deterministic source/symbol/test/doc evidence
   -> bounded advisory synthesis
-  -> DARS Devil critique -> Jeweler review gate
+  -> Devil critique -> Jeweler review gate
   -> finish packet for human review
 ```
 
@@ -38,7 +38,7 @@ Do not implement or authorize the following by default:
 - repository mutation, branch creation, commit, push, PR creation, package publication, deployment, or live connector execution;
 - unrestricted shell execution from analyzed repositories;
 - subagent final decisions;
-- automatic lowering of `needs_more_evidence` or Jeweler/DARS Devil gates;
+- automatic lowering of `needs_more_evidence` or Jeweler/Devil gates;
 - long-term storage of raw codebase contents in personal vaults or Hermes memory.
 
 Required boundary fields for every artifact in this plan:
@@ -69,15 +69,15 @@ The gap is that current codebase analysis mostly records local targets and evide
 ### 3.1 Terminology baseline for this revision
 
 Use **Jeweler** for the final review/decision metaphor that replaces user-facing
-**Chief Editor** wording. Keep **DARS Devil** and **DARS reviewer** as the
-DARS-side advisory/adversarial critique terms; do not migrate DARS terminology to
+**Chief Editor** wording. Keep **Devil** as the short canonical term, with **DARS Devil** and **DARS reviewer** as the
+DARS-side advisory/adversarial critique aliases. Do not migrate DARS terminology to
 Appraiser. If older draft artifacts mention Appraiser, treat it as a deprecated
-draft alias for DARS Devil rather than as the canonical term.
+draft alias for Devil rather than as the canonical term.
 
 Code identifiers such as `chief_editor`, file paths, config names, or historical
 artifact fields may remain temporarily where renaming would cause migration risk;
 new user-facing prose and new plan text should use Jeweler for final review and
-DARS Devil for adversarial critique.
+Devil for adversarial critique.
 
 ## 4. Design principles imported from the source material
 
@@ -451,7 +451,7 @@ audit code-analysis blockers
   -> propose code-analysis pass contract
   -> convert proposal to tests/fixtures
   -> evaluate proposal
-  -> DARS Devil/Jeweler/human review
+  -> Devil/Jeweler/human review
   -> promote only after approval
 ```
 
@@ -633,7 +633,7 @@ The first implementation packet should be narrow:
 Packet: SPEC-HISYS-CODEBASE-ANALYSIS-001
 Objective: implement codebase inventory packet only
 Scope: Increment 1A-1E only
-Non-goals: symbol index, LSP, subagent protocol, DARS Devil review, external repo clone, raw source-content archiving
+Non-goals: symbol index, LSP, subagent protocol, Devil review, external repo clone, raw source-content archiving
 Allowed actions: local repo reads, tests, docs, traceability edit, local commit after green validation
 Evidence contract: spec-first packet ref; JSON+Markdown inventory artifact; no raw source contents in inventory; focused tests; secret scan; traceability validation; git diff check; finish packet after validation
 Human boundary: no live action, no publication, no push unless explicitly requested

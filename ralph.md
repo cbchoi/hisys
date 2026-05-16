@@ -1369,8 +1369,8 @@ git commit -m "fix: guard DARS runtime artifact references"
 **Controlled anchors:**
 
 - SRS: provenance, evidence reliability, auditability, and human-review requirements.
-- SDD: Jeweler/DARS Devil separation, DARS advisory-only role, evidence weighting design.
-- IDD: DARS critique record source/weight fields, reviewer terminology aliases that preserve DARS Devil/DARS reviewer wording.
+- SDD: Jeweler/Devil separation, DARS advisory-only role, evidence weighting design.
+- IDD: DARS critique record source/weight fields, reviewer terminology aliases that preserve Devil / DARS Devil / DARS reviewer wording.
 - STD: source weighting tests, DARS runtime tests, review/evidence sufficiency tests.
 - Plan: `docs/plans/2026-05-16-local-dars-byesys-provenance.md`.
 
@@ -1399,13 +1399,13 @@ git commit -m "fix: guard DARS runtime artifact references"
 
 - Identify current review/weight path under existing Chief Editor/Jeweler/Lapidary modules.
 - Modify/add focused tests under `tests/unit/` for the actual path.
-- Modify docs/prompts to prefer `Jeweler` for final review and preserve `DARS Devil` / `DARS reviewer` for DARS advisory critique while preserving legacy import names if broad rename is risky.
+- Modify docs/prompts to prefer `Jeweler` for final review and preserve `Devil` / `DARS Devil` / `DARS reviewer` for DARS advisory critique while preserving legacy import names if broad rename is risky.
 
 **Required test behaviors:**
 
 1. A claim supported only by `ByeSys` cannot pass an evidence sufficiency gate.
 2. Mixed evidence keeps non-ByeSys contributions and ignores ByeSys contribution.
-3. User-facing generated docs/prompts use `Jeweler` for final review and `DARS Devil` / `DARS reviewer` for DARS advisory critique, with alias/deprecation mapping for legacy terms.
+3. User-facing generated docs/prompts use `Jeweler` for final review and `Devil` / `DARS Devil` / `DARS reviewer` for DARS advisory critique, with alias/deprecation mapping for legacy terms.
 
 **Quality gate:**
 
@@ -1492,7 +1492,7 @@ index maintenance for code already committed in M8..M12.
 **Controlled anchors:**
 
 - SRS `HISYS-FR-AGT-001..005`, `HISYS-FR-INV-001..006`, `HISYS-NFR-MNT-001`
-- SDD `Domain Investigation Adapter Design`, Jeweler/DARS Devil separation,
+- SDD `Domain Investigation Adapter Design`, Jeweler/Devil separation,
   evidence weighting design, runtime-boundary artifact design
 - IDD `HISYS-IF-017`, `5.7 DomainInvestigationAdapter / DomainAdapterSpec`,
   DARS critique record source/weight fields, reviewer terminology aliases
@@ -1581,7 +1581,7 @@ Append one entry after each completed task, stop condition, or runtime limit.
   discoverability without altering product scope.
 - Controlled anchors checked: SRS `HISYS-FR-AGT-001..005`,
   `HISYS-FR-INV-001..006`, `HISYS-NFR-MNT-001`; SDD Domain Investigation
-  Adapter Design, Jeweler/DARS Devil separation, evidence weighting design,
+  Adapter Design, Jeweler/Devil separation, evidence weighting design,
   runtime-boundary artifact design; IDD `HISYS-IF-017`, `5.7`, DARS
   critique record source/weight fields; STD `HISYS-T-019`, `HISYS-T-020`,
   `HISYS-T-023`, `HISYS-T-024`; Local DARS plan Milestones 2..5 and 7..8.
@@ -1961,7 +1961,7 @@ Resume checkpoint:
 ### 2026-05-16 — M11 ByeSys provenance enforcement committed
 
 - Phase completed: Prepare / RED / GREEN / Refactor-skipped / Gate / Commit for M11.1 + M11.2 as one coherent increment.
-- Controlled anchors checked: SRS `HISYS-FR-AGT-001..005` (provenance, evidence reliability, advisory boundary); SDD Jeweler/DARS Devil separation, evidence weighting design; IDD DARS critique record source/weight fields, reviewer terminology aliases; STD `HISYS-T-019`, source weighting tests, DARS runtime tests; Local DARS plan Milestones 4 and 5.
+- Controlled anchors checked: SRS `HISYS-FR-AGT-001..005` (provenance, evidence reliability, advisory boundary); SDD Jeweler/Devil separation, evidence weighting design; IDD DARS critique record source/weight fields, reviewer terminology aliases; STD `HISYS-T-019`, source weighting tests, DARS runtime tests; Local DARS plan Milestones 4 and 5.
 - Codebase evidence: `src/hisys/agents/dars.py` adds `DarsCritiqueSourceWeight` Pydantic model with a model validator that normalizes ByeSys entries to weight=0.0 and kind=byesys; `DarsCritiqueRecord.source_weights: list[DarsCritiqueSourceWeight]` exposes machine-readable provenance; `src/hisys/provenance/source_weighting.py` adds `is_byesys_source`, `EvidenceSufficiencyVerdict`, and `claim_has_sufficient_non_byesys_evidence`; `src/hisys/provenance/__init__.py` re-exports the new helpers; `tests/unit/test_source_weighting.py` adds 6 sufficiency-gate tests; `tests/unit/test_dars_runtime.py` adds 2 critique-record tests verifying the ByeSys-zero invariant and auto-classification.
 - Quality gate result: pass — focused gate `python3 -m pytest tests/unit/test_source_weighting.py tests/unit/test_dars_runtime.py tests/unit/test_dars_dispatch.py tests/unit/test_dars_config.py -q` 60 passed; full suite `python3 -m pytest -q` 621 passed (was 613; +8 new tests); `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=430 hit_count=0; `git diff --check` clean.
 - RED observed: `python3 -m pytest tests/unit/test_source_weighting.py tests/unit/test_dars_runtime.py -q` → `ImportError: cannot import name 'EvidenceSufficiencyVerdict' from 'hisys.provenance.source_weighting'`.

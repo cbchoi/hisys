@@ -22,13 +22,14 @@ _REVIEWER_ALIASES = {
     "chief-editor": "Jeweler",
     "chiefeditor": "Jeweler",
     "jeweler": "Jeweler",
-    "dars devil": "DARS Devil",
-    "dars_devil": "DARS Devil",
-    "dars-devil": "DARS Devil",
-    "dars reviewer": "DARS Reviewer",
-    "dars_reviewer": "DARS Reviewer",
-    "dars-reviewer": "DARS Reviewer",
-    "appraiser": "DARS Devil",
+    "devil": "Devil",
+    "dars devil": "Devil",
+    "dars_devil": "Devil",
+    "dars-devil": "Devil",
+    "dars reviewer": "Devil",
+    "dars_reviewer": "Devil",
+    "dars-reviewer": "Devil",
+    "appraiser": "Devil",
 }
 
 

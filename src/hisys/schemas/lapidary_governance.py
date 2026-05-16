@@ -3,7 +3,7 @@
 Traceability:
 - HISYS-SCHEMA-001: machine-readable governed record shapes.
 - HISYS-FR-INV-001..006 and HISYS-T-024: evidence-backed domain investigation.
-- HISYS-DARS-CONTRACT-001: DARS/Appraiser remains advisory and separated.
+- HISYS-DARS-CONTRACT-001: DARS/Devil remains advisory and separated.
 - HISYS-CON-010..012: runtime/evidence boundary preservation.
 
 These schemas encode the Stone/Gem/Jewel-oriented governance layer without
@@ -271,9 +271,9 @@ class WeightedDecisionAlternative(BaseRecord):
 
 
 class AppraiserSeparationPolicy(BaseRecord):
-    """DARS/Appraiser separation policy.
+    """DARS/Devil separation policy.
 
-    DARS/Appraiser may critique and recommend revisions, but Hisys preserves it
+    DARS/Devil may critique and recommend revisions, but Hisys preserves it
     as advisory-only and separate from Chief Editor/Jeweler decision authority.
     """
 
@@ -298,9 +298,9 @@ class AppraiserSeparationPolicy(BaseRecord):
     @model_validator(mode="after")
     def _advisory_separate_only(self) -> "AppraiserSeparationPolicy":
         if not self.advisory_only or self.may_approve_decision or self.may_execute_action:
-            raise ValueError("Appraiser/DARS policy must remain advisory only and cannot approve or execute")
+            raise ValueError("Devil/DARS policy must remain advisory only and cannot approve or execute")
         if not self.separate_from_roles:
-            raise ValueError("Appraiser/DARS policy must list separated decision roles")
+            raise ValueError("Devil/DARS policy must list separated decision roles")
         return self
 
 
