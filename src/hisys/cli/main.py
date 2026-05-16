@@ -95,6 +95,12 @@ from ..environment_config import DEFAULT_ENVIRONMENT_CONFIG, environment_config_
 from ..extraction import ExtractionReport, ExtractionRuntime, FixtureSignalExtractor
 from ..integrations import HermesBoundaryWriter
 from ..operations.lapidary_flow import build_weighted_alternative
+from ..operations.agent_workflow import (
+    build_finish_packet,
+    build_spec_first_run_packet,
+    write_finish_packet,
+    write_spec_first_run_packet,
+)
 from ..operations.backup import create_backup, restore_backup_dry_run
 from ..operations.health import collect_health_status
 from ..operations.release_readiness import QualityGateResult, build_release_readiness_report
@@ -1132,6 +1138,78 @@ def _parse_quality_gate_result(item: str) -> QualityGateResult:
     return QualityGateResult(name=name, status=status, evidence=evidence)
 
 
+def _cmd_build_spec_first_packet(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    packet_id: str,
+    objective: str,
+    scope: list[str],
+    non_goals: list[str],
+    allowed_actions: list[str],
+    evidence_contract: list[str],
+    expected_artifacts: list[str],
+    gate_criteria: list[str],
+    human_approval_boundary: str,
+    output_format: str,
+) -> int:
+    """Write a spec-first run packet before governed agent work."""
+
+    packet = build_spec_first_run_packet(
+        packet_id=packet_id,
+        objective=objective,
+        scope=scope,
+        non_goals=non_goals,
+        allowed_actions=allowed_actions,
+        evidence_contract=evidence_contract,
+        expected_artifacts=expected_artifacts,
+        gate_criteria=gate_criteria,
+        human_approval_boundary=human_approval_boundary,
+    )
+    result = write_spec_first_run_packet(instance_root, yyyymmdd, packet)
+    if output_format == "json":
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"spec-first packet: packet_id={result['packet_id']} json={result['json_ref']} markdown={result['markdown_ref']}")
+    return 0
+
+
+def _cmd_build_finish_packet(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    packet_id: str,
+    spec_packet_ref: str,
+    completed_tasks: list[str],
+    validation_results: list[str],
+    review_findings: list[str],
+    unresolved_blockers: list[str],
+    next_actions: list[str],
+    human_gate_state: str,
+    decision: str,
+    output_format: str,
+) -> int:
+    """Write a finish packet that separates completion from live approval."""
+
+    packet = build_finish_packet(
+        packet_id=packet_id,
+        spec_packet_ref=spec_packet_ref,
+        decision=decision,  # type: ignore[arg-type]
+        completed_tasks=completed_tasks,
+        validation_results=validation_results,
+        review_findings=review_findings,
+        unresolved_blockers=unresolved_blockers,
+        next_actions=next_actions,
+        human_gate_state=human_gate_state,
+    )
+    result = write_finish_packet(instance_root, yyyymmdd, packet)
+    if output_format == "json":
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"finish packet: packet_id={result['packet_id']} json={result['json_ref']} markdown={result['markdown_ref']}")
+    return 0
+
+
 def _cmd_release_readiness(
     *,
     instance_root: Path,
@@ -1453,6 +1531,34 @@ def _build_parser() -> argparse.ArgumentParser:
         help="validation status as name=status, e.g. focused=passed; repeatable",
     )
     completion_status.add_argument("--format", choices=["json", "markdown"], default="json")
+
+    spec_packet = sub.add_parser("build-spec-first-packet", help="write a spec-first run packet before governed agent work")
+    spec_packet.add_argument("--instance", required=True, help="Hisys instance root")
+    spec_packet.add_argument("--date", required=True, help="YYYYMMDD")
+    spec_packet.add_argument("--packet-id", required=True, help="spec packet id")
+    spec_packet.add_argument("--objective", required=True, help="bounded objective")
+    spec_packet.add_argument("--scope", action="append", default=[], help="in-scope item; repeatable")
+    spec_packet.add_argument("--non-goal", action="append", default=[], help="out-of-scope item; repeatable")
+    spec_packet.add_argument("--allowed-action", action="append", default=[], help="allowed action category; repeatable")
+    spec_packet.add_argument("--evidence-contract", action="append", default=[], help="evidence/traceability requirement; repeatable")
+    spec_packet.add_argument("--expected-artifact", action="append", default=[], help="expected artifact ref; repeatable")
+    spec_packet.add_argument("--gate-criterion", action="append", default=[], help="quality gate criterion; repeatable")
+    spec_packet.add_argument("--human-approval-boundary", required=True, help="human gate boundary for consequential use")
+    spec_packet.add_argument("--format", choices=["text", "json"], default="text")
+
+    finish_packet = sub.add_parser("build-finish-packet", help="write a finish packet separating completion from live approval")
+    finish_packet.add_argument("--instance", required=True, help="Hisys instance root")
+    finish_packet.add_argument("--date", required=True, help="YYYYMMDD")
+    finish_packet.add_argument("--packet-id", required=True, help="finish packet id")
+    finish_packet.add_argument("--spec-packet-ref", required=True, help="spec-first packet relative ref")
+    finish_packet.add_argument("--completed-task", action="append", default=[], help="completed task; repeatable")
+    finish_packet.add_argument("--validation-result", action="append", default=[], help="validation command/result; repeatable")
+    finish_packet.add_argument("--review-finding", action="append", default=[], help="review finding; repeatable")
+    finish_packet.add_argument("--unresolved-blocker", action="append", default=[], help="remaining blocker; repeatable")
+    finish_packet.add_argument("--next-action", action="append", default=[], help="next action; repeatable")
+    finish_packet.add_argument("--human-gate-state", required=True, help="current human gate state")
+    finish_packet.add_argument("--decision", choices=["complete_for_human_review", "blocked_needs_more_evidence"], default="complete_for_human_review")
+    finish_packet.add_argument("--format", choices=["text", "json"], default="text")
 
     release_readiness = sub.add_parser("release-readiness", help="write release-readiness evidence report")
     release_readiness.add_argument("--instance", required=True, help="Hisys instance root")
@@ -2498,6 +2604,36 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             validation_items=args.validation,
+            output_format=args.format,
+        )
+    if args.command == "build-spec-first-packet":
+        return _cmd_build_spec_first_packet(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            packet_id=args.packet_id,
+            objective=args.objective,
+            scope=args.scope,
+            non_goals=args.non_goal,
+            allowed_actions=args.allowed_action,
+            evidence_contract=args.evidence_contract,
+            expected_artifacts=args.expected_artifact,
+            gate_criteria=args.gate_criterion,
+            human_approval_boundary=args.human_approval_boundary,
+            output_format=args.format,
+        )
+    if args.command == "build-finish-packet":
+        return _cmd_build_finish_packet(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            packet_id=args.packet_id,
+            spec_packet_ref=args.spec_packet_ref,
+            completed_tasks=args.completed_task,
+            validation_results=args.validation_result,
+            review_findings=args.review_finding,
+            unresolved_blockers=args.unresolved_blocker,
+            next_actions=args.next_action,
+            human_gate_state=args.human_gate_state,
+            decision=args.decision,
             output_format=args.format,
         )
     if args.command == "release-readiness":
