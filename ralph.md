@@ -1929,6 +1929,34 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-16 — M15.4 build-codebase-inventory CLI (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M15.4 (`build-codebase-inventory` CLI wrapper around the M15.1..M15.3 builder/writer).
+- Controlled anchors checked: ralph.md M15.4 task header (CLI shape + `--scope`); existing CLI seam pattern in `src/hisys/cli/main.py` (`build-spec-first-packet` parser + `_cmd_build_spec_first_packet` + dispatch branch); M15.3 writer signature; M14.1 expected-artifact instance-relative refs.
+- RED observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> CLI subprocess `hisys: error: argument command: invalid choice: 'build-codebase-inventory'` (2 RED failures: `test_build_codebase_inventory_cli_writes_artifacts`, `test_build_codebase_inventory_cli_supports_scope_filter`).
+- Implementation: (a) imported `build_codebase_inventory` / `write_codebase_inventory` in `src/hisys/cli/main.py`; (b) added `_cmd_build_codebase_inventory(repo_root, instance_root, yyyymmdd, request_id, analysis_scope, output_format)` that calls the builder then the writer and prints JSON or a one-line text summary; (c) registered the `build-codebase-inventory` subparser with `--repo`, `--instance`, `--date`, `--request-id`, optional `--scope`, and `--format text|json`; (d) added the dispatch branch in the `args.command` cascade. Also extended `build_codebase_inventory` to honor the `analysis_scope` filter — when provided, the walk is rooted at `<repo>/<scope>` (after a `resolve()`+`relative_to(repo.resolve())` traversal-escape check), files remain keyed relative to `repo_root` so downstream artifacts stay coordinate-consistent.
+- GREEN observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> 7 passed (the previous 5 plus the two new subprocess CLI tests). The scope-filter test confirms `analysis_scope="src"` filters `tests/test_module.py` out while preserving `src/pkg/module.py`.
+- Quality gate result: pass — `git diff --check` OK; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` `scanned_files=434 skipped_files=0 hit_count=0`; full unit suite `python3 -m pytest tests/unit -q` -> 618 passed (616 prior + 2 new).
+- Potential issues: (a) the scope filter resolves through symlinks during the traversal-escape check (`Path.resolve()`); the walk itself still applies M15.2 symlink policy, so an outside-repo symlink target accessed via `--scope` is rejected via the explicit `ValueError`. (b) `--scope` accepts any string; the test seeds `src` directly and the CLI rejects nonexistent directories with `NotADirectoryError` — which becomes a Python traceback rather than an argparse `usage:` message. M15.5 may want to catch the error and exit with a controlled non-zero status, but for now the failure is loud and observable. (c) the CLI handler does not yet honor a future runtime-budget guard (large repos may cause long walks); inventory traversal is bounded by `DEFAULT_EXCLUDED_DIRS` plus M15.2 file-size limits, which is sufficient for fixture-local M15 work.
+- `ralph.md` changes: this Reflection entry only.
+- Success likelihood: 80% for M15.5 — the final M15 increment is docs/traceability + a `FINISH-HISYS-CODEBASE-ANALYSIS-001` packet that references the spec packet. The seam (`build-finish-packet` CLI) and traceability machinery are well-known; risk is in keeping `docs/traceability/README.md` rows narrow.
+- Continue decision: continue to Task M15.5 after this Reflection is committed.
+- Stop reason: none. Standard stop conditions apply.
+- Next task: Task M15.5 — DOC/GATE docs, traceability, and finish packet referencing `SPEC-HISYS-CODEBASE-ANALYSIS-001`.
+- Commit: `915348c feat: add codebase inventory CLI` (already on HEAD); this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: 915348c feat: add codebase inventory CLI
+- Working tree: `ralph.md` modified for M15.4 Reflection entry
+- Last completed milestone/task: M15.4 (`build-codebase-inventory` CLI registered and wired to builder/writer with `--scope` filter)
+- Current in-progress task: ralph.md Reflection commit for M15.4
+- RED observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> CLI subprocess argparse `invalid choice: 'build-codebase-inventory'`
+- GREEN observed: same command -> 7 passed; full unit suite 618 passed
+- Quality gate status: pass — `git diff --check` OK; `validate_traceability.py` OK; `scan_secrets.py` hit_count=0; full unit suite 618 passed
+- Next command to run: commit this Reflection as `docs: record M15.4 inventory CLI reflection`; then prepare M15.5 (docs/traceability rows + `FINISH-HISYS-CODEBASE-ANALYSIS-001` packet authored via the existing `build-finish-packet` CLI).
+- Stop condition: none — continue to M15.5.
+
 ### 2026-05-16 — M15.3 inventory writer with safe instance-relative refs (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M15.3 (JSON/Markdown inventory writer with safe instance-relative refs).
