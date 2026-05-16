@@ -33,6 +33,7 @@ from hisys.operations.codebase_analysis import (
     CodebaseSourceInspectionDecision,
     CodebaseValidationPlan,
     PythonSymbolIndex,
+    RiskBoundaryFinding,
     review_codebase_source_inspection,
 )
 
@@ -259,3 +260,234 @@ def test_review_safety_envelope_is_invariant_on_blocked_decision():
     assert decision.external_call_made is False
     assert decision.mutation_performed is False
     assert decision.publication_or_live_action_approved is False
+
+
+# ---------------------------------------------------------------------------
+# M19.2 — complete fixture set becomes human-reviewable.
+# ---------------------------------------------------------------------------
+
+
+def test_review_returns_human_reviewable_on_complete_consistent_bundle():
+    inventory = _inventory()
+    symbol_index = _symbol_index()
+    decision = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=CodebaseScopeMap(
+            repo_root=inventory.repo_root,
+            inventory_schema_id=inventory.schema_id,
+            symbol_index_schema_id=symbol_index.schema_id,
+        ),
+        validation_plan=_validation_plan(),
+        risk_scan=_risk_scan(),
+    )
+
+    assert decision.decision == "complete_for_human_review"
+    assert decision.missing_evidence == []
+    assert decision.validation_findings == []
+    assert decision.unresolved_blockers == []
+    # No live-action approval is granted even when the bundle is complete.
+    assert decision.publication_or_live_action_approved is False
+    assert decision.action_authorized is False
+    assert decision.external_call_made is False
+    assert decision.mutation_performed is False
+
+
+def test_review_complete_bundle_two_runs_are_deterministic():
+    inventory = _inventory()
+    symbol_index = _symbol_index()
+    scope_map = CodebaseScopeMap(
+        repo_root=inventory.repo_root,
+        inventory_schema_id=inventory.schema_id,
+        symbol_index_schema_id=symbol_index.schema_id,
+    )
+
+    first = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=scope_map,
+        validation_plan=_validation_plan(),
+        risk_scan=_risk_scan(),
+    )
+    second = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=scope_map,
+        validation_plan=_validation_plan(),
+        risk_scan=_risk_scan(),
+    )
+    assert first.model_dump(mode="json") == second.model_dump(mode="json")
+
+
+def test_review_blocks_when_scope_map_inventory_schema_id_mismatch():
+    inventory = _inventory()
+    symbol_index = _symbol_index()
+    decision = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=CodebaseScopeMap(
+            repo_root=inventory.repo_root,
+            inventory_schema_id="hisys.codebase.WRONG",
+            symbol_index_schema_id=symbol_index.schema_id,
+        ),
+        validation_plan=_validation_plan(),
+        risk_scan=_risk_scan(),
+    )
+
+    assert decision.decision == "blocked_needs_more_evidence"
+    assert any(
+        "inventory_schema_id" in finding for finding in decision.validation_findings
+    )
+
+
+def test_review_blocks_when_scope_map_symbol_index_schema_id_mismatch():
+    inventory = _inventory()
+    symbol_index = _symbol_index()
+    decision = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=CodebaseScopeMap(
+            repo_root=inventory.repo_root,
+            inventory_schema_id=inventory.schema_id,
+            symbol_index_schema_id="hisys.codebase.WRONG",
+        ),
+        validation_plan=_validation_plan(),
+        risk_scan=_risk_scan(),
+    )
+
+    assert decision.decision == "blocked_needs_more_evidence"
+    assert any(
+        "symbol_index_schema_id" in finding for finding in decision.validation_findings
+    )
+
+
+def test_review_blocks_when_any_artifact_persisted_raw_source_content():
+    inventory = _inventory()
+    inventory.raw_source_content_persisted = True
+    symbol_index = _symbol_index()
+    decision = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=CodebaseScopeMap(
+            repo_root=inventory.repo_root,
+            inventory_schema_id=inventory.schema_id,
+            symbol_index_schema_id=symbol_index.schema_id,
+        ),
+        validation_plan=_validation_plan(),
+        risk_scan=_risk_scan(),
+    )
+
+    assert decision.decision == "blocked_needs_more_evidence"
+    assert any(
+        "raw_source_content_persisted" in finding
+        for finding in decision.validation_findings
+    )
+
+
+def test_review_blocks_when_risk_scan_action_authorized_is_true():
+    inventory = _inventory()
+    symbol_index = _symbol_index()
+    risk_scan = _risk_scan()
+    risk_scan.action_authorized = True
+    decision = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=CodebaseScopeMap(
+            repo_root=inventory.repo_root,
+            inventory_schema_id=inventory.schema_id,
+            symbol_index_schema_id=symbol_index.schema_id,
+        ),
+        validation_plan=_validation_plan(),
+        risk_scan=risk_scan,
+    )
+
+    assert decision.decision == "blocked_needs_more_evidence"
+    assert any(
+        "risk_scan.action_authorized" in finding
+        for finding in decision.validation_findings
+    )
+
+
+def test_review_blocks_when_any_risk_finding_marks_action_authorized():
+    inventory = _inventory()
+    symbol_index = _symbol_index()
+    risk_scan = _risk_scan()
+    risk_scan.findings.append(
+        RiskBoundaryFinding(
+            category="subprocess_execution",
+            path="pkg/exec.py",
+            line=4,
+            signal="subprocess.run",
+            # Manually toggling action_authorized on a single finding must
+            # downgrade the decision even if the scan envelope is False.
+            action_authorized=True,
+        )
+    )
+    risk_scan.finding_count = len(risk_scan.findings)
+
+    decision = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=CodebaseScopeMap(
+            repo_root=inventory.repo_root,
+            inventory_schema_id=inventory.schema_id,
+            symbol_index_schema_id=symbol_index.schema_id,
+        ),
+        validation_plan=_validation_plan(),
+        risk_scan=risk_scan,
+    )
+
+    assert decision.decision == "blocked_needs_more_evidence"
+    assert any(
+        "risk_boundary_finding.action_authorized" in finding
+        for finding in decision.validation_findings
+    )
+
+
+def test_review_validation_findings_are_sorted_for_determinism():
+    # Trigger multiple consistency failures and confirm the resulting
+    # validation_findings list is sorted alphabetically so a downstream
+    # writer sees a deterministic shape.
+    inventory = _inventory()
+    inventory.raw_source_content_persisted = True
+    symbol_index = _symbol_index()
+    risk_scan = _risk_scan()
+    risk_scan.action_authorized = True
+    decision = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=CodebaseScopeMap(
+            repo_root=inventory.repo_root,
+            inventory_schema_id="hisys.codebase.WRONG",
+            symbol_index_schema_id=symbol_index.schema_id,
+        ),
+        validation_plan=_validation_plan(),
+        risk_scan=risk_scan,
+    )
+
+    assert decision.decision == "blocked_needs_more_evidence"
+    assert decision.validation_findings == sorted(decision.validation_findings)
+    # At least three independent failures were triggered.
+    assert len(decision.validation_findings) >= 3
+
+
+def test_review_missing_artifact_skips_dependent_consistency_finding():
+    # When scope_map is missing entirely, the schema-id-match check has no
+    # input to compare against; the reviewer must not synthesize a
+    # validation finding from a missing artifact. The missing_evidence list
+    # remains the only blocking signal.
+    inventory = _inventory()
+    symbol_index = _symbol_index()
+    decision = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=None,
+        validation_plan=_validation_plan(),
+        risk_scan=_risk_scan(),
+    )
+
+    assert decision.decision == "blocked_needs_more_evidence"
+    assert decision.missing_evidence == ["scope_map"]
+    for finding in decision.validation_findings:
+        assert "inventory_schema_id" not in finding
+        assert "symbol_index_schema_id" not in finding

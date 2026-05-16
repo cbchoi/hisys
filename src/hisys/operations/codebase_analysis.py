@@ -1793,6 +1793,74 @@ _REQUIRED_ARTIFACT_NAMES: tuple[str, ...] = (
 )
 
 
+def _aggregate_validation_findings(
+    *,
+    inventory: CodebaseInventory | None,
+    symbol_index: PythonSymbolIndex | None,
+    scope_map: CodebaseScopeMap | None,
+    validation_plan: CodebaseValidationPlan | None,
+    risk_scan: CodebaseRiskScan | None,
+) -> list[str]:
+    """Collect consistency findings across the loaded artifact records.
+
+    Each entry is a short, grep-friendly string keyed by the field it
+    flagged. A consistency check that depends on a missing artifact is
+    skipped — the missing-evidence list is the dedicated channel for that
+    failure mode so a reviewer is not double-charged.
+    """
+
+    findings: list[str] = []
+
+    raw_persist_checks: tuple[tuple[str, BaseModel | None], ...] = (
+        ("inventory", inventory),
+        ("symbol_index", symbol_index),
+        ("scope_map", scope_map),
+        ("validation_plan", validation_plan),
+        ("risk_scan", risk_scan),
+    )
+    for name, record in raw_persist_checks:
+        if record is None:
+            continue
+        if getattr(record, "raw_source_content_persisted", False):
+            findings.append(
+                f"{name}.raw_source_content_persisted=true; "
+                "must remain false for review-evidence artifacts"
+            )
+
+    if risk_scan is not None and risk_scan.action_authorized:
+        findings.append(
+            "risk_scan.action_authorized=true; "
+            "risk-boundary scans are review evidence, not authorizations"
+        )
+
+    if risk_scan is not None:
+        for finding in risk_scan.findings:
+            if finding.action_authorized:
+                findings.append(
+                    "risk_boundary_finding.action_authorized=true at "
+                    f"{finding.path}:{finding.line} ({finding.signal}); "
+                    "findings must remain unauthorized review evidence"
+                )
+
+    if scope_map is not None and inventory is not None:
+        if scope_map.inventory_schema_id != inventory.schema_id:
+            findings.append(
+                "scope_map.inventory_schema_id "
+                f"{scope_map.inventory_schema_id!r} does not match "
+                f"inventory.schema_id {inventory.schema_id!r}"
+            )
+
+    if scope_map is not None and symbol_index is not None:
+        if scope_map.symbol_index_schema_id != symbol_index.schema_id:
+            findings.append(
+                "scope_map.symbol_index_schema_id "
+                f"{scope_map.symbol_index_schema_id!r} does not match "
+                f"symbol_index.schema_id {symbol_index.schema_id!r}"
+            )
+
+    return sorted(findings)
+
+
 def review_codebase_source_inspection(
     *,
     inventory: CodebaseInventory | None,
@@ -1805,13 +1873,15 @@ def review_codebase_source_inspection(
     """Decide whether the codebase-analysis bundle is complete for human review.
 
     The function is pure: it inspects already-loaded artifact records and
-    returns a `CodebaseSourceInspectionDecision`. It does no filesystem read,
-    no source content read, and no live action. M19.1 covers the missing-
-    artifact case; M19.2..M19.5 will add full-bundle review, safe-ref
-    resolution, the CLI, and docs/traceability.
+    returns a `CodebaseSourceInspectionDecision`. It does no filesystem
+    read, no source content read, and no live action. M19.1 covered the
+    missing-artifact case. M19.2 adds full-bundle consistency checks that
+    populate `validation_findings` and downgrade the decision to
+    `blocked_needs_more_evidence` when a cross-record safety invariant or
+    schema-id contract fails.
     """
 
-    artifact_by_name: dict[str, object | None] = {
+    artifact_by_name: dict[str, BaseModel | None] = {
         "inventory": inventory,
         "symbol_index": symbol_index,
         "scope_map": scope_map,
@@ -1824,7 +1894,15 @@ def review_codebase_source_inspection(
 
     blockers = [blocker for blocker in (unresolved_blockers or []) if blocker]
 
-    if missing or blockers:
+    validation_findings = _aggregate_validation_findings(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=scope_map,
+        validation_plan=validation_plan,
+        risk_scan=risk_scan,
+    )
+
+    if missing or blockers or validation_findings:
         decision_value: CodebaseSourceInspectionDecisionValue = (
             "blocked_needs_more_evidence"
         )
@@ -1834,6 +1912,7 @@ def review_codebase_source_inspection(
     return CodebaseSourceInspectionDecision(
         decision=decision_value,
         missing_evidence=missing,
+        validation_findings=validation_findings,
         unresolved_blockers=blockers,
     )
 
