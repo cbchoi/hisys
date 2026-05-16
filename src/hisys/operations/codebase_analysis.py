@@ -1206,32 +1206,135 @@ _FILESYSTEM_MUTATION_METHODS: frozenset[str] = frozenset(
 # Hisys writers use; it keeps the rule deterministic and AST-only.
 _RUNTIME_BOUNDARY_LITERAL_TOKEN = "runtime-boundary"
 
+# Module-level signals that mark a Python file as crossing a model/LLM
+# boundary. The tokens cover external API endpoints and local-LLM server
+# paths so a `requests.post`/`httpx.post` call in such a module is
+# reclassified as a model/LLM boundary rather than a generic network call.
+_MODEL_ENDPOINT_LITERAL_TOKENS: tuple[str, ...] = (
+    "/v1/chat/completions",
+    "/v1/completions",
+    "/v1/messages",
+    "/v1/embeddings",
+)
 
-def _module_has_runtime_boundary_literal(tree: ast.AST) -> bool:
-    """Return True when any string literal in `tree` contains the marker."""
+# Module-level signals that mark a Python file as containing generated or
+# fabricated evidence that must be reviewed as ByeSys. The tokens are the
+# canonical Hisys markers used in policy docs and reviewer prose.
+_BYESYS_LITERAL_TOKENS: tuple[str, ...] = (
+    "ByeSys",
+    "byesys_generated",
+)
+
+# Modules whose attribute-chain calls are unambiguous model/LLM crossings.
+# `None` means any attribute call on the imported module counts; the
+# scanner walks the full `ast.Attribute` chain so calls like
+# `openai.ChatCompletion.create(...)` and `client.messages.create(...)`
+# (where `client = anthropic.Anthropic()`) are both detected.
+_MODEL_LLM_MODULES: dict[str, set[str] | None] = {
+    "openai": None,
+    "anthropic": None,
+}
+
+
+def _module_has_literal_token(tree: ast.AST, token: str) -> bool:
+    """Return True when any string literal in `tree` contains ``token``."""
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            if _RUNTIME_BOUNDARY_LITERAL_TOKEN in node.value:
+            if token in node.value:
                 return True
     return False
+
+
+def _module_has_any_literal_token(tree: ast.AST, tokens: tuple[str, ...]) -> bool:
+    return any(_module_has_literal_token(tree, token) for token in tokens)
+
+
+def _byesys_literal_findings(rel_path: str, tree: ast.AST) -> list[RiskBoundaryFinding]:
+    """Return one finding per string literal that contains a ByeSys marker."""
+
+    findings: list[RiskBoundaryFinding] = []
+    seen: set[tuple[int, str]] = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+            continue
+        value = node.value
+        for token in _BYESYS_LITERAL_TOKENS:
+            if token in value:
+                line = getattr(node, "lineno", 0) or 0
+                # Truncate the signal to keep the finding line-readable
+                # without leaking long fabricated content.
+                excerpt = value.replace("\n", " ").strip()
+                if len(excerpt) > 64:
+                    excerpt = excerpt[:61] + "..."
+                key = (line, excerpt)
+                if key in seen:
+                    continue
+                seen.add(key)
+                findings.append(
+                    RiskBoundaryFinding(
+                        category="byesys_generated_evidence",
+                        path=rel_path,
+                        line=line,
+                        signal=f"byesys_literal:{excerpt}",
+                    )
+                )
+                break
+    return findings
+
+
+def _attribute_chain(expr: ast.AST) -> tuple[str, list[str]] | None:
+    """Walk an attribute chain and return (root_name, [attr, ...]) or None.
+
+    For ``openai.ChatCompletion.create``, returns ``("openai",
+    ["ChatCompletion", "create"])``. For ``client.messages.create``,
+    returns ``("client", ["messages", "create"])``.
+    """
+
+    parts: list[str] = []
+    cur: ast.AST = expr
+    while isinstance(cur, ast.Attribute):
+        parts.append(cur.attr)
+        cur = cur.value
+    if isinstance(cur, ast.Name):
+        return cur.id, list(reversed(parts))
+    return None
 
 
 def _classify_attribute_call(
     callee: ast.Attribute,
     *,
     runtime_boundary_module: bool,
+    model_endpoint_module: bool,
 ) -> tuple[str, str] | None:
     """Return (category, signal) for a recognized boundary call, or None."""
 
     attr_name = callee.attr
     receiver = callee.value
 
+    # Attribute chains rooted at openai/anthropic mark unambiguous model
+    # boundary calls (e.g., ``openai.ChatCompletion.create(...)``).
+    chain = _attribute_chain(callee)
+    if chain is not None:
+        root_id, attr_parts = chain
+        if root_id in _MODEL_LLM_MODULES and attr_parts:
+            allowed = _MODEL_LLM_MODULES[root_id]
+            if allowed is None or attr_parts[0] in allowed:
+                return (
+                    "model_llm_boundary",
+                    f"{root_id}.{'.'.join(attr_parts)}",
+                )
+
     if isinstance(receiver, ast.Name):
         receiver_id = receiver.id
         for module, allowed in _NETWORK_MODULES.items():
             if receiver_id == module and (allowed is None or attr_name in allowed):
-                return "network_external_call", f"{module}.{attr_name}"
+                category = (
+                    "model_llm_boundary"
+                    if model_endpoint_module
+                    else "network_external_call"
+                )
+                return category, f"{module}.{attr_name}"
         for module, allowed in _BROWSER_MODULES.items():
             if receiver_id == module and (allowed is None or attr_name in allowed):
                 return "browser_external_call", f"{module}.{attr_name}"
@@ -1263,8 +1366,14 @@ def _scan_module_findings(
             message=exc.msg or "syntax error",
         )
 
-    runtime_boundary_module = _module_has_runtime_boundary_literal(tree)
+    runtime_boundary_module = _module_has_literal_token(
+        tree, _RUNTIME_BOUNDARY_LITERAL_TOKEN
+    )
+    model_endpoint_module = _module_has_any_literal_token(
+        tree, _MODEL_ENDPOINT_LITERAL_TOKENS
+    )
     findings: list[RiskBoundaryFinding] = []
+    findings.extend(_byesys_literal_findings(rel_path, tree))
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
@@ -1272,7 +1381,9 @@ def _scan_module_findings(
         if not isinstance(callee, ast.Attribute):
             continue
         classified = _classify_attribute_call(
-            callee, runtime_boundary_module=runtime_boundary_module
+            callee,
+            runtime_boundary_module=runtime_boundary_module,
+            model_endpoint_module=model_endpoint_module,
         )
         if classified is None:
             continue

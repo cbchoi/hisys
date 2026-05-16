@@ -332,3 +332,133 @@ def test_scan_runtime_boundary_classification_uses_string_literal_signal(tmp_pat
     categories = {f.category for f in findings}
     assert "runtime_boundary_artifact_write" in categories
     assert "filesystem_mutation" not in categories
+
+
+# ---------------------------------------------------------------------------
+# M18.3 — model/LLM and ByeSys categories
+# ---------------------------------------------------------------------------
+
+
+def test_scan_flags_openai_calls_as_model_llm_boundary(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "llm.py").write_text(
+        "import openai\n"
+        "\n"
+        "def ask():\n"
+        "    return openai.ChatCompletion.create(model='gpt-4', messages=[])\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    findings = [f for f in scan.findings if f.path == "llm.py"]
+    categories = {f.category for f in findings}
+    assert "model_llm_boundary" in categories
+
+
+def test_scan_flags_anthropic_calls_as_model_llm_boundary(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "llm.py").write_text(
+        "import anthropic\n"
+        "\n"
+        "def ask():\n"
+        "    client = anthropic.Anthropic()\n"
+        "    return client.messages.create(model='claude', messages=[])\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    findings = [f for f in scan.findings if f.path == "llm.py"]
+    categories = {f.category for f in findings}
+    assert "model_llm_boundary" in categories
+
+
+def test_scan_flags_local_model_endpoint_call_as_model_llm_boundary(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "local_llm.py").write_text(
+        "import requests\n"
+        "\n"
+        "LOCAL_MODEL_ENDPOINT = 'http://localhost:8080/v1/chat/completions'\n"
+        "\n"
+        "def call_local_model():\n"
+        "    return requests.post(LOCAL_MODEL_ENDPOINT, json={'model': 'local'})\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    findings = [f for f in scan.findings if f.path == "local_llm.py"]
+    categories = {f.category for f in findings}
+    # Local model endpoint is still a model/LLM boundary, distinct from a
+    # generic network call — the local LLM still crosses the model boundary.
+    assert "model_llm_boundary" in categories
+
+
+def test_scan_flags_byesys_marker_string_as_byesys_generated_evidence(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "synth.py").write_text(
+        '"""Module that fabricates evidence — marked ByeSys."""\n'
+        "\n"
+        "def synthesize_evidence():\n"
+        "    return {\n"
+        "        'kind': 'byesys_generated',\n"
+        "        'note': 'ByeSys: fabricated evidence pending human review',\n"
+        "    }\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    findings = [f for f in scan.findings if f.path == "synth.py"]
+    categories = {f.category for f in findings}
+    assert "byesys_generated_evidence" in categories
+    for finding in findings:
+        if finding.category == "byesys_generated_evidence":
+            assert finding.action_authorized is False
+
+
+def test_scan_byesys_finding_carries_module_level_signal(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "synth.py").write_text(
+        "BYESYS_MARKER = 'ByeSys: see policy doc'\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    findings = [f for f in scan.findings if f.path == "synth.py"]
+    byesys = [f for f in findings if f.category == "byesys_generated_evidence"]
+    assert byesys, "expected a ByeSys generated-evidence finding"
+    # The finding records the line of the marker so a reviewer can navigate.
+    for finding in byesys:
+        assert finding.line >= 1
+        assert finding.signal
+
+
+def test_scan_finding_categories_widened_for_model_and_byesys(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "llm.py").write_text(
+        "import openai\n"
+        "\n"
+        "def ask():\n"
+        "    return openai.ChatCompletion.create(model='gpt-4', messages=[])\n",
+        encoding="utf-8",
+    )
+    (repo / "synth.py").write_text(
+        "BYESYS_MARKER = 'ByeSys: fabricated'\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    for finding in scan.findings:
+        assert finding.category in {
+            "network_external_call",
+            "browser_external_call",
+            "filesystem_mutation",
+            "runtime_boundary_artifact_write",
+            "subprocess_execution",
+            "model_llm_boundary",
+            "byesys_generated_evidence",
+        }
