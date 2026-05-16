@@ -247,5 +247,88 @@ def test_scan_finding_carries_argv_or_pattern_string(tmp_path: Path):
             "network_external_call",
             "browser_external_call",
             "filesystem_mutation",
+            "runtime_boundary_artifact_write",
             "subprocess_execution",
         }
+
+
+# ---------------------------------------------------------------------------
+# M18.2 — runtime-boundary writer fixture vs ordinary filesystem mutation
+# ---------------------------------------------------------------------------
+
+
+def test_scan_classifies_runtime_boundary_writer_separately(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "writer.py").write_text(
+        "from pathlib import Path\n"
+        "\n"
+        "INVENTORY_RUNTIME_PREFIX = 'runtime-boundary/codebase-analysis'\n"
+        "\n"
+        "def write_artifact(instance_root: Path, date: str, request_id: str) -> None:\n"
+        "    rel_dir = f'{INVENTORY_RUNTIME_PREFIX}/{date}/{request_id}'\n"
+        "    out_dir = Path(instance_root) / rel_dir\n"
+        "    out_dir.mkdir(parents=True, exist_ok=True)\n"
+        "    (out_dir / 'artifact.json').write_text('{}', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    findings = [f for f in scan.findings if f.path == "writer.py"]
+
+    categories = {f.category for f in findings}
+    assert "runtime_boundary_artifact_write" in categories
+    # The same writer file must not also report `filesystem_mutation` for the
+    # same `.write_text` line; the classification is exclusive per call site.
+    rb = [f for f in findings if f.category == "runtime_boundary_artifact_write"]
+    fs = [f for f in findings if f.category == "filesystem_mutation"]
+    assert rb, "runtime_boundary_artifact_write category must surface"
+    assert not fs, (
+        f"runtime-boundary writer file must not also report filesystem_mutation; got {fs}"
+    )
+
+    for finding in rb:
+        assert finding.action_authorized is False
+
+
+def test_scan_keeps_ordinary_filesystem_mutation_classification(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "ordinary.py").write_text(
+        "from pathlib import Path\n"
+        "\n"
+        "def persist(target: Path):\n"
+        "    target.write_text('hello', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    findings = [f for f in scan.findings if f.path == "ordinary.py"]
+
+    categories = {f.category for f in findings}
+    assert "filesystem_mutation" in categories
+    assert "runtime_boundary_artifact_write" not in categories
+
+
+def test_scan_runtime_boundary_classification_uses_string_literal_signal(tmp_path: Path):
+    # Any string literal value that contains the controlled
+    # `runtime-boundary` token in the same module is sufficient to
+    # classify subsequent `.write_text` calls as a runtime-boundary
+    # writer. This keeps the rule deterministic and AST-only.
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "indirect.py").write_text(
+        "from pathlib import Path\n"
+        "\n"
+        "SCOPE_TOKEN = 'runtime-boundary/codebase-analysis'\n"
+        "\n"
+        "def write(target: Path):\n"
+        "    target.write_text(SCOPE_TOKEN, encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    findings = [f for f in scan.findings if f.path == "indirect.py"]
+    categories = {f.category for f in findings}
+    assert "runtime_boundary_artifact_write" in categories
+    assert "filesystem_mutation" not in categories

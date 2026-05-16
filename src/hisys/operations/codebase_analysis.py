@@ -1199,9 +1199,28 @@ _FILESYSTEM_MUTATION_METHODS: frozenset[str] = frozenset(
     {"write_text", "write_bytes"}
 )
 
+# Marker token that, when present anywhere in a module's string literals,
+# reclassifies that module's `.write_text`/`.write_bytes` calls as a
+# runtime-boundary artifact write (not a generic filesystem mutation). The
+# token mirrors the controlled `runtime-boundary/...` artifact subtree the
+# Hisys writers use; it keeps the rule deterministic and AST-only.
+_RUNTIME_BOUNDARY_LITERAL_TOKEN = "runtime-boundary"
+
+
+def _module_has_runtime_boundary_literal(tree: ast.AST) -> bool:
+    """Return True when any string literal in `tree` contains the marker."""
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            if _RUNTIME_BOUNDARY_LITERAL_TOKEN in node.value:
+                return True
+    return False
+
 
 def _classify_attribute_call(
     callee: ast.Attribute,
+    *,
+    runtime_boundary_module: bool,
 ) -> tuple[str, str] | None:
     """Return (category, signal) for a recognized boundary call, or None."""
 
@@ -1221,7 +1240,12 @@ def _classify_attribute_call(
                 return "subprocess_execution", f"{module}.{attr_name}"
 
     if attr_name in _FILESYSTEM_MUTATION_METHODS:
-        return "filesystem_mutation", f"<receiver>.{attr_name}"
+        category = (
+            "runtime_boundary_artifact_write"
+            if runtime_boundary_module
+            else "filesystem_mutation"
+        )
+        return category, f"<receiver>.{attr_name}"
 
     return None
 
@@ -1239,6 +1263,7 @@ def _scan_module_findings(
             message=exc.msg or "syntax error",
         )
 
+    runtime_boundary_module = _module_has_runtime_boundary_literal(tree)
     findings: list[RiskBoundaryFinding] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -1246,7 +1271,9 @@ def _scan_module_findings(
         callee = node.func
         if not isinstance(callee, ast.Attribute):
             continue
-        classified = _classify_attribute_call(callee)
+        classified = _classify_attribute_call(
+            callee, runtime_boundary_module=runtime_boundary_module
+        )
         if classified is None:
             continue
         category, signal = classified
