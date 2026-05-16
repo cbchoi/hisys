@@ -1,19 +1,25 @@
-"""RED/GREEN tests for the deterministic Python AST symbol index (M16.1).
+"""RED/GREEN tests for the deterministic Python AST symbol index (M16.1..M16.4).
 
 The symbol index is the second increment of `SPEC-HISYS-CODEBASE-ANALYSIS-001`.
 M16.1 records, per Python source file, the module path, top-level imports,
 class definitions (including nested classes and class methods), and free
-function definitions, along with line ranges. Behavior is stdlib-only,
-deterministic, and never persists raw source content.
+function definitions, along with line ranges. M16.2 adds parse errors as
+evidence. M16.3 adds heuristic classification tags. M16.4 adds the
+JSON/Markdown writer and the `build-code-symbol-index` CLI. Behavior is
+stdlib-only, deterministic, and never persists raw source content.
 
-Later M16 sub-tasks add parse-error evidence (M16.2), CLI/test/doc
-classification (M16.3), JSON/Markdown writer + CLI (M16.4), and docs +
-traceability (M16.5).
+The remaining M16 sub-task is M16.5 (docs + traceability).
 """
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 from hisys.operations.codebase_analysis import (
     PythonSymbolIndex,
@@ -23,7 +29,11 @@ from hisys.operations.codebase_analysis import (
     SymbolModule,
     SymbolParseError,
     build_python_symbol_index,
+    write_python_symbol_index,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src"
 
 
 def _seed_symbol_fixture(repo: Path) -> None:
@@ -313,3 +323,224 @@ def test_symbol_index_supports_analysis_scope(tmp_path: Path):
     assert index.analysis_scope == "src"
     module_paths = [m.path for m in index.modules]
     assert module_paths == ["src/kept.py"]
+
+
+def test_write_python_symbol_index_persists_json_and_markdown(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "demo.py").write_text(
+        "import os\n"
+        "\n"
+        "def _cmd_run():\n"
+        "    return 1\n"
+        "\n"
+        "class Outer:\n"
+        "    def method(self):\n"
+        "        return 1\n",
+        encoding="utf-8",
+    )
+
+    index = build_python_symbol_index(repo_root=repo)
+
+    instance = tmp_path / "instance"
+    result = write_python_symbol_index(
+        instance_root=instance,
+        date="20260516",
+        request_id="REQ-CODEBASE-001",
+        symbol_index=index,
+    )
+
+    assert result["external_call_made"] is False
+    assert result["mutation_performed"] is False
+    assert result["publication_or_live_action_approved"] is False
+    assert result["raw_source_content_persisted"] is False
+    assert result["schema_id"] == "hisys.codebase.symbol_index"
+    assert result["json_ref"] == (
+        "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/symbol-index.json"
+    )
+    assert result["markdown_ref"] == (
+        "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/symbol-index.md"
+    )
+
+    json_path = instance / result["json_ref"]
+    md_path = instance / result["markdown_ref"]
+    assert json_path.is_file()
+    assert md_path.is_file()
+
+    loaded = json.loads(json_path.read_text(encoding="utf-8"))
+    assert loaded["schema_id"] == "hisys.codebase.symbol_index"
+    assert loaded["raw_source_content_persisted"] is False
+    # Re-rendering yields a byte-identical JSON file.
+    other_instance = tmp_path / "instance_two"
+    other_result = write_python_symbol_index(
+        instance_root=other_instance,
+        date="20260516",
+        request_id="REQ-CODEBASE-001",
+        symbol_index=index,
+    )
+    other_json = (other_instance / other_result["json_ref"]).read_text(encoding="utf-8")
+    assert other_json == json_path.read_text(encoding="utf-8")
+
+    markdown = md_path.read_text(encoding="utf-8")
+    assert "hisys.codebase.symbol_index" in markdown
+    assert "demo.py" in markdown
+    assert "_cmd_run" in markdown
+    assert "cli_handler" in markdown
+
+
+def test_write_python_symbol_index_rejects_traversal_in_request_id(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "a.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+    index = build_python_symbol_index(repo_root=repo)
+    instance = tmp_path / "instance"
+
+    for bad in ("../escape", "REQ/with/slash", "REQ\\back", ".."):
+        with pytest.raises(ValueError):
+            write_python_symbol_index(
+                instance_root=instance,
+                date="20260516",
+                request_id=bad,
+                symbol_index=index,
+            )
+
+    for bad_date in ("2026/05/16", "..", "20260516/extra"):
+        with pytest.raises(ValueError):
+            write_python_symbol_index(
+                instance_root=instance,
+                date=bad_date,
+                request_id="REQ-CODEBASE-001",
+                symbol_index=index,
+            )
+
+
+def _seed_cli_symbol_fixture(repo: Path) -> None:
+    (repo / "src" / "pkg").mkdir(parents=True)
+    (repo / "src" / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "src" / "pkg" / "module.py").write_text(
+        "import argparse\n"
+        "\n"
+        "def _make_parser():\n"
+        "    return argparse.ArgumentParser(prog='demo')\n"
+        "\n"
+        "def _cmd_demo(args):\n"
+        "    return args\n"
+        "\n"
+        "class Outer:\n"
+        "    def method(self):\n"
+        "        return 1\n",
+        encoding="utf-8",
+    )
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_demo.py").write_text(
+        "def test_demo():\n    assert True\n", encoding="utf-8"
+    )
+
+
+def test_build_code_symbol_index_cli_writes_artifacts(tmp_path: Path):
+    fixture_repo = tmp_path / "fixture_repo"
+    fixture_repo.mkdir()
+    _seed_cli_symbol_fixture(fixture_repo)
+    instance = tmp_path / "instance"
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{SRC_ROOT}{os.pathsep}{env.get('PYTHONPATH', '')}"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hisys.cli.main",
+            "build-code-symbol-index",
+            "--repo",
+            str(fixture_repo),
+            "--instance",
+            str(instance),
+            "--date",
+            "20260516",
+            "--request-id",
+            "REQ-CODEBASE-001",
+            "--format",
+            "json",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, (
+        f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
+    )
+    payload = json.loads(completed.stdout)
+    assert payload["schema_id"] == "hisys.codebase.symbol_index"
+    assert payload["raw_source_content_persisted"] is False
+    assert payload["external_call_made"] is False
+    assert payload["mutation_performed"] is False
+    assert payload["publication_or_live_action_approved"] is False
+    assert payload["json_ref"] == (
+        "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/symbol-index.json"
+    )
+    assert payload["markdown_ref"] == (
+        "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/symbol-index.md"
+    )
+
+    json_path = instance / payload["json_ref"]
+    loaded = json.loads(json_path.read_text(encoding="utf-8"))
+    module_paths = [m["path"] for m in loaded["modules"]]
+    assert "src/pkg/module.py" in module_paths
+    assert "tests/test_demo.py" in module_paths
+    # Heuristic tags survive the JSON round trip.
+    module = next(m for m in loaded["modules"] if m["path"] == "src/pkg/module.py")
+    fn_tags = {fn["name"]: fn["tags"] for fn in module["functions"]}
+    assert fn_tags["_make_parser"] == ["parser_builder"]
+    assert fn_tags["_cmd_demo"] == ["cli_handler"]
+
+
+def test_build_code_symbol_index_cli_supports_scope_filter(tmp_path: Path):
+    fixture_repo = tmp_path / "fixture_repo"
+    fixture_repo.mkdir()
+    _seed_cli_symbol_fixture(fixture_repo)
+    instance = tmp_path / "instance"
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{SRC_ROOT}{os.pathsep}{env.get('PYTHONPATH', '')}"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hisys.cli.main",
+            "build-code-symbol-index",
+            "--repo",
+            str(fixture_repo),
+            "--instance",
+            str(instance),
+            "--date",
+            "20260516",
+            "--request-id",
+            "REQ-CODEBASE-002",
+            "--scope",
+            "src",
+            "--format",
+            "json",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, (
+        f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
+    )
+    payload = json.loads(completed.stdout)
+    json_path = instance / payload["json_ref"]
+    loaded = json.loads(json_path.read_text(encoding="utf-8"))
+    assert loaded["analysis_scope"] == "src"
+    module_paths = [m["path"] for m in loaded["modules"]]
+    assert all(path.startswith("src/") for path in module_paths)
+    assert "src/pkg/module.py" in module_paths
+    assert "tests/test_demo.py" not in module_paths

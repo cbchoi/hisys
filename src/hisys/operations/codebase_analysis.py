@@ -558,6 +558,133 @@ def _count_class_symbols(cls: SymbolClass) -> tuple[int, int]:
     return class_count, method_count
 
 
+def _render_symbol_class_markdown(
+    cls: SymbolClass, lines: list[str], indent: int
+) -> None:
+    pad = "  " * indent
+    lines.append(f"{pad}- class `{cls.name}` (lines {cls.line_start}–{cls.line_end})")
+    for method in cls.methods:
+        method_label = f"async def {method.name}" if method.is_async else f"def {method.name}"
+        params = ", ".join(method.parameters)
+        tag_label = f" — tags: {', '.join(method.tags)}" if method.tags else ""
+        lines.append(
+            f"{pad}  - {method_label}({params}) "
+            f"(lines {method.line_start}–{method.line_end}){tag_label}"
+        )
+    for nested in cls.nested_classes:
+        _render_symbol_class_markdown(nested, lines, indent + 1)
+
+
+def _render_symbol_index_markdown(index: PythonSymbolIndex) -> str:
+    lines: list[str] = []
+    lines.append(f"# Codebase Symbol Index — {index.schema_id}")
+    lines.append("")
+    lines.append("## Provenance")
+    lines.append("")
+    lines.append(f"- repo_root: `{index.repo_root}`")
+    if index.analysis_scope is not None:
+        lines.append(f"- analysis_scope: `{index.analysis_scope}`")
+    else:
+        lines.append("- analysis_scope: (whole repo)")
+    lines.append(
+        f"- raw_source_content_persisted: {index.raw_source_content_persisted}"
+    )
+    lines.append("")
+    lines.append("## Counts")
+    lines.append("")
+    lines.append(f"- module_count: {index.module_count}")
+    lines.append(f"- import_count: {index.import_count}")
+    lines.append(f"- class_count: {index.class_count}")
+    lines.append(f"- function_count: {index.function_count}")
+    lines.append(f"- parse_error_count: {index.parse_error_count}")
+    lines.append("")
+    lines.append("## Parse Errors")
+    lines.append("")
+    if index.parse_errors:
+        for err in index.parse_errors:
+            lines.append(
+                f"- `{err.path}` line {err.line} col {err.column}: {err.message}"
+            )
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    lines.append("## Modules")
+    lines.append("")
+    if not index.modules:
+        lines.append("- (none)")
+        lines.append("")
+        return "\n".join(lines)
+    for module in index.modules:
+        lines.append(f"### `{module.path}` ({module.module_qualname})")
+        lines.append("")
+        lines.append("- Imports:")
+        if module.imports:
+            for imp in module.imports:
+                asname = f" as {imp.asname}" if imp.asname else ""
+                lines.append(
+                    f"  - `{imp.module}.{imp.name}{asname}` (line {imp.line})"
+                )
+        else:
+            lines.append("  - (none)")
+        lines.append("- Functions:")
+        if module.functions:
+            for fn in module.functions:
+                kw = "async def" if fn.is_async else "def"
+                params = ", ".join(fn.parameters)
+                tag_label = f" — tags: {', '.join(fn.tags)}" if fn.tags else ""
+                lines.append(
+                    f"  - {kw} {fn.name}({params}) "
+                    f"(lines {fn.line_start}–{fn.line_end}){tag_label}"
+                )
+        else:
+            lines.append("  - (none)")
+        lines.append("- Classes:")
+        if module.classes:
+            for cls in module.classes:
+                _render_symbol_class_markdown(cls, lines, indent=1)
+        else:
+            lines.append("  - (none)")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def write_python_symbol_index(
+    *,
+    instance_root: Path,
+    date: str,
+    request_id: str,
+    symbol_index: PythonSymbolIndex,
+) -> dict[str, object]:
+    _validate_slug("date", date, _DATE_PATTERN)
+    _validate_slug("request_id", request_id, _REQUEST_ID_PATTERN)
+
+    rel_dir = f"{INVENTORY_RUNTIME_PREFIX}/{date}/{request_id}"
+    out_dir = Path(instance_root) / rel_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    json_rel = f"{rel_dir}/symbol-index.json"
+    md_rel = f"{rel_dir}/symbol-index.md"
+    json_path = Path(instance_root) / json_rel
+    md_path = Path(instance_root) / md_rel
+
+    payload = symbol_index.model_dump(mode="json")
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_path.write_text(_render_symbol_index_markdown(symbol_index), encoding="utf-8")
+
+    return {
+        "schema_id": symbol_index.schema_id,
+        "json_ref": json_rel,
+        "markdown_ref": md_rel,
+        "raw_source_content_persisted": symbol_index.raw_source_content_persisted,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+
+
 def build_python_symbol_index(
     repo_root: Path,
     *,
@@ -643,4 +770,5 @@ __all__ = [
     "build_codebase_inventory",
     "build_python_symbol_index",
     "write_codebase_inventory",
+    "write_python_symbol_index",
 ]
