@@ -2,12 +2,17 @@
 
 Traceability: HISYS-FR-AGT-001..005, HISYS-T-019, HISYS-T-020,
 HISYS-CON-010, HISYS-CON-011, HISYS-CON-012.
+
+Local DARS endpoint policy implements the Local DARS / ByeSys Provenance
+plan Milestone 1 (`docs/plans/2026-05-16-local-dars-byesys-provenance.md`).
 """
 
 from __future__ import annotations
 
+import ipaddress
 import json
 from typing import Any, Literal
+from urllib.parse import urlsplit
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ..config.instance import InstanceRoot
@@ -17,6 +22,8 @@ DARS_SCHEMA_ID = "hisys.dars.config"
 DARS_OUTPUT_CONTRACT = "DarsCritiqueRecord"
 NON_LOOPBACK_BACKENDS = {"fixture_file", "mock_http", "openai_compatible", "cli_agent", "hermes_delegate"}
 PROMPT_FIELD_NAMES = {"prompt", "objective", "focus", "instruction", "instructions", "summary", "description"}
+LOCAL_ENDPOINT_HOSTNAMES = {"localhost"}
+LOCAL_ENDPOINT_ALLOWED_SCHEMES = {"http", "https"}
 
 
 class DarsPolicyConfig(BaseModel):
@@ -200,6 +207,19 @@ def _policy_issues(data: dict[str, Any]) -> list[ConfigValidationIssue]:
                         message="DARS backends must output DarsCritiqueRecord",
                     )
                 )
+            if (
+                backend.get("kind") == "openai_compatible"
+                and backend.get("mode") == "local_network_only"
+            ):
+                code = _classify_local_endpoint(backend.get("endpoint"))
+                if code is not None:
+                    issues.append(
+                        ConfigValidationIssue(
+                            path=f"{path}.endpoint",
+                            code=code,
+                            message=_LOCAL_ENDPOINT_MESSAGES[code],
+                        )
+                    )
     roles = spec.get("roles", {})
     if isinstance(roles, dict):
         for role_id, role in roles.items():
@@ -276,4 +296,80 @@ def _dedupe_issues(issues: list[ConfigValidationIssue]) -> list[ConfigValidation
     return deduped
 
 
-__all__ = ["DarsConfig", "DarsConfigSpec", "load_dars_config", "validate_dars_config_document"]
+_LOCAL_ENDPOINT_MESSAGES: dict[str, str] = {
+    "missing_endpoint": "local openai_compatible backends must declare an endpoint",
+    "missing_endpoint_host": "local openai_compatible endpoints must include a host",
+    "unsupported_endpoint_scheme": "local openai_compatible endpoints must use http or https",
+    "non_local_endpoint": "local openai_compatible endpoints must resolve to a loopback host",
+}
+
+
+def _classify_local_endpoint(endpoint: object) -> str | None:
+    """Classify a local DARS endpoint as loopback-only or return a rejection code.
+
+    Returns ``None`` when the endpoint is a valid localhost-only URL. Otherwise
+    returns one of ``missing_endpoint``, ``missing_endpoint_host``,
+    ``unsupported_endpoint_scheme``, or ``non_local_endpoint``. The classifier
+    never performs DNS, sockets, or any other I/O — it is deterministic and
+    relies only on :mod:`urllib.parse` and :mod:`ipaddress`.
+    """
+
+    if endpoint is None or endpoint == "":
+        return "missing_endpoint"
+    if not isinstance(endpoint, str):
+        return "non_local_endpoint"
+    try:
+        parts = urlsplit(endpoint)
+    except ValueError:
+        return "non_local_endpoint"
+    scheme = (parts.scheme or "").lower()
+    if scheme not in LOCAL_ENDPOINT_ALLOWED_SCHEMES:
+        return "unsupported_endpoint_scheme"
+    # Reject userinfo tricks such as `http://localhost@evil.com/...` where the
+    # authority that actually receives the request is the suffix host, not the
+    # userinfo token.
+    if parts.username or parts.password:
+        return "non_local_endpoint"
+    try:
+        host = parts.hostname
+    except ValueError:
+        return "non_local_endpoint"
+    if not host:
+        return "missing_endpoint_host"
+    host = host.lower()
+    if host in LOCAL_ENDPOINT_HOSTNAMES:
+        return None
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return "non_local_endpoint"
+    if not address.is_loopback:
+        return "non_local_endpoint"
+    return None
+
+
+def derive_local_backend_metadata(backend: DarsBackendConfig) -> dict[str, Any]:
+    """Derive deterministic boundary metadata for a local DARS backend.
+
+    Returns an empty mapping for non-local backends so downstream dispatch
+    treats only ``openai_compatible`` + ``local_network_only`` backends as
+    model-boundary callers.
+    """
+
+    if backend.kind == "openai_compatible" and backend.mode == "local_network_only":
+        return {
+            "endpoint_scope": "localhost_only",
+            "model_boundary_required": True,
+            "external_call_expected": False,
+        }
+    return {}
+
+
+__all__ = [
+    "DarsBackendConfig",
+    "DarsConfig",
+    "DarsConfigSpec",
+    "derive_local_backend_metadata",
+    "load_dars_config",
+    "validate_dars_config_document",
+]

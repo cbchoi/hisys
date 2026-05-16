@@ -2,6 +2,9 @@
 
 Traceability: HISYS-FR-AGT-001..005, HISYS-T-019, HISYS-T-020,
 HISYS-CON-010, HISYS-CON-011, HISYS-CON-012.
+
+Local DARS endpoint policy tests trace to the Local DARS / ByeSys
+Provenance plan Milestone 1 (`docs/plans/2026-05-16-local-dars-byesys-provenance.md`).
 """
 
 from __future__ import annotations
@@ -9,7 +12,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hisys.agents.dars_config import load_dars_config, validate_dars_config_document
+import pytest
+
+from hisys.agents.dars_config import (
+    DarsBackendConfig,
+    derive_local_backend_metadata,
+    load_dars_config,
+    validate_dars_config_document,
+)
 from hisys.config.instance import InstanceRoot
 
 
@@ -123,3 +133,197 @@ def test_dars_config_validation_rejects_policy_and_schema_violations():
     assert by_path["spec.backends.claude_dars.enabled"] == "non_loopback_backend_enabled_by_default"
     assert by_path["spec.backends.claude_dars.api_key"] == "raw_secret_value_not_allowed"
     assert by_path["spec.backends.claude_dars.output_contract"] == "invalid_output_contract"
+
+
+# ---------------------------------------------------------------------------
+# Local DARS / ByeSys provenance plan — Milestone 1 (Ralph M8.1)
+# Strict localhost endpoint policy for `openai_compatible` + `local_network_only`.
+# ---------------------------------------------------------------------------
+
+
+def _local_openai_compatible_backend(
+    endpoint: str | None = "http://127.0.0.1:11434/v1/chat/completions",
+) -> dict:
+    return {
+        "kind": "openai_compatible",
+        "enabled": False,
+        "mode": "local_network_only",
+        "endpoint": endpoint,
+        "model": "qwen2.5:14b-instruct",
+        "external_call_allowed": False,
+        "output_contract": "DarsCritiqueRecord",
+    }
+
+
+def _config_with_local_backend(endpoint: str | None) -> dict:
+    data = _minimal_dars_config()
+    data["spec"]["backends"]["local_llm_dars"] = _local_openai_compatible_backend(endpoint)
+    return data
+
+
+def _endpoint_codes(report) -> set[str]:
+    return {
+        issue.code
+        for issue in report.issues
+        if issue.path == "spec.backends.local_llm_dars.endpoint"
+    }
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://localhost:11434/v1/chat/completions",
+        "http://localhost/v1/chat/completions",
+        "https://localhost:8443/v1/chat/completions",
+    ],
+)
+def test_local_openai_compatible_backend_accepts_localhost_hostname(endpoint: str):
+    data = _config_with_local_backend(endpoint)
+    report = validate_dars_config_document(data, config_ref="inline://local-llm")
+    # The endpoint itself must not raise localhost-policy issues.
+    blocking = {"non_local_endpoint", "missing_endpoint", "missing_endpoint_host", "unsupported_endpoint_scheme"}
+    assert not (_endpoint_codes(report) & blocking)
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://127.0.0.1:11434/v1/chat/completions",
+        "http://127.0.0.1/v1/chat/completions",
+        "http://127.0.0.2:11434/v1/chat/completions",
+    ],
+)
+def test_local_openai_compatible_backend_accepts_ipv4_loopback_endpoint(endpoint: str):
+    data = _config_with_local_backend(endpoint)
+    report = validate_dars_config_document(data, config_ref="inline://local-llm-v4")
+    blocking = {"non_local_endpoint", "missing_endpoint", "missing_endpoint_host", "unsupported_endpoint_scheme"}
+    assert not (_endpoint_codes(report) & blocking)
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://[::1]:11434/v1/chat/completions",
+        "http://[::1]/v1/chat/completions",
+    ],
+)
+def test_local_openai_compatible_backend_accepts_ipv6_loopback_endpoint(endpoint: str):
+    data = _config_with_local_backend(endpoint)
+    report = validate_dars_config_document(data, config_ref="inline://local-llm-v6")
+    blocking = {"non_local_endpoint", "missing_endpoint", "missing_endpoint_host", "unsupported_endpoint_scheme"}
+    assert not (_endpoint_codes(report) & blocking)
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://203.0.113.5:11434/v1/chat/completions",
+        "http://example.com:11434/v1/chat/completions",
+        "http://10.0.0.1:11434/v1/chat/completions",
+        "http://192.168.1.1:11434/v1/chat/completions",
+        "http://[2001:db8::1]:11434/v1/chat/completions",
+    ],
+)
+def test_local_openai_compatible_backend_rejects_remote_endpoint(endpoint: str):
+    data = _config_with_local_backend(endpoint)
+    report = validate_dars_config_document(data, config_ref="inline://remote-llm")
+    assert "non_local_endpoint" in _endpoint_codes(report)
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://localhost.evil.com:11434/v1/chat/completions",
+        "http://127.0.0.1.evil.com:11434/v1/chat/completions",
+        "http://evil-localhost:11434/v1/chat/completions",
+        "http://localhost-evil.com/v1/chat/completions",
+    ],
+)
+def test_local_openai_compatible_backend_rejects_deceptive_localhost_suffix(endpoint: str):
+    data = _config_with_local_backend(endpoint)
+    report = validate_dars_config_document(data, config_ref="inline://deceptive-llm")
+    assert "non_local_endpoint" in _endpoint_codes(report)
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://localhost@evil.com:11434/v1/chat/completions",
+        "http://user:pass@evil.com:11434/v1/chat/completions",
+        "http://127.0.0.1@evil.com:11434/v1/chat/completions",
+    ],
+)
+def test_local_openai_compatible_backend_rejects_userinfo_host_trick(endpoint: str):
+    data = _config_with_local_backend(endpoint)
+    report = validate_dars_config_document(data, config_ref="inline://userinfo-llm")
+    assert "non_local_endpoint" in _endpoint_codes(report)
+
+
+@pytest.mark.parametrize(
+    "endpoint,expected_code",
+    [
+        ("ftp://127.0.0.1:11434/v1/chat/completions", "unsupported_endpoint_scheme"),
+        ("file:///tmp/127.0.0.1/v1/chat/completions", "unsupported_endpoint_scheme"),
+        ("ws://127.0.0.1:11434/v1/chat/completions", "unsupported_endpoint_scheme"),
+        ("http://", "missing_endpoint_host"),
+        (None, "missing_endpoint"),
+        ("", "missing_endpoint"),
+    ],
+)
+def test_local_openai_compatible_backend_rejects_missing_or_unsupported_scheme(
+    endpoint: str | None, expected_code: str
+):
+    data = _config_with_local_backend(endpoint)
+    report = validate_dars_config_document(data, config_ref="inline://scheme-llm")
+    assert expected_code in _endpoint_codes(report)
+
+
+def test_local_openai_compatible_backend_exposes_localhost_metadata():
+    backend = DarsBackendConfig.model_validate(_local_openai_compatible_backend())
+    metadata = derive_local_backend_metadata(backend)
+    assert metadata == {
+        "endpoint_scope": "localhost_only",
+        "model_boundary_required": True,
+        "external_call_expected": False,
+    }
+
+
+def test_derive_local_backend_metadata_is_empty_for_non_local_backends():
+    cli_backend = DarsBackendConfig.model_validate(
+        {
+            "kind": "cli_agent",
+            "enabled": False,
+            "mode": "read_only",
+            "command": "claude",
+            "allowed_tools": ["Read"],
+            "disallowed_tools": ["Edit"],
+            "external_call_allowed": False,
+            "output_contract": "DarsCritiqueRecord",
+        }
+    )
+    assert derive_local_backend_metadata(cli_backend) == {}
+
+    external_backend = DarsBackendConfig.model_validate(
+        {
+            "kind": "openai_compatible",
+            "enabled": False,
+            "mode": "external_api",
+            "endpoint": "https://api.example.com/v1/chat/completions",
+            "model": "remote",
+            "external_call_allowed": True,
+            "credential_ref": "ref://remote",
+            "output_contract": "DarsCritiqueRecord",
+        }
+    )
+    assert derive_local_backend_metadata(external_backend) == {}
+
+
+def test_local_openai_compatible_backend_does_not_require_credential_ref():
+    data = _config_with_local_backend("http://127.0.0.1:11434/v1/chat/completions")
+    report = validate_dars_config_document(data, config_ref="inline://no-cred")
+    cred_codes = {
+        issue.code
+        for issue in report.issues
+        if issue.path == "spec.backends.local_llm_dars.credential_ref"
+    }
+    assert "missing_credential_ref" not in cred_codes
