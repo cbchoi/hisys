@@ -291,7 +291,7 @@ research traceability easier to navigate:
 | Miner | source discovery |
 | Cutter | evidence and claim extraction |
 | Artisan | synthesis/Gem builder |
-| Appraiser | advisory DARS/adversarial audit |
+| DARS Devil | advisory DARS/adversarial audit |
 | Jeweler | Jewel/decision review |
 | Curator | topic routing, promotion, archive review |
 | Vault Steward | scheduled maintenance/degradation scan |
@@ -330,9 +330,9 @@ should record weights for source quality, verification status, recency,
 independence, contradiction status, and domain fit instead of collapsing internal
 experience and current external evidence into one opaque confidence score.
 
-DARS remains an Appraiser/adversarial audit function. It may critique, identify
+DARS remains a DARS Devil/adversarial audit function. It may critique, identify
 confirmation bias, stale evidence, weak evidence, and contradiction gaps, but it
-must not approve, execute, publish, or replace Chief Editor/Jeweler/human decision
+must not approve, execute, publish, or replace Jeweler/human decision
 authority.
 
 The formal Pydantic boundary for this layer is

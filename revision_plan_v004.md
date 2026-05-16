@@ -23,7 +23,7 @@ spec-first packet
   -> scope-first codebase inventory
   -> deterministic source/symbol/test/doc evidence
   -> bounded advisory synthesis
-  -> DARS/Chief Editor review gate
+  -> DARS Devil critique -> Jeweler review gate
   -> finish packet for human review
 ```
 
@@ -38,7 +38,7 @@ Do not implement or authorize the following by default:
 - repository mutation, branch creation, commit, push, PR creation, package publication, deployment, or live connector execution;
 - unrestricted shell execution from analyzed repositories;
 - subagent final decisions;
-- automatic lowering of `needs_more_evidence` or Chief Editor/DARS gates;
+- automatic lowering of `needs_more_evidence` or Jeweler/DARS Devil gates;
 - long-term storage of raw codebase contents in personal vaults or Hermes memory.
 
 Required boundary fields for every artifact in this plan:
@@ -65,6 +65,19 @@ A local bounded inspection on 2026-05-16 found the current Hisys repository is a
   - `docs/use-cases/codebase-analysis-design-candidates.md` already defines the future evidence package direction.
 
 The gap is that current codebase analysis mostly records local targets and evidence references. It does not yet construct a deterministic source inventory, symbol index, scope map, validation plan, risk-boundary scan, or source-inspection decision artifact.
+
+### 3.1 Terminology baseline for this revision
+
+Use **Jeweler** for the final review/decision metaphor that replaces user-facing
+**Chief Editor** wording. Keep **DARS Devil** and **DARS reviewer** as the
+DARS-side advisory/adversarial critique terms; do not migrate DARS terminology to
+Appraiser. If older draft artifacts mention Appraiser, treat it as a deprecated
+draft alias for DARS Devil rather than as the canonical term.
+
+Code identifiers such as `chief_editor`, file paths, config names, or historical
+artifact fields may remain temporarily where renaming would cause migration risk;
+new user-facing prose and new plan text should use Jeweler for final review and
+DARS Devil for adversarial critique.
 
 ## 4. Design principles imported from the source material
 
@@ -127,6 +140,29 @@ Subagents may inspect bounded paths and return artifacts or verification handles
 
 **Objective:** Add deterministic local repository inventory artifacts.
 
+**Implementation split:** Treat this increment as five TDD sub-increments rather
+than one broad change.
+
+- **1A — Pure inventory builder:** build a deterministic in-memory inventory from
+  a fixture repository; exclude `.git`, `.venv`, `__pycache__`, build/cache
+  paths, and generated-heavy paths.
+- **1B — Schema and safety fields:** add inventory schema fields, stable sorting,
+  no-live-action boundary fields, `repo_root_realpath`, `analysis_root_realpath`,
+  and path policy metadata.
+- **1C — Artifact writer:** write JSON and Markdown under
+  `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` and return safe
+  instance-relative refs.
+- **1D — CLI wrapper:** add `build-codebase-inventory` only after the pure builder
+  and writer tests are green.
+- **1E — Docs/traceability/finish packet:** update public docs, traceability rows,
+  and close the increment with a finish packet that records focused tests, secret
+  scan, traceability validation, and diff check.
+
+**Precondition:** Create a spec-first packet such as
+`SPEC-HISYS-CODEBASE-ANALYSIS-001` using the existing
+`build-spec-first-packet` workflow before implementation. The finish packet for
+this increment should reference that spec packet and preserve `action_taken=none`.
+
 **Files:**
 - Create: `src/hisys/operations/codebase_analysis.py`
 - Create: `tests/unit/test_codebase_analysis_inventory.py`
@@ -169,7 +205,13 @@ runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/inventory.md
 - `test_file_count`
 - `doc_file_count`
 - `required_path_existence`
-- safety boundary fields.
+- safety boundary fields;
+- `repo_root_realpath` and `analysis_root_realpath`;
+- `path_policy` with outside-repo paths rejected and symlinks recorded without
+  following by default;
+- `binary_file_count`, `large_file_count`, `generated_file_count`, and skip
+  reasons for files whose contents are not line-counted;
+- `raw_source_content_persisted=false`.
 
 **Tests:**
 
@@ -177,7 +219,11 @@ runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/inventory.md
 - inventory records required path existence;
 - writer creates JSON and Markdown;
 - CLI roundtrip returns safe refs;
-- no-live-action flags remain false.
+- no-live-action flags remain false;
+- symlinks that point outside the repo are recorded as path-policy findings and
+  are not followed;
+- inventory artifacts do not persist raw source file contents;
+- binary, large, and generated files are counted without forcing text reads.
 
 **Validation:**
 
@@ -292,7 +338,11 @@ PYTHONPATH=src python3 -m hisys.cli.main build-codebase-map \
 - publication/upload/post/send action;
 - subprocess/shell execution;
 - vault write;
-- runtime-boundary artifact write.
+- runtime-boundary artifact write;
+- model/LLM boundary crossing, including local model calls and external model/API
+  calls;
+- generated or unsupported evidence-like content that must be marked as
+  `ByeSys`.
 
 **Important distinction:** A scanner finding is not a vulnerability verdict. It is an evidence item for review. The scanner must distinguish allowed local artifact writes from live external effects.
 
@@ -401,7 +451,7 @@ audit code-analysis blockers
   -> propose code-analysis pass contract
   -> convert proposal to tests/fixtures
   -> evaluate proposal
-  -> DARS/Chief Editor/human review
+  -> DARS Devil/Jeweler/human review
   -> promote only after approval
 ```
 
@@ -582,14 +632,14 @@ The first implementation packet should be narrow:
 ```text
 Packet: SPEC-HISYS-CODEBASE-ANALYSIS-001
 Objective: implement codebase inventory packet only
-Scope: Increment 1
-Non-goals: symbol index, LSP, subagent protocol, DARS review, external repo clone
+Scope: Increment 1A-1E only
+Non-goals: symbol index, LSP, subagent protocol, DARS Devil review, external repo clone, raw source-content archiving
 Allowed actions: local repo reads, tests, docs, traceability edit, local commit after green validation
-Evidence contract: JSON+Markdown inventory artifact; focused tests; secret scan; traceability validation; git diff check
+Evidence contract: spec-first packet ref; JSON+Markdown inventory artifact; no raw source contents in inventory; focused tests; secret scan; traceability validation; git diff check; finish packet after validation
 Human boundary: no live action, no publication, no push unless explicitly requested
 ```
 
-Recommended focused tests after Increment 1:
+Recommended focused tests after Increment 1A-1E:
 
 ```bash
 python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q
@@ -605,7 +655,9 @@ python3 -m pytest -q
 
 ## 8. Acceptance checklist for this plan
 
-- [ ] The plan is saved as `revision_plan_v004.md` in the Hisys repository.
+- [x] The plan is saved as `revision_plan_v004.md` in the Hisys repository.
+- [ ] The plan has been converted into `SPEC-HISYS-CODEBASE-ANALYSIS-001`.
+- [ ] Increment 1 has been split into 1A-1E Ralph tasks.
 - [ ] The plan includes advanced post-foundation codebase-analysis features.
 - [ ] The plan includes Hermes applicability analysis.
 - [ ] The plan preserves Hisys governance boundaries.

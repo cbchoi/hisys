@@ -2,7 +2,7 @@
 
 > **For Hermes:** Use test-driven-development skill to implement this plan task-by-task.
 
-**Goal:** Make DARS runnable through a localhost-only local LLM adapter, enforce Hisys boundary semantics for model/provenance crossings, assign zero evidential weight to ByeSys-generated evidence, and normalize reviewer terminology to the Jeweler/Appraiser metaphor.
+**Goal:** Make DARS runnable through a localhost-only local LLM adapter, enforce Hisys boundary semantics for model/provenance crossings, assign zero evidential weight to ByeSys-generated evidence, and normalize reviewer terminology to Jeweler for final review while preserving DARS Devil terminology for adversarial critique.
 
 **Architecture:** Keep DARS advisory-only. Add a localhost-restricted `openai_compatible` adapter with fake HTTP server tests before any live local model. Treat local LLM calls as local model-boundary events that require explicit approval but do not count as live external calls when endpoint authority is localhost-only. Add a provenance/weight policy so generated or ungrounded evidence is explicitly sourced as `ByeSys` and assigned weight 0 in Hisys and Hermes-facing guidance.
 
@@ -49,9 +49,9 @@
 
 5. **Terminology normalization**
    - Use **Jeweler** as the decision/review metaphor replacing user-facing **Chief Editor** terminology.
-   - Use **Appraiser** for DARS/advisory critique separation.
-   - Preserve legacy Python package/class names temporarily where migration would be too large, but add user-facing aliases and documentation so future generated docs and prompts use Jeweler/Appraiser consistently.
-   - Add a deprecation map: `Chief Editor -> Jeweler`; `DARS devil/reviewer -> Appraiser`.
+   - Keep **DARS Devil** / **DARS reviewer** terminology for advisory critique separation; do not migrate DARS to Appraiser.
+   - Preserve legacy Python package/class names temporarily where migration would be too large, but add user-facing aliases and documentation so future generated docs and prompts use Jeweler for final review and DARS Devil for adversarial critique consistently.
+   - Add a terminology map: `Chief Editor -> Jeweler`; `DARS devil -> DARS Devil`; `DARS reviewer -> DARS Reviewer`; `Appraiser -> DARS Devil` for any interim drafts that used Appraiser.
 
 ---
 
@@ -68,11 +68,11 @@
 **RED tests:**
 - `test_byesys_source_has_zero_weight()`
 - `test_non_byesys_source_preserves_configured_weight()`
-- `test_reviewer_metaphor_alias_maps_chief_editor_to_jeweler()`
+- `test_reviewer_metaphor_alias_maps_chief_editor_to_jeweler_and_keeps_dars_devil()`
 
 **Acceptance:**
 - `ByeSys` source weight resolves to `0.0` regardless of provided raw weight.
-- Jeweler/Appraiser alias map exists and is documented.
+- Jeweler/DARS Devil alias map exists and is documented; Appraiser is treated only as a deprecated draft alias for DARS Devil.
 - Legacy code can still import existing names.
 
 **Validation:**
