@@ -6,6 +6,9 @@ HISYS-CON-010..012.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from hisys.schemas.domain_investigation import DomainInvestigationRequest
 
 from .layers import (
@@ -101,13 +104,21 @@ class MemoReportAggregationLayer:
         investigation: InvestigationWorkProduct,
     ) -> AggregationWorkProduct:
         report_ref = f"runtime-boundary/domain-investigation/{request.domain}/{context.yyyymmdd}/aggregation-report-{request.request_id}.md"
+        summary = f"Aggregated {investigation.scope} memos and evidence for {request.request_id}."
+        _write_aggregation_report(
+            instance_root=context.instance_root,
+            report_ref=report_ref,
+            request=request,
+            investigation=investigation,
+            summary=summary,
+        )
         return AggregationWorkProduct(
             work_product_id=f"AGG-{request.request_id}",
             report_type="memo_aggregation_report",
             input_memo_refs=investigation.memo_refs,
             input_evidence_refs=investigation.evidence_refs,
             report_ref=report_ref,
-            summary=f"Aggregated {investigation.scope} memos and evidence for {request.request_id}.",
+            summary=summary,
         )
 
 
@@ -124,6 +135,17 @@ class DarsDecisionLayer:
         aggregation: AggregationWorkProduct,
     ) -> DecisionWorkProduct:
         decision_ref = f"runtime-boundary/dars/{context.yyyymmdd}/dars-decision-{request.request_id}.json"
+        # Persist a structured advisory placeholder so the recorded ref always
+        # resolves to a real artifact; downstream auditors can tell the
+        # placeholder apart from a completed DARS decision via the `status`
+        # field. Missing DARS output must be explicit, not a dangling path.
+        _write_dars_decision_placeholder(
+            instance_root=context.instance_root,
+            decision_ref=decision_ref,
+            request=request,
+            aggregation=aggregation,
+            decision_type=self._decision_type,
+        )
         return DecisionWorkProduct(
             work_product_id=f"DEC-{request.request_id}",
             decision_engine="DARS",
@@ -133,6 +155,72 @@ class DarsDecisionLayer:
             recommendation="human_review_required",
             requires_human_review=True,
         )
+
+
+def _write_aggregation_report(
+    *,
+    instance_root: Path,
+    report_ref: str,
+    request: DomainInvestigationRequest,
+    investigation: InvestigationWorkProduct,
+    summary: str,
+) -> None:
+    output_path = instance_root / report_ref
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        "\n".join(
+            [
+                f"# Aggregation Report {request.request_id}",
+                "",
+                f"- domain: {request.domain}",
+                f"- scope: {investigation.scope}",
+                f"- input memo refs: {len(investigation.memo_refs)}",
+                f"- input evidence refs: {len(investigation.evidence_refs)}",
+                f"- external call made: {str(investigation.external_call_made).lower()}",
+                f"- mutation performed: {str(investigation.mutation_performed).lower()}",
+                "",
+                summary,
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def _write_dars_decision_placeholder(
+    *,
+    instance_root: Path,
+    decision_ref: str,
+    request: DomainInvestigationRequest,
+    aggregation: AggregationWorkProduct,
+    decision_type: str,
+) -> None:
+    output_path = instance_root / decision_ref
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_id": "hisys.domain.dars_decision_placeholder",
+        "schema_version": "0.1.0",
+        "request_id": request.request_id,
+        "decision_engine": "DARS",
+        "decision_type": decision_type,
+        "input_report_ref": aggregation.report_ref,
+        "recommendation": "human_review_required",
+        "requires_human_review": True,
+        "advisory_only": True,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "status": "pending_human_review",
+        "policy_refs": [
+            "HISYS-FR-AGT-001",
+            "HISYS-FR-AGT-003",
+            "HISYS-CON-010",
+            "HISYS-CON-012",
+        ],
+    }
+    output_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 class ResearchAnalysisUseCase(DomainUseCase):
