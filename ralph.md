@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-17 — M17.4 codebase scope-map writer + `build-codebase-map` CLI (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M17.4 (deterministic JSON + Markdown writer for `CodebaseScopeMap` + `CodebaseValidationPlan`, safe instance-relative ref resolver, and `build-codebase-map` CLI subcommand).
+- Controlled anchors checked: ralph.md M17.4 (lines 1762–1766); existing `write_codebase_inventory` and `write_python_symbol_index` writer conventions (slug validation, deterministic JSON ordering, runtime-boundary prefix, safety envelope); existing CLI argparse + dispatch pattern in `src/hisys/cli/main.py` (`build-codebase-inventory`, `build-code-symbol-index`); the `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` artifact subtree.
+- Implementation: (a) added `resolve_instance_runtime_ref(*, instance_root, relative_ref)` as the single chokepoint for caller-supplied artifact paths; it rejects empty refs, absolute paths, `..` traversal segments, and symlinks whose real target escapes the instance root by `realpath`-comparing against the instance realpath. (b) added `write_codebase_scope_map(*, instance_root, date, request_id, scope_map, validation_plan)` reusing `_validate_slug`, `_DATE_PATTERN`, `_REQUEST_ID_PATTERN`, and `INVENTORY_RUNTIME_PREFIX`; writes `scope-map.json` (UTF-8, indent=2, sort_keys, payload `{scope_map, validation_plan}`) and `scope-map.md`. (c) added `_render_scope_map_markdown` that emits per-scope sections covering counts, files-in-scope, missing entries, tests-in-scope, missing tests, docs-in-scope, traceability refs, parse errors, plus the per-scope validation plan command list with kind/argv/purpose. (d) result envelope records `external_call_made=false`, `mutation_performed=false`, `publication_or_live_action_approved=false`, plus per-artifact `json_ref` / `markdown_ref`, the `scope_map` schema_id, and the `validation_plan_schema_id`. (e) added `_cmd_build_codebase_map` in the CLI: resolves the inventory and symbol-index refs via `resolve_instance_runtime_ref`, validates the loaded JSON through `CodebaseInventory.model_validate` / `PythonSymbolIndex.model_validate`, builds the scope map and validation plan from the default registry, and writes the artifacts. (f) added the `build-codebase-map` argparse subparser and its dispatch wiring. (g) extended `tests/unit/test_codebase_scope_map.py` with eight new tests: writer happy path (JSON round-trip, deterministic re-write, markdown content), writer rejects traversal in date/request_id, `resolve_instance_runtime_ref` accepts safe subpaths, rejects absolute/empty/traversal refs, rejects symlinks that leave the instance root, CLI happy path (subprocess builds both artifacts and reports the expected json_ref), CLI rejects absolute input refs, and CLI rejects traversal input refs.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py -q` -> 36 passed; combined `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py tests/unit/test_codebase_analysis_inventory.py tests/unit/test_codebase_symbol_index.py tests/unit/test_cli_runtime.py -q` -> 87 passed; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py --json` on the three touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The writer reuses `INVENTORY_RUNTIME_PREFIX` so the scope-map artifacts coexist with inventory and symbol-index artifacts in the same `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` subdirectory. Filenames (`inventory.{json,md}`, `symbol-index.{json,md}`, `scope-map.{json,md}`) keep them separate; the M17.5 docs row should make the three-file bundle explicit. (b) `resolve_instance_runtime_ref` does not require the resolved path to exist — only that it does not escape the instance root. The CLI then reads the resolved path, which raises `FileNotFoundError` if it does not exist. M17.5 docs should mention that a missing prerequisite artifact surfaces as a `FileNotFoundError` rather than a CLI usage error. (c) The CLI uses the default scope-profile registry; an explicit `--scope-id` filter could be added in a future increment if a reviewer wants to render a one-scope map without running the full registry. For M17 it is intentionally omitted to keep the writer/CLI minimal.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 88% for continuing into M17.5 (DOC/GATE docs + traceability + milestone finish packet). M17.5 is a docs/control increment with no behavior change; the validation gate commands and traceability anchors are already in place.
+- Continue decision: continue locally to M17.5 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M17.5 — DOC/GATE docs, traceability, examples (and the milestone FINISH packet).
+- Commit: `24ddf3f feat: add codebase map CLI`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: 24ddf3f feat: add codebase map CLI
+- Working tree: `ralph.md` modified for M17.4 Reflection entry
+- Last completed milestone/task: M17.4 (writer + safe-ref resolver + CLI)
+- Current in-progress task: ralph.md Reflection commit for M17.4
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_scope_map.py -q` failed at collection with `ImportError: cannot import name 'resolve_instance_runtime_ref'` before the writer/resolver were added
+- GREEN observed: focused scope-map suite -> 36 passed; combined scope-map + inventory + symbol-index + cli-runtime -> 87 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), `git diff --check` clean
+- Next command to run: commit this Reflection as `docs: record M17.4 scope map writer reflection`; then start M17.5 Prepare.
+- Stop condition: none. Continue into M17.5.
+
 ### 2026-05-17 — M17.3 codebase validation plan synthesis (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M17.3 (deterministic validation-plan synthesis over `CodebaseScopeMap`).
