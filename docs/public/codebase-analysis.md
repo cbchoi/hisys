@@ -276,6 +276,102 @@ subdirectory; findings are still keyed relative to the repository root.
 The risk-scan artifact joins the same `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/`
 bundle as the inventory, symbol-index, and scope-map artifacts.
 
+## Increment 5 — Source-inspection decision packet
+
+`hisys.operations.codebase_analysis.review_codebase_source_inspection` is
+a pure reviewer that consumes the four-file bundle (inventory, Python
+symbol index, scope map + validation plan, risk-boundary scan) and
+returns a `CodebaseSourceInspectionDecision`. The allowed decision values
+are exactly `complete_for_human_review` and `blocked_needs_more_evidence`;
+the record's Pydantic `Literal` structurally rejects `approved`,
+`safe_to_deploy`, and `ready_for_live_action`, so the reviewer cannot
+cross the no-live-action boundary even if a caller asks it to.
+
+### Inputs
+
+- `inventory: CodebaseInventory | None`
+- `symbol_index: PythonSymbolIndex | None`
+- `scope_map: CodebaseScopeMap | None`
+- `validation_plan: CodebaseValidationPlan | None`
+- `risk_scan: CodebaseRiskScan | None`
+- `unresolved_blockers: Iterable[str] | None` — optional caller-supplied
+  blockers (e.g., "secret-scan: hit_count>0 in fixture run") that gate
+  the decision
+
+### Decision rules
+
+- Any required artifact missing -> `missing_evidence` records the canonical
+  name; the decision downgrades to `blocked_needs_more_evidence`.
+- Any per-record safety invariant violation populates
+  `validation_findings` and downgrades the decision:
+  - `<artifact>.raw_source_content_persisted=true` on any of the five records
+  - `risk_scan.action_authorized=true`
+  - any `RiskBoundaryFinding.action_authorized=true`
+  - `scope_map.inventory_schema_id != inventory.schema_id`
+  - `scope_map.symbol_index_schema_id != symbol_index.schema_id`
+- Any non-empty `unresolved_blockers` downgrades the decision.
+- Only when all three lists (`missing_evidence`, `validation_findings`,
+  `unresolved_blockers`) are empty does the decision become
+  `complete_for_human_review`.
+
+### Safe artifact loading
+
+`load_codebase_review_bundle` is the single chokepoint that resolves the
+four caller-supplied refs through `resolve_instance_runtime_ref` (which
+rejects empty refs, absolute paths, `..` traversal segments, and
+symlinks whose real target escapes the instance root) before any file
+read. It returns a `CodebaseReviewBundle` Pydantic record with the five
+typed artifact fields plus `raw_source_content_persisted=False` and
+`action_authorized=False`.
+
+### Captured fields
+
+- `decision.schema_id = "hisys.codebase.source_inspection_decision"`
+- `decision.decision` — one of the two allowed Literal values
+- `decision.missing_evidence` — sorted canonical artifact names
+- `decision.validation_findings` — sorted grep-friendly finding strings
+- `decision.unresolved_blockers` — caller-supplied blockers as-is
+- `decision.raw_source_content_persisted=false`,
+  `decision.action_authorized=false`,
+  `decision.external_call_made=false`,
+  `decision.mutation_performed=false`,
+  `decision.publication_or_live_action_approved=false`
+
+### Safety invariants
+
+- The reviewer makes no live call, no filesystem read, no source content
+  read, and no mutation. It inspects already-loaded Pydantic records.
+- Allowed decision values are exactly `complete_for_human_review` and
+  `blocked_needs_more_evidence`. The Pydantic `Literal` rejects
+  `approved`, `safe_to_deploy`, and `ready_for_live_action`.
+- The writer emits artifacts only under the caller's instance root at
+  `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/source-inspection-decision.{json,md}`.
+- The Markdown rendering explicitly states "review evidence, not an
+  authorization" and lists the two allowed decision values alongside the
+  three forbidden ones so a reviewer reading the artifact in isolation
+  cannot misread it as an authorization signal.
+
+### Command
+
+```bash
+PYTHONPATH=src python3 -m hisys.cli.main review-codebase-analysis \
+  --instance /tmp/hisys-codebase-analysis \
+  --date 20260517 \
+  --request-id REQ-CODEBASE-DECISION-001 \
+  --inventory-ref runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-001/inventory.json \
+  --symbol-index-ref runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-001/symbol-index.json \
+  --scope-map-ref runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-001/scope-map.json \
+  --risk-scan-ref runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-001/risk-scan.json \
+  --unresolved-blocker "secret-scan: hit_count>0 in fixture run" \
+  --format json
+```
+
+The CLI exits 0 for `complete_for_human_review` and 2 for
+`blocked_needs_more_evidence`, so automation can branch on the decision
+without re-parsing the JSON. The decision artifact joins the same
+`runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` bundle as
+the four input artifacts, separated only by filename.
+
 ## Spec packet
 
 The codebase-analysis surface is governed by a Hisys spec-first packet:
@@ -296,13 +392,14 @@ gates; the scope-map-and-validation-plan increment is recorded as
 `FINISH-HISYS-CODEBASE-ANALYSIS-003` after M17 completes its local
 gates; the risk-boundary scanner is recorded as
 `FINISH-HISYS-CODEBASE-ANALYSIS-004` after M18 completes its local
+gates; the source-inspection decision packet is recorded as
+`FINISH-HISYS-CODEBASE-ANALYSIS-005` after M19 completes its local
 gates.
 
 ## What is intentionally out of scope
 
-Increments 1, 2, 3, and 4 do not implement and do not authorize:
+Increments 1 through 5 do not implement and do not authorize:
 
-- Source-inspection decision packet (Increment 5 / M19).
 - `investigate-domain --domain codebase` bridge (Increment 6 / M20).
 - External repository clone, raw source content archiving, live network
   access, model calls, credential use, remote push, or publication.
