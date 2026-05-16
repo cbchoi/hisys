@@ -2213,6 +2213,8 @@ def _build_parser() -> argparse.ArgumentParser:
     dars.add_argument("--source-execution-id", required=True, help="connector execution id used as handoff evidence")
     dars.add_argument("--critique-text", help="optional fixture critique text; omitted means loopback placeholder until DARS exists")
     dars.add_argument("--producer-id", default="dars-fixture-cli", help="DARS fixture producer id")
+    dars.add_argument("--backend", choices=["loopback", "configured"], default="loopback", help="DARS backend selection mode")
+    dars.add_argument("--approval-ref", help="explicit approval ref required for external DARS backends")
     browser_dars = sub.add_parser(
         "request-browser-dars-review",
         help="run advisory DARS/Devil review over a Chief Editor browser-investigation review artifact",
@@ -3021,6 +3023,8 @@ def main(argv: list[str] | None = None) -> int:
             source_execution_id=args.source_execution_id,
             critique_text=args.critique_text,
             producer_id=args.producer_id,
+            backend=args.backend,
+            approval_ref=args.approval_ref,
         )
     if args.command == "request-browser-dars-review":
         return _cmd_request_browser_dars_review(
@@ -8835,29 +8839,46 @@ def _cmd_request_dars_critique(
     source_execution_id: str,
     critique_text: str,
     producer_id: str,
+    backend: str,
+    approval_ref: str | None,
 ) -> int:
     instance = InstanceRoot(instance_root)
-    report = (
-        DarsRuntime(instance=instance).run_fixture_critique(
+    runtime = DarsRuntime(instance=instance)
+    if critique_text:
+        report = runtime.run_fixture_critique(
             yyyymmdd=yyyymmdd,
             source_execution_id=source_execution_id,
             critique_text=critique_text,
             producer_id=producer_id,
         )
-        if critique_text
-        else DarsRuntime(instance=instance).run_loopback_placeholder(
+        backend_label = "fixture_text"
+        external_call_made = False
+    elif backend == "loopback":
+        report = runtime.run_loopback_placeholder(
             yyyymmdd=yyyymmdd,
             source_execution_id=source_execution_id,
             producer_id=producer_id,
         )
-    )
+        backend_label = "loopback_placeholder"
+        external_call_made = False
+    else:
+        report = runtime.run_configured_critique(
+            yyyymmdd=yyyymmdd,
+            source_execution_id=source_execution_id,
+            producer_id=producer_id,
+            approval_ref=approval_ref,
+        )
+        config_path = instance.config_dir / "dars.json"
+        config_data = json.loads(config_path.read_text(encoding="utf-8"))
+        backend_label = config_data["spec"]["default_backend"]
+        external_call_made = bool(config_data["spec"]["backends"][backend_label].get("external_call_allowed"))
     print(f"dars critique: report={instance.root / report.report_ref}")
     print(f"handoffs: {len(report.handoff_refs)}")
     print(f"critiques: {len(report.critique_refs)}")
     print(f"linked_executions: {len(report.linked_execution_refs)}")
     print(f"skipped_executions: {len(report.skipped_execution_refs)}")
-    print("dars_backend: loopback_placeholder")
-    print("external_call_made: false")
+    print(f"dars_backend: {backend_label}")
+    print(f"external_call_made: {str(external_call_made).lower()}")
     return 0 if report.handoff_refs else 1
 
 

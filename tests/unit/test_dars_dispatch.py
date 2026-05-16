@@ -125,5 +125,21 @@ def test_dars_dispatch_gate_allows_enabled_local_fixture_without_external_call(t
     assert decision.decision == "allowed"
     assert decision.reason_code == "local_backend_allowed"
     assert decision.backend_kind == "fixture_file"
-    assert decision.external_call_requested is False
+
+
+def test_dars_dispatch_gate_allows_external_backend_with_explicit_approval(tmp_path: Path):
+    config = _config_with_external_backend()
+
+    decision = DarsDispatchGate(instance=InstanceRoot(tmp_path)).evaluate(
+        yyyymmdd="20260509",
+        request_id="DARSREQ-DISPATCH-005",
+        config=config,
+        backend_id="remote_dars",
+        approval_ref="APPROVAL-DARS-REMOTE-001",
+    )
+
+    assert decision.decision == "allowed"
+    assert decision.reason_code == "approved_external_backend_allowed"
+    assert decision.external_call_requested is True
     assert decision.external_call_made is False
+    assert decision.action_taken == "none"

@@ -121,6 +121,18 @@ class DarsDispatchGate:
                 intent=intent,
                 policy_ref=policy_ref,
             )
+        elif backend.external_call_allowed and approval_ref:
+            decision = self._allowed(
+                request_id=request_id,
+                backend_id=backend_id,
+                backend=backend,
+                config=config,
+                approval_ref=approval_ref,
+                reason_code="approved_external_backend_allowed",
+                reason="DARS backend requests an external advisory call and has an explicit approval reference.",
+                intent=intent,
+                policy_ref=policy_ref,
+            )
         elif backend.kind == "loopback":
             decision = self._allowed(
                 request_id=request_id,

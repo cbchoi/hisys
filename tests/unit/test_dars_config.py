@@ -91,6 +91,19 @@ def test_valid_dars_config_loads_concise_roles_and_disabled_backends(tmp_path: P
     assert config.spec.backends["claude_dars"].enabled is False
 
 
+def test_active_runtime_config_may_select_enabled_cli_agent_backend():
+    data = _minimal_dars_config()
+    data["status"] = "active"
+    data["spec"]["default_backend"] = "claude_dars"
+    data["spec"]["policy"]["enabled"] = True
+    data["spec"]["backends"]["claude_dars"]["enabled"] = True
+    data["spec"]["backends"]["claude_dars"]["model"] = "sonnet"
+
+    report = validate_dars_config_document(data, config_ref="inline://active-runtime-dars")
+
+    assert report.valid is True
+
+
 def test_dars_config_validation_rejects_policy_and_schema_violations():
     data = _minimal_dars_config()
     data["spec"]["roles"]["default_devil_advocate"]["strictness"] = "extreme"

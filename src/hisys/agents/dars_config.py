@@ -125,7 +125,7 @@ def validate_dars_config_document(data: dict[str, Any], *, config_ref: str) -> C
 
     spec = data.get("spec", {}) if isinstance(data, dict) else {}
     if isinstance(spec, dict):
-        issues.extend(_policy_issues(spec))
+        issues.extend(_policy_issues(data))
     if config is not None:
         issues.extend(_cross_field_issues(config))
 
@@ -169,15 +169,22 @@ def _extra_field_code(path: str) -> str:
     return "unknown_field"
 
 
-def _policy_issues(spec: dict[str, Any]) -> list[ConfigValidationIssue]:
+def _policy_issues(data: dict[str, Any]) -> list[ConfigValidationIssue]:
     issues: list[ConfigValidationIssue] = []
-    backends = spec.get("backends", {})
+    spec = data.get("spec", {}) if isinstance(data, dict) else {}
+    active_runtime_policy = (
+        data.get("status") == "active"
+        and isinstance(spec, dict)
+        and isinstance(spec.get("policy"), dict)
+        and spec["policy"].get("enabled") is True
+    )
+    backends = spec.get("backends", {}) if isinstance(spec, dict) else {}
     if isinstance(backends, dict):
         for backend_id, backend in backends.items():
             if not isinstance(backend, dict):
                 continue
             path = f"spec.backends.{backend_id}"
-            if backend.get("kind") != "loopback" and backend.get("enabled") is True:
+            if backend.get("kind") != "loopback" and backend.get("enabled") is True and not active_runtime_policy:
                 issues.append(
                     ConfigValidationIssue(
                         path=f"{path}.enabled",

@@ -11,6 +11,7 @@ HISYS-D-015, HISYS-T-023, HISYS-T-024.
 from __future__ import annotations
 
 import json
+import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -19,6 +20,8 @@ from pydantic import BaseModel, Field
 
 from ..config.instance import InstanceRoot
 from ..schemas import AgentHandoffPackage
+from .dars_config import DarsBackendConfig, load_dars_config
+from .dars_dispatch import DarsDispatchGate
 
 
 class DarsCritiqueRecord(BaseModel):
@@ -27,7 +30,7 @@ class DarsCritiqueRecord(BaseModel):
     source_execution_ref: str
     target_agent_system: str = "DARS"
     critique_text: str
-    dars_backend: Literal["loopback_placeholder"] = "loopback_placeholder"
+    dars_backend: str = "loopback_placeholder"
     external_call_made: bool = False
     allowed_actions: Literal["advisory_only"] = "advisory_only"
     action_taken: Literal["none"] = "none"
@@ -77,6 +80,8 @@ class DarsRuntime:
         source_execution_id: str,
         critique_text: str,
         producer_id: str,
+        dars_backend: str = "loopback_placeholder",
+        external_call_made: bool = False,
     ) -> DarsCritiqueReport:
         execution = _load_connector_execution(self.instance, yyyymmdd, source_execution_id)
         report = DarsCritiqueReport(report_ref=str(_report_json_path(self.instance, yyyymmdd).relative_to(self.instance.root)))
@@ -100,8 +105,8 @@ class DarsRuntime:
             constraints=[
                 "advisory_only",
                 "no live external action",
-                "dars_backend=loopback_placeholder",
-                "external_call_made=false",
+                f"dars_backend={dars_backend}",
+                f"external_call_made={str(external_call_made).lower()}",
                 "do not mutate alert decisions or connector executions",
             ],
             expected_output="advisory critique text and optional improvement notes",
@@ -117,6 +122,8 @@ class DarsRuntime:
             source_execution_ref=source_execution_id,
             critique_text=critique_text,
             producer_id=producer_id,
+            dars_backend=dars_backend,
+            external_call_made=external_call_made,
         )
         _write_handoff(self.instance, yyyymmdd, handoff)
         _write_critique(self.instance, yyyymmdd, critique)
@@ -125,6 +132,118 @@ class DarsRuntime:
         report.linked_execution_refs.append(source_execution_id)
         _write_report(self.instance, yyyymmdd, report)
         return report
+
+    def run_configured_critique(
+        self,
+        *,
+        yyyymmdd: str,
+        source_execution_id: str,
+        producer_id: str,
+        approval_ref: str | None = None,
+    ) -> DarsCritiqueReport:
+        config = load_dars_config(self.instance)
+        backend_id = config.spec.default_backend
+        backend = config.spec.backends[backend_id]
+        dispatch = DarsDispatchGate(instance=self.instance).evaluate(
+            yyyymmdd=yyyymmdd,
+            request_id=source_execution_id,
+            config=config,
+            backend_id=backend_id,
+            approval_ref=approval_ref,
+            intent="advisory_critique",
+        )
+        if dispatch.decision != "allowed":
+            raise ValueError(dispatch.reason_code)
+        if backend.kind == "loopback":
+            return self.run_loopback_placeholder(
+                yyyymmdd=yyyymmdd,
+                source_execution_id=source_execution_id,
+                producer_id=producer_id,
+            )
+        if backend.kind == "cli_agent":
+            critique_text = self._run_cli_agent(
+                yyyymmdd=yyyymmdd,
+                source_execution_id=source_execution_id,
+                backend_id=backend_id,
+                backend=backend,
+                timeout_seconds=config.spec.policy.max_runtime_seconds,
+            )
+            return self.run_fixture_critique(
+                yyyymmdd=yyyymmdd,
+                source_execution_id=source_execution_id,
+                critique_text=critique_text,
+                producer_id=producer_id,
+                dars_backend=backend_id,
+                external_call_made=backend.external_call_allowed,
+            )
+        raise ValueError(f"unsupported DARS backend kind: {backend.kind}")
+
+    def _run_cli_agent(
+        self,
+        *,
+        yyyymmdd: str,
+        source_execution_id: str,
+        backend_id: str,
+        backend: DarsBackendConfig,
+        timeout_seconds: int,
+    ) -> str:
+        if not backend.command:
+            raise ValueError("cli_agent backend requires command")
+        prompt = _configured_cli_prompt(yyyymmdd=yyyymmdd, source_execution_id=source_execution_id, backend_id=backend_id)
+        if Path(backend.command).name == "claude":
+            command = [backend.command, "-p", prompt, *backend.args]
+        else:
+            command = [backend.command, *backend.args, prompt]
+        if backend.model:
+            command.extend(["--model", backend.model])
+        command.extend(_claude_tool_args(backend))
+        completed = subprocess.run(
+            command,
+            cwd=str(self.instance.root),
+            text=True,
+            capture_output=True,
+            timeout=timeout_seconds,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise ValueError(f"DARS cli_agent failed: {completed.stderr.strip() or completed.stdout.strip()}")
+        return _extract_cli_text(completed.stdout)
+
+
+def _claude_tool_args(backend: DarsBackendConfig) -> list[str]:
+    command_name = Path(backend.command or "").name
+    if command_name != "claude":
+        return []
+    args = ["--output-format", "json", "--permission-mode", "dontAsk", "--no-session-persistence"]
+    if backend.allowed_tools:
+        args.extend(["--allowedTools", ",".join(backend.allowed_tools)])
+    if backend.disallowed_tools:
+        args.extend(["--disallowedTools", ",".join(backend.disallowed_tools)])
+    return args
+
+
+def _configured_cli_prompt(*, yyyymmdd: str, source_execution_id: str, backend_id: str) -> str:
+    return (
+        "You are acting as DARS, an advisory-only Hisys critique role. "
+        "Return a concise critique of the referenced Hisys connector execution. "
+        "Do not write files, mutate state, browse the web, or approve live action. "
+        f"date={yyyymmdd}; source_execution_id={source_execution_id}; backend_id={backend_id}."
+    )
+
+
+def _extract_cli_text(stdout: str) -> str:
+    text = stdout.strip()
+    if not text:
+        return "DARS cli_agent returned an empty critique."
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return text
+    if isinstance(payload, dict):
+        result = payload.get("result") or payload.get("content") or payload.get("text")
+        if isinstance(result, str) and result.strip():
+            return result.strip()
+    return text
 
 
 def _load_connector_execution(instance: InstanceRoot, yyyymmdd: str, execution_id: str) -> dict | None:
