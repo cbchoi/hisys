@@ -12,7 +12,7 @@
 | Default working directory | `/home/cbchoi/workspaces/sysailab/develop/repos/hisys` |
 | Target branch | `feat/domain-adaptive-requirements-analysis` |
 | Original baseline commit | `04d6b01 test: propagate src path to subprocess CLI tests` |
-| Current update baseline | `adde6c4` |
+| Current update baseline | `ba255b9` |
 | Execution mode | `on-demand Discord Ralph loop unless explicitly scheduled` |
 | Default runtime limit | `5 hours` |
 | User-specified runtime limit | `<none unless stated in the invoking message>` |
@@ -1697,10 +1697,36 @@ Resume checkpoint:
 - Next command to run: stop — `ralph.md` Section 14 milestone queue exhausted; a new milestone with SRS/SDD/IDD/STD anchors and user confirmation is required before another Ralph loop continues.
 - Stop condition: no remaining task in current `ralph.md` milestone queue
 
+### 2026-05-16 — M8 localhost DARS endpoint policy committed
+
+- Phase completed: Prepare / RED / GREEN / Refactor-skipped / Gate / Commit for M8.1 + M8.2 as one coherent increment.
+- Controlled anchors checked: SRS `HISYS-FR-AGT-003..004` (advisory boundary, allowed-action registry) confirmed in `pre-develop/Hisys/requirements-record.md`; SDD Domain Investigation Adapter Layer; IDD `HISYS-IF-012`, `HISYS-IF-013` (agent handoff/critique); STD `HISYS-T-019`, `HISYS-T-020`; Local DARS plan `docs/plans/2026-05-16-local-dars-byesys-provenance.md` Milestone 1 (already authorized in Section 3 of `ralph.md`).
+- Codebase evidence: `src/hisys/agents/dars_config.py` adds `_classify_local_endpoint`, `LOCAL_ENDPOINT_HOSTNAMES`, `LOCAL_ENDPOINT_ALLOWED_SCHEMES`, `derive_local_backend_metadata`, and new endpoint-validation issues in `_policy_issues`; `tests/unit/test_dars_config.py` adds 9 parametrized test blocks (29 cases) covering localhost/127.0.0.1/`[::1]`/remote/deceptive-suffix/userinfo-trick/scheme/missing-endpoint/metadata-projection/credential-optionality.
+- Quality gate result: pass — focused gate `python3 -m pytest tests/unit/test_dars_config.py tests/unit/test_source_weighting.py tests/unit/test_dars_dispatch.py -q` 40 passed; full suite `python3 -m pytest -q` 598 passed; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=427 hit_count=0; `git diff --check` clean.
+- RED observed: `python3 -m pytest tests/unit/test_dars_config.py -q` → `ImportError: cannot import name 'derive_local_backend_metadata' from 'hisys.agents.dars_config'` (32 prospective tests blocked at collection time on missing API surface).
+- GREEN observed: same command after implementation → 32 passed; broader focused gate 40 passed; full suite 598 passed.
+- Potential issues: (a) `urllib.parse.urlsplit` does not validate Unicode/punycode normalization, so an IDN host that visually resembles `localhost` is treated as a non-loopback hostname and rejected — this is the safe default for now but may want explicit IDNA handling if future configs need internationalized hosts. (b) `DarsBackendConfig.endpoint` remains `str | None` in the Pydantic schema because other backend kinds (`fixture_file`, `cli_agent`) do not require an endpoint; localhost requirement is enforced only through `_policy_issues`, not the model. (c) Local DARS plan also calls for an active-runtime requirement that `policy.enabled=True` and an explicit `approval_ref` before any local LLM dispatch; the endpoint policy validates the URL but the approval-gate enforcement lives in the runtime (M9), not config validation.
+- `ralph.md` changes: added this Reflection entry; updated `Current update baseline` to `ba255b9`; rewrote Section 16 Initial Next Action to point at M9.1.
+- Success likelihood: 82% for M9.1 — fake HTTP server harness needs a deterministic ephemeral-port fixture and tight failure-class coverage; the surface area is larger than M8 but the localhost validator from M8 is reusable. Risk drops below 75% only if the existing `tests/unit/test_dars_runtime.py` baseline relies on fixtures that contradict the localhost-only model boundary.
+- Continue decision: continue to M9.1 Prepare in a future iteration. This iteration stops at the M8 clean checkpoint per Section 5.1.2 (one RED/GREEN/reflection/commit unit per iteration) because M9.1 adds a fake HTTP server harness whose RED scope is large enough to deserve its own coherent increment.
+- Stop reason: planned checkpoint after first coherent increment; runtime budget remains; no non-delegable action required. Per Section 10.3 the Hisys milestone push checkpoint is not yet reached because Local DARS Milestone M8 covers only the config boundary; remote push will be prepared after M9..M12 reach a milestone gate.
+- Next task: Task M9.1 — Add fake HTTP server RED tests for local adapter behavior in `tests/unit/test_dars_runtime.py`.
+
+Resume checkpoint:
+- Current HEAD: ba255b9 feat: validate localhost local DARS endpoints
+- Working tree: `ralph.md` modified for this Reflection entry; commit it as a docs/control increment before stopping or before starting M9.1
+- Last completed milestone/task: M8 (Local DARS Config Boundary and Endpoint Validation — M8.1 + M8.2 combined)
+- Current in-progress task: ralph.md Reflection commit
+- RED observed: import-error collection failure on `derive_local_backend_metadata`
+- GREEN observed: focused 40/40, full 598/598
+- Quality gate status: pass — see Quality gate result above
+- Next command to run: `python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check`, then `git add ralph.md && git commit -m "docs: record M8 local DARS endpoint policy reflection"`, then Prepare M9.1 (inspect `src/hisys/agents/dars.py`, `src/hisys/agents/dars_dispatch.py`, existing `tests/unit/test_dars_runtime.py`, and decide whether the fake HTTP server harness needs a new `tests/unit/helpers/` module per the Local DARS plan Milestone 2).
+- Stop condition: none yet; continue to M9.1 Prepare if iteration budget remains, otherwise stop at this clean Reflection checkpoint.
+
 ## 16. Initial Next Action
 
-Start with **Task M8.1 — Add RED tests for strict localhost endpoint policy**.
+Start with **Task M9.1 — Add fake HTTP server RED tests for local adapter behavior**.
 
-The first Ralph-loop action shall be Prepare: inspect Git state, read SRS/SDD/IDD/STD, read this `ralph.md`, inspect `docs/plans/2026-05-16-local-dars-byesys-provenance.md`, inspect current DARS config/runtime code, and determine whether existing controlled anchors are sufficient for M8.1. If anchors are insufficient but consistent with Hisys safety/provenance goals, perform the controlled-document amendment checkpoint before product code.
+The first Ralph-loop action shall be Prepare: inspect Git state, read SRS/SDD/IDD/STD, read this `ralph.md`, inspect `docs/plans/2026-05-16-local-dars-byesys-provenance.md` Milestones 2 and 2.5, inspect `src/hisys/agents/dars.py`, `src/hisys/agents/dars_dispatch.py`, and existing `tests/unit/test_dars_runtime.py`, and decide whether existing controlled anchors are sufficient for M9.1. If anchors are insufficient but consistent with Hisys safety/provenance goals, perform the controlled-document amendment checkpoint before product code. The fake HTTP server must bind only to `127.0.0.1` with an ephemeral port; tests must prove remote endpoints fail closed **before any HTTP request is sent** and that missing approval refs fail closed before contacting the server.
 
 Do not start by editing production code. The first implementation action must be a failing test that proves local `openai_compatible` DARS config does not yet enforce strict localhost-only endpoint policy or does not yet expose the required local model-boundary metadata.
