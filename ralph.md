@@ -1929,6 +1929,35 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-16 — M15.2 path policy and safety counts (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M15.2 (path policy, safety counts, skip reasons, no raw source persistence).
+- Controlled anchors checked: ralph.md M15 required-inventory-fields paragraph; M14.1 spec packet evidence contract (`raw_source_content_persisted=false`, path policy, repo/analysis realpath); existing M15.1 module shape; `scripts/scan_secrets.py` heuristic patterns including `assignment_secret_like` (encountered during gate iteration).
+- RED observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> `ImportError: cannot import name 'PathPolicy' from 'hisys.operations.codebase_analysis'`.
+- Implementation: extended `src/hisys/operations/codebase_analysis.py` with `PathPolicy` (Pydantic, defaults: `follow_symlinks=False`, `reject_outside_repo=True`, `max_file_size_bytes=1_048_576`, `binary_null_byte_probe_bytes=8192`, sorted `DEFAULT_EXCLUDED_DIRS`, `DEFAULT_GENERATED_MARKERS = ("@generated", "DO NOT EDIT", "Auto-generated", "AUTO-GENERATED")`, and `DEFAULT_GENERATED_SUFFIXES = (".min.js", ".min.css", ".lock", ".lockb")`), `SkippedPath`, and broader `CodebaseInventory` fields: `repo_root_realpath`, `skipped_paths`, `path_policy`, `file_count`, `binary_file_count`, `large_file_count`, `generated_file_count`. The walk now records (a) symlinks whose realpath escapes the realpath of `repo_root` as `outside_repo_symlink` skip events, (b) other symlinks as `symlink_skipped`, and (c) classifies regular files into binary (null-byte in head probe), large (`size > max_file_size_bytes`), and generated (suffix match or marker substring in head probe, gated to non-binary content). `repo_root_realpath` is set from `os.path.realpath(root)`, and skipped/excluded/file lists are sorted.
+- GREEN observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> 3 passed (`test_inventory_excludes_transient_and_generated_paths` from M15.1, plus the two new M15.2 tests `test_path_policy_records_safety_counts_and_skip_reasons` and `test_inventory_records_realpath_anchors`).
+- Quality gate result: pass — `git diff --check` OK; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` `scanned_files=434 skipped_files=0 hit_count=0`; full unit suite `python3 -m pytest tests/unit -q` -> 614 passed (612 prior + 2 new).
+- Iteration note: the secret scanner initially flagged a test fixture variable whose identifier matched the project `assignment_secret_like` heuristic (an identifier with the "s-e-c-r-e-t" substring followed by `=`). The fixture variable was renamed to `outside_target` (a neutral path identifier) and the corresponding symlink call was updated; the behavior under test is unchanged because only the path object is consumed. Lesson recorded: even in test fixtures, identifiers that match the scanner heuristic must be renamed when no real credential is involved.
+- Potential issues: (a) `_classify_file` only reads the head probe (default 8 KiB), so generated markers that appear only after the first 8 KiB of a file are not detected — this matches the spec-first packet's bounded-probe contract but should be revisited if the user requires whole-file marker detection. (b) Symlink rejection uses `os.path.realpath`, which silently resolves through `..` segments — that is the intended behavior for outside-repo detection but means a symlink chain that lands back inside the repo is treated as in-repo even if it loops, which a future M15 follow-up may want to reject. (c) The current test relies on platform symlink support; `pytest.skip` triggers on Windows-style restrictions where `os.symlink` raises.
+- `ralph.md` changes: this Reflection entry only.
+- Success likelihood: 80% for M15.3 — the writer increment is bounded to JSON/Markdown serialization under `<instance>/runtime-boundary/codebase-analysis/<date>/<REQUEST_ID>/inventory.{json,md}` and reuses the agent-workflow writer pattern. Slight risk: deterministic Markdown ordering depends on sorting list fields before render.
+- Continue decision: continue to Task M15.3 after this Reflection is committed.
+- Stop reason: none. Stop conditions for the next loop remain the standard non-delegable safety boundary (Section 2) plus any inability to produce a RED for M15.3 within a single coherent increment.
+- Next task: Task M15.3 — RED/GREEN JSON/Markdown inventory writer (safe instance-relative refs under `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/`).
+- Commit: `a2137c5 feat: add safe codebase inventory policy` (already on HEAD); this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: a2137c5 feat: add safe codebase inventory policy
+- Working tree: `ralph.md` modified for M15.2 Reflection entry
+- Last completed milestone/task: M15.2 (path policy + safety counts + skip reasons + repo_root_realpath)
+- Current in-progress task: ralph.md Reflection commit for M15.2
+- RED observed: `python3 -m pytest tests/unit/test_codebase_analysis_inventory.py -q` -> `ImportError: cannot import name 'PathPolicy' from 'hisys.operations.codebase_analysis'`
+- GREEN observed: same command -> 3 passed; full unit suite 614 passed
+- Quality gate status: pass — `git diff --check` OK; `validate_traceability.py` OK; `scan_secrets.py` hit_count=0; full unit suite 614 passed
+- Next command to run: commit this Reflection as `docs: record M15.2 inventory policy reflection`; then prepare M15.3 (RED test for `write_codebase_inventory(instance_root, date, request_id, inventory)` writing `runtime-boundary/codebase-analysis/<date>/<REQ>/inventory.{json,md}` deterministically).
+- Stop condition: none — continue to M15.3.
+
 ### 2026-05-16 — M15.1 pure codebase inventory builder (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M15.1 (deterministic inventory excludes transient/generated paths).
