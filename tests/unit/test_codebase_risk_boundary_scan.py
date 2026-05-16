@@ -17,6 +17,10 @@ separation, model/LLM and ByeSys categories, the writer/CLI, and docs.
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -26,7 +30,11 @@ from hisys.operations.codebase_analysis import (
     RiskBoundaryFinding,
     SymbolParseError,
     scan_codebase_risk_boundaries,
+    write_codebase_risk_scan,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src"
 
 
 def _seed_risk_fixture(repo: Path) -> None:
@@ -462,3 +470,167 @@ def test_scan_finding_categories_widened_for_model_and_byesys(tmp_path: Path):
             "model_llm_boundary",
             "byesys_generated_evidence",
         }
+
+
+# ---------------------------------------------------------------------------
+# M18.4 — writer and CLI (`scan-codebase-boundaries`)
+# ---------------------------------------------------------------------------
+
+
+def test_write_codebase_risk_scan_persists_json_and_markdown(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_risk_fixture(repo)
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+
+    instance = tmp_path / "instance"
+    result = write_codebase_risk_scan(
+        instance_root=instance,
+        date="20260517",
+        request_id="REQ-CODEBASE-RISK-001",
+        scan=scan,
+    )
+
+    assert result["external_call_made"] is False
+    assert result["mutation_performed"] is False
+    assert result["publication_or_live_action_approved"] is False
+    assert result["raw_source_content_persisted"] is False
+    assert result["action_authorized"] is False
+    assert result["schema_id"] == "hisys.codebase.risk_scan"
+    assert result["json_ref"] == (
+        "runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-RISK-001/risk-scan.json"
+    )
+    assert result["markdown_ref"] == (
+        "runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-RISK-001/risk-scan.md"
+    )
+
+    json_path = instance / result["json_ref"]
+    md_path = instance / result["markdown_ref"]
+    assert json_path.is_file()
+    assert md_path.is_file()
+
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["schema_id"] == "hisys.codebase.risk_scan"
+    assert payload["raw_source_content_persisted"] is False
+    assert payload["action_authorized"] is False
+
+    markdown = md_path.read_text(encoding="utf-8")
+    assert "review evidence" in markdown.lower()
+    assert "vulnerability" in markdown.lower()
+
+
+def test_write_codebase_risk_scan_rejects_traversal_in_request_id(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_risk_fixture(repo)
+    scan = scan_codebase_risk_boundaries(repo_root=repo)
+    instance = tmp_path / "instance"
+
+    for bad in ("../escape", "REQ/with/slash", ".."):
+        with pytest.raises(ValueError):
+            write_codebase_risk_scan(
+                instance_root=instance,
+                date="20260517",
+                request_id=bad,
+                scan=scan,
+            )
+
+    for bad_date in ("2026/05/17", "..", "20260517/extra"):
+        with pytest.raises(ValueError):
+            write_codebase_risk_scan(
+                instance_root=instance,
+                date=bad_date,
+                request_id="REQ-CODEBASE-RISK-001",
+                scan=scan,
+            )
+
+
+def _run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{SRC_ROOT}{os.pathsep}{env.get('PYTHONPATH', '')}"
+    return subprocess.run(
+        [sys.executable, "-m", "hisys.cli.main", *args],
+        cwd=str(cwd),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_scan_codebase_boundaries_cli_writes_artifacts(tmp_path: Path):
+    fixture_repo = tmp_path / "fixture_repo"
+    fixture_repo.mkdir()
+    _seed_risk_fixture(fixture_repo)
+    instance = tmp_path / "instance"
+
+    completed = _run_cli(
+        "scan-codebase-boundaries",
+        "--repo",
+        str(fixture_repo),
+        "--instance",
+        str(instance),
+        "--date",
+        "20260517",
+        "--request-id",
+        "REQ-CODEBASE-RISK-001",
+        "--format",
+        "json",
+        cwd=REPO_ROOT,
+    )
+
+    assert completed.returncode == 0, (
+        f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
+    )
+    payload = json.loads(completed.stdout)
+    assert payload["schema_id"] == "hisys.codebase.risk_scan"
+    assert payload["external_call_made"] is False
+    assert payload["action_authorized"] is False
+    assert payload["json_ref"] == (
+        "runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-RISK-001/risk-scan.json"
+    )
+
+    json_path = instance / payload["json_ref"]
+    loaded = json.loads(json_path.read_text(encoding="utf-8"))
+    categories = {finding["category"] for finding in loaded["findings"]}
+    assert "network_external_call" in categories
+    assert "subprocess_execution" in categories
+
+
+def test_scan_codebase_boundaries_cli_supports_scope_filter(tmp_path: Path):
+    fixture_repo = tmp_path / "fixture_repo"
+    fixture_repo.mkdir()
+    (fixture_repo / "src").mkdir()
+    (fixture_repo / "src" / "kept.py").write_text(
+        "import requests\nrequests.get('https://x')\n", encoding="utf-8"
+    )
+    (fixture_repo / "tests").mkdir()
+    (fixture_repo / "tests" / "ignored.py").write_text(
+        "import requests\nrequests.get('https://y')\n", encoding="utf-8"
+    )
+    instance = tmp_path / "instance"
+
+    completed = _run_cli(
+        "scan-codebase-boundaries",
+        "--repo",
+        str(fixture_repo),
+        "--instance",
+        str(instance),
+        "--date",
+        "20260517",
+        "--request-id",
+        "REQ-CODEBASE-RISK-002",
+        "--scope",
+        "src",
+        "--format",
+        "json",
+        cwd=REPO_ROOT,
+    )
+    assert completed.returncode == 0, (
+        f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
+    )
+    payload = json.loads(completed.stdout)
+    json_path = instance / payload["json_ref"]
+    loaded = json.loads(json_path.read_text(encoding="utf-8"))
+    paths = {finding["path"] for finding in loaded["findings"]}
+    assert paths == {"src/kept.py"}

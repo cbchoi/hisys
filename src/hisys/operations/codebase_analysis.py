@@ -1455,6 +1455,110 @@ def scan_codebase_risk_boundaries(
     )
 
 
+def _render_risk_scan_markdown(scan: CodebaseRiskScan) -> str:
+    lines: list[str] = []
+    lines.append(f"# Codebase Risk-Boundary Scan — {scan.schema_id}")
+    lines.append("")
+    lines.append(
+        "Findings are review evidence, not vulnerability or action verdicts. "
+        "`action_authorized=false` is asserted at both the scan and finding "
+        "level. The scanner performs no live call, no source content "
+        "persistence, and no mutation."
+    )
+    lines.append("")
+    lines.append("## Provenance")
+    lines.append("")
+    lines.append(f"- repo_root: `{scan.repo_root}`")
+    if scan.analysis_scope is not None:
+        lines.append(f"- analysis_scope: `{scan.analysis_scope}`")
+    else:
+        lines.append("- analysis_scope: (whole repo)")
+    lines.append(f"- finding_count: {scan.finding_count}")
+    lines.append(f"- raw_source_content_persisted: {scan.raw_source_content_persisted}")
+    lines.append(f"- action_authorized: {scan.action_authorized}")
+    lines.append("")
+    lines.append("## Category counts")
+    lines.append("")
+    if scan.category_counts:
+        for category, count in scan.category_counts.items():
+            lines.append(f"- `{category}`: {count}")
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    lines.append("## Parse errors")
+    lines.append("")
+    if scan.parse_errors:
+        for err in scan.parse_errors:
+            lines.append(
+                f"- `{err.path}` line {err.line}: {err.message}"
+            )
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    lines.append("## Findings")
+    lines.append("")
+    if scan.findings:
+        for finding in scan.findings:
+            lines.append(
+                f"- `{finding.path}` line {finding.line} "
+                f"[{finding.category}] — {finding.signal} "
+                f"(action_authorized={finding.action_authorized})"
+            )
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    return "\n".join(lines)
+
+
+RISK_SCAN_JSON_FILENAME = "risk-scan.json"
+RISK_SCAN_MARKDOWN_FILENAME = "risk-scan.md"
+
+
+def write_codebase_risk_scan(
+    *,
+    instance_root: Path,
+    date: str,
+    request_id: str,
+    scan: CodebaseRiskScan,
+) -> dict[str, object]:
+    """Persist a risk-boundary scan as JSON + Markdown under the instance root.
+
+    The Markdown rendering explicitly states the findings are review
+    evidence rather than vulnerability verdicts so a reviewer cannot
+    misread the artifact as an authorization signal.
+    """
+
+    _validate_slug("date", date, _DATE_PATTERN)
+    _validate_slug("request_id", request_id, _REQUEST_ID_PATTERN)
+
+    rel_dir = f"{INVENTORY_RUNTIME_PREFIX}/{date}/{request_id}"
+    out_dir = Path(instance_root) / rel_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    json_rel = f"{rel_dir}/{RISK_SCAN_JSON_FILENAME}"
+    md_rel = f"{rel_dir}/{RISK_SCAN_MARKDOWN_FILENAME}"
+    json_path = Path(instance_root) / json_rel
+    md_path = Path(instance_root) / md_rel
+
+    payload = scan.model_dump(mode="json")
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_path.write_text(_render_risk_scan_markdown(scan), encoding="utf-8")
+
+    return {
+        "schema_id": scan.schema_id,
+        "json_ref": json_rel,
+        "markdown_ref": md_rel,
+        "raw_source_content_persisted": scan.raw_source_content_persisted,
+        "action_authorized": scan.action_authorized,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+
+
 def resolve_instance_runtime_ref(
     *, instance_root: Path, relative_ref: str
 ) -> Path:
@@ -1656,6 +1760,8 @@ __all__ = [
     "INVENTORY_RUNTIME_PREFIX",
     "PathPolicy",
     "PythonSymbolIndex",
+    "RISK_SCAN_JSON_FILENAME",
+    "RISK_SCAN_MARKDOWN_FILENAME",
     "RiskBoundaryFinding",
     "SCOPE_MAP_ARTIFACT_FILENAME",
     "SCOPE_MAP_MARKDOWN_FILENAME",
@@ -1676,6 +1782,7 @@ __all__ = [
     "resolve_instance_runtime_ref",
     "scan_codebase_risk_boundaries",
     "write_codebase_inventory",
+    "write_codebase_risk_scan",
     "write_codebase_scope_map",
     "write_python_symbol_index",
 ]

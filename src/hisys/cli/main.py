@@ -109,7 +109,9 @@ from ..operations.codebase_analysis import (
     build_codebase_validation_plan,
     build_python_symbol_index,
     resolve_instance_runtime_ref,
+    scan_codebase_risk_boundaries,
     write_codebase_inventory,
+    write_codebase_risk_scan,
     write_codebase_scope_map,
     write_python_symbol_index,
 )
@@ -1250,6 +1252,38 @@ def _cmd_build_code_symbol_index(
     return 0
 
 
+def _cmd_scan_codebase_boundaries(
+    *,
+    repo_root: Path,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    analysis_scope: str | None,
+    output_format: str,
+) -> int:
+    """Run the conservative codebase risk-boundary scanner and persist artifacts."""
+
+    scan = scan_codebase_risk_boundaries(
+        repo_root=repo_root,
+        analysis_scope=analysis_scope,
+    )
+    result = write_codebase_risk_scan(
+        instance_root=instance_root,
+        date=yyyymmdd,
+        request_id=request_id,
+        scan=scan,
+    )
+    if output_format == "json":
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(
+            "codebase risk-boundary scan: "
+            f"schema={result['schema_id']} json={result['json_ref']} "
+            f"markdown={result['markdown_ref']}"
+        )
+    return 0
+
+
 def _cmd_build_codebase_map(
     *,
     instance_root: Path,
@@ -1689,6 +1723,17 @@ def _build_parser() -> argparse.ArgumentParser:
     symbol_index_parser.add_argument("--request-id", required=True, help="symbol index request id slug, e.g. REQ-CODEBASE-001")
     symbol_index_parser.add_argument("--scope", default=None, help="optional repo-relative subdirectory to restrict the walk")
     symbol_index_parser.add_argument("--format", choices=["text", "json"], default="text")
+
+    risk_scan_parser = sub.add_parser(
+        "scan-codebase-boundaries",
+        help="scan a local repository for boundary-crossing call sites; findings are review evidence, not vulnerability verdicts",
+    )
+    risk_scan_parser.add_argument("--repo", required=True, help="local repository root to scan")
+    risk_scan_parser.add_argument("--instance", required=True, help="Hisys instance root for artifact output")
+    risk_scan_parser.add_argument("--date", required=True, help="YYYYMMDD")
+    risk_scan_parser.add_argument("--request-id", required=True, help="risk-scan request id slug, e.g. REQ-CODEBASE-RISK-001")
+    risk_scan_parser.add_argument("--scope", default=None, help="optional repo-relative subdirectory to restrict the walk")
+    risk_scan_parser.add_argument("--format", choices=["text", "json"], default="text")
 
     scope_map_parser = sub.add_parser(
         "build-codebase-map",
@@ -2795,6 +2840,15 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.command == "build-code-symbol-index":
         return _cmd_build_code_symbol_index(
+            repo_root=Path(args.repo),
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            analysis_scope=args.scope,
+            output_format=args.format,
+        )
+    if args.command == "scan-codebase-boundaries":
+        return _cmd_scan_codebase_boundaries(
             repo_root=Path(args.repo),
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
