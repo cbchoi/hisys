@@ -1146,6 +1146,177 @@ def _plan_for_scope_entry(entry: CodebaseScopeMapEntry) -> ScopeValidationPlan:
     )
 
 
+class RiskBoundaryFinding(BaseModel):
+    """One AST call-site that conservatively looks like a boundary crossing.
+
+    A finding is review evidence, not a vulnerability verdict.
+    `action_authorized=false` is asserted at the finding level so a
+    reviewer can grep findings without inferring authority from absence.
+    """
+
+    schema_id: str = "hisys.codebase.risk_boundary_finding"
+    category: str
+    path: str
+    line: int
+    signal: str
+    action_authorized: bool = False
+
+
+class CodebaseRiskScan(BaseModel):
+    schema_id: str = "hisys.codebase.risk_scan"
+    repo_root: str
+    analysis_scope: str | None = None
+    findings: list[RiskBoundaryFinding] = Field(default_factory=list)
+    finding_count: int = 0
+    category_counts: dict[str, int] = Field(default_factory=dict)
+    parse_errors: list[SymbolParseError] = Field(default_factory=list)
+    parse_error_count: int = 0
+    raw_source_content_persisted: bool = False
+    action_authorized: bool = False
+
+
+# Conservative AST signal rules for M18.1. Each rule maps a module prefix
+# (the `value.id` of an `ast.Attribute`) plus an optional set of attribute
+# names to a category + canonical signal label. M18.2..M18.3 will extend
+# this with runtime-boundary-writer separation and model/LLM categories.
+_NETWORK_MODULES: dict[str, set[str] | None] = {
+    "requests": {"get", "post", "put", "delete", "head", "patch", "options", "request"},
+    "httpx": None,  # any attribute call on the imported `httpx` module
+    "urllib3": None,
+}
+_BROWSER_MODULES: dict[str, set[str] | None] = {
+    "webbrowser": {"open", "open_new", "open_new_tab"},
+}
+_SUBPROCESS_MODULES: dict[str, set[str] | None] = {
+    "subprocess": {"run", "Popen", "call", "check_call", "check_output", "getoutput"},
+    "os": {"system", "spawnl", "spawnle", "spawnlp", "spawnv", "spawnve", "spawnvp"},
+}
+# Method names on any receiver that conservatively imply filesystem
+# mutation. The receiver expression is not analyzed deeply (it could be a
+# `Path`, a file-like, or anything else); the signal label embeds
+# `<receiver>` to make that ambiguity explicit in the finding.
+_FILESYSTEM_MUTATION_METHODS: frozenset[str] = frozenset(
+    {"write_text", "write_bytes"}
+)
+
+
+def _classify_attribute_call(
+    callee: ast.Attribute,
+) -> tuple[str, str] | None:
+    """Return (category, signal) for a recognized boundary call, or None."""
+
+    attr_name = callee.attr
+    receiver = callee.value
+
+    if isinstance(receiver, ast.Name):
+        receiver_id = receiver.id
+        for module, allowed in _NETWORK_MODULES.items():
+            if receiver_id == module and (allowed is None or attr_name in allowed):
+                return "network_external_call", f"{module}.{attr_name}"
+        for module, allowed in _BROWSER_MODULES.items():
+            if receiver_id == module and (allowed is None or attr_name in allowed):
+                return "browser_external_call", f"{module}.{attr_name}"
+        for module, allowed in _SUBPROCESS_MODULES.items():
+            if receiver_id == module and (allowed is None or attr_name in allowed):
+                return "subprocess_execution", f"{module}.{attr_name}"
+
+    if attr_name in _FILESYSTEM_MUTATION_METHODS:
+        return "filesystem_mutation", f"<receiver>.{attr_name}"
+
+    return None
+
+
+def _scan_module_findings(
+    rel_path: str, source: str
+) -> tuple[list[RiskBoundaryFinding], SymbolParseError | None]:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as exc:
+        return [], SymbolParseError(
+            path=rel_path,
+            line=exc.lineno or 0,
+            column=exc.offset or 0,
+            message=exc.msg or "syntax error",
+        )
+
+    findings: list[RiskBoundaryFinding] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        callee = node.func
+        if not isinstance(callee, ast.Attribute):
+            continue
+        classified = _classify_attribute_call(callee)
+        if classified is None:
+            continue
+        category, signal = classified
+        findings.append(
+            RiskBoundaryFinding(
+                category=category,
+                path=rel_path,
+                line=node.lineno,
+                signal=signal,
+            )
+        )
+    return findings, None
+
+
+def scan_codebase_risk_boundaries(
+    *,
+    repo_root: Path,
+    analysis_scope: str | None = None,
+    path_policy: PathPolicy | None = None,
+) -> CodebaseRiskScan:
+    """Scan a local repository for boundary-crossing call sites.
+
+    The scanner is conservative and AST-only. It makes no live call and
+    persists no raw source content. Each finding is review evidence, not a
+    vulnerability verdict — `action_authorized=false` at both the scan and
+    finding levels.
+    """
+
+    inventory = build_codebase_inventory(
+        repo_root=repo_root,
+        analysis_scope=analysis_scope,
+        path_policy=path_policy,
+    )
+
+    findings: list[RiskBoundaryFinding] = []
+    parse_errors: list[SymbolParseError] = []
+    for rel_path in inventory.files:
+        if not rel_path.endswith(".py"):
+            continue
+        source_path = Path(inventory.repo_root) / rel_path
+        try:
+            source = source_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        file_findings, parse_error = _scan_module_findings(rel_path, source)
+        if parse_error is not None:
+            parse_errors.append(parse_error)
+            continue
+        findings.extend(file_findings)
+
+    findings.sort(key=lambda f: (f.path, f.line, f.category, f.signal))
+    parse_errors.sort(key=lambda err: (err.path, err.line))
+
+    category_counts: dict[str, int] = {}
+    for finding in findings:
+        category_counts[finding.category] = category_counts.get(finding.category, 0) + 1
+
+    return CodebaseRiskScan(
+        repo_root=inventory.repo_root,
+        analysis_scope=analysis_scope,
+        findings=findings,
+        finding_count=len(findings),
+        category_counts=dict(sorted(category_counts.items())),
+        parse_errors=parse_errors,
+        parse_error_count=len(parse_errors),
+        raw_source_content_persisted=False,
+        action_authorized=False,
+    )
+
+
 def resolve_instance_runtime_ref(
     *, instance_root: Path, relative_ref: str
 ) -> Path:
@@ -1336,6 +1507,7 @@ def build_codebase_validation_plan(
 
 __all__ = [
     "CodebaseInventory",
+    "CodebaseRiskScan",
     "CodebaseScopeMap",
     "CodebaseScopeMapEntry",
     "CodebaseScopeProfile",
@@ -1346,6 +1518,7 @@ __all__ = [
     "INVENTORY_RUNTIME_PREFIX",
     "PathPolicy",
     "PythonSymbolIndex",
+    "RiskBoundaryFinding",
     "SCOPE_MAP_ARTIFACT_FILENAME",
     "SCOPE_MAP_MARKDOWN_FILENAME",
     "ScopeValidationPlan",
@@ -1363,6 +1536,7 @@ __all__ = [
     "get_codebase_scope_profile",
     "list_codebase_scope_profiles",
     "resolve_instance_runtime_ref",
+    "scan_codebase_risk_boundaries",
     "write_codebase_inventory",
     "write_codebase_scope_map",
     "write_python_symbol_index",
