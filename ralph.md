@@ -12,7 +12,7 @@
 | Default working directory | `/home/cbchoi/workspaces/sysailab/develop/repos/hisys` |
 | Target branch | `feat/domain-adaptive-requirements-analysis` |
 | Original baseline commit | `04d6b01 test: propagate src path to subprocess CLI tests` |
-| Current update baseline | `69f924f` |
+| Current update baseline | `3ecc2be` |
 | Execution mode | `on-demand Discord Ralph loop unless explicitly scheduled` |
 | Default runtime limit | `5 hours` |
 | User-specified runtime limit | `<none unless stated in the invoking message>` |
@@ -1473,9 +1473,192 @@ git diff --check
 git commit -m "docs: prepare local DARS runtime smoke"
 ```
 
+### Milestone M13 — Local DARS / ByeSys Provenance RTM Sync (QUEUE-REFILL-PREP)
+
+**Goal:** Close the docs/control RTM gap left after the M8..M12 implementation
+line so audit reviewers can discover the new Local DARS / ByeSys provenance
+surfaces (`hisys.provenance.source_weighting`, the `DarsCritiqueSourceWeight`
+schema, the `openai_compatible` DARS adapter, and the
+`docs/operations/local-dars-smoke.md` smoke procedure) from
+`docs/traceability/README.md`.
+
+This milestone is a documentation/control checkpoint authored by
+QUEUE-REFILL-PREP per the Ralph-loop mission: it does not alter product
+scope, does not authorize live/external behavior, does not grant
+credential/security authority, and does not require non-delegable action.
+All required SRS/SDD/IDD/STD anchors already exist; the change is RTM
+index maintenance for code already committed in M8..M12.
+
+**Controlled anchors:**
+
+- SRS `HISYS-FR-AGT-001..005`, `HISYS-FR-INV-001..006`, `HISYS-NFR-MNT-001`
+- SDD `Domain Investigation Adapter Design`, Jeweler/Appraiser separation,
+  evidence weighting design, runtime-boundary artifact design
+- IDD `HISYS-IF-017`, `5.7 DomainInvestigationAdapter / DomainAdapterSpec`,
+  DARS critique record source/weight fields, reviewer terminology aliases
+- STD `HISYS-T-019`, `HISYS-T-020`, `HISYS-T-023`, `HISYS-T-024`
+- Local DARS plan Milestones 2..5 and 7..8
+- Existing reflection entries for M8..M12
+
+#### Task M13.1 — RTM sync for Local DARS / ByeSys provenance surfaces
+
+**Objective:** Add the missing module-table rows and feature-table rows to
+`docs/traceability/README.md` so the M8..M12 surfaces are discoverable
+without reading prior reflection entries.
+
+**Files:**
+
+- Modify: `docs/traceability/README.md`
+- Modify: `ralph.md` (Reflection log + baseline)
+
+**Required content:**
+
+1. Module table: extend `hisys.agents.dars` to reference
+   `DarsCritiqueSourceWeight` ByeSys-zero normalization and the optional
+   `openai_compatible` local-LLM-boundary adapter.
+2. Module table: add `hisys.provenance.source_weighting` row covering
+   `is_byesys_source`, `EvidenceSufficiencyVerdict`,
+   `claim_has_sufficient_non_byesys_evidence`, and reviewer-terminology
+   aliases, with tests in `tests/unit/test_source_weighting.py`.
+3. Feature table: add a "Local DARS / ByeSys evidence-sufficiency
+   provenance" row covering the M11 provenance contract.
+4. Feature table: add a "Local DARS openai-compatible loopback adapter and
+   fake-server smoke" row covering the M8..M10 + M12.1 adapter, dispatch,
+   artifact integrity, fake server helper, and smoke procedure surfaces.
+
+**RED command:** n/a — docs/control increment with no behavior change.
+Pre-edit evidence: `grep "hisys.provenance" docs/traceability/README.md`
+returns no match; new feature rows are absent from the same file.
+
+**GREEN command:** post-edit grep confirms the new module and feature
+rows are present.
+
+**Stop conditions:**
+
+- Any new RTM row that would reference an anchor not present in SRS/SDD/IDD/STD.
+- Any RTM row that asserts a live/external/credential or non-delegable
+  capability.
+- Any change to production code, tests, or controlled documents outside
+  `docs/traceability/README.md` and `ralph.md`.
+
+**Quality gate:**
+
+```bash
+git diff --check
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+```
+
+**Commit message:**
+
+```bash
+git commit -m "docs: sync RTM for local DARS / byesys provenance surfaces"
+```
+
 ## 15. Reflection Log
 
 Append one entry after each completed task, stop condition, or runtime limit.
+
+
+### 2026-05-16 — QUEUE-REFILL-PREP and M13.1 RTM sync for Local DARS surfaces
+
+- Phase completed: QUEUE-REFILL-PREP / Prepare / Do / Gate / Commit for M13.1
+  as a docs/control-only checkpoint (no behavior change, no fixture data
+  change).
+- QUEUE-REFILL-PREP classification of the prior Section 16 candidates:
+  candidate 1 (thread `claim_has_sufficient_non_byesys_evidence` into Chief
+  Editor / Jeweler review path) — product-scope; candidate 2 (`hisys smoke
+  local-dars` CLI) — product-scope; candidate 3 (reconcile
+  `dars-decision-*.json` placeholder with `dars-local-llm-boundary-*.json`
+  artifact) — product-scope artifact contract change; candidate 4
+  (schema-promote `DarsCritiqueRecord.source_weights` from model response)
+  — product-scope adapter parser change and additionally requires live
+  local runner for end-to-end coverage; candidate 5 (Live Local DARS
+  cutover) — explicitly non-delegable under Section 2 and the M12 stop
+  conditions. None of those are safe docs/control or fixture-only without
+  user authorization. Newly seeded safe docs/control candidate: RTM sync
+  for the M8..M12 implementation surfaces, which strengthens audit
+  discoverability without altering product scope.
+- Controlled anchors checked: SRS `HISYS-FR-AGT-001..005`,
+  `HISYS-FR-INV-001..006`, `HISYS-NFR-MNT-001`; SDD Domain Investigation
+  Adapter Design, Jeweler/Appraiser separation, evidence weighting design,
+  runtime-boundary artifact design; IDD `HISYS-IF-017`, `5.7`, DARS
+  critique record source/weight fields; STD `HISYS-T-019`, `HISYS-T-020`,
+  `HISYS-T-023`, `HISYS-T-024`; Local DARS plan Milestones 2..5 and 7..8.
+- Codebase evidence: pre-edit `grep "hisys.provenance" docs/traceability/README.md`
+  returned no match, confirming the missing module-table row;
+  pre-edit feature-table grep showed no row for the M11/M12 surfaces. New
+  rows reference only anchors already in use elsewhere in the RTM and
+  cite implementation files (`src/hisys/provenance/source_weighting.py`,
+  `src/hisys/agents/dars.py`, `src/hisys/agents/dars_config.py`,
+  `src/hisys/agents/dars_dispatch.py`, `src/hisys/domain/use_cases.py`,
+  `docs/operations/local-dars-smoke.md`, `tests/unit/helpers/fake_openai_server.py`)
+  plus their existing test files
+  (`tests/unit/test_source_weighting.py`, `tests/unit/test_dars_runtime.py`,
+  `tests/unit/test_dars_config.py`, `tests/unit/test_dars_dispatch.py`,
+  `tests/unit/test_domain_runtime_artifacts.py`).
+- Quality gate result: pass — `git diff --check` clean;
+  `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py`
+  scanned_files=431 hit_count=0. No new production tests required because
+  the underlying code/tests are already green at HEAD `3ecc2be` per the
+  M12.1 reflection (611/611 unit suite).
+- Potential issues: (a) the RTM rows describe `claim_has_sufficient_non_byesys_evidence`
+  as a "reusable primitive" rather than a live reviewer gate — that
+  classification matches the M11 reflection and the deliberate scope of
+  the helper, but it remains a documentation-only assertion until a
+  product-scope task threads the helper into the existing reviewer paths;
+  (b) the new feature row for the openai-compatible adapter intentionally
+  records `external_call_made=false` plus the M9 model-boundary metadata
+  contract — this RTM row must be re-edited if a future controlled
+  amendment opens that adapter to non-loopback or live providers.
+- `ralph.md` changes: added Section 14 Milestone M13 with Task M13.1;
+  added this Reflection entry; updated `Current update baseline` to
+  `3ecc2be`; rewrote Section 16 Initial Next Action to point at the
+  remaining product-scope/non-delegable candidates.
+- Success likelihood: n/a — Section 14 milestone queue now contains only
+  M13.1 (docs/control), which this iteration completes. Future Ralph
+  loops require either user authorization for one of the Section 16
+  product-scope candidates or a new docs/control gap discovered during
+  QUEUE-REFILL-PREP.
+- Continue decision: stop after this Reflection commit. The QUEUE-REFILL-PREP
+  checkpoint has now exhausted the safe docs/control queue: no further
+  RTM/STD/README/INDEX gaps remain for the M8..M12 surfaces, and the
+  remaining Section 16 candidates all require user authorization for
+  product-scope changes or are non-delegable.
+- Stop reason: QUEUE-REFILL-PREP found no additional safe docs/control or
+  fixture-only candidate without product-scope/live/credential/security/
+  destructive/publication/user-data authority. The next iteration must
+  either re-prepare against a new docs/control gap discovered after this
+  commit or wait for user authorization on one of the Section 16
+  product-scope candidates.
+- Next task: none in current plan; see Section 16 for the candidate
+  product-scope or non-delegable milestones that require user
+  authorization before further coding.
+- Commit: pending (`docs: sync RTM for local DARS / byesys provenance surfaces`).
+- Working tree: `docs/traceability/README.md` and `ralph.md` modified
+  until the docs/control increment is committed.
+
+Resume checkpoint:
+- Current HEAD: 3ecc2be docs: record M12.1 local DARS smoke reflection
+- Working tree: `docs/traceability/README.md` and `ralph.md` modified for
+  M13.1 + this Reflection entry; commit as the docs/control increment,
+  then stop.
+- Last completed milestone/task: M13.1 (Local DARS / ByeSys Provenance
+  RTM Sync, QUEUE-REFILL-PREP-authored docs/control checkpoint)
+- Current in-progress task: ralph.md Reflection commit
+- RED observed: n/a (docs/control checkpoint)
+- GREEN observed: post-edit `git diff --check` clean,
+  `scripts/validate_traceability.py` OK, `scripts/scan_secrets.py`
+  hit_count=0; full unit suite remains 611/611 at the pre-edit baseline
+  per the M12.1 reflection (no code change in this increment).
+- Quality gate status: pass — see Quality gate result above.
+- Next command to run: stop — QUEUE-REFILL-PREP has exhausted the safe
+  docs/control queue and the remaining Section 16 candidates require
+  user authorization or are non-delegable.
+- Stop condition: QUEUE-REFILL-PREP found no further safe docs/control
+  or fixture-only candidate; M8..M12 milestone push instruction (Section
+  15 "Hisys milestone push checkpoint") remains the pending user-run
+  action for the local DARS line.
 
 
 ### 2026-05-16 — Local DARS / ByeSys provenance queue added
@@ -1851,11 +2034,22 @@ not execute `git push` itself.
 
 ## 16. Initial Next Action
 
-Section 14 milestone queue (M1..M12) is exhausted by HEAD `69f924f`.
+Section 14 milestone queue (M1..M13) is exhausted by HEAD `3ecc2be` plus
+the pending M13.1 docs/control commit. QUEUE-REFILL-PREP has been run
+and found no further safe docs/control or fixture-only candidate
+without product-scope/live/credential/security/destructive/publication/
+user-data authority.
 
-A future Ralph loop must add a new milestone via the controlled-document
-amendment checkpoint in Section 3.2 before continuing. Candidate next
-milestones the user may authorize:
+A future Ralph loop must either:
+
+- discover a new docs/control gap (e.g., a missing RTM row for code
+  committed after this checkpoint) and seed it through another
+  QUEUE-REFILL-PREP iteration, or
+- obtain user authorization for one of the product-scope or
+  non-delegable candidates listed below via the controlled-document
+  amendment checkpoint in Section 3.2.
+
+Candidate next milestones the user may authorize:
 
 1. Thread `claim_has_sufficient_non_byesys_evidence` into the Chief
    Editor / Jeweler review path so production review gates honor the
