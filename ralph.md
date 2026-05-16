@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-17 — M18.3 model/LLM and ByeSys categories (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M18.3 (extend the conservative AST scanner with `model_llm_boundary` and `byesys_generated_evidence` categories while preserving `action_authorized=false`).
+- Controlled anchors checked: ralph.md M18.3 (lines 1802–1806); M18.1/M18.2 scanner machinery committed at `1f41568`/`2d3d463`; SPEC-HISYS-CODEBASE-ANALYSIS-001 allowed actions (no live action, no source persistence); the existing `dars-local-llm-boundary-<request_id>` artifact convention from the M12 milestone, which uses paths like `/v1/chat/completions` and `/v1/completions`.
+- Implementation: (a) added `_MODEL_LLM_MODULES = {"openai": None, "anthropic": None}` for unambiguous AST roots; added an `_attribute_chain(expr)` helper that walks attribute chains to find the root `ast.Name` so calls like `openai.ChatCompletion.create(...)` and `client.messages.create(...)` are detected. (b) added `_MODEL_ENDPOINT_LITERAL_TOKENS` (`/v1/chat/completions`, `/v1/completions`, `/v1/messages`, `/v1/embeddings`) and a `model_endpoint_module: bool` flag computed once per module; when True, any `_NETWORK_MODULES` call in that module is reclassified as `model_llm_boundary` so local-LLM `requests.post(...)` calls are tracked at the model boundary rather than the generic network boundary. (c) added `_BYESYS_LITERAL_TOKENS = ("ByeSys", "byesys_generated")` and `_byesys_literal_findings(rel_path, tree)` which emits one finding per ByeSys-marker literal with `signal=f"byesys_literal:{excerpt}"` (excerpt truncated to 64 chars so the finding stays line-readable without leaking long fabricated content). (d) renamed `_module_has_runtime_boundary_literal` to `_module_has_literal_token` and added a generic `_module_has_any_literal_token` helper so the new categories reuse the same pre-scan machinery. (e) threaded the new flag through `_classify_attribute_call`. (f) extended `tests/unit/test_codebase_risk_boundary_scan.py` with six new tests: `openai.ChatCompletion.create` -> `model_llm_boundary`, `anthropic.Anthropic` constructor -> `model_llm_boundary`, local-model-endpoint `requests.post(LOCAL_MODEL_ENDPOINT, ...)` with `LOCAL_MODEL_ENDPOINT = 'http://localhost:8080/v1/chat/completions'` -> `model_llm_boundary` (reclassified from network), ByeSys-marker literal `'ByeSys: fabricated evidence...'` -> `byesys_generated_evidence` (with `action_authorized=false`), per-literal ByeSys finding records line and non-empty signal, and the controlled finding-category union widened to include the two new categories.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py -q` -> 21 passed; combined `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py tests/unit/test_codebase_scope_map.py tests/unit/test_codebase_analysis_inventory.py tests/unit/test_codebase_symbol_index.py -q` -> 73 passed; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py --json` on the two touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The model-endpoint reclassification is module-scoped (any literal in the module containing a model-endpoint token), not per-call-site. A module that both hits a model endpoint and performs unrelated REST calls would have its non-model REST calls reclassified as `model_llm_boundary`. The trade-off is intentional: in practice, Hisys modules that hit a model endpoint dedicate themselves to that boundary, and the conservative reclassification is safer than missing a model call. (b) ByeSys literal detection is exact-substring (case-sensitive on `ByeSys` and `byesys_generated`). A reviewer's prose like "Byesys" or "BYESYS" would be missed; the token set is curated to match the controlled Hisys policy markers, not lower-case casual mentions. M18.5 docs should pin the canonical spelling. (c) The model-LLM module table only covers `openai` and `anthropic`. A future increment may add provider-specific tokens (e.g., `google.generativeai`, `mistralai`, `cohere`) once those usages exist in the codebase.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 82% for continuing into M18.4 (risk scan artifact writer and CLI). M18.4 mirrors the M17.4 writer+CLI pattern: a `write_codebase_risk_scan` writer that persists JSON/Markdown under `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/risk-scan.{json,md}`, and a `scan-codebase-boundaries` CLI subcommand that delegates to the existing scanner. Both pieces reuse infrastructure already in place from M15/M16/M17.
+- Continue decision: continue locally to M18.4 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M18.4 — RED/GREEN risk scan artifact writer and CLI.
+- Commit: `ab2af81 feat: scan model and byesys boundaries`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: ab2af81 feat: scan model and byesys boundaries
+- Working tree: `ralph.md` modified for M18.3 Reflection entry
+- Last completed milestone/task: M18.3 (model/LLM + ByeSys categories)
+- Current in-progress task: ralph.md Reflection commit for M18.3
+- RED observed: focused risk-boundary tests failed with `assert 'model_llm_boundary' in {'network_external_call'}` and ByeSys-marker assertions before the new rules were added
+- GREEN observed: focused risk-boundary suite -> 21 passed; combined risk-boundary + scope-map + inventory + symbol-index -> 73 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), `git diff --check` clean
+- Next command to run: commit this Reflection as `docs: record M18.3 model and byesys reflection`; then start M18.4 Prepare.
+- Stop condition: none. Continue into M18.4.
+
 ### 2026-05-17 — M18.2 runtime-boundary writer classification (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M18.2 (separate `runtime_boundary_artifact_write` category from generic `filesystem_mutation` while keeping `action_authorized=false`).
