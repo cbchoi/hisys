@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-17 — M18.1 codebase risk-boundary scanner (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M18.1 (conservative AST scanner that flags external-call and mutation signals as review evidence).
+- Controlled anchors checked: ralph.md M18 milestone header (lines 1782–1788) plus M18.1 sub-task (lines 1790–1794); SPEC-HISYS-CODEBASE-ANALYSIS-001 allowed actions (no live action, no mutation, no source persistence); existing `CodebaseInventory` walk used to enumerate Python files; `SymbolParseError` reused for parse-error evidence.
+- Implementation: (a) added `RiskBoundaryFinding` and `CodebaseRiskScan` Pydantic records with stable `schema_id`s, deterministic sorted findings, and `action_authorized=false` plus `raw_source_content_persisted=false` invariants asserted at both the finding and scan levels so a reviewer can grep findings without inferring authority from absence. (b) added conservative AST classification rules: `_NETWORK_MODULES` maps `requests` (a fixed verb set), `httpx` (any attribute), and `urllib3` (any attribute) to `network_external_call`; `_BROWSER_MODULES` maps `webbrowser.{open,open_new,open_new_tab}` to `browser_external_call`; `_SUBPROCESS_MODULES` maps `subprocess.{run,Popen,call,check_call,check_output,getoutput}` and a conservative subset of `os.spawnX/system` to `subprocess_execution`; method-name table `_FILESYSTEM_MUTATION_METHODS={write_text, write_bytes}` matches any receiver and emits `<receiver>.write_text` so the receiver ambiguity is explicit. (c) added `_classify_attribute_call(callee)` that returns `(category, signal)` for a recognized attribute call or `None`. (d) added `_scan_module_findings(rel_path, source)` that AST-parses one file, returns findings plus an optional `SymbolParseError`. (e) added `scan_codebase_risk_boundaries(*, repo_root, analysis_scope=None, path_policy=None)` reusing `build_codebase_inventory` for the walk; findings and parse errors are sorted deterministically by `(path, line, category, signal)` and `(path, line)` respectively. (f) created `tests/unit/test_codebase_risk_boundary_scan.py` with 12 tests covering: top-level safety invariants, `requests.get`/`requests.post`/`httpx.get` -> network category, `webbrowser.open` -> browser category, `Path.write_text` -> filesystem mutation with `<receiver>.write_text` signal, `subprocess.run`/`subprocess.Popen` -> subprocess category, `category_counts` consistency with grouped findings, two-build determinism, sorted-by-key ordering, non-Python files skipped, parse-error evidence without halting, `analysis_scope` filtering, and per-finding `category` membership in the M18.1 controlled set.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py -q` -> 12 passed; combined `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py tests/unit/test_codebase_scope_map.py tests/unit/test_codebase_analysis_inventory.py tests/unit/test_codebase_symbol_index.py -q` -> 64 passed; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py --json` on the two touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The scanner is intentionally conservative: it does not analyze the receiver expression of `<receiver>.write_text`, so any `write_text`/`write_bytes` call is flagged regardless of whether the receiver is actually a `pathlib.Path`. This keeps the rule simple and false-negative-free for the M18.1 contract; M18.2 will add the runtime-boundary-writer separation that distinguishes safe local artifact writes. (b) The `_NETWORK_MODULES` set includes `urllib3` even though M18.1 only explicitly tests `requests` and `httpx`; this preserves a small future-proof safety margin without forcing extra tests. M18.5 docs should document the recognized module list. (c) The scanner currently does not look at top-level expressions or string-only signals; M18.3 will add ByeSys generated-evidence markers based on string content patterns. (d) `os` calls are partially covered — only the spawning/system functions are flagged; broader `os.*` checks (e.g., `os.environ` read for credential access) remain out of scope for M18.1 by design.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 82% for continuing into M18.2 (runtime-boundary writer separation). M18.2 reuses the same AST scanner machinery and adds a category split for `runtime_boundary_artifact_write` vs generic `filesystem_mutation`; the rule is well-defined (the existing inventory/symbol-index/scope-map writers all hit `runtime-boundary/...` paths through `write_text`).
+- Continue decision: continue locally to M18.2 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M18.2 — RED/GREEN safe local artifact writes are separate from live effects.
+- Commit: `1f41568 feat: add codebase risk boundary scanner`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: 1f41568 feat: add codebase risk boundary scanner
+- Working tree: `ralph.md` modified for M18.1 Reflection entry
+- Last completed milestone/task: M18.1 (risk-boundary scanner with 4 categories)
+- Current in-progress task: ralph.md Reflection commit for M18.1
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py -q` failed at collection with `ImportError: cannot import name 'CodebaseRiskScan'` before the scanner was added
+- GREEN observed: focused risk-boundary suite -> 12 passed; combined risk-boundary + scope-map + inventory + symbol-index -> 64 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), `git diff --check` clean
+- Next command to run: commit this Reflection as `docs: record M18.1 risk boundary scanner reflection`; then start M18.2 Prepare.
+- Stop condition: none. Continue into M18.2.
+
 ### 2026-05-17 — M17.5 docs/traceability + FINISH packet; M17 milestone complete
 
 - Phase completed: Prepare / Do / Gate / Commit for Task M17.5 (docs + traceability rows + `FINISH-HISYS-CODEBASE-ANALYSIS-003` packet); plus Section 10.2 milestone Global Gate for the full M17 milestone.
