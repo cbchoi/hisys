@@ -7,21 +7,21 @@
 | Field | Value |
 |---|---|
 | Plan ID | `RALPH-HISYS-DOMAIN-ADAPTER` |
-| Scope | Hisys domain-adapter registration, hardening, migration preparation, and requirements-analysis example work |
+| Scope | Hisys domain-adapter registration, hardening, migration preparation, requirements-analysis example work, and Local DARS / ByeSys provenance implementation |
 | Owner | Choi Changbeom / SysAI Lab |
 | Default working directory | `/home/cbchoi/workspaces/sysailab/develop/repos/hisys` |
 | Target branch | `feat/domain-adaptive-requirements-analysis` |
 | Original baseline commit | `04d6b01 test: propagate src path to subprocess CLI tests` |
-| Current update baseline | `b6ac4ed` |
+| Current update baseline | `adde6c4` |
 | Execution mode | `on-demand Discord Ralph loop unless explicitly scheduled` |
 | Default runtime limit | `5 hours` |
 | User-specified runtime limit | `<none unless stated in the invoking message>` |
 | External side effects | `disabled; security/system-risk actions require user-executed commands` |
-| Last updated | `2026-05-14` |
+| Last updated | `2026-05-16` |
 
 ## 0.1 Purpose and Existing Baseline
 
-This Ralph loop advances the Hisys domain-refactoring line from the pre-Ralph hardening state to governed example-domain registration and migration.
+This Ralph loop advances the Hisys domain-refactoring line from the pre-Ralph hardening state to governed example-domain registration and migration. The active continuation now adds Local DARS / ByeSys provenance milestones after the completed M1..M7 domain-adapter queue.
 
 Current baseline before this loop:
 
@@ -102,6 +102,8 @@ Every milestone and every task shall cite the controlled document anchors below 
 | IDD | `HISYS-IDD-001` | `/home/cbchoi/workspaces/sysailab/pre-develop/Hisys/interface-design-description.md` |
 | STD | `HISYS-STD-001` | `/home/cbchoi/workspaces/sysailab/pre-develop/Hisys/software-test-description.md` |
 | TDD procedure | `test-driven-development` skill | `software-development/test-driven-development` |
+| Local DARS plan | Local DARS and ByeSys Provenance Implementation Plan | `docs/plans/2026-05-16-local-dars-byesys-provenance.md` |
+| Hisys review artifact summary | Read-only `investigate-domain` review returned `needs_more_evidence` and hardening requirements | `/tmp/hisys-local-dars-plan-review` |
 
 ### 3.1 Mandatory task-start checklist
 
@@ -1151,9 +1153,356 @@ python3 scripts/scan_secrets.py
 git diff --check
 ```
 
+
+### Milestone M8 — Local DARS Config Boundary and Endpoint Validation
+
+**Goal:** Turn the accepted Local DARS plan into executable Ralph tasks by validating `openai_compatible` localhost-only endpoint policy before any HTTP adapter can run.
+
+**Controlled anchors:**
+
+- SRS: `HISYS-FR-AGT-003..004`, `HISYS-NFR-SEC-001..004`, `HISYS-DATA-003..005`, and Local DARS plan Accepted Requirements 1..2.
+- SDD: DARS configurable backend design, runtime boundary record rule, no-live-action/advisory-only design.
+- IDD: DARS config schema / backend record interface, runtime-boundary artifact fields.
+- STD: DARS config/runtime/dispatch tests plus Local DARS plan Milestone 1.
+- Plan: `docs/plans/2026-05-16-local-dars-byesys-provenance.md`.
+- TDD: RED/GREEN/REFACTOR procedure.
+
+#### Task M8.1 — Add RED tests for strict localhost endpoint policy
+
+**Objective:** Lock local endpoint acceptance/rejection before implementing or changing adapter behavior.
+
+**Files:**
+
+- Modify: `tests/unit/test_dars_config.py`
+- Read: `src/hisys/agents/dars_config.py`
+
+**Required RED test behaviors:**
+
+1. `kind="openai_compatible"`, `mode="local_network_only"` accepts full-host `localhost`.
+2. It accepts IPv4 loopback endpoint `127.0.0.1`.
+3. It accepts IPv6 loopback endpoint `[::1]`.
+4. It rejects remote host/IP endpoints.
+5. It rejects deceptive hosts such as `localhost.evil.com` and `127.0.0.1.evil.com`.
+6. It rejects user-info host tricks, empty hosts, unsupported schemes, and missing endpoint values.
+7. It records/derives local backend metadata: `endpoint_scope="localhost_only"`, `model_boundary_required=true`, `external_call_expected=false`.
+
+**RED command:**
+
+```bash
+python3 -m pytest tests/unit/test_dars_config.py -q
+```
+
+**Expected RED:** missing localhost-only validator, missing metadata fields, or validators currently accepting remote/deceptive endpoint forms.
+
+#### Task M8.2 — Implement localhost-only validation and metadata projection
+
+**Objective:** Add deterministic URL parsing and loopback validation without adding network calls.
+
+**Files:**
+
+- Modify: `src/hisys/agents/dars_config.py`
+- Test: `tests/unit/test_dars_config.py`
+
+**Implementation constraints:**
+
+- Use `urllib.parse` for URL parsing and `ipaddress` for IP literals.
+- Do not use substring matching.
+- Permit only `http` and `https` at config-validation time.
+- Permit `localhost` only as the parsed full hostname.
+- Permit IP literals only when `ipaddress.ip_address(host).is_loopback` is true.
+- Do not require credentials for localhost-only local model endpoints.
+- Do not add HTTP adapter behavior in M8.
+
+**Quality gate:**
+
+```bash
+python3 -m pytest tests/unit/test_dars_config.py -q
+python3 -m pytest tests/unit/test_source_weighting.py tests/unit/test_dars_dispatch.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+**Commit message:**
+
+```bash
+git commit -m "feat: validate localhost local DARS endpoints"
+```
+
+### Milestone M9 — Fake OpenAI-Compatible Server and Local DARS Adapter
+
+**Goal:** Implement the Local DARS `openai_compatible` adapter only after a localhost fake HTTP server harness covers success and fail-closed cases.
+
+**Controlled anchors:**
+
+- SRS: `HISYS-FR-AGT-003..004`, `HISYS-NFR-SEC-001..004`, `HISYS-DATA-003..005`.
+- SDD: DARS configurable backend design, runtime-boundary artifacts, advisory-only no-mutation design.
+- IDD: OpenAI-compatible local adapter request/response boundary, DARS critique record fields.
+- STD: DARS runtime/dispatch tests plus Local DARS plan Milestones 2..3.
+- Plan: `docs/plans/2026-05-16-local-dars-byesys-provenance.md`.
+- TDD: RED/GREEN/REFACTOR procedure.
+
+#### Task M9.1 — Add fake HTTP server RED tests for local adapter behavior
+
+**Objective:** Define adapter behavior with a deterministic localhost fake server before production adapter code.
+
+**Files:**
+
+- Modify: `tests/unit/test_dars_runtime.py`
+- Optionally create local test fixture helper under `tests/unit/` if the existing test file becomes too large.
+- Read: `src/hisys/agents/dars.py`, `src/hisys/agents/dars_dispatch.py`
+
+**Required RED test behaviors:**
+
+1. Runtime calls `127.0.0.1:<ephemeral-port>/v1/chat/completions` for a configured local backend with `approval_ref`.
+2. Request JSON includes configured `model`, DARS advisory/no-mutation instructions, provenance instructions, and no tool/search/browser authorization.
+3. Missing `approval_ref` fails closed before contacting the server.
+4. Remote endpoint fails closed before any HTTP request.
+5. Non-2xx, timeout, malformed JSON, and missing `choices[0].message.content` fail closed with safe error artifacts.
+6. Success records `dars_backend="local_llm_dars"`, `external_call_made=false`, `model_boundary_crossed=true`, `local_model_call_made=true`, and `endpoint_scope="localhost_only"`.
+
+**RED command:**
+
+```bash
+python3 -m pytest tests/unit/test_dars_runtime.py::test_dars_runtime_calls_local_openai_compatible_backend -q
+```
+
+#### Task M9.2 — Implement the local OpenAI-compatible DARS adapter
+
+**Objective:** Add the minimal stdlib HTTP adapter needed to satisfy fake-server tests.
+
+**Files:**
+
+- Modify: `src/hisys/agents/dars.py`
+- Modify if needed: `src/hisys/agents/dars_dispatch.py`
+- Test: `tests/unit/test_dars_runtime.py`, `tests/unit/test_dars_dispatch.py`
+
+**Implementation constraints:**
+
+- Use a bounded timeout from config/policy.
+- Extract only `choices[0].message.content`.
+- Fail closed on timeout, non-2xx, malformed JSON, missing content, missing approval, or non-local endpoint in local mode.
+- Do not use credentials by default for localhost-only models.
+- Do not perform external search or tool use.
+- Preserve `mutation_performed=false` and advisory-only behavior.
+- Treat local LLM calls as model-boundary events, not live external-service calls.
+
+**Quality gate:**
+
+```bash
+python3 -m pytest tests/unit/test_dars_runtime.py tests/unit/test_dars_dispatch.py tests/unit/test_dars_config.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+**Commit message:**
+
+```bash
+git commit -m "feat: add openai-compatible local DARS adapter"
+```
+
+### Milestone M10 — DARS Runtime Artifact Integrity Guard
+
+**Goal:** Fix the dangling DARS decision ref discovered during Hisys review so runtime-boundary refs point to real artifacts or explicit skipped/unavailable states.
+
+**Controlled anchors:**
+
+- SRS: `HISYS-DATA-003..005`, `HISYS-NFR-MNT-001`, runtime auditability requirements.
+- SDD: Domain investigation runtime writer, DARS decision layer, runtime-boundary artifact design.
+- IDD: `DomainInvestigationResult`, `HisysToolResult`, runtime-boundary ref contract.
+- STD: Domain runtime artifact tests plus Local DARS plan Milestone 2.5.
+- Plan: `docs/plans/2026-05-16-local-dars-byesys-provenance.md`.
+
+#### Task M10.1 — Add RED tests for recorded DARS/runtime refs resolving to artifacts
+
+**Objective:** Ensure Hisys never records a DARS decision ref that does not exist under the instance root.
+
+**Files:**
+
+- Modify/create: `tests/unit/test_domain_runtime_artifacts.py`
+- Read: `src/hisys/domain/use_cases.py`, `src/hisys/domain/runtime.py`, `src/hisys/domain/layers.py`, `src/hisys/cli/main.py`
+
+**Required RED test behaviors:**
+
+1. Every `runtime_boundary_refs` entry in `domain-investigation-result` resolves to an existing file under the instance root.
+2. Every ref propagated into `hisys-tool-result` and run summary resolves to an existing file.
+3. Optional missing DARS output is recorded as skipped/unavailable, not as a dangling path.
+4. The guard does not introduce external calls or mutation outside the instance root.
+
+**Quality gate:**
+
+```bash
+python3 -m pytest tests/unit/test_domain_runtime_artifacts.py tests/unit/test_cli_runtime.py -q
+python3 scripts/validate_traceability.py
+git diff --check
+```
+
+#### Task M10.2 — Implement artifact integrity fix
+
+**Objective:** Make the domain/DARS writer emit real decision artifacts or omit/mark unavailable refs deterministically.
+
+**Files:**
+
+- Modify the smallest responsible writer/layer after M10.1 identifies the failing path.
+- Test: `tests/unit/test_domain_runtime_artifacts.py`, `tests/unit/test_cli_runtime.py`
+
+**Quality gate:**
+
+```bash
+python3 -m pytest tests/unit/test_domain_runtime_artifacts.py tests/unit/test_cli_runtime.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+**Commit message:**
+
+```bash
+git commit -m "fix: guard DARS runtime artifact references"
+```
+
+### Milestone M11 — DARS Provenance Contract and Jeweler ByeSys Enforcement
+
+**Goal:** Make DARS critique provenance machine-readable and enforce ByeSys zero evidential contribution in Jeweler/legacy Chief Editor review paths.
+
+**Controlled anchors:**
+
+- SRS: provenance, evidence reliability, auditability, and human-review requirements.
+- SDD: Jeweler/Appraiser separation, DARS advisory-only role, evidence weighting design.
+- IDD: DARS critique record source/weight fields, reviewer terminology aliases.
+- STD: source weighting tests, DARS runtime tests, review/evidence sufficiency tests.
+- Plan: `docs/plans/2026-05-16-local-dars-byesys-provenance.md`.
+
+#### Task M11.1 — Add RED tests for machine-readable DARS source weights
+
+**Objective:** Persist DARS source/provenance data so Jeweler can enforce ByeSys weighting without prose parsing.
+
+**Files:**
+
+- Modify: `tests/unit/test_dars_runtime.py`
+- Modify if needed: `tests/unit/test_source_weighting.py`
+- Read: `src/hisys/agents/dars.py`, `src/hisys/provenance/source_weighting.py`
+
+**Required test behaviors:**
+
+1. DARS prompt requires internal source refs, external DOI/URL only when allowed, and ByeSys unsupported synthesis section.
+2. Persisted critique records machine-readable source weights.
+3. `ByeSys` evidence weight is `0.0`.
+4. `ByeSys` is not marked as corroborating evidence.
+
+#### Task M11.2 — Enforce ByeSys zero weight in Jeweler/legacy review path
+
+**Objective:** Ensure review/evidence sufficiency gates ignore ByeSys as corroboration.
+
+**Files:**
+
+- Identify current review/weight path under existing Chief Editor/Jeweler/Lapidary modules.
+- Modify/add focused tests under `tests/unit/` for the actual path.
+- Modify docs/prompts to prefer `Jeweler` and `Appraiser` user-facing terminology while preserving legacy import names if broad rename is risky.
+
+**Required test behaviors:**
+
+1. A claim supported only by `ByeSys` cannot pass an evidence sufficiency gate.
+2. Mixed evidence keeps non-ByeSys contributions and ignores ByeSys contribution.
+3. User-facing generated docs/prompts use `Jeweler` and `Appraiser`, with alias/deprecation mapping for legacy terms.
+
+**Quality gate:**
+
+```bash
+python3 -m pytest tests/unit/test_source_weighting.py tests/unit/test_dars_runtime.py -q
+python3 -m pytest tests/unit -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+**Commit message:**
+
+```bash
+git commit -m "feat: enforce ByeSys provenance in DARS and Jeweler review"
+```
+
+### Milestone M12 — Local DARS Runtime Config, Smoke, and Deployment Readiness
+
+**Goal:** Switch a controlled runtime instance to Local DARS only after fake-server and artifact-integrity gates pass. Do not download models or install local runners without explicit user approval.
+
+**Controlled anchors:**
+
+- SRS/SDD/IDD/STD anchors from M8..M11.
+- Deployment/runtime config guidance from `hisys-cli-tool` and Local DARS plan Milestones 7..8.
+
+#### Task M12.1 — Add controlled runtime config example and fake-server smoke
+
+**Objective:** Demonstrate local DARS with a fake server before any live local model runner.
+
+**Files:**
+
+- Modify example/runtime config only after M8..M11 are green.
+- Add smoke documentation or test artifact under controlled docs if needed.
+
+**Expected smoke output:**
+
+```text
+dars_backend: local_llm_dars
+external_call_made: false
+model_boundary_crossed: true
+local_model_call_made: true
+endpoint_scope: localhost_only
+mutation_performed: false
+```
+
+**Stop conditions:**
+
+- Installing `ollama`, `llama.cpp`, vLLM, LM Studio, or downloading any model requires explicit user approval and a user-executed command.
+- Replacing a working Claude DARS runtime config before fake-server tests pass requires explicit user confirmation.
+- Any non-localhost endpoint or live external search requires explicit approval and must preserve runtime-boundary artifacts.
+
+**Quality gate:**
+
+```bash
+python3 -m pytest tests/unit -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+**Commit message:**
+
+```bash
+git commit -m "docs: prepare local DARS runtime smoke"
+```
+
 ## 15. Reflection Log
 
 Append one entry after each completed task, stop condition, or runtime limit.
+
+
+### 2026-05-16 — Local DARS / ByeSys provenance queue added
+
+- Phase completed: Prepare / Do / Reflection for `ralph.md` control-plan update.
+- Controlled anchors checked: existing `ralph.md`; `docs/plans/2026-05-16-local-dars-byesys-provenance.md`; `hisys-cli-tool` local-DARS reference; current repository branch `feat/domain-adaptive-requirements-analysis`; HEAD `adde6c4`.
+- Codebase evidence checked: `src/hisys/agents/dars_config.py`, `src/hisys/agents/dars.py`, `src/hisys/agents/dars_dispatch.py`, `src/hisys/provenance/source_weighting.py`, `tests/unit/test_source_weighting.py`, `tests/unit/test_dars_config.py`, `tests/unit/test_dars_runtime.py`, `tests/unit/test_dars_dispatch.py`.
+- Quality gate result: pass — `git diff --check` passed; focused source-weighting/DARS config/runtime/dispatch gate passed (`14 passed`); `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` hit_count=0.
+- Potential issues: controlled SRS/SDD/IDD/STD anchors may need explicit Local DARS IDs before product code lands; the current queue treats the Local DARS plan as the implementation anchor and requires controlled-document amendment during Prepare if the existing anchors are insufficient.
+- `ralph.md` changes: added M8..M12 Local DARS milestones covering strict localhost validation, fake HTTP server adapter tests, runtime artifact integrity, machine-readable DARS provenance, Jeweler ByeSys enforcement, and runtime smoke/deployment readiness. Updated Initial Next Action away from completed M1.1.
+- Success likelihood: 84% for the next milestone because M8 is config-only and testable without live model installation; likelihood drops below 75% if controlled-document anchors are missing and cannot be safely amended.
+- Continue decision: continue to M8.1 after this control-plan update is validated and committed.
+- Stop reason: none for planning; stop before live local runner install/model download, non-localhost endpoint use, or replacing working runtime config.
+- Next task: Task M8.1 — Add RED tests for strict localhost endpoint policy.
+- Commit: pending for this `ralph.md` update.
+- Working tree: `ralph.md` modified until this control update is committed.
+
+Resume checkpoint:
+- Current HEAD: adde6c4
+- Working tree: `ralph.md` modified for Local DARS queue update
+- Last completed milestone/task: prior M7.1 and Local DARS planning commits through `adde6c4`
+- Current in-progress task: control-plan update for Local DARS queue
+- RED observed: n/a (control-plan update)
+- GREEN observed: `git diff --check` and focused DARS/source-weighting gate passed
+- Quality gate status: pass — `python3 -m pytest tests/unit/test_source_weighting.py tests/unit/test_dars_config.py tests/unit/test_dars_runtime.py tests/unit/test_dars_dispatch.py -q` -> 14 passed; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` hit_count=0; `git diff --check` clean
+- Next command to run: validate this control-plan edit, commit locally, then Prepare for M8.1
+- Stop condition: none
 
 ### 2026-05-14 16:58 KST — Ralph control structure merged and verified
 
@@ -1350,8 +1699,8 @@ Resume checkpoint:
 
 ## 16. Initial Next Action
 
-Start with **Task M1.1 — Add RED tests for registry precedence**.
+Start with **Task M8.1 — Add RED tests for strict localhost endpoint policy**.
 
-The first Ralph-loop action shall be Prepare: inspect Git state, read SRS/SDD/IDD/STD, read this `ralph.md`, inspect current codebase evidence for registry/spec routing, and determine whether Task M1.1 remains consistent and sufficient.
+The first Ralph-loop action shall be Prepare: inspect Git state, read SRS/SDD/IDD/STD, read this `ralph.md`, inspect `docs/plans/2026-05-16-local-dars-byesys-provenance.md`, inspect current DARS config/runtime code, and determine whether existing controlled anchors are sufficient for M8.1. If anchors are insufficient but consistent with Hisys safety/provenance goals, perform the controlled-document amendment checkpoint before product code.
 
-Do not start by editing production code. The first implementation action must be a failing test that proves the registry does not yet route general research and codebase requests through structured example specs.
+Do not start by editing production code. The first implementation action must be a failing test that proves local `openai_compatible` DARS config does not yet enforce strict localhost-only endpoint policy or does not yet expose the required local model-boundary metadata.
