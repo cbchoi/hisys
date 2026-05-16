@@ -20,6 +20,7 @@ import ast
 import json
 import os
 import re
+from collections.abc import Iterable
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -874,8 +875,176 @@ def get_codebase_scope_profile(scope_id: str) -> CodebaseScopeProfile:
     return profile.model_copy(deep=True)
 
 
+# A docs ref is treated as a traceability anchor when its path crosses the
+# `docs/traceability/` subtree. The downstream M17.3 validation plan and the
+# M17.5 examples will rely on this split so a reviewer can find the RTM rows
+# linked to a scope without re-walking the docs tree.
+_TRACEABILITY_PATH_TOKEN = "docs/traceability/"
+
+
+class CodebaseScopeMapEntry(BaseModel):
+    """Materialized scope view linking a profile to inventory and symbol data.
+
+    Each list field is sorted so the entry has a deterministic shape that
+    downstream artifact writers (M17.4) and review summaries (M17.5) can
+    serialize without re-sorting.
+    """
+
+    schema_id: str = "hisys.codebase.scope_map_entry"
+    scope_id: str
+    description: str = ""
+    files_in_scope: list[str] = Field(default_factory=list)
+    missing_entry_files: list[str] = Field(default_factory=list)
+    tests_in_scope: list[str] = Field(default_factory=list)
+    missing_expected_tests: list[str] = Field(default_factory=list)
+    docs_in_scope: list[str] = Field(default_factory=list)
+    missing_docs_refs: list[str] = Field(default_factory=list)
+    traceability_refs_in_scope: list[str] = Field(default_factory=list)
+    modules: list[SymbolModule] = Field(default_factory=list)
+    module_count: int = 0
+    import_count: int = 0
+    class_count: int = 0
+    function_count: int = 0
+    parse_errors_in_scope: list[SymbolParseError] = Field(default_factory=list)
+
+
+class CodebaseScopeMap(BaseModel):
+    """Top-level scope map produced from a loaded inventory and symbol index.
+
+    The map is pure data over already-loaded artifact records. It performs no
+    source content read of its own and inherits the safety invariants of its
+    inputs.
+    """
+
+    schema_id: str = "hisys.codebase.scope_map"
+    repo_root: str
+    analysis_scope: str | None = None
+    inventory_schema_id: str
+    symbol_index_schema_id: str
+    scope_entries: list[CodebaseScopeMapEntry] = Field(default_factory=list)
+    raw_source_content_persisted: bool = False
+
+
+def _partition_refs(declared: list[str], present: set[str]) -> tuple[list[str], list[str]]:
+    in_scope = sorted(ref for ref in declared if ref in present)
+    missing = sorted(ref for ref in declared if ref not in present)
+    return in_scope, missing
+
+
+def _filter_modules_for_scope(
+    modules: list[SymbolModule], scope_files: set[str]
+) -> list[SymbolModule]:
+    return sorted(
+        (module for module in modules if module.path in scope_files),
+        key=lambda module: module.path,
+    )
+
+
+def _filter_parse_errors_for_scope(
+    parse_errors: list[SymbolParseError], scope_files: set[str]
+) -> list[SymbolParseError]:
+    return sorted(
+        (err for err in parse_errors if err.path in scope_files),
+        key=lambda err: (err.path, err.line),
+    )
+
+
+def _module_counters(modules: list[SymbolModule]) -> tuple[int, int, int, int]:
+    module_count = len(modules)
+    import_total = 0
+    class_total = 0
+    function_total = 0
+    for module in modules:
+        import_total += len(module.imports)
+        function_total += len(module.functions)
+        for cls in module.classes:
+            class_count, method_count = _count_class_symbols(cls)
+            class_total += class_count
+            function_total += method_count
+    return module_count, import_total, class_total, function_total
+
+
+def build_codebase_scope_map(
+    *,
+    inventory: CodebaseInventory,
+    symbol_index: PythonSymbolIndex,
+    profiles: Iterable[CodebaseScopeProfile] | None = None,
+) -> CodebaseScopeMap:
+    """Build a deterministic scope map from already-loaded artifact records.
+
+    The function is pure: it does no filesystem walk, no source content read,
+    and no live action. Each scope entry partitions the profile's declared
+    refs into the subset that exists in the inventory and the subset that is
+    missing, projects the matching symbol-index modules and parse errors into
+    the entry, and splits traceability refs out of the docs list so reviewers
+    can locate the RTM anchor directly.
+    """
+
+    if profiles is None:
+        active_profiles = list_codebase_scope_profiles()
+    else:
+        active_profiles = list(profiles)
+
+    inventory_paths = set(inventory.files)
+
+    entries: list[CodebaseScopeMapEntry] = []
+    for profile in sorted(active_profiles, key=lambda p: p.scope_id):
+        files_in_scope, missing_entry_files = _partition_refs(
+            profile.entry_files, inventory_paths
+        )
+        tests_in_scope, missing_expected_tests = _partition_refs(
+            profile.expected_tests, inventory_paths
+        )
+        docs_in_scope, missing_docs_refs = _partition_refs(
+            profile.docs_refs, inventory_paths
+        )
+        traceability_refs = sorted(
+            ref for ref in docs_in_scope if _TRACEABILITY_PATH_TOKEN in ref
+        )
+
+        scope_files_set = set(files_in_scope)
+        modules = _filter_modules_for_scope(symbol_index.modules, scope_files_set)
+        parse_errors = _filter_parse_errors_for_scope(
+            symbol_index.parse_errors, scope_files_set
+        )
+        module_count, import_total, class_total, function_total = _module_counters(
+            modules
+        )
+
+        entries.append(
+            CodebaseScopeMapEntry(
+                scope_id=profile.scope_id,
+                description=profile.description,
+                files_in_scope=files_in_scope,
+                missing_entry_files=missing_entry_files,
+                tests_in_scope=tests_in_scope,
+                missing_expected_tests=missing_expected_tests,
+                docs_in_scope=docs_in_scope,
+                missing_docs_refs=missing_docs_refs,
+                traceability_refs_in_scope=traceability_refs,
+                modules=modules,
+                module_count=module_count,
+                import_count=import_total,
+                class_count=class_total,
+                function_count=function_total,
+                parse_errors_in_scope=parse_errors,
+            )
+        )
+
+    return CodebaseScopeMap(
+        repo_root=inventory.repo_root,
+        analysis_scope=inventory.analysis_scope,
+        inventory_schema_id=inventory.schema_id,
+        symbol_index_schema_id=symbol_index.schema_id,
+        scope_entries=entries,
+        raw_source_content_persisted=False,
+    )
+
+
 __all__ = [
     "CodebaseInventory",
+    "CodebaseScopeMap",
+    "CodebaseScopeMapEntry",
     "CodebaseScopeProfile",
     "DEFAULT_EXCLUDED_DIRS",
     "DEFAULT_GENERATED_MARKERS",
@@ -890,6 +1059,7 @@ __all__ = [
     "SymbolModule",
     "SymbolParseError",
     "build_codebase_inventory",
+    "build_codebase_scope_map",
     "build_python_symbol_index",
     "get_codebase_scope_profile",
     "list_codebase_scope_profiles",
