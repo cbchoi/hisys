@@ -1929,6 +1929,37 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-16 — M14.1 spec-first packet built for codebase analysis
+
+- Phase completed: Prepare / Do / Gate for Task M14.1 (`SPEC-HISYS-CODEBASE-ANALYSIS-001`).
+- Controlled anchors checked: ralph.md Section 14 M14; `revision_plan_v004.md` Section 5/7; `src/hisys/operations/agent_workflow.py` (`SpecFirstRunPacket`, `build_spec_first_run_packet`, `write_spec_first_run_packet`); `src/hisys/cli/main.py` `build-spec-first-packet` subcommand and flag set.
+- Codebase evidence: CLI `--help` matches the M14.1 invocation flag-for-flag; writer emits `<instance>/runtime-boundary/agent-workflows/<date>/<packet_id>.{json,md}`; scripts `validate_traceability.py` and `scan_secrets.py` exist at expected paths.
+- Command run: `PYTHONPATH=src python3 -m hisys.cli.main build-spec-first-packet --instance /tmp/hisys-codebase-analysis --date 20260516 --packet-id SPEC-HISYS-CODEBASE-ANALYSIS-001 ... --format json` with the exact scope/non-goals/allowed-actions/evidence-contract/expected-artifacts/gate-criteria/human-approval-boundary spelled out in M14.1.
+- Artifacts produced under instance root `/tmp/hisys-codebase-analysis`:
+  - `runtime-boundary/agent-workflows/20260516/SPEC-HISYS-CODEBASE-ANALYSIS-001.json`
+  - `runtime-boundary/agent-workflows/20260516/SPEC-HISYS-CODEBASE-ANALYSIS-001.md`
+  - Packet response reported `external_call_made=false`, `mutation_performed=false`, `publication_or_live_action_approved=false`, `action_taken=none`.
+- Quality gate result: pass — `git diff --check` OK; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` `scanned_files=432 skipped_files=0 hit_count=0`; in-repo working tree clean before this Reflection edit (runtime artifacts live outside the repository under `/tmp/hisys-codebase-analysis`).
+- Potential issues: (a) the spec packet records `expected_artifacts` at instance-relative paths under `runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/`; M15.1..M15.5 must populate those exact paths through `build_codebase_inventory` and the new `build-codebase-inventory` CLI, otherwise the future `FINISH-HISYS-CODEBASE-ANALYSIS-001` packet will not be evidence-complete. (b) The packet writer placed files under `runtime-boundary/agent-workflows/...` rather than the colon-spec path `runtime-boundary/codebase-analysis/...`; this is by design — agent-workflow packets live alongside one another so the spec/finish pair is discoverable, while inventory artifacts will live under the codebase-analysis instance subtree.
+- `ralph.md` changes: this Reflection entry only (control-plan body for M14..M21 already on HEAD as `b8bc8f2`). The next iteration may update `Current update baseline` after this commit.
+- Success likelihood: 85% for M15.1 — the inventory builder is new product code but its RED test is bounded to deterministic transient/generated-path exclusion in `tests/unit/test_codebase_analysis_inventory.py`, the writer/CLI seams are already mapped under M15.3/M15.4, and no live action is in scope.
+- Continue decision: continue to Task M15.1 after this Reflection is committed.
+- Stop reason: none. Stop conditions for the next loop include: any controlled anchor turning out to be insufficient and not safely amendable; RED that cannot be produced because `build_codebase_inventory` is hard to introduce as missing; or any task drift toward external action, model call, credential change, publication, remote push, or raw source archival.
+- Next task: Task M15.1 — RED/GREEN deterministic inventory excludes transient paths in `tests/unit/test_codebase_analysis_inventory.py::test_inventory_excludes_transient_and_generated_paths`.
+- Commit: pending (`docs: start codebase analysis ralph queue`).
+- Working tree: `ralph.md` modified for this Reflection entry; runtime-boundary packet artifacts live outside the repo under `/tmp/hisys-codebase-analysis`.
+
+Resume checkpoint:
+- Current HEAD: b8bc8f2 docs: merge codebase analysis into ralph queue
+- Working tree: `ralph.md` modified for M14.1 Reflection entry
+- Last completed milestone/task: M14.1 (`SPEC-HISYS-CODEBASE-ANALYSIS-001` spec-first packet materialized under `/tmp/hisys-codebase-analysis`)
+- Current in-progress task: ralph.md Reflection commit for M14.1
+- RED observed: n/a (docs/control checkpoint; no behavior change in this increment)
+- GREEN observed: `build-spec-first-packet` CLI returned the expected JSON envelope and wrote both `SPEC-HISYS-CODEBASE-ANALYSIS-001.json` and `.md` under `/tmp/hisys-codebase-analysis/runtime-boundary/agent-workflows/20260516/`
+- Quality gate status: pass — `git diff --check` OK; `validate_traceability.py` OK; `scan_secrets.py` hit_count=0
+- Next command to run: commit this Reflection as `docs: start codebase analysis ralph queue`; then begin Task M15.1 by adding the RED test `test_inventory_excludes_transient_and_generated_paths` in `tests/unit/test_codebase_analysis_inventory.py` and confirming the failure imports `build_codebase_inventory` from `src/hisys/operations/codebase_analysis.py` (which is intentionally absent at HEAD).
+- Stop condition: none — continue to M15.1.
+
 ### 2026-05-16 — Codebase-analysis roadmap merged into active Ralph queue
 
 - Phase completed: Prepare / Do / Gate for `ralph.md` control-plan update.
