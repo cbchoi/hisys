@@ -108,11 +108,14 @@ from ..operations.codebase_analysis import (
     build_codebase_scope_map,
     build_codebase_validation_plan,
     build_python_symbol_index,
+    load_codebase_review_bundle,
     resolve_instance_runtime_ref,
+    review_codebase_source_inspection,
     scan_codebase_risk_boundaries,
     write_codebase_inventory,
     write_codebase_risk_scan,
     write_codebase_scope_map,
+    write_codebase_source_inspection_decision,
     write_python_symbol_index,
 )
 from ..operations.backup import create_backup, restore_backup_dry_run
@@ -1330,6 +1333,61 @@ def _cmd_build_codebase_map(
     return 0
 
 
+def _cmd_review_codebase_analysis(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    inventory_ref: str,
+    symbol_index_ref: str,
+    scope_map_ref: str,
+    risk_scan_ref: str,
+    unresolved_blockers: list[str],
+    output_format: str,
+) -> int:
+    """Load a codebase-analysis bundle and persist the review decision packet.
+
+    Returns 0 when the decision is `complete_for_human_review` and 2 when
+    the decision is `blocked_needs_more_evidence` so automation can branch
+    on the decision without re-parsing the JSON. The CLI never grants
+    `approved`, `safe_to_deploy`, or `ready_for_live_action` — those values
+    are structurally rejected by the Pydantic decision record.
+    """
+
+    bundle = load_codebase_review_bundle(
+        instance_root=instance_root,
+        inventory_ref=inventory_ref,
+        symbol_index_ref=symbol_index_ref,
+        scope_map_ref=scope_map_ref,
+        risk_scan_ref=risk_scan_ref,
+    )
+    decision = review_codebase_source_inspection(
+        inventory=bundle.inventory,
+        symbol_index=bundle.symbol_index,
+        scope_map=bundle.scope_map,
+        validation_plan=bundle.validation_plan,
+        risk_scan=bundle.risk_scan,
+        unresolved_blockers=unresolved_blockers,
+    )
+    result = write_codebase_source_inspection_decision(
+        instance_root=instance_root,
+        date=yyyymmdd,
+        request_id=request_id,
+        decision=decision,
+    )
+
+    if output_format == "json":
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(
+            "codebase source-inspection decision: "
+            f"schema={result['schema_id']} decision={result['decision']} "
+            f"json={result['json_ref']} markdown={result['markdown_ref']}"
+        )
+
+    return 0 if decision.decision == "complete_for_human_review" else 2
+
+
 def _cmd_build_finish_packet(
     *,
     instance_root: Path,
@@ -1753,6 +1811,49 @@ def _build_parser() -> argparse.ArgumentParser:
         help="instance-relative path to a symbol-index JSON artifact previously written by build-code-symbol-index",
     )
     scope_map_parser.add_argument("--format", choices=["text", "json"], default="text")
+
+    review_codebase = sub.add_parser(
+        "review-codebase-analysis",
+        help=(
+            "review a codebase-analysis four-file bundle and persist the "
+            "source-inspection decision packet; allowed decision values are "
+            "only complete_for_human_review and blocked_needs_more_evidence"
+        ),
+    )
+    review_codebase.add_argument("--instance", required=True, help="Hisys instance root for artifact output")
+    review_codebase.add_argument("--date", required=True, help="YYYYMMDD")
+    review_codebase.add_argument(
+        "--request-id",
+        required=True,
+        help="decision request id slug, e.g. REQ-CODEBASE-DECISION-001",
+    )
+    review_codebase.add_argument(
+        "--inventory-ref",
+        required=True,
+        help="instance-relative path to an inventory JSON artifact",
+    )
+    review_codebase.add_argument(
+        "--symbol-index-ref",
+        required=True,
+        help="instance-relative path to a symbol-index JSON artifact",
+    )
+    review_codebase.add_argument(
+        "--scope-map-ref",
+        required=True,
+        help="instance-relative path to a scope-map JSON artifact (with embedded validation plan)",
+    )
+    review_codebase.add_argument(
+        "--risk-scan-ref",
+        required=True,
+        help="instance-relative path to a risk-scan JSON artifact",
+    )
+    review_codebase.add_argument(
+        "--unresolved-blocker",
+        action="append",
+        default=[],
+        help="unresolved blocker that gates the decision; repeatable",
+    )
+    review_codebase.add_argument("--format", choices=["text", "json"], default="text")
 
     finish_packet = sub.add_parser("build-finish-packet", help="write a finish packet separating completion from live approval")
     finish_packet.add_argument("--instance", required=True, help="Hisys instance root")
@@ -2863,6 +2964,18 @@ def main(argv: list[str] | None = None) -> int:
             request_id=args.request_id,
             inventory_ref=args.inventory_ref,
             symbol_index_ref=args.symbol_index_ref,
+            output_format=args.format,
+        )
+    if args.command == "review-codebase-analysis":
+        return _cmd_review_codebase_analysis(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            inventory_ref=args.inventory_ref,
+            symbol_index_ref=args.symbol_index_ref,
+            scope_map_ref=args.scope_map_ref,
+            risk_scan_ref=args.risk_scan_ref,
+            unresolved_blockers=args.unresolved_blocker,
             output_format=args.format,
         )
     if args.command == "build-finish-packet":

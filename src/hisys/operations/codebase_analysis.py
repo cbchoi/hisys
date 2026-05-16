@@ -1877,6 +1877,119 @@ def load_codebase_review_bundle(
     )
 
 
+SOURCE_INSPECTION_DECISION_JSON_FILENAME = "source-inspection-decision.json"
+SOURCE_INSPECTION_DECISION_MARKDOWN_FILENAME = "source-inspection-decision.md"
+
+
+def _render_source_inspection_decision_markdown(
+    decision: CodebaseSourceInspectionDecision,
+) -> str:
+    lines: list[str] = []
+    lines.append(
+        f"# Codebase Source-Inspection Decision — {decision.schema_id}"
+    )
+    lines.append("")
+    lines.append(
+        "This decision packet is review evidence, not an authorization. "
+        "Allowed decision values are `complete_for_human_review` and "
+        "`blocked_needs_more_evidence`; `approved`, `safe_to_deploy`, and "
+        "`ready_for_live_action` are explicitly out of scope for this packet."
+    )
+    lines.append("")
+    lines.append("## Verdict")
+    lines.append("")
+    lines.append(f"- decision: `{decision.decision}`")
+    lines.append(
+        f"- raw_source_content_persisted: {decision.raw_source_content_persisted}"
+    )
+    lines.append(f"- action_authorized: {decision.action_authorized}")
+    lines.append(f"- external_call_made: {decision.external_call_made}")
+    lines.append(f"- mutation_performed: {decision.mutation_performed}")
+    lines.append(
+        "- publication_or_live_action_approved: "
+        f"{decision.publication_or_live_action_approved}"
+    )
+    lines.append("")
+    lines.append("## Missing evidence")
+    lines.append("")
+    if decision.missing_evidence:
+        for name in decision.missing_evidence:
+            lines.append(f"- `{name}`")
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    lines.append("## Validation findings")
+    lines.append("")
+    if decision.validation_findings:
+        for finding in decision.validation_findings:
+            lines.append(f"- {finding}")
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    lines.append("## Unresolved blockers")
+    lines.append("")
+    if decision.unresolved_blockers:
+        for blocker in decision.unresolved_blockers:
+            lines.append(f"- {blocker}")
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_codebase_source_inspection_decision(
+    *,
+    instance_root: Path,
+    date: str,
+    request_id: str,
+    decision: CodebaseSourceInspectionDecision,
+) -> dict[str, object]:
+    """Persist a codebase source-inspection decision as JSON + Markdown.
+
+    The artifact joins the same four-file runtime-boundary bundle the M15..M18
+    writers produce under
+    `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/`. The
+    Markdown preamble explicitly states the artifact is review evidence and
+    enumerates the two allowed decision values so a reviewer reading the
+    artifact in isolation cannot misread it as an authorization signal.
+    """
+
+    _validate_slug("date", date, _DATE_PATTERN)
+    _validate_slug("request_id", request_id, _REQUEST_ID_PATTERN)
+
+    rel_dir = f"{INVENTORY_RUNTIME_PREFIX}/{date}/{request_id}"
+    out_dir = Path(instance_root) / rel_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    json_rel = f"{rel_dir}/{SOURCE_INSPECTION_DECISION_JSON_FILENAME}"
+    md_rel = f"{rel_dir}/{SOURCE_INSPECTION_DECISION_MARKDOWN_FILENAME}"
+    json_path = Path(instance_root) / json_rel
+    md_path = Path(instance_root) / md_rel
+
+    payload = decision.model_dump(mode="json")
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_path.write_text(
+        _render_source_inspection_decision_markdown(decision), encoding="utf-8"
+    )
+
+    return {
+        "schema_id": decision.schema_id,
+        "decision": decision.decision,
+        "json_ref": json_rel,
+        "markdown_ref": md_rel,
+        "raw_source_content_persisted": decision.raw_source_content_persisted,
+        "action_authorized": decision.action_authorized,
+        "external_call_made": decision.external_call_made,
+        "mutation_performed": decision.mutation_performed,
+        "publication_or_live_action_approved": (
+            decision.publication_or_live_action_approved
+        ),
+    }
+
+
 def _aggregate_validation_findings(
     *,
     inventory: CodebaseInventory | None,
@@ -2022,6 +2135,8 @@ __all__ = [
     "RiskBoundaryFinding",
     "SCOPE_MAP_ARTIFACT_FILENAME",
     "SCOPE_MAP_MARKDOWN_FILENAME",
+    "SOURCE_INSPECTION_DECISION_JSON_FILENAME",
+    "SOURCE_INSPECTION_DECISION_MARKDOWN_FILENAME",
     "ScopeValidationPlan",
     "SkippedPath",
     "SymbolClass",
@@ -2043,5 +2158,6 @@ __all__ = [
     "write_codebase_inventory",
     "write_codebase_risk_scan",
     "write_codebase_scope_map",
+    "write_codebase_source_inspection_decision",
     "write_python_symbol_index",
 ]
