@@ -753,8 +753,130 @@ def build_python_symbol_index(
     )
 
 
+class CodebaseScopeProfile(BaseModel):
+    """Static contract that names a reviewable scope of the Hisys codebase.
+
+    A scope profile is pure data: it names the scope (`scope_id`), explains
+    why it exists (`description`), and lists the repo-relative entry files,
+    focused test files, and controlled docs that govern it. M17.1 introduces
+    the registry; M17.2 consumes profiles to assemble a scope map from the
+    deterministic inventory and symbol-index artifacts. The profile itself
+    performs no source content read, no live action, and no mutation.
+    """
+
+    schema_id: str = "hisys.codebase.scope_profile"
+    scope_id: str
+    description: str = ""
+    entry_files: list[str] = Field(default_factory=list)
+    expected_tests: list[str] = Field(default_factory=list)
+    docs_refs: list[str] = Field(default_factory=list)
+
+
+# Static scope-profile registry. Profiles are stored in scope_id-sorted order
+# so list_codebase_scope_profiles() is deterministic without re-sorting at
+# call time. Adding a scope requires updating this tuple and the matching
+# docs/traceability rows in M17.5.
+_CODEBASE_SCOPE_PROFILES: tuple[CodebaseScopeProfile, ...] = (
+    CodebaseScopeProfile(
+        scope_id="docs-traceability",
+        description=(
+            "Traceability gate covering the implemented-increment table, the "
+            "module-to-controlled-doc map, and the validate_traceability.py "
+            "guardrail script that pins every implementation row to a "
+            "controlled anchor."
+        ),
+        entry_files=[
+            "scripts/validate_traceability.py",
+        ],
+        expected_tests=[],
+        docs_refs=[
+            "docs/traceability/README.md",
+        ],
+    ),
+    CodebaseScopeProfile(
+        scope_id="domain-adapter",
+        description=(
+            "Domain-investigation adapter registry, structured spec records, "
+            "three-layer use cases, runtime artifact projection, and the "
+            "bridge contract between Hermes domain requests and Hisys "
+            "domain results."
+        ),
+        entry_files=[
+            "src/hisys/domain/adapters.py",
+            "src/hisys/domain/domain_adapters.py",
+            "src/hisys/domain/layers.py",
+            "src/hisys/domain/runtime.py",
+            "src/hisys/domain/specs.py",
+            "src/hisys/domain/use_cases.py",
+        ],
+        expected_tests=[
+            "tests/unit/test_domain_adapter_registry.py",
+            "tests/unit/test_domain_bridge_contract.py",
+            "tests/unit/test_domain_name_strategy.py",
+            "tests/unit/test_domain_postprocessing_guard.py",
+            "tests/unit/test_domain_runtime_artifacts.py",
+            "tests/unit/test_domain_three_layer_use_cases.py",
+            "tests/unit/test_structured_domain_adapter.py",
+        ],
+        docs_refs=[
+            "docs/traceability/README.md",
+        ],
+    ),
+    CodebaseScopeProfile(
+        scope_id="runtime-boundary",
+        description=(
+            "Runtime-boundary writers that persist Hisys artifacts under an "
+            "instance-rooted runtime-boundary subtree only, plus the "
+            "codebase-analysis inventory and symbol-index foundation that "
+            "downstream M17/M18 scope and risk artifacts will consume."
+        ),
+        entry_files=[
+            "src/hisys/audit/writer.py",
+            "src/hisys/operations/codebase_analysis.py",
+        ],
+        expected_tests=[
+            "tests/unit/test_codebase_analysis_inventory.py",
+            "tests/unit/test_codebase_symbol_index.py",
+            "tests/unit/test_domain_runtime_artifacts.py",
+        ],
+        docs_refs=[
+            "docs/public/codebase-analysis.md",
+        ],
+    ),
+)
+
+
+_CODEBASE_SCOPE_PROFILE_INDEX: dict[str, CodebaseScopeProfile] = {
+    profile.scope_id: profile for profile in _CODEBASE_SCOPE_PROFILES
+}
+
+
+def list_codebase_scope_profiles() -> list[CodebaseScopeProfile]:
+    """Return the static codebase scope profiles in deterministic order.
+
+    Profiles are returned as independent deep copies so a caller may mutate
+    its local list without leaking changes back into the registry contract.
+    """
+
+    return [profile.model_copy(deep=True) for profile in _CODEBASE_SCOPE_PROFILES]
+
+
+def get_codebase_scope_profile(scope_id: str) -> CodebaseScopeProfile:
+    """Return one codebase scope profile by ``scope_id`` or raise ``KeyError``.
+
+    Unknown scope IDs fail closed so M17.2..M17.4 consumers never silently
+    produce an empty scope map for a typo.
+    """
+
+    profile = _CODEBASE_SCOPE_PROFILE_INDEX.get(scope_id)
+    if profile is None:
+        raise KeyError(f"unknown codebase scope id: {scope_id!r}")
+    return profile.model_copy(deep=True)
+
+
 __all__ = [
     "CodebaseInventory",
+    "CodebaseScopeProfile",
     "DEFAULT_EXCLUDED_DIRS",
     "DEFAULT_GENERATED_MARKERS",
     "DEFAULT_GENERATED_SUFFIXES",
@@ -769,6 +891,8 @@ __all__ = [
     "SymbolParseError",
     "build_codebase_inventory",
     "build_python_symbol_index",
+    "get_codebase_scope_profile",
+    "list_codebase_scope_profiles",
     "write_codebase_inventory",
     "write_python_symbol_index",
 ]
