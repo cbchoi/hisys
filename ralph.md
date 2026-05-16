@@ -1929,6 +1929,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-17 — M18.4 risk-scan writer + `scan-codebase-boundaries` CLI (RED -> GREEN)
+
+- Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M18.4 (deterministic JSON + Markdown writer for `CodebaseRiskScan` and `scan-codebase-boundaries` CLI subcommand).
+- Controlled anchors checked: ralph.md M18.4 (lines 1808–1812); M18.1..M18.3 scanner machinery committed at `1f41568`/`2d3d463`/`ab2af81`; existing writer conventions for `write_codebase_inventory`/`write_python_symbol_index`/`write_codebase_scope_map` (slug validation, deterministic JSON ordering, runtime-boundary prefix, safety envelope).
+- Implementation: (a) added `RISK_SCAN_JSON_FILENAME` / `RISK_SCAN_MARKDOWN_FILENAME` constants and `_render_risk_scan_markdown(scan)` that emits an explicit "Findings are review evidence, not vulnerability or action verdicts" preamble plus provenance, category counts, parse errors, and per-finding details, all with `action_authorized=false` surfaced at the scan and finding level. (b) added `write_codebase_risk_scan(*, instance_root, date, request_id, scan)` reusing `_validate_slug`, `_DATE_PATTERN`, `_REQUEST_ID_PATTERN`, and `INVENTORY_RUNTIME_PREFIX` so the artifact coexists with the inventory/symbol-index/scope-map under the same `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` bundle; the result envelope records `external_call_made=false`, `mutation_performed=false`, `publication_or_live_action_approved=false`, plus `action_authorized=false`. (c) added `_cmd_scan_codebase_boundaries` in the CLI that runs the M18.1..M18.3 scanner and persists the artifact. (d) added the `scan-codebase-boundaries` argparse subparser with `--repo`, `--instance`, `--date`, `--request-id`, optional `--scope`, and `--format` arguments. (e) extended `tests/unit/test_codebase_risk_boundary_scan.py` with four new tests: writer happy path (deterministic JSON, Markdown text includes "review evidence" and "vulnerability"), writer rejects traversal in date/request_id, CLI subprocess writes the expected artifacts and surfaces representative categories, and CLI supports `--scope` to filter the walk.
+- Quality gate result: pass — `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py -q` -> 25 passed; combined `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py tests/unit/test_codebase_scope_map.py tests/unit/test_codebase_analysis_inventory.py tests/unit/test_codebase_symbol_index.py tests/unit/test_cli_runtime.py -q` -> 112 passed; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py --json` on the three touched files -> `hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The writer Markdown intentionally repeats the "review evidence, not vulnerability verdicts" caveat at the top of every persisted artifact so a reviewer reading the artifact in isolation cannot misread it as an authorization signal; this is the same boundary M18.5 docs will pin in the public-doc surface. (b) The CLI does not yet expose a finding-category filter (e.g., `--category model_llm_boundary`); the full scan is emitted and consumers can post-filter the JSON. M18.5 may add the filter if reviewers need it. (c) The risk-scan artifact joins the same runtime-boundary bundle as inventory/symbol-index/scope-map; downstream M19 review packet must treat the four-file bundle as the full evidence set when scoring artifact completeness.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 88% for continuing into M18.5 (DOC/GATE docs + traceability + milestone FINISH packet + Section 10.2 milestone gate). M18.5 is a docs/control-only increment with no behavior change; the validation gate is the same Section 10.2 pattern that passed at M17.5.
+- Continue decision: continue locally to M18.5 within the tmux Ralph runtime budget.
+- Stop condition: none for the active increment loop.
+- Next task: M18.5 — DOC/GATE docs and traceability (and the milestone FINISH packet).
+- Commit: `2677484 feat: add risk boundary scan CLI`; this Reflection commit will follow as a separate docs/control increment.
+- Working tree: `ralph.md` modified for this Reflection entry; otherwise clean.
+
+Resume checkpoint:
+- Current HEAD: 2677484 feat: add risk boundary scan CLI
+- Working tree: `ralph.md` modified for M18.4 Reflection entry
+- Last completed milestone/task: M18.4 (risk-scan writer + CLI)
+- Current in-progress task: ralph.md Reflection commit for M18.4
+- RED observed: `PYTHONPATH=src python3 -m pytest tests/unit/test_codebase_risk_boundary_scan.py -q` failed at collection with `ImportError: cannot import name 'write_codebase_risk_scan'` before the writer was added
+- GREEN observed: focused risk-boundary suite -> 25 passed; combined risk-boundary + scope-map + inventory + symbol-index + cli-runtime -> 112 passed
+- Quality gate status: pass — focused pytest, traceability validator, secret scan (hit_count=0), `git diff --check` clean
+- Next command to run: commit this Reflection as `docs: record M18.4 risk scan writer reflection`; then start M18.5 Prepare.
+- Stop condition: none. Continue into M18.5.
+
 ### 2026-05-17 — M18.3 model/LLM and ByeSys categories (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Gate / Commit for Task M18.3 (extend the conservative AST scanner with `model_llm_boundary` and `byesys_generated_evidence` categories while preserving `action_authorized=false`).
