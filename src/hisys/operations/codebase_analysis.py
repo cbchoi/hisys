@@ -366,6 +366,7 @@ class SymbolFunction(BaseModel):
     line_end: int
     is_async: bool = False
     parameters: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
 
 class SymbolClass(BaseModel):
@@ -432,6 +433,35 @@ def _parameter_names(args: ast.arguments) -> list[str]:
     return names
 
 
+def _classify_function_tags(
+    node: ast.AsyncFunctionDef | ast.FunctionDef,
+) -> list[str]:
+    tags: list[str] = []
+    if node.name.startswith("test_"):
+        tags.append("pytest_test")
+    if node.name.startswith("_cmd_"):
+        tags.append("cli_handler")
+    if _function_builds_argparse_parser(node):
+        tags.append("parser_builder")
+    tags.sort()
+    return tags
+
+
+def _function_builds_argparse_parser(
+    node: ast.AsyncFunctionDef | ast.FunctionDef,
+) -> bool:
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Call):
+            continue
+        callee = child.func
+        if isinstance(callee, ast.Attribute) and callee.attr == "ArgumentParser":
+            if isinstance(callee.value, ast.Name) and callee.value.id == "argparse":
+                return True
+        if isinstance(callee, ast.Name) and callee.id == "ArgumentParser":
+            return True
+    return False
+
+
 def _function_node_to_symbol(
     node: ast.AsyncFunctionDef | ast.FunctionDef,
 ) -> SymbolFunction:
@@ -442,6 +472,7 @@ def _function_node_to_symbol(
         line_end=end_line,
         is_async=isinstance(node, ast.AsyncFunctionDef),
         parameters=_parameter_names(node.args),
+        tags=_classify_function_tags(node),
     )
 
 

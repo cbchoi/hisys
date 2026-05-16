@@ -241,6 +241,63 @@ def test_symbol_index_records_parse_errors_as_evidence(tmp_path: Path):
     assert twice.model_dump() == index.model_dump()
 
 
+def test_symbol_index_classifies_cli_parser_and_pytest_functions(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "cli.py").write_text(
+        "import argparse\n"
+        "\n"
+        "def _make_parser():\n"
+        "    parser = argparse.ArgumentParser(prog='demo')\n"
+        "    parser.add_argument('--name')\n"
+        "    return parser\n"
+        "\n"
+        "def _cmd_demo(args):\n"
+        "    return args.name\n"
+        "\n"
+        "def main():\n"
+        "    parser = _make_parser()\n"
+        "    args = parser.parse_args()\n"
+        "    return _cmd_demo(args)\n",
+        encoding="utf-8",
+    )
+    (repo / "test_demo.py").write_text(
+        "def test_alpha():\n    assert True\n"
+        "\n"
+        "def helper():\n    return 1\n"
+        "\n"
+        "class TestThing:\n"
+        "    def test_method(self):\n"
+        "        assert True\n"
+        "    def helper(self):\n"
+        "        return 0\n",
+        encoding="utf-8",
+    )
+
+    index = build_python_symbol_index(repo_root=repo)
+
+    cli = next(m for m in index.modules if m.path == "cli.py")
+    fn_tags = {fn.name: fn.tags for fn in cli.functions}
+    assert fn_tags["_make_parser"] == ["parser_builder"]
+    assert fn_tags["_cmd_demo"] == ["cli_handler"]
+    assert fn_tags["main"] == []
+    # Tags are sorted for determinism.
+    for fn in cli.functions:
+        assert fn.tags == sorted(fn.tags)
+
+    tests_mod = next(m for m in index.modules if m.path == "test_demo.py")
+    test_tags = {fn.name: fn.tags for fn in tests_mod.functions}
+    assert test_tags["test_alpha"] == ["pytest_test"]
+    assert test_tags["helper"] == []
+
+    # Test methods inside a TestXxx class are also tagged as pytest tests so a
+    # downstream reviewer can locate them without re-walking class hierarchies.
+    test_class = next(cls for cls in tests_mod.classes if cls.name == "TestThing")
+    method_tags = {m.name: m.tags for m in test_class.methods}
+    assert method_tags["test_method"] == ["pytest_test"]
+    assert method_tags["helper"] == []
+
+
 def test_symbol_index_supports_analysis_scope(tmp_path: Path):
     repo = tmp_path / "repo"
     repo.mkdir()
