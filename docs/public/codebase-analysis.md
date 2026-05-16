@@ -131,6 +131,77 @@ The optional `--scope` flag restricts the walk to a repository-relative
 subdirectory; entries in the index are still keyed relative to the
 repository root.
 
+## Increment 3 — Scope map and validation plan
+
+`hisys.operations.codebase_analysis.list_codebase_scope_profiles` declares
+a static registry of named scopes (`docs-traceability`, `domain-adapter`,
+`runtime-boundary`) and the entry files, focused tests, and controlled
+docs that govern each scope. `build_codebase_scope_map` consumes already-
+loaded `CodebaseInventory` and `PythonSymbolIndex` records and partitions
+each profile's declared refs into present-vs-missing lists, filters the
+symbol-index modules and parse errors per scope, and isolates traceability
+references under the `docs/traceability/` subtree.
+`build_codebase_validation_plan` then derives a deterministic
+`CodebaseValidationPlan` from the scope map. Each scope receives the
+appropriate `git_diff_check`, `traceability`, `focused_tests`,
+`secret_scan`, and `full_tests` commands, with `requires_full_suite=true`
+escalation when missing entry files or expected tests indicate drift or
+when the scope crosses subsystems (currently `runtime-boundary`).
+
+### Captured fields
+
+- `scope_map.scope_entries[].scope_id`, `description`
+- `scope_map.scope_entries[].files_in_scope` / `missing_entry_files`
+- `scope_map.scope_entries[].tests_in_scope` / `missing_expected_tests`
+- `scope_map.scope_entries[].docs_in_scope` / `missing_docs_refs`
+- `scope_map.scope_entries[].traceability_refs_in_scope`
+- `scope_map.scope_entries[].modules` (subset of the symbol index) plus
+  per-scope `module_count`, `function_count`, `class_count`,
+  `import_count`, and `parse_errors_in_scope`
+- `validation_plan.scope_plans[].requires_full_suite`
+- `validation_plan.scope_plans[].commands[]` with `kind`, `argv`, and
+  `purpose`
+
+### Safety invariants
+
+- `raw_source_content_persisted=false` is asserted on every
+  `CodebaseScopeMap` and surfaced on the writer return value.
+- The writer emits artifacts only under the caller's instance root at
+  `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/scope-map.json`
+  and `scope-map.md`. `date` and `request_id` reuse the inventory slug
+  validation, rejecting traversal segments so the writer cannot escape
+  the runtime-boundary subtree.
+- `resolve_instance_runtime_ref` rejects empty refs, absolute paths,
+  `..` traversal segments, and symlinks whose real target escapes the
+  instance root. The `build-codebase-map` CLI resolves the supplied
+  `--inventory-ref` and `--symbol-index-ref` through this chokepoint
+  before reading any artifact JSON.
+- The scope-map and validation-plan synthesizers are pure data
+  transforms over already-loaded `CodebaseInventory` and
+  `PythonSymbolIndex` records — they make no source content read, no
+  live action, and no mutation.
+- The writer return value records `external_call_made=false`,
+  `mutation_performed=false`, and `publication_or_live_action_approved=false`.
+
+### Command
+
+```bash
+PYTHONPATH=src python3 -m hisys.cli.main build-codebase-map \
+  --instance /tmp/hisys-codebase-analysis \
+  --date 20260517 \
+  --request-id REQ-CODEBASE-001 \
+  --inventory-ref runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-001/inventory.json \
+  --symbol-index-ref runtime-boundary/codebase-analysis/20260517/REQ-CODEBASE-001/symbol-index.json \
+  --format json
+```
+
+The CLI expects the inventory and symbol-index artifacts to already exist
+under the instance root (write them first via `build-codebase-inventory`
+and `build-code-symbol-index`). All three artifacts coexist under the
+same `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` bundle
+and downstream M19/M20 consumers should treat them as a single review
+bundle.
+
 ## Spec packet
 
 The codebase-analysis surface is governed by a Hisys spec-first packet:
@@ -147,13 +218,14 @@ boundary. The matching `FINISH-HISYS-CODEBASE-ANALYSIS-001` finish
 packet is produced after the M15 inventory milestone passes its local
 gates; the symbol-index increment is recorded as
 `FINISH-HISYS-CODEBASE-ANALYSIS-002` after M16 completes its local
+gates; the scope-map-and-validation-plan increment is recorded as
+`FINISH-HISYS-CODEBASE-ANALYSIS-003` after M17 completes its local
 gates.
 
 ## What is intentionally out of scope
 
-Increments 1 and 2 do not implement and do not authorize:
+Increments 1, 2, and 3 do not implement and do not authorize:
 
-- Scope-and-validation-plan synthesis (Increment 3 / M17).
 - Risk-boundary scanning (Increment 4 / M18).
 - Source-inspection decision packet (Increment 5 / M19).
 - `investigate-domain --domain codebase` bridge (Increment 6 / M20).
