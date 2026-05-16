@@ -1,5 +1,7 @@
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -9,6 +11,9 @@ from hisys.operations.codebase_analysis import (
     build_codebase_inventory,
     write_codebase_inventory,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src"
 
 
 def _seed_fixture_repo(repo: Path) -> None:
@@ -220,3 +225,127 @@ def test_write_codebase_inventory_rejects_traversal_in_request_id(tmp_path: Path
                 request_id="REQ-CODEBASE-001",
                 inventory=inventory,
             )
+
+
+def _seed_cli_fixture_repo(repo: Path) -> None:
+    (repo / "src" / "pkg").mkdir(parents=True)
+    (repo / "src" / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "src" / "pkg" / "module.py").write_text(
+        "def hello():\n    return 'hi'\n", encoding="utf-8"
+    )
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_module.py").write_text(
+        "def test_hello():\n    assert True\n", encoding="utf-8"
+    )
+    (repo / ".git").mkdir()
+    (repo / ".git" / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
+
+
+def test_build_codebase_inventory_cli_writes_artifacts(tmp_path: Path):
+    fixture_repo = tmp_path / "fixture_repo"
+    fixture_repo.mkdir()
+    _seed_cli_fixture_repo(fixture_repo)
+    instance = tmp_path / "instance"
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{SRC_ROOT}{os.pathsep}{env.get('PYTHONPATH', '')}"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hisys.cli.main",
+            "build-codebase-inventory",
+            "--repo",
+            str(fixture_repo),
+            "--instance",
+            str(instance),
+            "--date",
+            "20260516",
+            "--request-id",
+            "REQ-CODEBASE-001",
+            "--format",
+            "json",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, (
+        f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
+    )
+    payload = json.loads(completed.stdout)
+    assert payload["schema_id"] == "hisys.codebase.inventory"
+    assert payload["raw_source_content_persisted"] is False
+    assert payload["external_call_made"] is False
+    assert payload["mutation_performed"] is False
+    assert payload["publication_or_live_action_approved"] is False
+    assert payload["json_ref"] == (
+        "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/inventory.json"
+    )
+    assert payload["markdown_ref"] == (
+        "runtime-boundary/codebase-analysis/20260516/REQ-CODEBASE-001/inventory.md"
+    )
+
+    json_path = instance / payload["json_ref"]
+    md_path = instance / payload["markdown_ref"]
+    assert json_path.is_file()
+    assert md_path.is_file()
+
+    loaded = json.loads(json_path.read_text(encoding="utf-8"))
+    assert loaded["files"] == sorted(loaded["files"])
+    assert "src/pkg/module.py" in loaded["files"]
+    assert "tests/test_module.py" in loaded["files"]
+    # .git is a default-excluded directory
+    assert any(".git" in entry for entry in loaded["excluded_paths"])
+
+
+def test_build_codebase_inventory_cli_supports_scope_filter(tmp_path: Path):
+    fixture_repo = tmp_path / "fixture_repo"
+    fixture_repo.mkdir()
+    _seed_cli_fixture_repo(fixture_repo)
+    instance = tmp_path / "instance"
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{SRC_ROOT}{os.pathsep}{env.get('PYTHONPATH', '')}"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hisys.cli.main",
+            "build-codebase-inventory",
+            "--repo",
+            str(fixture_repo),
+            "--instance",
+            str(instance),
+            "--date",
+            "20260516",
+            "--request-id",
+            "REQ-CODEBASE-002",
+            "--scope",
+            "src",
+            "--format",
+            "json",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, (
+        f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
+    )
+    payload = json.loads(completed.stdout)
+    json_path = instance / payload["json_ref"]
+    loaded = json.loads(json_path.read_text(encoding="utf-8"))
+    assert loaded["analysis_scope"] == "src"
+    # scope must filter to only files under src/
+    assert all(entry.startswith("src/") for entry in loaded["files"])
+    assert "src/pkg/module.py" in loaded["files"]
+    assert "tests/test_module.py" not in loaded["files"]

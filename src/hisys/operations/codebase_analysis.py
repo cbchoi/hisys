@@ -145,6 +145,22 @@ def build_codebase_inventory(
     if not root.is_dir():
         raise NotADirectoryError(f"repo_root is not a directory: {root}")
 
+    if analysis_scope is not None:
+        scope_path = (root / analysis_scope).resolve()
+        try:
+            scope_path.relative_to(root.resolve())
+        except ValueError as exc:  # scope escapes the repo root
+            raise ValueError(
+                f"analysis_scope {analysis_scope!r} resolves outside repo_root"
+            ) from exc
+        if not scope_path.is_dir():
+            raise NotADirectoryError(
+                f"analysis_scope {analysis_scope!r} is not a directory under repo_root"
+            )
+        walk_root = root / analysis_scope
+    else:
+        walk_root = root
+
     policy = path_policy or PathPolicy()
     excluded_dirs = set(policy.excluded_dirs)
     real_root = Path(os.path.realpath(root))
@@ -192,7 +208,7 @@ def build_codebase_inventory(
                 if is_generated:
                     counters["generated"] += 1
 
-    walk(root)
+    walk(walk_root)
 
     return CodebaseInventory(
         repo_root=str(root),

@@ -101,6 +101,10 @@ from ..operations.agent_workflow import (
     write_finish_packet,
     write_spec_first_run_packet,
 )
+from ..operations.codebase_analysis import (
+    build_codebase_inventory,
+    write_codebase_inventory,
+)
 from ..operations.backup import create_backup, restore_backup_dry_run
 from ..operations.health import collect_health_status
 from ..operations.release_readiness import QualityGateResult, build_release_readiness_report
@@ -1174,6 +1178,38 @@ def _cmd_build_spec_first_packet(
     return 0
 
 
+def _cmd_build_codebase_inventory(
+    *,
+    repo_root: Path,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    analysis_scope: str | None,
+    output_format: str,
+) -> int:
+    """Build a deterministic local codebase inventory and persist artifacts."""
+
+    inventory = build_codebase_inventory(
+        repo_root=repo_root,
+        analysis_scope=analysis_scope,
+    )
+    result = write_codebase_inventory(
+        instance_root=instance_root,
+        date=yyyymmdd,
+        request_id=request_id,
+        inventory=inventory,
+    )
+    if output_format == "json":
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(
+            "codebase inventory: "
+            f"schema={result['schema_id']} json={result['json_ref']} "
+            f"markdown={result['markdown_ref']}"
+        )
+    return 0
+
+
 def _cmd_build_finish_packet(
     *,
     instance_root: Path,
@@ -1545,6 +1581,17 @@ def _build_parser() -> argparse.ArgumentParser:
     spec_packet.add_argument("--gate-criterion", action="append", default=[], help="quality gate criterion; repeatable")
     spec_packet.add_argument("--human-approval-boundary", required=True, help="human gate boundary for consequential use")
     spec_packet.add_argument("--format", choices=["text", "json"], default="text")
+
+    codebase_inventory = sub.add_parser(
+        "build-codebase-inventory",
+        help="build a deterministic local codebase inventory and persist JSON/Markdown artifacts",
+    )
+    codebase_inventory.add_argument("--repo", required=True, help="local repository root to inventory")
+    codebase_inventory.add_argument("--instance", required=True, help="Hisys instance root for artifact output")
+    codebase_inventory.add_argument("--date", required=True, help="YYYYMMDD")
+    codebase_inventory.add_argument("--request-id", required=True, help="inventory request id slug, e.g. REQ-CODEBASE-001")
+    codebase_inventory.add_argument("--scope", default=None, help="optional repo-relative subdirectory to restrict the walk")
+    codebase_inventory.add_argument("--format", choices=["text", "json"], default="text")
 
     finish_packet = sub.add_parser("build-finish-packet", help="write a finish packet separating completion from live approval")
     finish_packet.add_argument("--instance", required=True, help="Hisys instance root")
@@ -2619,6 +2666,15 @@ def main(argv: list[str] | None = None) -> int:
             expected_artifacts=args.expected_artifact,
             gate_criteria=args.gate_criterion,
             human_approval_boundary=args.human_approval_boundary,
+            output_format=args.format,
+        )
+    if args.command == "build-codebase-inventory":
+        return _cmd_build_codebase_inventory(
+            repo_root=Path(args.repo),
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            analysis_scope=args.scope,
             output_format=args.format,
         )
     if args.command == "build-finish-packet":
