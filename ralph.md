@@ -47,7 +47,7 @@ The Hisys Ralph loop is successful when all applicable criteria are met:
 - [ ] Reflection updates this `ralph.md` with quality-gate result, potential issues, next-loop implications, and success-likelihood estimate.
 - [ ] Ralph loop continuation success likelihood remains at least 75%; otherwise the loop stops.
 - [ ] Each coherent task increment is committed locally when safe and authorized.
-- [ ] Remote push is considered only at milestone completion and remains a user-executed command.
+- [ ] Remote push runs automatically at milestone completion after the milestone/global gate passes, the working tree is clean, the current branch/upstream match the configured Hisys branch, and no force/credential/security action is required.
 - [ ] The loop stops when the configured runtime limit is reached.
 
 ## 2. Non-Delegable Safety Boundary
@@ -67,7 +67,7 @@ Ralph/Hermes must convert the following into user-run instructions instead of ex
 - Reset branches.
 - Force checkout over local changes.
 - Remove or recreate `.git` metadata.
-- Push to remotes.
+- Force-push, push to an unexpected remote/branch, push with a dirty working tree, or push that requires credential/security changes. A normal `git push origin feat/domain-adaptive-requirements-analysis` after a completed Hisys milestone is allowed by Section 10.3.
 - Publish, deploy, release, upload, or send externally.
 - Change credentials, tokens, keychains, SSH keys, auth files, or secret stores.
 - Change system firewall, package trust, sudoers, kernel, service manager, cron daemon, or gateway service security posture.
@@ -477,30 +477,28 @@ Acceptance:
 - `git diff --check` reports no whitespace errors.
 - `git status --short` is clean after commit.
 - Each new behavior has a RED test observed before production implementation.
-- If this gate completes a milestone, Ralph prepares but does not execute the user-run push command.
+- If this gate completes a milestone, Ralph executes the automatic milestone push procedure in Section 10.3 when its safety preconditions pass.
 
-### 10.3 Milestone Push Checkpoint
+### 10.3 Automatic Milestone Push Checkpoint
 
-After a Hisys milestone is complete:
+After a Hisys milestone is complete, Ralph/Hermes automatically pushes the completed milestone line when all safety preconditions pass. This is a controlled exception to the general non-delegable remote-action rule and applies only to the configured Hisys development branch.
+
+Preconditions:
 
 1. Confirm all milestone tasks have local commits.
 2. Run the Global Gate in Section 10.2.
 3. Confirm `git status --short` is clean.
-4. Prepare a user-executed push instruction.
-5. Do not start the next milestone until the user either confirms the push result or explicitly says to continue without pushing.
+4. Confirm the current branch is `feat/domain-adaptive-requirements-analysis`.
+5. Confirm the upstream is `origin/feat/domain-adaptive-requirements-analysis`.
+6. Confirm the push is a normal non-force push and does not require credential, key, remote, branch, history, or security changes.
 
-Required push instruction format:
+Automatic command:
 
-```text
-Action requires user execution.
-Reason: milestone is complete and remote push changes shared repository state.
-Risk: publishes local commits and may affect collaborators, CI, or release automation.
-Recommended command for user to run manually:
-  git push <remote> <branch>
-Expected safe result:
-  remote reports the branch was pushed successfully.
-After running it, reply with the output or confirmation so Ralph can continue.
+```bash
+git push origin feat/domain-adaptive-requirements-analysis
 ```
+
+Record the command result in the Reflection Log. If the push fails, if the branch/upstream differs, if the working tree is dirty, or if Git asks for credential/security/history/force-push action, stop and report the exact blocker instead of attempting recovery. Do not start the next milestone until either the automatic push succeeds or the blocker is explicitly resolved.
 
 ## 11. Commit Rule
 
@@ -521,9 +519,9 @@ Rules:
 - Do not commit secrets.
 - Do not commit generated heavy artifacts unless explicitly authorized.
 - Do not push after every task.
-- At milestone completion, run the milestone/global gate, ensure local commits are complete, then prepare a user-executed push instruction.
-- Remote push remains non-delegable: Ralph/Hermes must not execute `git push`; it must ask the user to run the exact command manually.
-- If commit or milestone push preparation would require risky Git state manipulation, stop and give user-run instructions.
+- At milestone completion, run the milestone/global gate, ensure local commits are complete, ensure the working tree is clean, then execute the automatic milestone push procedure in Section 10.3.
+- Automatic milestone push is allowed only for the configured Hisys upstream branch and only as a normal non-force push. Stop if the push would require force, credential/security changes, an unexpected remote/branch, or risky Git state manipulation.
+- If commit or milestone push would require risky Git state manipulation, stop and give user-run instructions.
 
 ## 12. Stop Conditions
 
@@ -531,7 +529,7 @@ Stop the Ralph loop and report to the user if any condition occurs:
 
 - A task lacks SRS/SDD/IDD/STD or user-instruction support.
 - Prepare finds missing prerequisite tasks that require replanning.
-- The task requires a non-delegable user-executed command.
+- The task requires a non-delegable user-executed command, except for the normal automatic milestone push permitted by Section 10.3.
 - The same task fails RED/GREEN validation three times.
 - `scripts/validate_traceability.py` fails.
 - `scripts/scan_secrets.py` reports `hit_count > 0`.
@@ -543,6 +541,7 @@ Stop the Ralph loop and report to the user if any condition occurs:
 - Success likelihood after Reflection is below 75%.
 - Runtime limit is reached.
 - Session/token/tool limit prevents a safe next increment.
+- Automatic milestone push fails or would require force push, unexpected remote/branch, credential/security changes, or history/risky Git manipulation.
 
 ## 13. Reporting Format
 
@@ -1929,6 +1928,15 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-17 — Automatic milestone push policy enabled
+
+- Phase completed: Prepare / Do for `ralph.md` control-policy update.
+- User instruction: automatic milestone push is desired; impact/ripple-effect questions should remain prediction-only and should not be committed, but that boundary is not a ban on pushing completed milestone commits.
+- `ralph.md` changes: Section 1 now treats milestone push as automatic after gates and clean Git state; Section 2 removes normal completed-milestone push from the non-delegable list while preserving force/unexpected/dirty/credential/security push blockers; Section 10.3 now defines the automatic push preconditions and command; Section 11 and Section 12 now stop only on unsafe or failed push conditions; Section 16 now points to the current M19.1 next task after the automatic M17/M18 push checkpoint.
+- Safety boundary: automatic push is limited to `git push origin feat/domain-adaptive-requirements-analysis` on the configured Hisys branch after the milestone/global gate passes and `git status --short` is clean. No force push, credential/security change, remote/branch change, history rewrite, or dirty-tree push is authorized.
+- Quality gate result: pass — Markdown fences balanced; required automatic-push/M19.1 markers present; `git diff --check` clean; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py` scanned_files=439 hit_count=0.
+- Next task: commit this control update, automatically push this control update and the completed local milestone commits, then start M19.1 Prepare in the next Ralph loop.
+
 ### 2026-05-17 — M18.5 docs/traceability + FINISH packet; M18 milestone complete
 
 - Phase completed: Prepare / Do / Gate / Commit for Task M18.5 (docs + traceability rows + `FINISH-HISYS-CODEBASE-ANALYSIS-004` packet); plus Section 10.2 milestone Global Gate for the full M18 milestone.
@@ -3002,26 +3010,27 @@ This block is informational for the next iteration. Ralph/Hermes does
 not execute `git push` itself.
 
 
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is now this `ralph.md` file. The codebase-analysis content from `revision_plan_v004.md` has been merged into Section 14 as M14..M21, with the original `revision_plan_v004.md` numbering deliberately renumbered to avoid collision with the completed Local DARS / ByeSys M13.
+The active authoritative `/rloo` queue is this `ralph.md` file. The codebase-analysis foundation has advanced through M18; the next implementation milestone is M19.
 
-Start with the spec-first precondition, not product code:
+First, if the branch is ahead of upstream after a completed milestone and all Section 10.3 preconditions pass, run the automatic milestone push:
 
-```text
-Task M14.1 — Build SPEC-HISYS-CODEBASE-ANALYSIS-001 spec-first packet.
+```bash
+git push origin feat/domain-adaptive-requirements-analysis
 ```
 
-After M14.1 passes its local gate and reflection is committed, continue to:
+Then start the next Ralph task:
 
 ```text
-Task M15.1 — RED/GREEN deterministic inventory excludes transient paths.
+Task M19.1 — RED/GREEN decision packet rejects incomplete artifact set.
 ```
 
-Do not start by editing production code. The first implementation action after the spec packet must be a failing test in `tests/unit/test_codebase_analysis_inventory.py` proving that deterministic inventory excludes transient/generated paths and that `build_codebase_inventory` does not yet exist.
+M19.1 must begin with a failing test in `tests/unit/test_codebase_source_inspection_decision.py` proving that a missing inventory/symbol/scope/risk artifact bundle yields `blocked_needs_more_evidence`. The allowed decision values remain only `complete_for_human_review` and `blocked_needs_more_evidence`; do not add `approved`, `safe_to_deploy`, or `ready_for_live_action`.
 
 Runtime boundary for this queue:
 
-- allowed: local repository reads, tests, docs/traceability edits, runtime-boundary artifacts under an explicit instance root, and local commits after green gates;
-- not allowed without explicit user-executed approval: remote push, publication/release/deploy, credential changes, external repository clone, live external network/browser/API actions, model calls, or raw source-content archival;
+- allowed: local repository reads, tests, docs/traceability edits, runtime-boundary artifacts under an explicit instance root, local commits after green gates, and normal automatic milestone push under Section 10.3;
+- not allowed without explicit user-executed approval: force push, unexpected remote/branch push, publication/release/deploy beyond Git push, credential changes, external repository clone, live external network/browser/API actions, model calls, or raw source-content archival;
 - formal Hisys status must remain separate from Hermes advisory synthesis when `investigate-domain` reports `needs_more_evidence`.
