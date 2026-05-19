@@ -13,16 +13,16 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 
 | Requirement ID | SDD element | STD testcase | Pytest anchor | Status |
 |---|---|---|---|---|
-| HISYS-FR-DARS-CP-001 | `DarsCriticPanelConfig`, config validator | HISYS-T-DARS-CP-001 | `test_dars_critic_panel_config_validates_two_advisory_roles` | test skeleton RED |
-| HISYS-FR-DARS-CP-002 | `DarsRoundPlan`, `DarsCriticTask`, edges | HISYS-T-DARS-CP-002 | `test_dars_round_plan_creates_independent_critic_tasks_before_synthesis` | test skeleton RED |
-| HISYS-FR-DARS-CP-003 | fixture critic executor, critique writer | HISYS-T-DARS-CP-003 | `test_dars_panel_runtime_writes_advisory_critique_artifacts` | test skeleton RED |
-| HISYS-FR-DARS-CP-004 | `DarsRoundTrace` writer | HISYS-T-DARS-CP-004 | `test_dars_panel_runtime_persists_round_trace_lineage` | test skeleton RED |
-| HISYS-FR-DARS-CP-005 | `DarsCritiqueSynthesis` | HISYS-T-DARS-CP-005 | `test_dars_critique_synthesis_is_advisory_and_preserves_role_provenance` | test skeleton RED |
-| HISYS-FR-DARS-CP-006 | execution mode policy | HISYS-T-DARS-CP-006 | `test_dars_round_plan_is_serial_compatible_with_bounded_parallel_policy` | test skeleton RED |
-| HISYS-FR-DARS-CP-007 | backend dispatch gate | HISYS-T-DARS-CP-007 | `test_dars_panel_blocks_external_backend_without_approval` | test skeleton RED |
-| HISYS-FR-DARS-CP-008 | advisory/human-decision fields | HISYS-T-DARS-CP-008 | `test_dars_panel_artifacts_preserve_advisory_human_decision_separation` | test skeleton RED |
-| HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence` | test skeleton RED |
-| HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate | HISYS-T-DARS-CP-010 | changed-file secret scan | pending verification |
+| HISYS-FR-DARS-CP-001 | `DarsCriticPanelConfig`, config validator | HISYS-T-DARS-CP-001 | `test_dars_critic_panel_config_validates_two_advisory_roles` | GREEN (MB-DARS-CP-T001) |
+| HISYS-FR-DARS-CP-002 | `DarsRoundPlan`, `DarsCriticTask`, edges | HISYS-T-DARS-CP-002 | `test_dars_round_plan_creates_independent_critic_tasks_before_synthesis` | GREEN (MB-DARS-CP-T001) |
+| HISYS-FR-DARS-CP-003 | fixture critic executor, critique writer | HISYS-T-DARS-CP-003 | `test_dars_panel_runtime_writes_advisory_critique_artifacts` | GREEN (MB-DARS-CP-T001) |
+| HISYS-FR-DARS-CP-004 | `DarsRoundTrace` writer | HISYS-T-DARS-CP-004 | `test_dars_panel_runtime_persists_round_trace_lineage` | GREEN (MB-DARS-CP-T001) |
+| HISYS-FR-DARS-CP-005 | `DarsCritiqueSynthesis` | HISYS-T-DARS-CP-005 | `test_dars_critique_synthesis_is_advisory_and_preserves_role_provenance` | GREEN (MB-DARS-CP-T001) |
+| HISYS-FR-DARS-CP-006 | execution mode policy | HISYS-T-DARS-CP-006 | `test_dars_round_plan_is_serial_compatible_with_bounded_parallel_policy` | GREEN (MB-DARS-CP-T001) |
+| HISYS-FR-DARS-CP-007 | backend dispatch gate | HISYS-T-DARS-CP-007 | `test_dars_panel_blocks_external_backend_without_approval` | GREEN (MB-DARS-CP-T001) |
+| HISYS-FR-DARS-CP-008 | advisory/human-decision fields | HISYS-T-DARS-CP-008 | `test_dars_panel_artifacts_preserve_advisory_human_decision_separation` | GREEN (MB-DARS-CP-T001) |
+| HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence` | GREEN (MB-DARS-CP-T001) |
+| HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate | HISYS-T-DARS-CP-010 | changed-file secret scan | GREEN (MB-DARS-CP-T001: `scripts/scan_secrets.py` hit_count=0 over 477 files) |
 
 ## Existing baseline links
 
