@@ -1946,6 +1946,34 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M-CP-EXT-9 per-task duration_ms Prepare
+
+- Phase completed: Prepare / document-RED / Gate for `M-CP-EXT-9`, the per-task `duration_ms` schema increment derived from the distinct `started_at` and `completed_at` readings introduced by M-CP-EXT-8. This is a docs/bootstrap-only checkpoint; no production code or RED tests were written in this iteration.
+- Controlled anchors checked: branch `dars` HEAD `aa707ca feat: record per-task DARS boundary timing`; `docs/plans/dars-critic-panel-mcp-ext-8-implementation-tasks.md` next increment candidate for optional per-task `duration_ms`; current `ExecutionBoundaryRecord` dataclass in `src/hisys/agents/dars_panel.py`; current focused CLI/panel/adapters/tool-execution/graph regression baseline.
+- Document-RED artifact: created `docs/plans/dars-critic-panel-mcp-ext-9-implementation-tasks.md`. The plan pins a derived integer `duration_ms` field, computation from raw timezone-aware clock datetimes before timestamp formatting, non-negative clamping, no CLI argument/config change, serial execution preservation, no external dispatch, and traceability update requirements.
+- Bootstrap artifacts added/updated: milestone-bootstrap current package bumped to `v0.0.4` with plan, task YAML, testcase YAML, quality gate, readiness decision, Hisys request/result, and validation log.
+- Local advisory readiness: `RALPH_START_READY_WITH_CONTROLS`.
+- Formal Hisys result: `not_run_in_this_bootstrap`; this bootstrap records local advisory readiness only.
+- Next safe task: `MB-DARS-CP-EXT9-T001`, write and observe the RED test `tests/unit/test_dars_critic_panel_tool_execution_runtime.py::test_panel_runtime_records_duration_ms_per_task` before any production runtime/schema code change.
+- RED observed: n/a for this Prepare-only increment. The planned first RED is expected to fail because persisted boundary records do not contain `duration_ms`.
+- GREEN observed: n/a for production code; baseline focused regression before document write was `46 passed`.
+- Quality gate result: pass — focused CLI/panel/adapters/tool-execution/graph regression `46 passed`; traceability validator OK; secret scan `hit_count=0`; structural bootstrap check passed; `git diff --check` clean.
+- Potential issues / open items: (a) `duration_ms` is a persisted schema addition and must be reflected in traceability in the implementation increment. (b) Formatted timestamps are second-truncated, so duration must be computed from raw `datetime` objects, not parsed from `started_at` / `completed_at` strings. (c) Backward-clock behavior is pinned as clamped to `0` for advisory record stability.
+- Continue decision: after committing this Prepare package, continue into M-CP-EXT-9 Task 1 RED only if the next instruction asks for implementation progress.
+- Stop condition: document-RED/Prepare checkpoint reached; production behavior remains gated by future RED test.
+- Commit pending: `docs: prepare DARS boundary duration increment`.
+
+Resume checkpoint:
+- Current HEAD: aa707ca feat: record per-task DARS boundary timing
+- Working tree: M-CP-EXT-9 plan, milestone-bootstrap v0.0.4 artifacts, and `ralph.md` modified until committed
+- Last completed milestone/task: M-CP-EXT-9 Prepare/document-RED plan
+- Current in-progress task: commit M-CP-EXT-9 Prepare package
+- RED observed: n/a for Prepare-only; future RED command is `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_tool_execution_runtime.py::test_panel_runtime_records_duration_ms_per_task -q`
+- GREEN observed: n/a for production code; baseline focused regression 46 passed
+- Quality gate status: pass — see validation log v0.0.4
+- Next command to run: local commit, then start `MB-DARS-CP-EXT9-T001` only on the next implementation-progress instruction
+- Stop condition: none after local commit; production code remains gated by future RED test
+
 ### 2026-05-20 — M-CP-EXT-8 per-task distinct timing (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Refactor / Gate for `M-CP-EXT-8` from `docs/plans/dars-critic-panel-mcp-ext-8-implementation-tasks.md` (committed in this same tmux iteration at `43b2e9d docs: prepare per-task DARS timing increment`). The increment moves the existing M-CP-EXT-5 `self._clock` seam read from a single round-level call to two per-task calls inside `DarsCriticPanelRuntime.run_round` so each `ExecutionBoundaryRecord` carries distinct `started_at` and `completed_at` values. No constructor signature change, no new schema field, no CLI flag, no parallel execution.

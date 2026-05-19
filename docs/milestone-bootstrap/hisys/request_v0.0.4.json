@@ -1,0 +1,25 @@
+{
+  "schema_id": "hisys.milestone_bootstrap.hisys_request",
+  "version": "v0.0.4",
+  "created": "2026-05-20",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "profile": "develop",
+  "baseline_head": "aa707ca",
+  "request_type": "local_advisory_readiness_without_formal_hisys_run",
+  "focus": "M-CP-EXT-9 per-task duration_ms implementation readiness",
+  "evidence_refs": [
+    "docs/plans/dars-critic-panel-mcp-ext-9-implementation-tasks.md",
+    "docs/milestone-bootstrap/reports/milestone_plan_v0.0.4.md",
+    "docs/milestone-bootstrap/tasks/milestone_tasks_v0.0.4.yaml",
+    "docs/milestone-bootstrap/testcases/milestone_testcases_v0.0.4.yaml",
+    "docs/milestone-bootstrap/gates/quality_gate_v0.0.4.md"
+  ],
+  "blocked_actions": [
+    "remote_push",
+    "live_external_dispatch",
+    "credential_mutation",
+    "publication_or_deployment",
+    "destructive_git",
+    "tmux_or_background_agent_spawn"
+  ]
+}

@@ -1,0 +1,83 @@
+schema_id: hisys.milestone_bootstrap.tasks
+version: v0.0.4
+profile: develop
+tasks:
+- id: MB-DARS-CP-EXT9-T001
+  milestone: MB-DARS-CP-EXT9-M1
+  title: Write RED test for persisted per-task duration_ms
+  status: ready
+  type: tdd_red
+  source_plan: docs/plans/dars-critic-panel-mcp-ext-9-implementation-tasks.md
+  paths:
+    read:
+    - docs/plans/dars-critic-panel-mcp-ext-9-implementation-tasks.md
+    - src/hisys/agents/dars_panel.py
+    - tests/unit/test_dars_critic_panel_tool_execution_runtime.py
+    write:
+    - tests/unit/test_dars_critic_panel_tool_execution_runtime.py
+  validation:
+    focused:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_tool_execution_runtime.py::test_panel_runtime_records_duration_ms_per_task -q
+  gates:
+  - red_failure_must_be_missing_duration_ms_field
+  - no_production_code_before_red
+  - no_tmux_or_background_agent
+- id: MB-DARS-CP-EXT9-T002
+  milestone: MB-DARS-CP-EXT9-M1
+  title: Implement minimal duration_ms derivation in ExecutionBoundaryRecord
+  status: pending_after_T001
+  type: tdd_green
+  paths:
+    write:
+    - src/hisys/agents/dars_panel.py
+  validation:
+    focused:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_tool_execution_runtime.py::test_panel_runtime_records_duration_ms_per_task -q
+    regression:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_tool_execution_runtime.py -q
+  gates:
+  - derived_from_raw_clock_datetimes
+  - non_negative_integer_duration
+  - advisory_only_invariants_preserved
+- id: MB-DARS-CP-EXT9-T003
+  milestone: MB-DARS-CP-EXT9-M2
+  title: Characterize backward-clock duration as clamped to zero
+  status: pending_after_T002
+  type: tdd_safety_characterization
+  paths:
+    write:
+    - tests/unit/test_dars_critic_panel_tool_execution_runtime.py
+  validation:
+    focused:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_tool_execution_runtime.py::test_panel_runtime_clamps_negative_duration_ms_to_zero -q
+- id: MB-DARS-CP-EXT9-T004
+  milestone: MB-DARS-CP-EXT9-M3
+  title: Update traceability and Ralph reflection for M-CP-EXT-9
+  status: pending_after_T003
+  type: document_green
+  paths:
+    write:
+    - docs/traceability/dars-critic-panel-runtime-traceability.md
+    - docs/traceability/README.md
+    - ralph.md
+  validation:
+    focused:
+    - python3 scripts/validate_traceability.py
+    safety:
+    - python3 scripts/scan_secrets.py
+    - git diff --check
+- id: MB-DARS-CP-EXT9-T005
+  milestone: MB-DARS-CP-EXT9-M3
+  title: Run full focused gate and commit M-CP-EXT-9 locally
+  status: pending_after_T004
+  type: quality_gate_commit
+  validation:
+    focused:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q
+    safety:
+    - python3 scripts/validate_traceability.py
+    - python3 scripts/scan_secrets.py
+    - git diff --check
+  gates:
+  - local_commit_only
+  - no_remote_push_without_human_gate

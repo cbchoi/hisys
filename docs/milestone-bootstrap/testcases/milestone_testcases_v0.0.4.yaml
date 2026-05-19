@@ -1,0 +1,35 @@
+schema_id: hisys.milestone_bootstrap.testcases
+version: v0.0.4
+profile: develop
+testcases:
+- id: MB-DARS-CP-EXT9-TC001
+  name: boundary_record_duration_ms_persisted
+  requirement_refs:
+  - HISYS-FR-DARS-CP-003
+  - HISYS-FR-DARS-CP-004
+  - HISYS-NFR-DARS-CP-001
+  planned_test: tests/unit/test_dars_critic_panel_tool_execution_runtime.py::test_panel_runtime_records_duration_ms_per_task
+  expected_red: persisted boundary record JSON lacks duration_ms
+  expected_green: duration_ms is an integer derived from per-task raw clock readings
+- id: MB-DARS-CP-EXT9-TC002
+  name: boundary_record_negative_duration_clamped
+  requirement_refs:
+  - HISYS-NFR-DARS-CP-001
+  planned_test: tests/unit/test_dars_critic_panel_tool_execution_runtime.py::test_panel_runtime_clamps_negative_duration_ms_to_zero
+  expected_result: backward clock records duration_ms=0
+- id: MB-DARS-CP-EXT9-TC003
+  name: focused_panel_cli_regression
+  planned_command: PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q
+  expected_result: existing focused DARS panel/CLI suites remain green
+- id: MB-DARS-CP-EXT9-TC004
+  name: traceability_validation
+  planned_command: python3 scripts/validate_traceability.py
+  expected_result: OK
+- id: MB-DARS-CP-EXT9-TC005
+  name: secret_scan
+  planned_command: python3 scripts/scan_secrets.py
+  expected_result: hit_count=0
+- id: MB-DARS-CP-EXT9-TC006
+  name: whitespace_diff_check
+  planned_command: git diff --check
+  expected_result: clean
