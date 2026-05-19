@@ -1946,6 +1946,34 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M-CP-EXT-6 read-only run-dars-panel CLI Prepare
+
+- Phase completed: Prepare / document-RED / Gate for `M-CP-EXT-6`, the read-only `hisys run-dars-panel` CLI deferred by the parent runtime-next plan and the M-CP-EXT-5/M-CP-EXT-7 reflection entries.
+- Controlled anchors checked: `docs/plans/dars-critic-panel-platform-runtime-next.md` line 173 deferred CLI recommendation; `docs/plans/dars-critic-panel-mcp-ext-7-implementation-tasks.md` "Next increment candidates" entry for M-CP-EXT-6; `src/hisys/agents/dars_panel.py`; `src/hisys/agents/dars_panel_graph.py`; `src/hisys/cli/main.py`; focused panel regression suites.
+- Baseline observed: branch `dars`, HEAD `2f59e51 feat: mark unresolved adapter class on DARS boundary records`, working tree clean at entry, branch ahead of `origin/dars` by 14 commits. Focused DARS panel regression before the plan write: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q` -> 43 passed.
+- Document-RED artifact: created `docs/plans/dars-critic-panel-mcp-ext-6-implementation-tasks.md`. The plan pins the command name (`run-dars-panel`), local JSON panel-config format, required candidate/evidence refs, read-only fixture default, no external-dispatch enable flag, JSON/text summaries, typed blocked outcome behavior for external-style backends, serial execution despite bounded-parallel metadata, RED tests in a new `tests/unit/test_dars_critic_panel_cli.py`, documentation/traceability updates, full quality gate commands, and stop conditions.
+- RED observed: n/a for this Prepare-only increment. The plan defines the first future RED as `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_persists_fixture_round_and_prints_json -q`, expected to fail because `run-dars-panel` is not yet an argparse subcommand.
+- GREEN observed: n/a for production code; no production code changed in this Prepare-only increment.
+- Quality gate result: pass — focused DARS panel regression 43 passed before the document write; `python3 scripts/validate_traceability.py` -> `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`; `python3 scripts/scan_secrets.py` -> `secret_scan: scanned_files=501 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) M-CP-EXT-6 is now intentionally planned after M-CP-EXT-7 in commit order because the unresolved-adapter literal was completed first; implementation numbering remains canonical by the plan filename and reflection entries. (b) The plan allows config-embedded `approval_ref` values to flow into the existing dataclass, but does not add any CLI flag that enables external dispatch; the default fixture policy still blocks `external-*` backends. (c) Future implementation must decide whether config loader errors should be plain `ValueError` propagation or converted into a bounded CLI error message; that is intentionally left to the RED test cycle if invalid-config coverage is added.
+- `ralph.md` changes: this Reflection entry only.
+- Success likelihood: 84% for the next implementation iteration. The CLI surface is small and reuses `DarsCriticPanelRuntime`, but touches the large `src/hisys/cli/main.py`, so the next iteration should stay limited to the planned RED/GREEN CLI wrapper and blocked-external characterization.
+- Continue decision: continue after this local docs/control commit into the M-CP-EXT-6 implementation RED test, unless the next iteration budget is insufficient.
+- Stop condition: document-RED/Prepare checkpoint reached; no production behavior should be changed until the planned RED CLI test is written and observed failing.
+- Commit pending: `docs: prepare read-only DARS panel CLI increment` — bundles `docs/plans/dars-critic-panel-mcp-ext-6-implementation-tasks.md` and this `ralph.md` Reflection entry.
+- Working tree before commit: `docs/plans/dars-critic-panel-mcp-ext-6-implementation-tasks.md` (new) and `ralph.md` (modified for this Reflection entry).
+
+Resume checkpoint:
+- Current HEAD: 2f59e51 feat: mark unresolved adapter class on DARS boundary records
+- Working tree: `docs/plans/dars-critic-panel-mcp-ext-6-implementation-tasks.md` new; `ralph.md` modified for this Reflection entry
+- Last completed milestone/task: M-CP-EXT-6 Prepare/document-RED plan
+- Current in-progress task: commit `docs: prepare read-only DARS panel CLI increment`
+- RED observed: n/a for Prepare-only; future RED command is named above
+- GREEN observed: n/a for production code; baseline focused DARS panel regression 43 passed
+- Quality gate status: pass — traceability validator OK, secret scan hit_count=0, `git diff --check` clean
+- Next command to run: stage only the M-CP-EXT-6 Prepare files and commit; then start M-CP-EXT-6 implementation from Task 1 RED
+- Stop condition: none after commit; production code still gated by future RED test
+
 ### 2026-05-20 — M-CP-EXT-7 unresolved adapter class literal (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Refactor / Gate for `M-CP-EXT-7` from `docs/plans/dars-critic-panel-mcp-ext-7-implementation-tasks.md`, authored in this same iteration. The increment closes the M-CP-EXT-2 reflection open item (d) and the M-CP-EXT-4 reflection open item (a) about the structural `adapter_class="fixture"` default for boundary records when no adapter is resolved. The `AdapterClass` `Literal` is widened to include `"unresolved"`, and `DarsCriticPanelRuntime.run_round` now persists `adapter_class="unresolved"` on every boundary record whose `adapter is None`. `FixtureCriticAdapter` continues to reject the new literal so it stays reserved for boundary-record reporting.
