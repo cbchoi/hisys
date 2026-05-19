@@ -33,6 +33,24 @@ pre-Ralph gate: 528 passed, traceability OK, secret scan hit_count=0, git diff -
 
 The next executable milestone is M14.1: build `SPEC-HISYS-CODEBASE-ANALYSIS-001` as the spec-first precondition for the codebase-analysis harness. M15.1 is the first implementation task after the spec packet is recorded and reflected.
 
+## 0.2 Milestone Bootstrap Overlay — v0.0.1 (2026-05-19)
+
+This overlay was added by the current-session `/bootstrap` workflow and preserves the existing Ralph control plan instead of replacing it. The active bootstrap target is the current repository checkout at `/home/cbchoi/workspaces/develop/repos/hisys` on branch `dars`.
+
+Bootstrap package:
+
+- `docs/milestone-bootstrap/profile.yaml`
+- `docs/milestone-bootstrap/reports/milestone_plan_v0.0.1.md`
+- `docs/milestone-bootstrap/tasks/milestone_tasks_v0.0.1.yaml`
+- `docs/milestone-bootstrap/testcases/milestone_testcases_v0.0.1.yaml`
+- `docs/milestone-bootstrap/gates/quality_gate_v0.0.1.md`
+- `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.1.md`
+
+Bootstrap readiness decision: `RALPH_START_READY_WITH_CONTROLS`. Formal Hisys readiness was not run in this bootstrap session; the result is a local advisory readiness decision only.
+
+Current first safe task for this branch is `MB-DARS-CP-T001`: implement the fixture-local `src/hisys/agents/dars_panel.py` runtime so `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_runtime.py -q` moves from the expected RED state to GREEN. Preserve advisory-only behavior, no external calls, no mutation authority, no credential use, and no live DARS backend enablement.
+
+
 ## 1. Success Criteria
 
 The Hisys Ralph loop is successful when all applicable criteria are met:

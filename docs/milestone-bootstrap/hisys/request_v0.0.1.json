@@ -1,0 +1,26 @@
+{
+  "schema_id": "hisys.milestone_bootstrap.readiness_request",
+  "version": "v0.0.1",
+  "created": "2026-05-19",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "profile": "develop",
+  "objective": "Bootstrap the Hisys dars branch for governed Ralph/TDD execution of the DARS critic panel runtime.",
+  "evidence_refs": [
+    "docs/requirements/dars-critic-panel-runtime-requirements.md",
+    "docs/design/dars-critic-panel-runtime-sdd.md",
+    "docs/test/dars-critic-panel-runtime-std.md",
+    "docs/traceability/dars-critic-panel-runtime-traceability.md",
+    "tests/unit/test_dars_critic_panel_runtime.py",
+    "ralph.md"
+  ],
+  "requested_decision": "ralph_start_readiness",
+  "constraints": {
+    "no_tmux": true,
+    "no_background_agent": true,
+    "external_calls_allowed": false,
+    "mutation_scope": "local_bootstrap_artifacts_only",
+    "remote_push_allowed": false,
+    "credential_mutation_allowed": false,
+    "publication_or_live_action_allowed": false
+  }
+}

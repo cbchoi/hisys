@@ -1,0 +1,35 @@
+schema_id: hisys.milestone_bootstrap.testcases
+version: v0.0.1
+profile: develop
+testcases:
+  - id: MB-TC-P0-HOW-CONTRACT
+    title: P0 HOW-level contract present
+    method: document_inventory
+    expected: DARS CP requirements, SDD, STD, RTM, and pytest RED anchors exist.
+    evidence_refs:
+      - docs/requirements/dars-critic-panel-runtime-requirements.md
+      - docs/design/dars-critic-panel-runtime-sdd.md
+      - docs/test/dars-critic-panel-runtime-std.md
+      - docs/traceability/dars-critic-panel-runtime-traceability.md
+      - tests/unit/test_dars_critic_panel_runtime.py
+  - id: MB-TC-TDD-RED-GREEN
+    title: Focused TDD RED/GREEN path
+    method: pytest
+    command: PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_runtime.py -q
+    current_expected_status: red_until_dars_panel_module_is_implemented
+  - id: MB-TC-FIXTURE-MODE
+    title: Fixture/local-only runtime mode
+    method: artifact_inspection
+    expected: Artifacts record external_call_made=false and mutation_performed=false.
+  - id: MB-TC-TRACEABILITY
+    title: Requirement-design-test traceability
+    method: anchor_scan
+    expected: HISYS-FR-DARS-CP and HISYS-T-DARS-CP anchors exist across docs/tests.
+  - id: MB-TC-SECRET-SCAN
+    title: Bootstrap artifact secret scan
+    method: regex_scan
+    expected: No API keys, tokens, passwords, or credential values in bootstrap docs.
+  - id: MB-TC-RALPH-READINESS
+    title: Ralph start readiness
+    method: ralph_overlay_review
+    expected: ralph.md links this bootstrap package and names a safe first local task.

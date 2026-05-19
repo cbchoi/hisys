@@ -1,0 +1,62 @@
+schema_id: hisys.milestone_bootstrap.tasks
+version: v0.0.1
+profile: develop
+tasks:
+  - id: MB-DARS-CP-T001
+    milestone: MB-DARS-CP-M1
+    title: Implement minimal fixture-local DARS critic panel runtime
+    status: ready
+    type: tdd_green
+    paths:
+      read:
+        - docs/requirements/dars-critic-panel-runtime-requirements.md
+        - docs/design/dars-critic-panel-runtime-sdd.md
+        - docs/test/dars-critic-panel-runtime-std.md
+        - docs/traceability/dars-critic-panel-runtime-traceability.md
+        - tests/unit/test_dars_critic_panel_runtime.py
+      write:
+        - src/hisys/agents/dars_panel.py
+    validation:
+      focused:
+        - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_runtime.py -q
+      safety:
+        - git diff --check
+    gates:
+      - fixture_local_only
+      - advisory_only
+      - no_external_call
+      - no_mutation_authority
+  - id: MB-DARS-CP-T002
+    milestone: MB-DARS-CP-M1
+    title: Run adjacent DARS regression tests
+    status: pending_after_T001
+    type: regression
+    validation:
+      focused:
+        - PYTHONPATH=src pytest tests/unit/test_dars_runtime.py tests/unit/test_dars_config.py tests/unit/test_dars_dispatch.py -q
+      safety:
+        - git diff --check
+  - id: MB-DARS-CP-T003
+    milestone: MB-DARS-CP-M2
+    title: Update traceability summary after GREEN implementation
+    status: pending_after_T001
+    type: document_green
+    paths:
+      write:
+        - docs/traceability/README.md
+    validation:
+      focused:
+        - PYTHONPATH=src python scripts/validate_traceability.py
+      safety:
+        - git diff --check
+  - id: MB-DARS-CP-T004
+    milestone: MB-DARS-CP-M3
+    title: Draft adapter/runtime boundary next-increment plan
+    status: pending_after_M1
+    type: document_red
+    paths:
+      write:
+        - docs/plans/dars-critic-panel-platform-runtime-next.md
+    gates:
+      - no_live_backend_enablement
+      - no_remote_push_without_human_gate
