@@ -1946,6 +1946,35 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-19 — M-CP-EXT-2 task-generation plan authored (docs-only checkpoint)
+
+- Phase completed: docs-only authoring of `docs/plans/dars-critic-panel-mcp-ext-2-implementation-tasks.md`, a Task 0..8 implementation plan for `M-CP-EXT-2` from `docs/plans/dars-critic-panel-platform-runtime-next.md` (per-task `ExecutionBoundaryRecord` writer + slug validation). Mirrors the M-CP-EXT-1 authoring pattern at commit `5e0a8a2 docs: add DARS critic adapter implementation tasks`.
+- Controlled anchors checked: parent plan `docs/plans/dars-critic-panel-platform-runtime-next.md` Section "M-CP-EXT-2" (exit criteria) and "Open questions" (a) package split deferred and (b) `runtime-boundary/dars-panel/...` subtree recommendation; existing writer conventions in `src/hisys/operations/codebase_analysis.py` (`_validate_slug`, `_DATE_PATTERN`, `_REQUEST_ID_PATTERN`, `runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` shape); the M-CP-EXT-1 surface just committed at `3cc58ed feat: add DARS critic adapter registry` (`CriticAdapterRegistry`, `FixtureCriticAdapter`, `BackendDispatchOutcome`, the four adapter tests).
+- Resolved open questions for M-CP-EXT-2 scope:
+  - Path subtree: `<instance>/runtime-boundary/dars-panel/<YYYYMMDD>/<REQUEST_ID>/<TASK_ID>.json` (matches the parent plan's recommendation; keeps boundary records logically separated from the existing `data/dars-panel/...` advisory critique/synthesis/trace subtree).
+  - Package layout: keep `src/hisys/agents/dars_panel.py` as a single module for M-CP-EXT-2; defer the package split until size pressure or M-CP-EXT-3 trigger it.
+  - `_DefaultFixturePolicy` literal-id special case for `fixture-failing-critic`: deferred to M-CP-EXT-2 follow-up (the M-CP-EXT-2 plan explicitly does not require migrating the regression test in this increment).
+- Implementation: none — this is a `document_red` task-generation checkpoint analogous to the M-CP-EXT-1 plan committed at `5e0a8a2`. No production code, no RED tests, no CLI surface, no traceability table cell change.
+- Quality gate result: pass — `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py` -> `scanned_files=481 skipped_files=0 hit_count=0` (one new docs file); `git diff --check` clean.
+- Potential issues / open items: (a) The M-CP-EXT-2 plan's Task 5 (slug-rejection on `run_round`) may pass immediately if Task 4 already added slug validation at the top of `run_round`; the parametrized matrix is intentionally written as a contract-pinning test rather than a strict-RED requirement. (b) The plan does not yet specify how `started_at`/`completed_at` are sourced (clock injection vs. fixed values); the recommendation is to record a fixed `started_at == completed_at` until a later increment introduces deterministic clock injection. (c) The plan does not introduce a `hisys run-dars-panel` CLI; per the parent plan that surface is deferred to M-CP-EXT-3 once the typed `ExecutionGraphPlan` lands. (d) The plan's "Open question (a)" package split decision is deferred — `dars_panel.py` is currently ~590 lines after M-CP-EXT-1; the parent plan recommends splitting around ~400 lines, so the split should be revisited at M-CP-EXT-3 Prepare.
+- `ralph.md` changes: this Reflection entry.
+- Success likelihood: 90% for executing the M-CP-EXT-2 plan in a follow-on iteration. The plan reuses well-established writer/slug-validation patterns from `src/hisys/operations/codebase_analysis.py` and the M-CP-EXT-1 registry surface; the only new contract is the per-task `ExecutionBoundaryRecord` JSON shape, which the plan pins explicitly.
+- Continue decision: stop the local Ralph loop at this docs-only checkpoint after committing this Reflection. Stop reason: Section 5.1.2 iteration-budget rule — this iteration already produced one substantial M-CP-EXT-1 RED/GREEN+refactor+gate+commit increment plus one docs-only M-CP-EXT-2 task-generation plan; starting M-CP-EXT-2 RED/GREEN now would mean two substantive RED/GREEN cycles in one iteration, increasing the chance of incomplete validation. The natural next loop should run Task 0..8 from the new plan.
+- Stop condition: clean docs-only checkpoint on branch `dars` after M-CP-EXT-1 implementation and M-CP-EXT-2 task-plan authoring both committed. The next loop should resume from this Reflection entry and start M-CP-EXT-2 Task 0 (baseline verification) followed by Task 1 RED (`test_execution_boundary_record_locks_safety_envelope_defaults`).
+- Commit pending: `docs: add DARS execution-boundary record implementation tasks` — bundles `docs/plans/dars-critic-panel-mcp-ext-2-implementation-tasks.md` and this Reflection entry.
+- Working tree before commit: `docs/plans/dars-critic-panel-mcp-ext-2-implementation-tasks.md` (new), `ralph.md` (modified).
+
+Resume checkpoint:
+- Current HEAD: 3cc58ed feat: add DARS critic adapter registry (pre-commit baseline)
+- Working tree: `docs/plans/dars-critic-panel-mcp-ext-2-implementation-tasks.md` (new) + `ralph.md` (modified for this Reflection entry)
+- Last completed milestone/task: M-CP-EXT-2 task-generation plan authoring (docs-only `document_red` checkpoint)
+- Current in-progress task: commit `docs: add DARS execution-boundary record implementation tasks`
+- RED observed: n/a (docs-only checkpoint)
+- GREEN observed: n/a (no executable surface)
+- Quality gate status: pass — `validate_traceability.py` OK; `scan_secrets.py` hit_count=0 over 481 files; `git diff --check` clean
+- Next command to run: commit this Reflection + plan as a docs-only increment; then stop at this safe boundary
+- Stop condition: docs-only checkpoint complete; the next loop should start M-CP-EXT-2 Task 0 (baseline verification) per `docs/plans/dars-critic-panel-mcp-ext-2-implementation-tasks.md`.
+
 ### 2026-05-19 — M-CP-EXT-1 critic adapter registry (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Refactor / Gate for `M-CP-EXT-1` from `docs/plans/dars-critic-panel-platform-runtime-next.md`, executed against the Task 0..7 task plan committed at `5e0a8a2 docs: add DARS critic adapter implementation tasks` (`docs/plans/dars-critic-panel-mcp-ext-1-implementation-tasks.md`). The increment replaces the `"fail" in backend_id` substring failure heuristic and the inline `backend_id.startswith("external-")` external classification with an explicit `CriticAdapterRegistry` + `FixtureCriticAdapter` typed contract, without changing the public DARS critic panel API surface used by `tests/unit/test_dars_critic_panel_runtime.py`.
