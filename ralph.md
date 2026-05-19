@@ -1946,6 +1946,24 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-19 — M-CP-EXT-3 implementation task plan authored
+
+- Phase completed: `MB-DARS-CP-EXT3-T001` document-RED/Prepare artifact authored at `docs/plans/dars-critic-panel-mcp-ext-3-implementation-tasks.md`. No RED tests or production graph code were written in this task.
+- User decision recorded: use the recommended M-CP-EXT-3 design choices, including package split via sidecar module `src/hisys/agents/dars_panel_graph.py` rather than adding graph code to the 784-line `src/hisys/agents/dars_panel.py` or converting it into a directory package.
+- Controlled decisions recorded in the task plan: `dars_panel.py` will re-export graph symbols for compatibility; `completed_task_ids` from the parent plan is interpreted as `terminal_task_ids`; terminal statuses are `completed`, `failed`, `blocked`, and `skipped`; synthesis becomes ready after all critics are terminal; ready-set and bounded chunks use lexical task-id ordering; `max_parallel < 1`, unknown dependency endpoints, and dependency cycles raise `ValueError`; registry `LookupError`, deterministic clock injection, and `hisys run-dars-panel` CLI are deferred; actual bounded-parallel execution remains disabled.
+- Next safe task: `MB-DARS-CP-EXT3-T002`, beginning with RED test file `tests/unit/test_dars_critic_panel_execution_graph_plan.py` and expected first RED `ModuleNotFoundError`/`ImportError` for `hisys.agents.dars_panel_graph.ExecutionGraphPlan`.
+- Boundary status: local planning/documentation only; no live DARS dispatch, no network/browser/process-spawn dependency, no credential handling, no remote push, no CLI activation, no bounded-parallel runtime activation.
+- Quality gate status: pending final validation and commit for this docs-only checkpoint.
+
+Resume checkpoint:
+- Current HEAD: 8894f8d docs: bootstrap DARS execution graph prepare
+- Working tree: `docs/plans/dars-critic-panel-mcp-ext-3-implementation-tasks.md` new plus `ralph.md` modified for this Reflection entry
+- Last completed milestone/task: `MB-DARS-CP-EXT3-T001` task plan authoring
+- Current in-progress task: validation and local commit for `docs: add DARS execution graph implementation tasks`
+- RED observed: n/a, docs-only Prepare artifact
+- Next command to run: validation gate, then commit
+- Stop condition: M-CP-EXT-3 task-plan boundary; next loop should start T002 RED only after this commit
+
 ### 2026-05-19 — M-CP-EXT-3 Prepare bootstrap v0.0.2
 
 - Phase completed: milestone-bootstrap patch package `v0.0.2` for M-CP-EXT-3 Prepare. This is a document/readiness bootstrap only; it does not add RED tests or production scheduling code.
