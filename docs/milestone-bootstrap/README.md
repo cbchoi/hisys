@@ -19,3 +19,7 @@ Minimum package artifacts:
 - `evidence/validation_log_v0.0.1.md`
 
 The package records a local advisory readiness result only. It does not claim a formal Hisys readiness pass.
+
+## v0.0.2 — M-CP-EXT-3 Prepare
+
+Patch bootstrap after M-CP-EXT-2 completion. First safe task: `MB-DARS-CP-EXT3-T001` to author the M-CP-EXT-3 implementation task plan before RED tests or production graph code.

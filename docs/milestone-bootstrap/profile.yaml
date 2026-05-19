@@ -1,29 +1,35 @@
 schema_id: hisys.milestone_bootstrap.profile
-version: v0.0.1
+version: v0.0.2
 created: '2026-05-19'
+updated: '2026-05-19'
 target:
   workspace_root: /home/cbchoi/workspaces/develop/repos/hisys
   git_repository: true
   branch: dars
   upstream: origin/dars
-  head: a39f922
+  head: 18fafa9
   context_source: discord_thread
-  context_hint: Hisys develop thread; /bootstrap arguments omitted
+  context_hint: Hisys develop thread; user requested M-CP-EXT-3 Prepare bootstrap
 profile:
   detected_profile: develop
   selected_profile: develop
   rationale:
-    - Source code and pytest suite are present under src/ and tests/.
-    - Existing SRS/SDD/STD/traceability artifacts define the DARS critic panel increment.
-    - The next safe action is a local TDD GREEN implementation for tests/unit/test_dars_critic_panel_runtime.py.
+  - Source code and pytest suite are present under src/ and tests/.
+  - DARS critic panel runtime has completed M-CP-EXT-1 and M-CP-EXT-2 with local GREEN
+    gates.
+  - The next safe action is a document/bootstrap Prepare package for M-CP-EXT-3 before
+    any RED test or production scheduling code is written.
 version_policy:
-  current_version: v0.0.1
-  next_patch_reason: analysis refinement, missing evidence supplementation, or gate cleanup
-  next_minor_reason: focused GREEN plus readiness gates pass or explicit advisory readiness acceptance
+  current_version: v0.0.2
+  previous_version: v0.0.1
+  bump_type: patch
+  bump_reason: analysis refinement and next-increment Prepare after M-CP-EXT-2 implementation
+  next_minor_reason: M-CP-EXT-3 GREEN plus readiness gates pass or explicit advisory
+    readiness acceptance
 governance_boundaries:
   no_tmux_or_background_agent_spawned: true
   external_calls_allowed: false
-  mutation_scope: local workspace planning files and ralph.md merge only
+  mutation_scope: local workspace planning/bootstrap files and ralph.md merge only
   remote_push_allowed_in_this_bootstrap: false
   credential_mutation_allowed: false
   destructive_git_allowed: false

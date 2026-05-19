@@ -1,0 +1,27 @@
+{
+  "boundaries": {
+    "credential_mutation_allowed": false,
+    "destructive_git_allowed": false,
+    "external_calls_allowed": false,
+    "mutation_scope": "local workspace planning/bootstrap files and ralph.md merge only",
+    "no_tmux_or_background_agent_spawned": true,
+    "publication_or_live_action_allowed": false,
+    "remote_push_allowed_in_this_bootstrap": false
+  },
+  "evidence_refs": [
+    "docs/plans/dars-critic-panel-platform-runtime-next.md",
+    "docs/plans/dars-critic-panel-mcp-ext-2-implementation-tasks.md",
+    "docs/traceability/dars-critic-panel-runtime-traceability.md",
+    "src/hisys/agents/dars_panel.py",
+    "tests/unit/test_dars_critic_panel_runtime.py",
+    "tests/unit/test_dars_critic_panel_adapters.py",
+    "tests/unit/test_dars_critic_panel_tool_execution_runtime.py"
+  ],
+  "formal_hisys_execution": "not_run",
+  "profile": "develop",
+  "request_id": "REQ-DARS-CP-EXT3-PREP-20260519",
+  "requested_assessment": "M-CP-EXT-3 Prepare readiness",
+  "schema_id": "hisys.readiness.request",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "version": "v0.0.2"
+}

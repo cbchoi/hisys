@@ -1,0 +1,42 @@
+schema_id: hisys.milestone_bootstrap.testcases
+version: v0.0.2
+profile: develop
+testcases:
+- id: MB-DARS-CP-EXT3-TC001
+  task: MB-DARS-CP-EXT3-T001
+  name: prepare_contract_completeness_test
+  type: document
+  assertions:
+  - M-CP-EXT-3 task plan names exact files, tests, validation commands, and stop conditions.
+  - Plan records package-split decision and CLI deferral boundary.
+- id: MB-DARS-CP-EXT3-TC002
+  task: MB-DARS-CP-EXT3-T002
+  name: execution_graph_ready_set_red_test
+  type: pytest
+  command: PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_execution_graph_plan.py
+    -q
+  expected_red: missing ExecutionGraphPlan import or missing ready_set behavior before
+    production implementation
+- id: MB-DARS-CP-EXT3-TC003
+  task: MB-DARS-CP-EXT3-T003
+  name: execution_graph_green_test
+  type: pytest
+  command: PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_execution_graph_plan.py
+    -q
+  expected_green: all graph primitive tests pass
+- id: MB-DARS-CP-EXT3-TC004
+  task: MB-DARS-CP-EXT3-T003
+  name: existing_panel_regression_test
+  type: pytest
+  command: PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_adapters.py
+    tests/unit/test_dars_critic_panel_tool_execution_runtime.py -q
+  expected_green: existing 28 tests continue to pass
+- id: MB-DARS-CP-EXT3-TC005
+  task: MB-DARS-CP-EXT3-T004
+  name: traceability_and_secret_gate
+  type: gate
+  commands:
+  - python3 scripts/validate_traceability.py
+  - python3 scripts/scan_secrets.py
+  - git diff --check
+  expected_green: traceability OK, hit_count=0, whitespace clean

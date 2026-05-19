@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-19 — M-CP-EXT-3 Prepare bootstrap v0.0.2
+
+- Phase completed: milestone-bootstrap patch package `v0.0.2` for M-CP-EXT-3 Prepare. This is a document/readiness bootstrap only; it does not add RED tests or production scheduling code.
+- Controlled anchors checked: parent plan `docs/plans/dars-critic-panel-platform-runtime-next.md` M-CP-EXT-3; latest completed M-CP-EXT-2 implementation at `18fafa9 feat: add DARS execution-boundary record writer`; current DARS critic panel RTM `docs/traceability/dars-critic-panel-runtime-traceability.md` v0.3.0; existing focused test suites `tests/unit/test_dars_critic_panel_runtime.py`, `tests/unit/test_dars_critic_panel_adapters.py`, and `tests/unit/test_dars_critic_panel_tool_execution_runtime.py`; current production surface `src/hisys/agents/dars_panel.py`.
+- Bootstrap artifacts added/updated: `docs/milestone-bootstrap/profile.yaml` now records `version: v0.0.2`; new package files `reports/milestone_plan_v0.0.2.md`, `tasks/milestone_tasks_v0.0.2.yaml`, `testcases/milestone_testcases_v0.0.2.yaml`, `gates/quality_gate_v0.0.2.md`, `documents/readiness_decision_record_v0.0.2.md`, `hisys/request_v0.0.2.json`, `hisys/result_v0.0.2.md`, and `evidence/validation_log_v0.0.2.md`; `docs/milestone-bootstrap/index.md` and `README.md` point to the current package.
+- Local advisory readiness: `RALPH_START_READY_WITH_CONTROLS` for `MB-DARS-CP-EXT3-T001` only. Formal Hisys result: `not_run_in_this_bootstrap`.
+- Next safe task: `MB-DARS-CP-EXT3-T001` — author `docs/plans/dars-critic-panel-mcp-ext-3-implementation-tasks.md` as a document-RED/Prepare artifact before writing `tests/unit/test_dars_critic_panel_execution_graph_plan.py` or adding `ExecutionGraphPlan` production code.
+- Design issues pinned for the next task plan: `src/hisys/agents/dars_panel.py` is 784 lines, so the package split decision must be made before M-CP-EXT-3 implementation; `LookupError` from explicit registries needs a hard-error vs typed-blocked decision; deterministic clock injection remains open; `hisys run-dars-panel` CLI remains deferred unless the task plan explicitly keeps it read-only/no-side-effect.
+- Baseline GREEN observed during bootstrap: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py -q` -> 28 passed in 0.09s.
+- Quality gate status: pass — `git diff --check` clean; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py` -> `scanned_files=490 skipped_files=0 hit_count=0`; focused panel regression -> 28 passed in 0.08s; bootstrap artifact structural checks OK.
+- Continue decision: stop after committing this bootstrap package; the next Ralph loop should start `MB-DARS-CP-EXT3-T001` from the v0.0.2 tasks YAML.
+
+Resume checkpoint:
+- Current HEAD: 18fafa9 feat: add DARS execution-boundary record writer
+- Working tree: milestone-bootstrap v0.0.2 files plus `ralph.md` modified for this Reflection entry
+- Last completed milestone/task: M-CP-EXT-2 implementation
+- Current in-progress task: commit M-CP-EXT-3 Prepare bootstrap v0.0.2
+- RED observed: n/a (bootstrap/readiness package only)
+- GREEN observed: focused existing panel suites 28 passed
+- Quality gate status: pass — `git diff --check` clean; `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py` -> `scanned_files=490 skipped_files=0 hit_count=0`; focused panel regression -> 28 passed in 0.08s; bootstrap artifact structural checks OK
+- Next command to run: validation gate, then commit `docs: bootstrap DARS execution graph prepare`
+- Stop condition: M-CP-EXT-3 Prepare bootstrap boundary; no production graph code authorized in this increment
+
 ### 2026-05-19 — M-CP-EXT-2 execution-boundary record writer (RED -> GREEN)
 
 - Phase completed: Prepare / RED / GREEN / Refactor / Gate for `M-CP-EXT-2` from `docs/plans/dars-critic-panel-platform-runtime-next.md`, executed against the Task 0..8 task plan committed at `218a341 docs: add DARS execution-boundary record implementation tasks` (`docs/plans/dars-critic-panel-mcp-ext-2-implementation-tasks.md`). The increment adds a typed per-task `ExecutionBoundaryRecord` plus `write_execution_boundary_record` writer, wires `DarsCriticPanelRuntime.run_round` to persist one boundary record per critic task under `runtime-boundary/dars-panel/<YYYYMMDD>/<REQUEST_ID>/<TASK_ID>.json`, and enforces slug validation on `yyyymmdd`/`request_id`/`task_id` before any path is composed.
