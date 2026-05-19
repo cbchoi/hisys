@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.8.0
+version: 0.9.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-20
@@ -15,14 +15,56 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 |---|---|---|---|---|
 | HISYS-FR-DARS-CP-001 | `DarsCriticPanelConfig`, config validator, `CriticAdapterRegistry` (M-CP-EXT-1), read-only `hisys run-dars-panel` CLI wrapper (M-CP-EXT-6) | HISYS-T-DARS-CP-001 | `test_dars_critic_panel_config_validates_two_advisory_roles`, `test_critic_adapter_registry_rejects_duplicate_role_backend_pair`, `test_run_dars_panel_cli_persists_fixture_round_and_prints_json` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-6) |
 | HISYS-FR-DARS-CP-002 | `DarsRoundPlan`, `DarsCriticTask`, edges | HISYS-T-DARS-CP-002 | `test_dars_round_plan_creates_independent_critic_tasks_before_synthesis` | GREEN (MB-DARS-CP-T001) |
-| HISYS-FR-DARS-CP-003 | fixture critic executor, critique writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2), injectable clock seam (M-CP-EXT-5), read-only `hisys run-dars-panel` CLI wrapper (M-CP-EXT-6) | HISYS-T-DARS-CP-003 | `test_dars_panel_runtime_writes_advisory_critique_artifacts`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_with_injected_clock_yields_byte_identical_boundary_records`, `test_panel_runtime_rejects_naive_clock`, `test_run_dars_panel_cli_persists_fixture_round_and_prints_json` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-5 + M-CP-EXT-6) |
-| HISYS-FR-DARS-CP-004 | `DarsRoundTrace` writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2) | HISYS-T-DARS-CP-004 | `test_dars_panel_runtime_persists_round_trace_lineage`, `test_panel_runtime_writes_one_boundary_record_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2) |
+| HISYS-FR-DARS-CP-003 | fixture critic executor, critique writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2), injectable clock seam (M-CP-EXT-5), read-only `hisys run-dars-panel` CLI wrapper (M-CP-EXT-6), per-task distinct `started_at`/`completed_at` (M-CP-EXT-8) | HISYS-T-DARS-CP-003 | `test_dars_panel_runtime_writes_advisory_critique_artifacts`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_with_injected_clock_yields_byte_identical_boundary_records`, `test_panel_runtime_rejects_naive_clock`, `test_run_dars_panel_cli_persists_fixture_round_and_prints_json`, `test_panel_runtime_records_distinct_started_and_completed_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-5 + M-CP-EXT-6 + M-CP-EXT-8) |
+| HISYS-FR-DARS-CP-004 | `DarsRoundTrace` writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2), per-task distinct `started_at`/`completed_at` lineage (M-CP-EXT-8) | HISYS-T-DARS-CP-004 | `test_dars_panel_runtime_persists_round_trace_lineage`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_records_distinct_started_and_completed_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-8) |
 | HISYS-FR-DARS-CP-005 | `DarsCritiqueSynthesis` | HISYS-T-DARS-CP-005 | `test_dars_critique_synthesis_is_advisory_and_preserves_role_provenance` | GREEN (MB-DARS-CP-T001) |
 | HISYS-FR-DARS-CP-006 | execution mode policy, `ExecutionGraphPlan` ready-set determinism / synthesis-after-terminal-critics / bounded-parallel chunking (M-CP-EXT-3) | HISYS-T-DARS-CP-006 | `test_dars_round_plan_is_serial_compatible_with_bounded_parallel_policy`, `test_execution_graph_plan_ready_set_is_deterministic_and_sorted`, `test_execution_graph_plan_synthesis_waits_until_all_critics_terminal`, `test_execution_graph_plan_treats_failed_blocked_and_skipped_as_terminal`, `test_execution_graph_plan_bounded_parallel_chunks_are_deterministic`, `test_execution_graph_plan_rejects_invalid_max_parallel`, `test_execution_graph_plan_rejects_unknown_dependency_node`, `test_execution_graph_plan_rejects_dependency_cycle`, `test_execution_graph_plan_from_round_plan_preserves_critic_before_synthesis_edges`, `test_dars_panel_reexports_execution_graph_plan_for_compatibility`, `test_dars_panel_runtime_remains_serial_after_graph_integration` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-3) |
 | HISYS-FR-DARS-CP-007 | backend dispatch gate, `CriticAdapterRegistry` external block, typed `FixtureCriticAdapter.fixture_outcome` (M-CP-EXT-1), `ExecutionBoundaryRecord.dispatch_decision` (M-CP-EXT-2), typed adapter-missing `LookupError` -> `status=blocked` (M-CP-EXT-4), unresolved `adapter_class` marker on boundary records (M-CP-EXT-7), CLI surface preserves blocked external-style backend invariant (M-CP-EXT-6) | HISYS-T-DARS-CP-007 | `test_dars_panel_blocks_external_backend_without_approval`, `test_critic_adapter_registry_blocks_external_without_explicit_allow_flag`, `test_fixture_critic_adapter_records_declared_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role`, `test_panel_runtime_marks_unresolved_adapter_class_for_disabled_critic`, `test_fixture_critic_adapter_rejects_unresolved_adapter_class`, `test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4 + M-CP-EXT-6 + M-CP-EXT-7) |
 | HISYS-FR-DARS-CP-008 | advisory/human-decision fields | HISYS-T-DARS-CP-008 | `test_dars_panel_artifacts_preserve_advisory_human_decision_separation` | GREEN (MB-DARS-CP-T001) |
 | HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis, adapter-outcome-driven isolation (M-CP-EXT-1), per-task boundary record on failed/blocked branches (M-CP-EXT-2), typed adapter-missing isolation (M-CP-EXT-4), CLI preserves typed advisory exit-code semantics (M-CP-EXT-6) | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence`, `test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role`, `test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4 + M-CP-EXT-6) |
 | HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate, slug validation on date/request_id/task_id (M-CP-EXT-2), naive-datetime clock rejection (M-CP-EXT-5) | HISYS-T-DARS-CP-010 | changed-file secret scan, `test_write_execution_boundary_record_rejects_invalid_slug`, `test_write_execution_boundary_record_rejects_traversal_in_task_id`, `test_panel_runtime_rejects_invalid_slug`, `test_panel_runtime_rejects_naive_clock` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-5) |
+
+## M-CP-EXT-8 — Per-task distinct started_at/completed_at (2026-05-20)
+
+- Scope: closed the M-CP-EXT-5 open item (a) by moving the M-CP-EXT-5
+  clock-seam read from a single pre-loop call to two per-task calls inside
+  `DarsCriticPanelRuntime.run_round`. Each persisted `ExecutionBoundaryRecord`
+  now carries a distinct `started_at` and `completed_at` value drawn from
+  `self._clock` — naturally increasing under the default wall-clock lambda,
+  strictly distinct under an injected counter clock.
+- Runtime change: `run_round` no longer reads the round-level
+  `timestamp = _format_iso_timestamp(self._clock())` before the critic loop.
+  Inside the `for plan_task, critic in zip(...)` loop body the runtime reads
+  `task_started_at = _format_iso_timestamp(self._clock())` first, then
+  `task_completed_at = _format_iso_timestamp(self._clock())` immediately
+  before constructing the `ExecutionBoundaryRecord`, and threads those values
+  into the record's `started_at` / `completed_at` keyword arguments.
+- Seam reuse: no constructor signature change, no new clock parameter, no new
+  schema field. The naive-datetime rejection invariant from M-CP-EXT-5
+  remains because both per-task reads still flow through
+  `_format_iso_timestamp`. Tests that pin byte-identical boundary records
+  under a constant clock continue to pass because a constant clock returns
+  the same value on consecutive reads.
+- Serial-execution invariant preserved: the runtime continues to iterate
+  `zip(plan.critic_tasks, panel_config.critics, strict=True)` serially. No
+  worker, thread, async task, or subprocess is spawned by this increment.
+- New tests:
+  `test_panel_runtime_records_distinct_started_and_completed_per_task` (uses
+  an injected counter clock that advances by one second per call; asserts
+  `started_at != completed_at` per persisted boundary record and that
+  consecutive tasks observe distinct `started_at` / `completed_at` values).
+- Existing tests preserved:
+  `tests/unit/test_dars_critic_panel_runtime.py` (9 passed, unchanged),
+  `tests/unit/test_dars_critic_panel_adapters.py` (5 passed, unchanged),
+  `tests/unit/test_dars_critic_panel_tool_execution_runtime.py`
+  (now 20 passed, +1 new),
+  `tests/unit/test_dars_critic_panel_execution_graph_plan.py`
+  (10 passed, unchanged),
+  `tests/unit/test_dars_critic_panel_cli.py` (2 passed, unchanged).
+- Boundary: no live DARS dispatch, no credential resolution, no remote push,
+  no external call, no mutation, no clock seam change, no CLI surface change,
+  no schema field added or removed. Validation commands recorded in the
+  ralph.md Reflection Log entry for M-CP-EXT-8.
 
 ## M-CP-EXT-6 — Read-only run-dars-panel CLI (2026-05-20)
 

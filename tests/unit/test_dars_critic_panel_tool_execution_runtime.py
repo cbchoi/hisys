@@ -492,3 +492,65 @@ def test_fixture_critic_adapter_rejects_unresolved_adapter_class():
             backend_id="fixture-logical",
             adapter_class="unresolved",  # type: ignore[arg-type]
         )
+
+
+def test_panel_runtime_records_distinct_started_and_completed_per_task(tmp_path: Path):
+    """M-CP-EXT-8: per-task distinct started_at/completed_at under an injected counter clock."""
+
+    from datetime import datetime, timedelta, timezone
+
+    from hisys.agents.dars_panel import (
+        DarsCriticPanelConfig,
+        DarsCriticPanelRuntime,
+        DarsCriticRoleConfig,
+    )
+    from hisys.config.instance import InstanceRoot
+
+    base = datetime(2026, 5, 20, 12, 0, 0, tzinfo=timezone.utc)
+    tick = {"n": 0}
+
+    def counter_clock() -> datetime:
+        moment = base + timedelta(seconds=tick["n"])
+        tick["n"] += 1
+        return moment
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    runtime = DarsCriticPanelRuntime(instance=InstanceRoot(tmp_path), clock=counter_clock)
+    config = DarsCriticPanelConfig(
+        panel_id="PANEL-EXT-8",
+        critics=[
+            DarsCriticRoleConfig(
+                critic_id="logical-devil",
+                critic_role="logical_devil",
+                backend_id="fixture-logical-001",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["logical_validity"],
+            ),
+            DarsCriticRoleConfig(
+                critic_id="evidence-detective",
+                critic_role="evidence_detective",
+                backend_id="fixture-evidence-001",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["evidence_grounding"],
+            ),
+        ],
+    )
+
+    result = runtime.run_round(
+        yyyymmdd="20260520",
+        request_id="REQ-EXT-8",
+        candidate_ref=candidate_ref,
+        evidence_refs=evidence_refs,
+        panel_config=config,
+    )
+
+    boundary_records = [
+        json.loads((tmp_path / ref).read_text(encoding="utf-8"))
+        for ref in result.execution_boundary_refs
+    ]
+    starts = [record["started_at"] for record in boundary_records]
+    completes = [record["completed_at"] for record in boundary_records]
+    for record in boundary_records:
+        assert record["started_at"] != record["completed_at"], record
+    assert len(set(starts)) == len(starts)
+    assert len(set(completes)) == len(completes)

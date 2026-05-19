@@ -487,16 +487,18 @@ class DarsCriticPanelRuntime:
         panel_dir = self._panel_dir(yyyymmdd, request_id)
         critiques_dir = panel_dir / "critiques"
         critiques_dir.mkdir(parents=True, exist_ok=True)
-        # M-CP-EXT-2 records started_at == completed_at because no real
-        # per-task timing is captured in this increment. M-CP-EXT-5 routes the
-        # single round-level clock read through ``self._clock`` so tests can
-        # inject a fixed clock and assert byte-identical boundary records.
-        timestamp = _format_iso_timestamp(self._clock())
+        # M-CP-EXT-8 reads the injected M-CP-EXT-5 clock seam twice per critic
+        # task (once before dispatch, once before the boundary record write) so
+        # ``ExecutionBoundaryRecord.started_at`` and ``completed_at`` can carry
+        # distinct values. Under the default wall-clock lambda the two reads
+        # are naturally increasing; under an injected counter clock they are
+        # strictly distinct, which is what the M-CP-EXT-8 regression asserts.
 
         task_results: list[DarsTaskResult] = []
         critique_refs: list[str] = []
         execution_boundary_refs: list[str] = []
         for plan_task, critic in zip(plan.critic_tasks, panel_config.critics, strict=True):
+            task_started_at = _format_iso_timestamp(self._clock())
             adapter: FixtureCriticAdapter | None = None
             critique_ref: str | None = None
             if not critic.enabled:
@@ -600,6 +602,7 @@ class DarsCriticPanelRuntime:
                                 mutation_performed=False,
                             )
                         )
+            task_completed_at = _format_iso_timestamp(self._clock())
             boundary_record = ExecutionBoundaryRecord(
                 task_id=plan_task.task_id,
                 critic_id=plan_task.critic_id,
@@ -608,8 +611,8 @@ class DarsCriticPanelRuntime:
                 backend_id=plan_task.backend_id,
                 dispatch_decision=dispatch_decision,
                 dispatch_reason=dispatch_reason,
-                started_at=timestamp,
-                completed_at=timestamp,
+                started_at=task_started_at,
+                completed_at=task_completed_at,
                 approval_ref=critic.approval_ref,
                 critique_ref=critique_ref,
             )
