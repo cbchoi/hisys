@@ -310,3 +310,110 @@ def test_panel_runtime_rejects_invalid_slug(tmp_path: Path, kwargs):
             panel_config=config,
             **kwargs,
         )
+
+
+def test_panel_runtime_with_injected_clock_yields_byte_identical_boundary_records(tmp_path: Path):
+    """M-CP-EXT-5: a fixed clock makes run_round output byte-identical across invocations."""
+
+    from datetime import datetime, timezone
+
+    from hisys.agents.dars_panel import (
+        CriticAdapterRegistry,
+        DarsCriticPanelConfig,
+        DarsCriticPanelRuntime,
+        DarsCriticRoleConfig,
+        FixtureCriticAdapter,
+    )
+    from hisys.config.instance import InstanceRoot
+
+    fixed_moment = datetime(2026, 5, 20, 12, 0, 0, tzinfo=timezone.utc)
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    registry = CriticAdapterRegistry()
+    registry.register(
+        FixtureCriticAdapter(
+            critic_role="logical_devil",
+            backend_id="fixture-logical-clock-001",
+            fixture_outcome="completed",
+        )
+    )
+    config = DarsCriticPanelConfig(
+        panel_id="PANEL-DARS-CP-EXT-5",
+        critics=[
+            DarsCriticRoleConfig(
+                critic_id="logical-devil",
+                critic_role="logical_devil",
+                backend_id="fixture-logical-clock-001",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["logical_validity"],
+            ),
+        ],
+    )
+
+    runtime = DarsCriticPanelRuntime(
+        instance=InstanceRoot(tmp_path),
+        adapter_registry=registry,
+        clock=lambda: fixed_moment,
+    )
+    first = runtime.run_round(
+        yyyymmdd="20260520",
+        request_id="REQ-DARS-CP-EXT-5-A",
+        candidate_ref=candidate_ref,
+        evidence_refs=evidence_refs,
+        panel_config=config,
+    )
+    second = runtime.run_round(
+        yyyymmdd="20260520",
+        request_id="REQ-DARS-CP-EXT-5-B",
+        candidate_ref=candidate_ref,
+        evidence_refs=evidence_refs,
+        panel_config=config,
+    )
+
+    first_boundary = json.loads((tmp_path / first.execution_boundary_refs[0]).read_text(encoding="utf-8"))
+    second_boundary = json.loads((tmp_path / second.execution_boundary_refs[0]).read_text(encoding="utf-8"))
+
+    assert first_boundary["started_at"] == "2026-05-20T12:00:00Z"
+    assert first_boundary["completed_at"] == "2026-05-20T12:00:00Z"
+    assert second_boundary["started_at"] == "2026-05-20T12:00:00Z"
+    assert second_boundary["completed_at"] == "2026-05-20T12:00:00Z"
+
+
+def test_panel_runtime_rejects_naive_clock(tmp_path: Path):
+    """M-CP-EXT-5: a naive clock (no tzinfo) must raise rather than persist ambiguous timestamps."""
+
+    from datetime import datetime
+
+    from hisys.agents.dars_panel import (
+        DarsCriticPanelConfig,
+        DarsCriticPanelRuntime,
+        DarsCriticRoleConfig,
+    )
+    from hisys.config.instance import InstanceRoot
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    config = DarsCriticPanelConfig(
+        panel_id="PANEL-DARS-CP-EXT-5-NAIVE",
+        critics=[
+            DarsCriticRoleConfig(
+                critic_id="logical-devil",
+                critic_role="logical_devil",
+                backend_id="fixture-logical-clock-naive",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["logical_validity"],
+            ),
+        ],
+    )
+
+    runtime = DarsCriticPanelRuntime(
+        instance=InstanceRoot(tmp_path),
+        clock=lambda: datetime(2026, 5, 20, 12, 0, 0),  # naive
+    )
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        runtime.run_round(
+            yyyymmdd="20260520",
+            request_id="REQ-DARS-CP-EXT-5-NAIVE",
+            candidate_ref=candidate_ref,
+            evidence_refs=evidence_refs,
+            panel_config=config,
+        )

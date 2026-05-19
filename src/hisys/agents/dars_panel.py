@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -71,6 +72,22 @@ def _validate_slug(name: str, value: str, pattern: re.Pattern[str]) -> None:
             f"invalid {name} for dars-panel writer: {value!r}; "
             "traversal segments are not allowed"
         )
+
+
+def _format_iso_timestamp(moment: datetime) -> str:
+    """Format a clock reading as a deterministic UTC ISO-8601 ``...Z`` string.
+
+    M-CP-EXT-5: routes ``run_round``'s wall-clock read through a single seam so
+    tests can inject a fixed clock and assert byte-identical boundary-record
+    output across invocations. Naive datetimes are rejected because the
+    persisted timestamp must be unambiguous.
+    """
+
+    if moment.tzinfo is None:
+        raise ValueError("clock must return timezone-aware datetime")
+    return moment.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace(
+        "+00:00", "Z"
+    )
 
 
 @dataclass
@@ -383,9 +400,11 @@ class DarsCriticPanelRuntime:
         *,
         instance: InstanceRoot,
         adapter_registry: CriticAdapterRegistry | None = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.instance = instance
         self.adapter_registry = adapter_registry or _DefaultFixturePolicy()
+        self._clock: Callable[[], datetime] = clock or (lambda: datetime.now(timezone.utc))
 
     def build_round_plan(
         self,
@@ -469,11 +488,10 @@ class DarsCriticPanelRuntime:
         critiques_dir = panel_dir / "critiques"
         critiques_dir.mkdir(parents=True, exist_ok=True)
         # M-CP-EXT-2 records started_at == completed_at because no real
-        # per-task timing is captured in this increment. A later increment may
-        # inject a clock for deterministic timing.
-        timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
-            "+00:00", "Z"
-        )
+        # per-task timing is captured in this increment. M-CP-EXT-5 routes the
+        # single round-level clock read through ``self._clock`` so tests can
+        # inject a fixed clock and assert byte-identical boundary records.
+        timestamp = _format_iso_timestamp(self._clock())
 
         task_results: list[DarsTaskResult] = []
         critique_refs: list[str] = []
