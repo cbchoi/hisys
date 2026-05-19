@@ -36,6 +36,11 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
+from ..agents.dars_panel import (
+    DarsCriticPanelConfig,
+    DarsCriticPanelRuntime,
+    DarsCriticRoleConfig,
+)
 from ..audit import LapidaryGovernanceAuditWriter
 from ..browser.public_profile import load_public_browser_profile
 from ..browser.public_summary import write_public_browser_run_summary
@@ -1494,6 +1499,90 @@ def _cmd_runtime_status_surface(
     return 0
 
 
+def _load_dars_panel_config(path: Path) -> DarsCriticPanelConfig:
+    """Parse a local DARS panel config JSON file into the runtime dataclass.
+
+    M-CP-EXT-6: the loader is intentionally schema-strict on critic entries;
+    unknown keys raise ``TypeError`` from ``DarsCriticRoleConfig(**item)`` so
+    operators see a clear failure rather than a silent drop.
+    """
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    critics = [DarsCriticRoleConfig(**item) for item in payload.get("critics", [])]
+    return DarsCriticPanelConfig(
+        panel_id=payload["panel_id"],
+        critics=critics,
+        max_parallel_critics=int(payload.get("max_parallel_critics", 1)),
+        failure_policy=payload.get("failure_policy", "continue_collect_errors"),
+        advisory_only=bool(payload.get("advisory_only", True)),
+        default_output_contract=payload.get("default_output_contract", "DarsCritiqueRecord"),
+    )
+
+
+def _cmd_run_dars_panel(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    panel_config_path: Path,
+    candidate_ref: str,
+    evidence_refs: list[str],
+    output_format: str,
+) -> int:
+    """Run the fixture-local DARS critic panel and print a bounded summary.
+
+    M-CP-EXT-6: read-only wrapper over ``DarsCriticPanelRuntime.run_round`` with
+    the default fixture policy. The command never enables external dispatch,
+    never spawns workers, and never approves downstream decisions. Typed
+    blocked/failed outcomes from individual critic tasks are surfaced in the
+    summary but do not change the CLI exit code.
+    """
+
+    panel_config = _load_dars_panel_config(panel_config_path)
+    instance = InstanceRoot(instance_root)
+    runtime = DarsCriticPanelRuntime(instance=instance)
+    result = runtime.run_round(
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        candidate_ref=candidate_ref,
+        evidence_refs=list(evidence_refs),
+        panel_config=panel_config,
+    )
+    execution_mode = "bounded_parallel" if panel_config.max_parallel_critics > 1 else "serial"
+    task_statuses = {task.task_id: task.status for task in result.task_results}
+    summary = {
+        "request_id": request_id,
+        "panel_id": panel_config.panel_id,
+        "execution_mode": execution_mode,
+        "task_statuses": task_statuses,
+        "critique_refs": list(result.critique_refs),
+        "synthesis_ref": result.synthesis_ref,
+        "round_trace_ref": result.round_trace_ref,
+        "execution_boundary_refs": list(result.execution_boundary_refs),
+    }
+    if output_format == "json":
+        print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        lines = [
+            f"request_id: {request_id}",
+            f"panel_id: {panel_config.panel_id}",
+            f"execution_mode: {execution_mode}",
+            "task_statuses:",
+        ]
+        for task_id, status in task_statuses.items():
+            lines.append(f"  - {task_id}: {status}")
+        lines.append(f"synthesis_ref: {result.synthesis_ref}")
+        lines.append(f"round_trace_ref: {result.round_trace_ref}")
+        lines.append("critique_refs:")
+        for ref in result.critique_refs:
+            lines.append(f"  - {ref}")
+        lines.append("execution_boundary_refs:")
+        for ref in result.execution_boundary_refs:
+            lines.append(f"  - {ref}")
+        print("\n".join(lines))
+    return 0
+
+
 def _cmd_completion_status(
     *,
     instance_root: Path,
@@ -1796,6 +1885,23 @@ def _build_parser() -> argparse.ArgumentParser:
     runtime_status_surface.add_argument("--approval-state", default="unknown", help="current approval/gate state")
     runtime_status_surface.add_argument("--context-budget", default="unknown", help="current context/cost budget summary")
     runtime_status_surface.add_argument("--format", choices=["text", "json", "markdown"], default="text")
+
+    run_dars_panel = sub.add_parser(
+        "run-dars-panel",
+        help="run the fixture-local DARS critic panel and persist advisory artifacts (read-only)",
+    )
+    run_dars_panel.add_argument("--instance", required=True, help="Hisys runtime instance root")
+    run_dars_panel.add_argument("--date", required=True, help="YYYYMMDD run partition")
+    run_dars_panel.add_argument("--request-id", required=True, help="request id slug for the round")
+    run_dars_panel.add_argument("--panel-config", type=Path, required=True, help="local DARS panel config JSON path")
+    run_dars_panel.add_argument("--candidate-ref", required=True, help="instance-relative candidate artifact ref")
+    run_dars_panel.add_argument(
+        "--evidence-ref",
+        action="append",
+        default=[],
+        help="instance-relative evidence artifact ref; repeatable",
+    )
+    run_dars_panel.add_argument("--format", choices=["json", "text"], default="text")
 
     spec_packet = sub.add_parser("build-spec-first-packet", help="write a spec-first run packet before governed agent work")
     spec_packet.add_argument("--instance", required=True, help="Hisys instance root")
@@ -2975,6 +3081,16 @@ def main(argv: list[str] | None = None) -> int:
             session=args.session,
             approval_state=args.approval_state,
             context_budget=args.context_budget,
+            output_format=args.format,
+        )
+    if args.command == "run-dars-panel":
+        return _cmd_run_dars_panel(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            panel_config_path=args.panel_config,
+            candidate_ref=args.candidate_ref,
+            evidence_refs=args.evidence_ref,
             output_format=args.format,
         )
     if args.command == "build-spec-first-packet":
