@@ -554,3 +554,113 @@ def test_panel_runtime_records_distinct_started_and_completed_per_task(tmp_path:
         assert record["started_at"] != record["completed_at"], record
     assert len(set(starts)) == len(starts)
     assert len(set(completes)) == len(completes)
+
+
+def test_panel_runtime_records_duration_ms_per_task(tmp_path: Path):
+    """M-CP-EXT-9: duration_ms is derived from per-task start/end readings."""
+
+    from datetime import datetime, timedelta, timezone
+
+    from hisys.agents.dars_panel import (
+        DarsCriticPanelConfig,
+        DarsCriticPanelRuntime,
+        DarsCriticRoleConfig,
+    )
+    from hisys.config.instance import InstanceRoot
+
+    base = datetime(2026, 5, 20, 12, 0, 0, tzinfo=timezone.utc)
+    offsets = iter(
+        [
+            timedelta(seconds=0),
+            timedelta(milliseconds=250),
+            timedelta(seconds=1),
+            timedelta(seconds=1, milliseconds=750),
+        ]
+    )
+
+    def counter_clock() -> datetime:
+        return base + next(offsets)
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    runtime = DarsCriticPanelRuntime(instance=InstanceRoot(tmp_path), clock=counter_clock)
+    config = DarsCriticPanelConfig(
+        panel_id="PANEL-EXT-9",
+        critics=[
+            DarsCriticRoleConfig(
+                critic_id="logical-devil",
+                critic_role="logical_devil",
+                backend_id="fixture-logical-001",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["logical_validity"],
+            ),
+            DarsCriticRoleConfig(
+                critic_id="evidence-detective",
+                critic_role="evidence_detective",
+                backend_id="fixture-evidence-001",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["evidence_grounding"],
+            ),
+        ],
+    )
+
+    result = runtime.run_round(
+        yyyymmdd="20260520",
+        request_id="REQ-EXT-9",
+        candidate_ref=candidate_ref,
+        evidence_refs=evidence_refs,
+        panel_config=config,
+    )
+
+    boundary_records = [
+        json.loads((tmp_path / ref).read_text(encoding="utf-8"))
+        for ref in result.execution_boundary_refs
+    ]
+    assert [record["duration_ms"] for record in boundary_records] == [250, 750]
+    assert all(isinstance(record["duration_ms"], int) for record in boundary_records)
+
+
+def test_panel_runtime_clamps_negative_duration_ms_to_zero(tmp_path: Path):
+    """M-CP-EXT-9: duration_ms remains non-negative if a clock moves backward."""
+
+    from datetime import datetime, timedelta, timezone
+
+    from hisys.agents.dars_panel import (
+        DarsCriticPanelConfig,
+        DarsCriticPanelRuntime,
+        DarsCriticRoleConfig,
+    )
+    from hisys.config.instance import InstanceRoot
+
+    base = datetime(2026, 5, 20, 12, 0, 0, tzinfo=timezone.utc)
+    offsets = iter([timedelta(seconds=2), timedelta(seconds=1)])
+
+    def backward_clock() -> datetime:
+        return base + next(offsets)
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    runtime = DarsCriticPanelRuntime(instance=InstanceRoot(tmp_path), clock=backward_clock)
+    config = DarsCriticPanelConfig(
+        panel_id="PANEL-EXT-9-NEGATIVE",
+        critics=[
+            DarsCriticRoleConfig(
+                critic_id="logical-devil",
+                critic_role="logical_devil",
+                backend_id="fixture-logical-001",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["logical_validity"],
+            )
+        ],
+    )
+
+    result = runtime.run_round(
+        yyyymmdd="20260520",
+        request_id="REQ-EXT-9-NEGATIVE",
+        candidate_ref=candidate_ref,
+        evidence_refs=evidence_refs,
+        panel_config=config,
+    )
+
+    boundary_record = json.loads(
+        (tmp_path / result.execution_boundary_refs[0]).read_text(encoding="utf-8")
+    )
+    assert boundary_record["duration_ms"] == 0

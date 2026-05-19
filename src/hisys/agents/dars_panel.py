@@ -320,6 +320,7 @@ class ExecutionBoundaryRecord:
     dispatch_reason: str
     started_at: str
     completed_at: str
+    duration_ms: int = 0
     approval_ref: str | None = None
     critique_ref: str | None = None
     external_call_made: bool = False
@@ -498,7 +499,8 @@ class DarsCriticPanelRuntime:
         critique_refs: list[str] = []
         execution_boundary_refs: list[str] = []
         for plan_task, critic in zip(plan.critic_tasks, panel_config.critics, strict=True):
-            task_started_at = _format_iso_timestamp(self._clock())
+            task_started = self._clock()
+            task_started_at = _format_iso_timestamp(task_started)
             adapter: FixtureCriticAdapter | None = None
             critique_ref: str | None = None
             if not critic.enabled:
@@ -602,7 +604,18 @@ class DarsCriticPanelRuntime:
                                 mutation_performed=False,
                             )
                         )
-            task_completed_at = _format_iso_timestamp(self._clock())
+            task_completed = self._clock()
+            task_completed_at = _format_iso_timestamp(task_completed)
+            task_duration_ms = max(
+                0,
+                int(
+                    (
+                        task_completed.astimezone(timezone.utc)
+                        - task_started.astimezone(timezone.utc)
+                    ).total_seconds()
+                    * 1000
+                ),
+            )
             boundary_record = ExecutionBoundaryRecord(
                 task_id=plan_task.task_id,
                 critic_id=plan_task.critic_id,
@@ -613,6 +626,7 @@ class DarsCriticPanelRuntime:
                 dispatch_reason=dispatch_reason,
                 started_at=task_started_at,
                 completed_at=task_completed_at,
+                duration_ms=task_duration_ms,
                 approval_ref=critic.approval_ref,
                 critique_ref=critique_ref,
             )
