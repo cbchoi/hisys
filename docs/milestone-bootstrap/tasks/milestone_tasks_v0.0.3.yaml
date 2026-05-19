@@ -1,0 +1,89 @@
+schema_id: hisys.milestone_bootstrap.tasks
+version: v0.0.3
+profile: develop
+tasks:
+- id: MB-DARS-CP-EXT6-T001
+  milestone: MB-DARS-CP-EXT6-M1
+  title: Write RED CLI acceptance test for read-only run-dars-panel
+  status: ready
+  type: tdd_red
+  source_plan: docs/plans/dars-critic-panel-mcp-ext-6-implementation-tasks.md
+  paths:
+    read:
+    - docs/plans/dars-critic-panel-mcp-ext-6-implementation-tasks.md
+    - src/hisys/cli/main.py
+    - src/hisys/agents/dars_panel.py
+    - tests/unit/test_dars_critic_panel_runtime.py
+    write:
+    - tests/unit/test_dars_critic_panel_cli.py
+  validation:
+    focused:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_persists_fixture_round_and_prints_json -q
+  gates:
+  - red_failure_must_be_missing_run_dars_panel_subcommand
+  - no_production_code_before_red
+  - no_tmux_or_background_agent
+- id: MB-DARS-CP-EXT6-T002
+  milestone: MB-DARS-CP-EXT6-M1
+  title: Implement minimal read-only run-dars-panel CLI wrapper
+  status: pending_after_T001
+  type: tdd_green
+  paths:
+    write:
+    - src/hisys/cli/main.py
+  validation:
+    focused:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py -q
+    regression:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q
+  gates:
+  - read_only_fixture_default
+  - no_external_dispatch_enable_flag
+  - advisory_only_invariants_preserved
+- id: MB-DARS-CP-EXT6-T003
+  milestone: MB-DARS-CP-EXT6-M2
+  title: Characterize external-style backend as typed blocked CLI outcome
+  status: pending_after_T002
+  type: tdd_safety_characterization
+  paths:
+    write:
+    - tests/unit/test_dars_critic_panel_cli.py
+    - src/hisys/cli/main.py
+  validation:
+    focused:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch -q
+  gates:
+  - external_backend_remains_blocked
+  - external_call_made_false
+  - mutation_performed_false
+- id: MB-DARS-CP-EXT6-T004
+  milestone: MB-DARS-CP-EXT6-M3
+  title: Update traceability and Ralph reflection for M-CP-EXT-6
+  status: pending_after_T003
+  type: document_green
+  paths:
+    write:
+    - docs/traceability/dars-critic-panel-runtime-traceability.md
+    - docs/traceability/README.md
+    - ralph.md
+  validation:
+    focused:
+    - python3 scripts/validate_traceability.py
+    safety:
+    - python3 scripts/scan_secrets.py
+    - git diff --check
+- id: MB-DARS-CP-EXT6-T005
+  milestone: MB-DARS-CP-EXT6-M3
+  title: Run full focused gate and commit M-CP-EXT-6 locally
+  status: pending_after_T004
+  type: quality_gate_commit
+  validation:
+    focused:
+    - PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q
+    safety:
+    - python3 scripts/validate_traceability.py
+    - python3 scripts/scan_secrets.py
+    - git diff --check
+  gates:
+  - local_commit_only
+  - no_remote_push_without_human_gate

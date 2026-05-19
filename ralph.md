@@ -1946,6 +1946,31 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — Milestone bootstrap v0.0.3 for M-CP-EXT-6 implementation readiness
+
+- Phase completed: `/bootstrap` current-session patch bootstrap; no tmux or background agent spawned.
+- Controlled anchors checked: `milestone-bootstrap` skill and follow-on patch bootstrap reference; existing milestone-bootstrap v0.0.1/v0.0.2 package; current M-CP-EXT-6 implementation plan at `docs/plans/dars-critic-panel-mcp-ext-6-implementation-tasks.md`; branch `dars` HEAD `4fe086e`.
+- Bootstrap artifacts added/updated: `docs/milestone-bootstrap/profile.yaml`, `README.md`, `index.md`, `reports/milestone_plan_v0.0.3.md`, `tasks/milestone_tasks_v0.0.3.yaml`, `testcases/milestone_testcases_v0.0.3.yaml`, `gates/quality_gate_v0.0.3.md`, `documents/readiness_decision_record_v0.0.3.md`, `hisys/request_v0.0.3.json`, `hisys/result_v0.0.3.md`, and `evidence/validation_log_v0.0.3.md`.
+- Local advisory readiness: `RALPH_START_READY_WITH_CONTROLS`.
+- Formal Hisys result: `not_run_in_this_bootstrap`; this bootstrap records local advisory readiness only.
+- Next safe task: `MB-DARS-CP-EXT6-T001`, write and observe the RED CLI acceptance test for `hisys run-dars-panel` before any production CLI code change.
+- Design issues pinned for the next task plan: keep the CLI read-only, JSON-config based, default-fixture-policy only, no external-dispatch enable flag, and typed blocked outcome for `external-*` backends.
+- Baseline GREEN observed: focused DARS panel regression `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q` -> 43 passed.
+- Quality gate result: pass — traceability validator OK, secret scan `hit_count=0`, structural bootstrap check passed, and `git diff --check` clean.
+- Version decision: patch bump from `v0.0.2` to `v0.0.3` because this is follow-on implementation readiness and no formal Hisys pass was run.
+- Continue decision: continue after local bootstrap commit into `MB-DARS-CP-EXT6-T001`; remote push remains out of scope.
+
+Resume checkpoint:
+- Current HEAD: 4fe086e docs: prepare read-only DARS panel CLI increment
+- Working tree: milestone-bootstrap v0.0.3 artifacts plus `ralph.md` modified until committed
+- Last completed milestone/task: v0.0.3 bootstrap readiness package
+- Current in-progress task: local commit for bootstrap package
+- RED observed: n/a for bootstrap; future RED is `tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_persists_fixture_round_and_prints_json`
+- GREEN observed: focused DARS panel regression 43 passed
+- Quality gate status: pass — see validation log v0.0.3
+- Next command to run: commit the v0.0.3 bootstrap package locally, then start `MB-DARS-CP-EXT6-T001`
+- Stop condition: none after commit; production code remains gated by future RED test
+
 ### 2026-05-20 — M-CP-EXT-6 read-only run-dars-panel CLI Prepare
 
 - Phase completed: Prepare / document-RED / Gate for `M-CP-EXT-6`, the read-only `hisys run-dars-panel` CLI deferred by the parent runtime-next plan and the M-CP-EXT-5/M-CP-EXT-7 reflection entries.

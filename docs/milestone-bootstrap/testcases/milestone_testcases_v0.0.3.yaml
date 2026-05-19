@@ -1,0 +1,37 @@
+schema_id: hisys.milestone_bootstrap.testcases
+version: v0.0.3
+profile: develop
+testcases:
+- id: MB-DARS-CP-EXT6-TC001
+  name: run_dars_panel_cli_fixture_round_json
+  requirement_refs:
+  - HISYS-FR-DARS-CP-001
+  - HISYS-FR-DARS-CP-003
+  - HISYS-FR-DARS-CP-007
+  - HISYS-NFR-DARS-CP-001
+  planned_test: tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_persists_fixture_round_and_prints_json
+  expected_red: argparse rejects missing run-dars-panel subcommand
+  expected_green: CLI returns 0, writes existing DARS panel artifacts, and prints bounded JSON refs
+- id: MB-DARS-CP-EXT6-TC002
+  name: run_dars_panel_cli_external_backend_blocked
+  requirement_refs:
+  - HISYS-FR-DARS-CP-007
+  - HISYS-NFR-DARS-CP-001
+  planned_test: tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch
+  expected_result: external-style backend yields typed blocked task outcome without external call or mutation
+- id: MB-DARS-CP-EXT6-TC003
+  name: focused_panel_regression
+  planned_command: PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q
+  expected_result: existing focused DARS panel suites remain green
+- id: MB-DARS-CP-EXT6-TC004
+  name: traceability_validation
+  planned_command: python3 scripts/validate_traceability.py
+  expected_result: OK
+- id: MB-DARS-CP-EXT6-TC005
+  name: secret_scan
+  planned_command: python3 scripts/scan_secrets.py
+  expected_result: hit_count=0
+- id: MB-DARS-CP-EXT6-TC006
+  name: whitespace_diff_check
+  planned_command: git diff --check
+  expected_result: clean

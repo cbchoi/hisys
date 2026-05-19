@@ -1,31 +1,29 @@
 schema_id: hisys.milestone_bootstrap.profile
-version: v0.0.2
+version: v0.0.3
 created: '2026-05-19'
-updated: '2026-05-19'
+updated: '2026-05-20'
 target:
   workspace_root: /home/cbchoi/workspaces/develop/repos/hisys
   git_repository: true
   branch: dars
   upstream: origin/dars
-  head: 18fafa9
+  head: 4fe086e
   context_source: discord_thread
-  context_hint: Hisys develop thread; user requested M-CP-EXT-3 Prepare bootstrap
+  context_hint: Hisys develop thread; user requested /bootstrap with no explicit arguments after M-CP-EXT-6 Prepare commit
 profile:
   detected_profile: develop
   selected_profile: develop
   rationale:
-  - Source code and pytest suite are present under src/ and tests/.
-  - DARS critic panel runtime has completed M-CP-EXT-1 and M-CP-EXT-2 with local GREEN
-    gates.
-  - The next safe action is a document/bootstrap Prepare package for M-CP-EXT-3 before
-    any RED test or production scheduling code is written.
+  - Source code, pytest suite, CLI entrypoint, and DARS critic panel runtime are present under src/ and tests/.
+  - Existing milestone-bootstrap artifacts v0.0.1 and v0.0.2 establish the DARS critic panel bootstrap line.
+  - M-CP-EXT-1, M-CP-EXT-2, M-CP-EXT-3, M-CP-EXT-4, M-CP-EXT-5, and M-CP-EXT-7 are locally committed on branch dars.
+  - M-CP-EXT-6 now has a committed document-RED implementation task plan and is ready for a RED CLI test, not production code first.
 version_policy:
-  current_version: v0.0.2
-  previous_version: v0.0.1
+  current_version: v0.0.3
+  previous_version: v0.0.2
   bump_type: patch
-  bump_reason: analysis refinement and next-increment Prepare after M-CP-EXT-2 implementation
-  next_minor_reason: M-CP-EXT-3 GREEN plus readiness gates pass or explicit advisory
-    readiness acceptance
+  bump_reason: follow-on increment patch bootstrap for M-CP-EXT-6 implementation readiness after document-RED plan commit
+  next_minor_reason: M-CP-EXT-6 GREEN plus readiness gates pass or explicit advisory readiness acceptance
 governance_boundaries:
   no_tmux_or_background_agent_spawned: true
   external_calls_allowed: false
