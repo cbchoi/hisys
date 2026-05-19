@@ -48,6 +48,7 @@ class InvestigationWorkProduct:
     data_source_targets: list[str]
     memo_refs: list[str]
     evidence_refs: list[str]
+    codebase_artifact_refs: list[str] = field(default_factory=list)
     domain_subtype: str | None = None
     external_call_made: bool = False
     mutation_performed: bool = False

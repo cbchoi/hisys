@@ -57,6 +57,33 @@ def _is_requirements_analysis_objective(objective: str) -> bool:
     )
 
 
+CODEBASE_ARTIFACT_REF_PREFIX = "runtime-boundary/codebase-analysis/"
+
+
+def _is_codebase_artifact_ref(ref: str) -> bool:
+    """Return true for safe local codebase-analysis runtime-boundary refs."""
+
+    parts = ref.split("/")
+    return ref.startswith(CODEBASE_ARTIFACT_REF_PREFIX) and ".." not in parts
+
+
+def _extract_codebase_artifact_refs(request: DomainInvestigationRequest) -> list[str]:
+    """Extract ordered, deduplicated local codebase-analysis artifact refs."""
+
+    seen: set[str] = set()
+    refs: list[str] = []
+    for source in request.sources:
+        if source.source_type != "runtime_record":
+            continue
+        if not _is_codebase_artifact_ref(source.ref):
+            continue
+        if source.ref in seen:
+            continue
+        seen.add(source.ref)
+        refs.append(source.ref)
+    return refs
+
+
 class CodeInvestigationLayer:
     """Investigate code evidence from local memos and requirements folders."""
 
@@ -80,6 +107,8 @@ class CodeInvestigationLayer:
             if is_requirements_analysis
             else "local-code-and-requirements-memos"
         )
+        codebase_artifact_refs = _extract_codebase_artifact_refs(request)
+        codebase_artifact_ref_set = set(codebase_artifact_refs)
         return InvestigationWorkProduct(
             work_product_id=f"INVEST-{request.request_id}-{suffix}",
             scope=scope,
@@ -87,9 +116,14 @@ class CodeInvestigationLayer:
             data_source_targets=["local_requirements_folder"],
             memo_refs=[f"memo://{request.request_id}/{memo_kind}"],
             evidence_refs=[
-                *[source.source_id for source in request.sources],
+                *[
+                    source.source_id
+                    for source in request.sources
+                    if source.ref not in codebase_artifact_ref_set
+                ],
                 f"requirements-folder://{self._requirements_root}",
             ],
+            codebase_artifact_refs=codebase_artifact_refs,
             domain_subtype="requirements-analysis" if is_requirements_analysis else None,
         )
 

@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M20.1 codebase-domain artifact bundle acceptance (RED -> GREEN)
+
+- Phase completed: RED / GREEN / Refactor-skipped / Gate for `M20.1`, the refs-only first implementation step of Milestone M20 (Bridge Codebase Artifacts into `investigate-domain --domain codebase`). The increment lets `CodeInvestigationLayer` surface codebase-analysis runtime refs in a dedicated internal work-product field without loading JSON artifacts or changing the CLI/result envelope.
+- Controlled anchors checked: `docs/plans/m20-codebase-domain-artifact-bridge-implementation-tasks.md`; `src/hisys/domain/layers.py` `InvestigationWorkProduct`; `src/hisys/domain/use_cases.py` `CodeInvestigationLayer`; `src/hisys/schemas/domain_investigation.py` existing `DomainSourceRef` / `SourceType="runtime_record"`; focused domain and DARS regression surfaces.
+- Baseline observed: branch `dars`, HEAD `960e480 docs: prepare M20 codebase-domain bridge increment`, working tree clean before implementation. Domain baseline `PYTHONPATH=src pytest tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py -q` -> 13 passed.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py -q` -> 2 failed with `AttributeError: 'InvestigationWorkProduct' object has no attribute 'codebase_artifact_refs'`. The failure matched the planned missing-field RED and occurred before any production code change.
+- Implementation: created `tests/unit/test_codebase_domain_artifact_bridge.py` with two tests: one asserts ordered/deduplicated extraction of two safe `runtime-boundary/codebase-analysis/...` refs, exclusion of those source IDs from `evidence_refs`, preservation of non-codebase/unsafe refs in `evidence_refs`, and rejection of `..` segments; the other asserts `codebase_artifact_refs == []` when no codebase-analysis refs are present. Added `codebase_artifact_refs: list[str] = field(default_factory=list)` to `InvestigationWorkProduct`. Added pure helpers `CODEBASE_ARTIFACT_REF_PREFIX`, `_is_codebase_artifact_ref`, and `_extract_codebase_artifact_refs` in `src/hisys/domain/use_cases.py`, then threaded the extracted list into `CodeInvestigationLayer.investigate` while preserving existing evidence-source-ID behavior for non-matching refs.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py -q` -> 2 passed. Domain regression `PYTHONPATH=src pytest tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py -q` -> 13 passed. Combined domain gate with the new file -> 15 passed.
+- Documentation/traceability: updated `docs/traceability/README.md` with the implemented-increments row `Codebase domain artifact bundle acceptance (M20.1)`, enumerating the new internal field, extraction rule, refs-only scope, unchanged non-codebase `evidence_refs` semantics, gate commands, and deferred loading/gating/enrichment/CLI work.
+- Quality gate result: pass — combined domain gate 15 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=522 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) M20.1 deliberately stores source IDs in `evidence_refs` for non-codebase refs because that is the existing layer contract; codebase-analysis artifact paths are stored only in `codebase_artifact_refs`. (b) No artifact file is read or validated yet; completeness gating belongs to M20.2 and enrichment/result-surfacing belongs to M20.3. (c) The CLI still has no new artifact-ref flag in this increment; CLI integration remains M20.4. (d) Future translation from `DomainUseCaseResult` to `DomainInvestigationResult` does not yet expose `codebase_artifact_refs`.
+- Continue decision: after committing this increment, the next safe queue item is M20.2 Prepare for incomplete codebase artifact bundle gating, unless a higher-priority package split or queue-refill checkpoint is requested.
+- Stop condition: M20.1 implementation boundary reached and validated; no remote push.
+- Commit pending: `feat: accept codebase artifact bundle refs`.
+
+Resume checkpoint:
+- Current HEAD: 960e480 docs: prepare M20 codebase-domain bridge increment (pre-commit baseline)
+- Working tree: `src/hisys/domain/layers.py`, `src/hisys/domain/use_cases.py`, `tests/unit/test_codebase_domain_artifact_bridge.py`, `docs/traceability/README.md`, and `ralph.md` modified until committed
+- Last completed milestone/task: M20.1 implementation RED -> GREEN
+- Current in-progress task: commit `feat: accept codebase artifact bundle refs`
+- RED observed: expected `AttributeError` for missing `codebase_artifact_refs`
+- GREEN observed: new tests 2 passed; combined domain gate 15 passed; DARS focused regression 48 passed
+- Quality gate status: pass — traceability OK, secret scan hit_count=0, `git diff --check` clean
+- Next command to run: stage the M20.1 implementation files and commit locally; then prepare M20.2 if continuing
+- Stop condition: none after local commit; remote push and live/external actions remain unauthorized
+
 ### 2026-05-20 — M20.1 codebase-domain artifact bundle acceptance Prepare
 
 - Phase completed: Prepare / document-RED / Gate for `M20.1` (codebase-domain artifact bundle acceptance), the first task of the previously-deferred Section 14 Milestone M20 ("Bridge Codebase Artifacts into `investigate-domain --domain codebase`"). This is a docs/control-only checkpoint; no production code or RED tests were written in this iteration.
