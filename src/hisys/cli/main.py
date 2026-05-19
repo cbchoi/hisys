@@ -121,6 +121,11 @@ from ..operations.codebase_analysis import (
 from ..operations.backup import create_backup, restore_backup_dry_run
 from ..operations.health import collect_health_status
 from ..operations.release_readiness import QualityGateResult, build_release_readiness_report
+from ..operations.runtime_status_surface import (
+    build_runtime_status_packet,
+    render_runtime_status_text,
+    write_runtime_status_surface,
+)
 from ..investigator import (
     ClaimRecord,
     CollectionReport,
@@ -1456,6 +1461,39 @@ def _cmd_release_readiness(
     return 0 if report.overall_status == "ready_for_review" else 2
 
 
+def _cmd_runtime_status_surface(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    workdir: Path | None,
+    model: str | None,
+    session: str | None,
+    approval_state: str,
+    context_budget: str,
+    output_format: str,
+) -> int:
+    """Write a local/read-only runtime status surface packet."""
+
+    instance = InstanceRoot(instance_root)
+    packet = build_runtime_status_packet(
+        instance_root=instance.root,
+        yyyymmdd=yyyymmdd,
+        workdir=workdir,
+        model=model,
+        session=session,
+        approval_state=approval_state,
+        context_budget=context_budget,
+    )
+    artifacts = write_runtime_status_surface(instance_root=instance.root, yyyymmdd=yyyymmdd, packet=packet)
+    if output_format == "json":
+        print(json.dumps({"packet": packet, "artifacts": artifacts}, ensure_ascii=False, indent=2, sort_keys=True))
+    elif output_format == "markdown":
+        print((instance.root / artifacts["markdown_ref"]).read_text(encoding="utf-8"), end="")
+    else:
+        print(render_runtime_status_text(packet, json_ref=artifacts["json_ref"]))
+    return 0
+
+
 def _cmd_completion_status(
     *,
     instance_root: Path,
@@ -1745,6 +1783,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help="validation status as name=status, e.g. focused=passed; repeatable",
     )
     completion_status.add_argument("--format", choices=["json", "markdown"], default="json")
+
+    runtime_status_surface = sub.add_parser(
+        "runtime-status-surface",
+        help="write local redacted runtime status surface artifacts without external calls",
+    )
+    runtime_status_surface.add_argument("--instance", required=True, help="Hisys instance root")
+    runtime_status_surface.add_argument("--date", required=True, help="YYYYMMDD")
+    runtime_status_surface.add_argument("--workdir", type=Path, default=None, help="local workdir/repository to inspect; defaults to cwd")
+    runtime_status_surface.add_argument("--model", default=None, help="optional current model label; credential-like values are redacted")
+    runtime_status_surface.add_argument("--session", default=None, help="optional session label; credential-like values are redacted")
+    runtime_status_surface.add_argument("--approval-state", default="unknown", help="current approval/gate state")
+    runtime_status_surface.add_argument("--context-budget", default="unknown", help="current context/cost budget summary")
+    runtime_status_surface.add_argument("--format", choices=["text", "json", "markdown"], default="text")
 
     spec_packet = sub.add_parser("build-spec-first-packet", help="write a spec-first run packet before governed agent work")
     spec_packet.add_argument("--instance", required=True, help="Hisys instance root")
@@ -2913,6 +2964,17 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             validation_items=args.validation,
+            output_format=args.format,
+        )
+    if args.command == "runtime-status-surface":
+        return _cmd_runtime_status_surface(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            workdir=args.workdir,
+            model=args.model,
+            session=args.session,
+            approval_state=args.approval_state,
+            context_budget=args.context_budget,
             output_format=args.format,
         )
     if args.command == "build-spec-first-packet":
