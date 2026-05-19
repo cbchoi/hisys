@@ -417,3 +417,78 @@ def test_panel_runtime_rejects_naive_clock(tmp_path: Path):
             evidence_refs=evidence_refs,
             panel_config=config,
         )
+
+
+def test_panel_runtime_marks_unresolved_adapter_class_for_disabled_critic(tmp_path: Path):
+    """M-CP-EXT-7: when no adapter is resolved, the boundary record marks `adapter_class="unresolved"`."""
+
+    from hisys.agents.dars_panel import (
+        CriticAdapterRegistry,
+        DarsCriticPanelConfig,
+        DarsCriticPanelRuntime,
+        DarsCriticRoleConfig,
+    )
+    from hisys.config.instance import InstanceRoot
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    registry = CriticAdapterRegistry()  # empty
+    config = DarsCriticPanelConfig(
+        panel_id="PANEL-DARS-CP-EXT-7",
+        critics=[
+            DarsCriticRoleConfig(
+                critic_id="disabled-devil",
+                critic_role="logical_devil",
+                backend_id="fixture-disabled",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["logical_validity"],
+                enabled=False,
+            ),
+            DarsCriticRoleConfig(
+                critic_id="missing-devil",
+                critic_role="standards_reviewer",
+                backend_id="fixture-missing",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["standards_alignment"],
+            ),
+        ],
+    )
+
+    result = DarsCriticPanelRuntime(
+        instance=InstanceRoot(tmp_path),
+        adapter_registry=registry,
+    ).run_round(
+        yyyymmdd="20260520",
+        request_id="REQ-DARS-CP-EXT-7",
+        candidate_ref=candidate_ref,
+        evidence_refs=evidence_refs,
+        panel_config=config,
+    )
+
+    boundary_payloads = [
+        json.loads((tmp_path / ref).read_text(encoding="utf-8"))
+        for ref in result.execution_boundary_refs
+    ]
+    assert [payload["adapter_class"] for payload in boundary_payloads] == [
+        "unresolved",
+        "unresolved",
+    ]
+    for payload in boundary_payloads:
+        assert payload["dispatch_decision"] == "blocked"
+        assert payload["external_call_made"] is False
+        assert payload["mutation_performed"] is False
+        assert payload["action_authorized"] is False
+        assert payload["advisory_only"] is True
+        assert payload["requires_human_review"] is True
+
+
+def test_fixture_critic_adapter_rejects_unresolved_adapter_class():
+    """M-CP-EXT-7: the `unresolved` literal is reserved for boundary records, not real adapters."""
+
+    from hisys.agents.dars_panel import FixtureCriticAdapter
+
+    with pytest.raises(ValueError, match="adapter_class must be fixture\\|loopback\\|external"):
+        FixtureCriticAdapter(
+            critic_role="logical_devil",
+            backend_id="fixture-logical",
+            adapter_class="unresolved",  # type: ignore[arg-type]
+        )

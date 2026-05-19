@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.6.0
+version: 0.7.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-20
@@ -19,10 +19,54 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 | HISYS-FR-DARS-CP-004 | `DarsRoundTrace` writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2) | HISYS-T-DARS-CP-004 | `test_dars_panel_runtime_persists_round_trace_lineage`, `test_panel_runtime_writes_one_boundary_record_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2) |
 | HISYS-FR-DARS-CP-005 | `DarsCritiqueSynthesis` | HISYS-T-DARS-CP-005 | `test_dars_critique_synthesis_is_advisory_and_preserves_role_provenance` | GREEN (MB-DARS-CP-T001) |
 | HISYS-FR-DARS-CP-006 | execution mode policy, `ExecutionGraphPlan` ready-set determinism / synthesis-after-terminal-critics / bounded-parallel chunking (M-CP-EXT-3) | HISYS-T-DARS-CP-006 | `test_dars_round_plan_is_serial_compatible_with_bounded_parallel_policy`, `test_execution_graph_plan_ready_set_is_deterministic_and_sorted`, `test_execution_graph_plan_synthesis_waits_until_all_critics_terminal`, `test_execution_graph_plan_treats_failed_blocked_and_skipped_as_terminal`, `test_execution_graph_plan_bounded_parallel_chunks_are_deterministic`, `test_execution_graph_plan_rejects_invalid_max_parallel`, `test_execution_graph_plan_rejects_unknown_dependency_node`, `test_execution_graph_plan_rejects_dependency_cycle`, `test_execution_graph_plan_from_round_plan_preserves_critic_before_synthesis_edges`, `test_dars_panel_reexports_execution_graph_plan_for_compatibility`, `test_dars_panel_runtime_remains_serial_after_graph_integration` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-3) |
-| HISYS-FR-DARS-CP-007 | backend dispatch gate, `CriticAdapterRegistry` external block, typed `FixtureCriticAdapter.fixture_outcome` (M-CP-EXT-1), `ExecutionBoundaryRecord.dispatch_decision` (M-CP-EXT-2), typed adapter-missing `LookupError` -> `status=blocked` (M-CP-EXT-4) | HISYS-T-DARS-CP-007 | `test_dars_panel_blocks_external_backend_without_approval`, `test_critic_adapter_registry_blocks_external_without_explicit_allow_flag`, `test_fixture_critic_adapter_records_declared_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4) |
+| HISYS-FR-DARS-CP-007 | backend dispatch gate, `CriticAdapterRegistry` external block, typed `FixtureCriticAdapter.fixture_outcome` (M-CP-EXT-1), `ExecutionBoundaryRecord.dispatch_decision` (M-CP-EXT-2), typed adapter-missing `LookupError` -> `status=blocked` (M-CP-EXT-4), unresolved `adapter_class` marker on boundary records (M-CP-EXT-7) | HISYS-T-DARS-CP-007 | `test_dars_panel_blocks_external_backend_without_approval`, `test_critic_adapter_registry_blocks_external_without_explicit_allow_flag`, `test_fixture_critic_adapter_records_declared_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role`, `test_panel_runtime_marks_unresolved_adapter_class_for_disabled_critic`, `test_fixture_critic_adapter_rejects_unresolved_adapter_class` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4 + M-CP-EXT-7) |
 | HISYS-FR-DARS-CP-008 | advisory/human-decision fields | HISYS-T-DARS-CP-008 | `test_dars_panel_artifacts_preserve_advisory_human_decision_separation` | GREEN (MB-DARS-CP-T001) |
 | HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis, adapter-outcome-driven isolation (M-CP-EXT-1), per-task boundary record on failed/blocked branches (M-CP-EXT-2), typed adapter-missing isolation (M-CP-EXT-4) | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence`, `test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4) |
 | HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate, slug validation on date/request_id/task_id (M-CP-EXT-2), naive-datetime clock rejection (M-CP-EXT-5) | HISYS-T-DARS-CP-010 | changed-file secret scan, `test_write_execution_boundary_record_rejects_invalid_slug`, `test_write_execution_boundary_record_rejects_traversal_in_task_id`, `test_panel_runtime_rejects_invalid_slug`, `test_panel_runtime_rejects_naive_clock` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-5) |
+
+## M-CP-EXT-7 — Unresolved adapter class literal (2026-05-20)
+
+- Scope: closed the M-CP-EXT-2 open item (d) and the M-CP-EXT-4 open item (a)
+  about the structural `adapter_class="fixture"` default for boundary records
+  on the `disabled` / `PermissionError` / `LookupError` branches (when no
+  adapter is resolved). The `AdapterClass` `Literal` is widened to include
+  `"unresolved"`, and `DarsCriticPanelRuntime.run_round` now persists
+  `adapter_class="unresolved"` on every boundary record whose
+  `adapter is None`. Reviewers can now distinguish "the role was bound to a
+  fixture adapter and the adapter chose this outcome" from "no adapter
+  resolution attempt yielded an adapter for this role".
+- Runtime change: a single substitution inside `run_round` —
+  `adapter_class=adapter.adapter_class if adapter is not None else "unresolved"`
+  (was `... else "fixture"`). The `AdapterClass` type alias is now
+  `Literal["fixture", "loopback", "external", "unresolved"]`.
+- Reserved-marker invariant: `FixtureCriticAdapter.__post_init__` continues
+  to reject `adapter_class` values outside `{"fixture", "loopback",
+  "external"}`. `"unresolved"` is reserved for `ExecutionBoundaryRecord`
+  reporting; it never describes a real adapter binding and is never returned
+  by `CriticAdapterRegistry.resolve(...)`.
+- New tests:
+  `test_panel_runtime_marks_unresolved_adapter_class_for_disabled_critic`
+  (two-critic config — one disabled, one missing-from-registry — both
+  boundary records assert `adapter_class="unresolved"` with the safety
+  envelope intact) and `test_fixture_critic_adapter_rejects_unresolved_adapter_class`
+  (constructing a `FixtureCriticAdapter` with `adapter_class="unresolved"`
+  raises `ValueError("adapter_class must be fixture|loopback|external; got
+  unresolved")`).
+- Existing tests preserved:
+  `tests/unit/test_dars_critic_panel_runtime.py` (9 passed, unchanged),
+  `tests/unit/test_dars_critic_panel_adapters.py` (5 passed, unchanged
+  post-M-CP-EXT-4),
+  `tests/unit/test_dars_critic_panel_tool_execution_runtime.py` (now 19
+  passed, +2 new),
+  `tests/unit/test_dars_critic_panel_execution_graph_plan.py` (10 passed,
+  unchanged).
+- Audit trail: the M-CP-EXT-2 RTM section still documents the original
+  `"fixture"` structural default; this M-CP-EXT-7 section is the
+  forward-pointing record of the replacement.
+- Boundary: no live DARS dispatch, no credential resolution, no remote push,
+  no external call, no mutation, no CLI activation, no schema field added or
+  removed. Validation commands recorded in the ralph.md Reflection Log entry
+  for M-CP-EXT-7.
 
 ## M-CP-EXT-5 — Deterministic clock injection seam (2026-05-20)
 

@@ -45,7 +45,7 @@ EXTERNAL_BACKEND_PREFIX = "external-"
 CriticRole = str
 TaskStatus = Literal["completed", "failed", "blocked"]
 ExecutionMode = Literal["serial", "bounded_parallel"]
-AdapterClass = Literal["fixture", "loopback", "external"]
+AdapterClass = Literal["fixture", "loopback", "external", "unresolved"]
 BackendDispatchOutcome = Literal["completed", "failed", "blocked", "skipped"]
 DispatchDecision = Literal["allowed", "blocked"]
 
@@ -604,7 +604,7 @@ class DarsCriticPanelRuntime:
                 task_id=plan_task.task_id,
                 critic_id=plan_task.critic_id,
                 critic_role=plan_task.critic_role,
-                adapter_class=adapter.adapter_class if adapter is not None else "fixture",
+                adapter_class=adapter.adapter_class if adapter is not None else "unresolved",
                 backend_id=plan_task.backend_id,
                 dispatch_decision=dispatch_decision,
                 dispatch_reason=dispatch_reason,
