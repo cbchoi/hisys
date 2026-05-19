@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.4.0
+version: 0.5.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-20
@@ -19,10 +19,52 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 | HISYS-FR-DARS-CP-004 | `DarsRoundTrace` writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2) | HISYS-T-DARS-CP-004 | `test_dars_panel_runtime_persists_round_trace_lineage`, `test_panel_runtime_writes_one_boundary_record_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2) |
 | HISYS-FR-DARS-CP-005 | `DarsCritiqueSynthesis` | HISYS-T-DARS-CP-005 | `test_dars_critique_synthesis_is_advisory_and_preserves_role_provenance` | GREEN (MB-DARS-CP-T001) |
 | HISYS-FR-DARS-CP-006 | execution mode policy, `ExecutionGraphPlan` ready-set determinism / synthesis-after-terminal-critics / bounded-parallel chunking (M-CP-EXT-3) | HISYS-T-DARS-CP-006 | `test_dars_round_plan_is_serial_compatible_with_bounded_parallel_policy`, `test_execution_graph_plan_ready_set_is_deterministic_and_sorted`, `test_execution_graph_plan_synthesis_waits_until_all_critics_terminal`, `test_execution_graph_plan_treats_failed_blocked_and_skipped_as_terminal`, `test_execution_graph_plan_bounded_parallel_chunks_are_deterministic`, `test_execution_graph_plan_rejects_invalid_max_parallel`, `test_execution_graph_plan_rejects_unknown_dependency_node`, `test_execution_graph_plan_rejects_dependency_cycle`, `test_execution_graph_plan_from_round_plan_preserves_critic_before_synthesis_edges`, `test_dars_panel_reexports_execution_graph_plan_for_compatibility`, `test_dars_panel_runtime_remains_serial_after_graph_integration` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-3) |
-| HISYS-FR-DARS-CP-007 | backend dispatch gate, `CriticAdapterRegistry` external block, typed `FixtureCriticAdapter.fixture_outcome` (M-CP-EXT-1), `ExecutionBoundaryRecord.dispatch_decision` (M-CP-EXT-2) | HISYS-T-DARS-CP-007 | `test_dars_panel_blocks_external_backend_without_approval`, `test_critic_adapter_registry_blocks_external_without_explicit_allow_flag`, `test_fixture_critic_adapter_records_declared_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2) |
+| HISYS-FR-DARS-CP-007 | backend dispatch gate, `CriticAdapterRegistry` external block, typed `FixtureCriticAdapter.fixture_outcome` (M-CP-EXT-1), `ExecutionBoundaryRecord.dispatch_decision` (M-CP-EXT-2), typed adapter-missing `LookupError` -> `status=blocked` (M-CP-EXT-4) | HISYS-T-DARS-CP-007 | `test_dars_panel_blocks_external_backend_without_approval`, `test_critic_adapter_registry_blocks_external_without_explicit_allow_flag`, `test_fixture_critic_adapter_records_declared_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4) |
 | HISYS-FR-DARS-CP-008 | advisory/human-decision fields | HISYS-T-DARS-CP-008 | `test_dars_panel_artifacts_preserve_advisory_human_decision_separation` | GREEN (MB-DARS-CP-T001) |
-| HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis, adapter-outcome-driven isolation (M-CP-EXT-1), per-task boundary record on failed/blocked branches (M-CP-EXT-2) | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence`, `test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2) |
+| HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis, adapter-outcome-driven isolation (M-CP-EXT-1), per-task boundary record on failed/blocked branches (M-CP-EXT-2), typed adapter-missing isolation (M-CP-EXT-4) | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence`, `test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4) |
 | HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate, slug validation on date/request_id/task_id (M-CP-EXT-2) | HISYS-T-DARS-CP-010 | changed-file secret scan, `test_write_execution_boundary_record_rejects_invalid_slug`, `test_write_execution_boundary_record_rejects_traversal_in_task_id`, `test_panel_runtime_rejects_invalid_slug` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2) |
+
+## M-CP-EXT-4 — Typed adapter-missing blocked increment (2026-05-20)
+
+- Scope: converted the previously uncaught `CriticAdapterRegistry.resolve(...)`
+  `LookupError` path (raised when an explicit caller-supplied registry has no
+  adapter for a `(critic_role, backend_id)` pair) into a typed per-task
+  `DarsTaskResult(status="blocked")` plus a matching
+  `ExecutionBoundaryRecord(dispatch_decision="blocked",
+  dispatch_reason=<LookupError text>)` so a missing registration no longer
+  crashes the round. The registry contract is unchanged: `resolve` still raises
+  `LookupError` for callers other than `run_round`.
+- Runtime change: `DarsCriticPanelRuntime.run_round` now catches
+  `(LookupError, PermissionError)` from the adapter-resolution call in a single
+  sibling `except` arm. Both arms emit the same task-result and
+  boundary-record shape with `external_call_made=False`,
+  `mutation_performed=False`, `action_authorized=False`, `advisory_only=True`,
+  and `requires_human_review=True`. The `adapter_class="fixture"` structural
+  default already used by the `disabled` and `PermissionError` branches applies
+  to the new `LookupError` branch as well; a non-structural
+  `adapter_class="unresolved"` literal remains deferred (open item from
+  M-CP-EXT-2 reflection).
+- Default fallback registry unaffected: `_DefaultFixturePolicy` synthesizes
+  adapters on demand, so it never raises `LookupError`. Only explicit
+  caller-supplied `CriticAdapterRegistry` instances with missing
+  `(role, backend_id)` pairs reach the new branch.
+- New tests: `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role`
+  in `tests/unit/test_dars_critic_panel_adapters.py` (asserts task status,
+  empty critique refs, `external_call_made=False`, exception-text propagation
+  into both the task result `error_message` and the persisted boundary record
+  `dispatch_reason`, and the locked safety-envelope fields on the boundary
+  record JSON payload).
+- Existing tests preserved:
+  `tests/unit/test_dars_critic_panel_runtime.py` (9 passed, unchanged),
+  `tests/unit/test_dars_critic_panel_adapters.py` (now 5 passed, +1 new),
+  `tests/unit/test_dars_critic_panel_tool_execution_runtime.py`
+  (15 passed, unchanged), and
+  `tests/unit/test_dars_critic_panel_execution_graph_plan.py`
+  (10 passed, unchanged).
+- Boundary: no live DARS dispatch, no credential resolution, no remote push,
+  no external call, no mutation, no CLI activation, no clock-injection seam.
+  Validation commands recorded in the ralph.md Reflection Log entry for
+  M-CP-EXT-4.
 
 ## M-CP-EXT-3 — Execution graph plan increment (2026-05-20)
 

@@ -501,7 +501,7 @@ class DarsCriticPanelRuntime:
                         backend_id=critic.backend_id,
                         approval_ref=critic.approval_ref,
                     )
-                except PermissionError as exc:
+                except (LookupError, PermissionError) as exc:
                     dispatch_decision = "blocked"
                     dispatch_reason = str(exc)
                     task_results.append(

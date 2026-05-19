@@ -134,3 +134,59 @@ def test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match(tmp
     statuses = [task.status for task in result.task_results]
     assert statuses == ["failed", "completed"]
     assert len(result.critique_refs) == 1
+
+
+def test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role(tmp_path: Path):
+    """M-CP-EXT-4: explicit registry without a matching adapter -> typed blocked task."""
+
+    from hisys.agents.dars_panel import (
+        CriticAdapterRegistry,
+        DarsCriticPanelConfig,
+        DarsCriticPanelRuntime,
+        DarsCriticRoleConfig,
+    )
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    registry = CriticAdapterRegistry()  # explicit, no adapters registered
+
+    config = DarsCriticPanelConfig(
+        panel_id="PANEL-DARS-CP-EXT-4",
+        critics=[
+            DarsCriticRoleConfig(
+                critic_id="logical-devil",
+                critic_role="logical_devil",
+                backend_id="fixture-logical-unregistered",
+                rubric_ref=rubric_ref,
+                critique_dimensions=["logical_validity"],
+            ),
+        ],
+    )
+
+    result = DarsCriticPanelRuntime(
+        instance=InstanceRoot(tmp_path),
+        adapter_registry=registry,
+    ).run_round(
+        yyyymmdd="20260520",
+        request_id="REQ-DARS-CP-EXT-4",
+        candidate_ref=candidate_ref,
+        evidence_refs=evidence_refs,
+        panel_config=config,
+    )
+
+    assert [task.status for task in result.task_results] == ["blocked"]
+    assert result.task_results[0].critique_ref is None
+    assert result.task_results[0].external_call_made is False
+    assert "no critic adapter registered" in (result.task_results[0].error_message or "")
+    assert result.critique_refs == []
+    assert len(result.execution_boundary_refs) == 1
+
+    boundary_path = tmp_path / result.execution_boundary_refs[0]
+    payload = json.loads(boundary_path.read_text(encoding="utf-8"))
+    assert payload["dispatch_decision"] == "blocked"
+    assert "no critic adapter registered" in payload["dispatch_reason"]
+    assert payload["critique_ref"] is None
+    assert payload["external_call_made"] is False
+    assert payload["mutation_performed"] is False
+    assert payload["action_authorized"] is False
+    assert payload["advisory_only"] is True
+    assert payload["requires_human_review"] is True
