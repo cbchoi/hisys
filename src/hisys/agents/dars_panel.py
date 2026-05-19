@@ -27,6 +27,14 @@ from pathlib import Path
 from typing import Literal
 
 from ..config.instance import InstanceRoot
+from .dars_panel_graph import (
+    DARS_CRITICS_CONCURRENCY_GROUP,
+    DARS_SYNTHESIS_CONCURRENCY_GROUP,
+    TERMINAL_TASK_STATUSES,
+    ExecutionGraphEdge,
+    ExecutionGraphNode,
+    ExecutionGraphPlan,
+)
 
 CRITIQUE_RECORD_CONTRACT = "DarsCritiqueRecord"
 ADVISORY_ONLY = "advisory_only"
@@ -449,6 +457,13 @@ class DarsCriticPanelRuntime:
             evidence_refs=evidence_refs,
             panel_config=panel_config,
         )
+        # M-CP-EXT-3: build a pure ExecutionGraphPlan as a consistency guard.
+        # The runtime remains serial; this assertion only catches structural
+        # divergence between the round plan and a schedulable graph.
+        graph_plan = ExecutionGraphPlan.from_round_plan(plan)
+        expected_ready = [task.task_id for task in sorted(plan.critic_tasks, key=lambda task: task.task_id)]
+        if graph_plan.ready_set(terminal_task_ids=frozenset()) != expected_ready:
+            raise ValueError("round plan is not graph-schedulable")
         instance_root = Path(self.instance.root)
         panel_dir = self._panel_dir(yyyymmdd, request_id)
         critiques_dir = panel_dir / "critiques"
@@ -767,6 +782,8 @@ __all__ = [
     "CONCURRENCY_GROUP",
     "CRITIQUE_RECORD_CONTRACT",
     "CriticAdapterRegistry",
+    "DARS_CRITICS_CONCURRENCY_GROUP",
+    "DARS_SYNTHESIS_CONCURRENCY_GROUP",
     "DarsCriticPanelConfig",
     "DarsCriticPanelRuntime",
     "DarsCriticRoleConfig",
@@ -778,7 +795,11 @@ __all__ = [
     "DarsTaskResult",
     "DispatchDecision",
     "ExecutionBoundaryRecord",
+    "ExecutionGraphEdge",
+    "ExecutionGraphNode",
+    "ExecutionGraphPlan",
     "FixtureCriticAdapter",
     "RUNTIME_BOUNDARY_SUBTREE",
+    "TERMINAL_TASK_STATUSES",
     "write_execution_boundary_record",
 ]

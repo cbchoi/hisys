@@ -1,10 +1,10 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.3.0
+version: 0.4.0
 document_status: draft-for-tdd
 created: 2026-05-19
-updated: 2026-05-19
+updated: 2026-05-20
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
@@ -18,11 +18,57 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 | HISYS-FR-DARS-CP-003 | fixture critic executor, critique writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2) | HISYS-T-DARS-CP-003 | `test_dars_panel_runtime_writes_advisory_critique_artifacts`, `test_panel_runtime_writes_one_boundary_record_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2) |
 | HISYS-FR-DARS-CP-004 | `DarsRoundTrace` writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2) | HISYS-T-DARS-CP-004 | `test_dars_panel_runtime_persists_round_trace_lineage`, `test_panel_runtime_writes_one_boundary_record_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2) |
 | HISYS-FR-DARS-CP-005 | `DarsCritiqueSynthesis` | HISYS-T-DARS-CP-005 | `test_dars_critique_synthesis_is_advisory_and_preserves_role_provenance` | GREEN (MB-DARS-CP-T001) |
-| HISYS-FR-DARS-CP-006 | execution mode policy | HISYS-T-DARS-CP-006 | `test_dars_round_plan_is_serial_compatible_with_bounded_parallel_policy` | GREEN (MB-DARS-CP-T001) |
+| HISYS-FR-DARS-CP-006 | execution mode policy, `ExecutionGraphPlan` ready-set determinism / synthesis-after-terminal-critics / bounded-parallel chunking (M-CP-EXT-3) | HISYS-T-DARS-CP-006 | `test_dars_round_plan_is_serial_compatible_with_bounded_parallel_policy`, `test_execution_graph_plan_ready_set_is_deterministic_and_sorted`, `test_execution_graph_plan_synthesis_waits_until_all_critics_terminal`, `test_execution_graph_plan_treats_failed_blocked_and_skipped_as_terminal`, `test_execution_graph_plan_bounded_parallel_chunks_are_deterministic`, `test_execution_graph_plan_rejects_invalid_max_parallel`, `test_execution_graph_plan_rejects_unknown_dependency_node`, `test_execution_graph_plan_rejects_dependency_cycle`, `test_execution_graph_plan_from_round_plan_preserves_critic_before_synthesis_edges`, `test_dars_panel_reexports_execution_graph_plan_for_compatibility`, `test_dars_panel_runtime_remains_serial_after_graph_integration` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-3) |
 | HISYS-FR-DARS-CP-007 | backend dispatch gate, `CriticAdapterRegistry` external block, typed `FixtureCriticAdapter.fixture_outcome` (M-CP-EXT-1), `ExecutionBoundaryRecord.dispatch_decision` (M-CP-EXT-2) | HISYS-T-DARS-CP-007 | `test_dars_panel_blocks_external_backend_without_approval`, `test_critic_adapter_registry_blocks_external_without_explicit_allow_flag`, `test_fixture_critic_adapter_records_declared_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2) |
 | HISYS-FR-DARS-CP-008 | advisory/human-decision fields | HISYS-T-DARS-CP-008 | `test_dars_panel_artifacts_preserve_advisory_human_decision_separation` | GREEN (MB-DARS-CP-T001) |
 | HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis, adapter-outcome-driven isolation (M-CP-EXT-1), per-task boundary record on failed/blocked branches (M-CP-EXT-2) | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence`, `test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2) |
 | HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate, slug validation on date/request_id/task_id (M-CP-EXT-2) | HISYS-T-DARS-CP-010 | changed-file secret scan, `test_write_execution_boundary_record_rejects_invalid_slug`, `test_write_execution_boundary_record_rejects_traversal_in_task_id`, `test_panel_runtime_rejects_invalid_slug` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2) |
+
+## M-CP-EXT-3 — Execution graph plan increment (2026-05-20)
+
+- Scope: added a pure, timestamp-free `ExecutionGraphPlan` plus deterministic
+  ready-set and bounded-parallel chunking primitives in a new sidecar module
+  `src/hisys/agents/dars_panel_graph.py`. The graph primitive does not execute
+  critics, spawn workers, call external services, or activate bounded-parallel
+  runtime execution. The advisory-only invariants from M-CP-EXT-1/2 remain
+  mandatory.
+- New module exports (from `hisys.agents.dars_panel_graph` and re-exported by
+  `hisys.agents.dars_panel`): `ExecutionGraphPlan`, `ExecutionGraphNode`,
+  `ExecutionGraphEdge`, `TERMINAL_TASK_STATUSES`,
+  `DARS_CRITICS_CONCURRENCY_GROUP`, `DARS_SYNTHESIS_CONCURRENCY_GROUP`.
+- Ready-set semantics: terminal statuses are `completed`, `failed`, `blocked`,
+  `skipped`. A task is ready when not terminal, not in progress, and all
+  dependencies are terminal. The ready-set is returned in deterministic lexical
+  `task_id` order. Synthesis becomes ready only after every critic task is
+  terminal.
+- Bounded-parallel chunking: `bounded_parallel_chunks(max_parallel=N)` chunks
+  the current sorted ready-set into deterministic lists of at most `N` task
+  IDs. `max_parallel < 1` raises `ValueError`.
+- Graph construction safety: `__post_init__` raises `ValueError` for duplicate
+  task IDs, unknown dependency endpoints, and dependency cycles.
+- Runtime wiring: `DarsCriticPanelRuntime.run_round` constructs
+  `ExecutionGraphPlan.from_round_plan(plan)` and asserts that the start-of-round
+  ready-set equals the sorted critic task IDs. The runtime remains serial; the
+  graph acts only as a structural consistency guard. Execution order, output
+  artifacts, and boundary records are unchanged.
+- Deferred to follow-on increments: deterministic clock injection
+  (M-CP-EXT-5), typed adapter-missing `LookupError` → `status=blocked`
+  (M-CP-EXT-4), `hisys run-dars-panel` CLI (M-CP-EXT-6), actual bounded-parallel
+  runtime execution (separate governance/approval increment).
+- New tests: `tests/unit/test_dars_critic_panel_execution_graph_plan.py`
+  (10 tests covering ready-set determinism, synthesis readiness, terminal-status
+  contract, bounded-parallel chunks, invalid `max_parallel`, unknown dependency
+  endpoints, dependency cycles, `from_round_plan` bridge, `dars_panel`
+  re-export compatibility, and serial-runtime regression guard).
+- Existing tests preserved: `tests/unit/test_dars_critic_panel_runtime.py`
+  (9 passed, unchanged), `tests/unit/test_dars_critic_panel_adapters.py`
+  (4 passed, unchanged), and
+  `tests/unit/test_dars_critic_panel_tool_execution_runtime.py` (15 passed,
+  unchanged).
+- Boundary: no live DARS dispatch, no credential resolution, no remote push,
+  no external call, no mutation, no CLI activation, no actual bounded-parallel
+  runtime execution. Validation commands recorded in the ralph.md Reflection
+  Log entry for M-CP-EXT-3.
 
 ## M-CP-EXT-2 — Execution boundary record increment (2026-05-19)
 
