@@ -20,7 +20,9 @@ and never write outside it.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+import re
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -36,6 +38,31 @@ TaskStatus = Literal["completed", "failed", "blocked"]
 ExecutionMode = Literal["serial", "bounded_parallel"]
 AdapterClass = Literal["fixture", "loopback", "external"]
 BackendDispatchOutcome = Literal["completed", "failed", "blocked", "skipped"]
+DispatchDecision = Literal["allowed", "blocked"]
+
+# Slug shapes mirror the writer convention in
+# ``src/hisys/operations/codebase_analysis.py``: dates are exactly eight digits,
+# request and task ids are restricted to a conservative alphanumeric/underscore/
+# hyphen set so the writer cannot be tricked into composing paths outside the
+# ``<instance>/runtime-boundary/dars-panel/...`` subtree via traversal segments.
+_DATE_PATTERN = re.compile(r"^[0-9]{8}$")
+_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+_TASK_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+
+RUNTIME_BOUNDARY_SUBTREE = Path("runtime-boundary") / "dars-panel"
+
+
+def _validate_slug(name: str, value: str, pattern: re.Pattern[str]) -> None:
+    if not isinstance(value, str) or not pattern.fullmatch(value):
+        raise ValueError(
+            f"invalid {name} for dars-panel writer: {value!r}; "
+            f"must match {pattern.pattern}"
+        )
+    if value in {".", ".."}:
+        raise ValueError(
+            f"invalid {name} for dars-panel writer: {value!r}; "
+            "traversal segments are not allowed"
+        )
 
 
 @dataclass
@@ -249,6 +276,80 @@ class DarsTaskResult:
 
 
 @dataclass
+class ExecutionBoundaryRecord:
+    """Per-task dispatch boundary record (HISYS-FR-DARS-CP-003, M-CP-EXT-2).
+
+    Persisted as JSON under
+    ``<instance>/runtime-boundary/dars-panel/<YYYYMMDD>/<REQUEST_ID>/<TASK_ID>.json``
+    once per critic task. The safety envelope is locked: any attempt to
+    construct a record with ``external_call_made=True``, ``mutation_performed=True``,
+    or ``action_authorized=True`` raises ``ValueError``.
+    """
+
+    task_id: str
+    critic_id: str
+    critic_role: CriticRole
+    adapter_class: AdapterClass
+    backend_id: str
+    dispatch_decision: DispatchDecision
+    dispatch_reason: str
+    started_at: str
+    completed_at: str
+    approval_ref: str | None = None
+    critique_ref: str | None = None
+    external_call_made: bool = False
+    mutation_performed: bool = False
+    action_authorized: bool = False
+    advisory_only: bool = True
+    requires_human_review: bool = True
+
+    def __post_init__(self) -> None:
+        if self.dispatch_decision not in ("allowed", "blocked"):
+            raise ValueError(
+                f"dispatch_decision must be allowed|blocked; got {self.dispatch_decision}"
+            )
+        if self.external_call_made is not False:
+            raise ValueError("external_call_made must remain False on ExecutionBoundaryRecord")
+        if self.mutation_performed is not False:
+            raise ValueError("mutation_performed must remain False on ExecutionBoundaryRecord")
+        if self.action_authorized is not False:
+            raise ValueError("action_authorized must remain False on ExecutionBoundaryRecord")
+        if self.advisory_only is not True:
+            raise ValueError("advisory_only must remain True on ExecutionBoundaryRecord")
+        if self.requires_human_review is not True:
+            raise ValueError("requires_human_review must remain True on ExecutionBoundaryRecord")
+
+
+def write_execution_boundary_record(
+    *,
+    instance_root: Path | str,
+    date: str,
+    request_id: str,
+    record: ExecutionBoundaryRecord,
+) -> str:
+    """Persist a per-task ``ExecutionBoundaryRecord`` as deterministic JSON.
+
+    Validates ``date``, ``request_id``, and ``record.task_id`` against the
+    dars-panel slug patterns before composing any path. Returns the
+    instance-relative ref as a POSIX-style string.
+    """
+
+    _validate_slug("date", date, _DATE_PATTERN)
+    _validate_slug("request_id", request_id, _REQUEST_ID_PATTERN)
+    _validate_slug("task_id", record.task_id, _TASK_ID_PATTERN)
+    relative = RUNTIME_BOUNDARY_SUBTREE / date / request_id / f"{record.task_id}.json"
+    instance_path = Path(instance_root)
+    target = instance_path / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = asdict(record)
+    target.write_text(
+        json.dumps(payload, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return relative.as_posix()
+
+
+@dataclass
 class DarsRoundResult:
     """Aggregate result for one panel round."""
 
@@ -258,6 +359,7 @@ class DarsRoundResult:
     round_trace_ref: str
     synthesis_ref: str
     task_results: list[DarsTaskResult]
+    execution_boundary_refs: list[str] = field(default_factory=list)
 
 
 class DarsCriticPanelRuntime:
@@ -338,6 +440,8 @@ class DarsCriticPanelRuntime:
         evidence_refs: list[str],
         panel_config: DarsCriticPanelConfig,
     ) -> DarsRoundResult:
+        _validate_slug("yyyymmdd", yyyymmdd, _DATE_PATTERN)
+        _validate_slug("request_id", request_id, _REQUEST_ID_PATTERN)
         plan = self.build_round_plan(
             yyyymmdd=yyyymmdd,
             request_id=request_id,
@@ -349,11 +453,22 @@ class DarsCriticPanelRuntime:
         panel_dir = self._panel_dir(yyyymmdd, request_id)
         critiques_dir = panel_dir / "critiques"
         critiques_dir.mkdir(parents=True, exist_ok=True)
+        # M-CP-EXT-2 records started_at == completed_at because no real
+        # per-task timing is captured in this increment. A later increment may
+        # inject a clock for deterministic timing.
+        timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
+            "+00:00", "Z"
+        )
 
         task_results: list[DarsTaskResult] = []
         critique_refs: list[str] = []
+        execution_boundary_refs: list[str] = []
         for plan_task, critic in zip(plan.critic_tasks, panel_config.critics, strict=True):
+            adapter: FixtureCriticAdapter | None = None
+            critique_ref: str | None = None
             if not critic.enabled:
+                dispatch_decision: DispatchDecision = "blocked"
+                dispatch_reason = "critic disabled"
                 task_results.append(
                     DarsTaskResult(
                         task_id=plan_task.task_id,
@@ -361,87 +476,117 @@ class DarsCriticPanelRuntime:
                         critic_role=plan_task.critic_role,
                         status="blocked",
                         external_call_made=False,
-                        error_message="critic disabled",
+                        error_message=dispatch_reason,
                     )
                 )
-                continue
-            try:
-                adapter = self.adapter_registry.resolve(
-                    critic_role=critic.critic_role,
-                    backend_id=critic.backend_id,
-                    approval_ref=critic.approval_ref,
-                )
-            except PermissionError as exc:
-                task_results.append(
-                    DarsTaskResult(
-                        task_id=plan_task.task_id,
-                        critic_id=plan_task.critic_id,
-                        critic_role=plan_task.critic_role,
-                        status="blocked",
-                        external_call_made=False,
-                        error_message=str(exc),
+            else:
+                try:
+                    adapter = self.adapter_registry.resolve(
+                        critic_role=critic.critic_role,
+                        backend_id=critic.backend_id,
+                        approval_ref=critic.approval_ref,
                     )
-                )
-                continue
-            if (
-                adapter.adapter_class != "external"
-                and critic.external_call_allowed
-                and not critic.approval_ref
-            ):
-                task_results.append(
-                    DarsTaskResult(
-                        task_id=plan_task.task_id,
-                        critic_id=plan_task.critic_id,
-                        critic_role=plan_task.critic_role,
-                        status="blocked",
-                        external_call_made=False,
-                        error_message="external_call_allowed without approval_ref",
+                except PermissionError as exc:
+                    dispatch_decision = "blocked"
+                    dispatch_reason = str(exc)
+                    task_results.append(
+                        DarsTaskResult(
+                            task_id=plan_task.task_id,
+                            critic_id=plan_task.critic_id,
+                            critic_role=plan_task.critic_role,
+                            status="blocked",
+                            external_call_made=False,
+                            error_message=dispatch_reason,
+                        )
                     )
-                )
-                continue
-            if adapter.fixture_outcome == "failed":
-                task_results.append(
-                    DarsTaskResult(
-                        task_id=plan_task.task_id,
-                        critic_id=plan_task.critic_id,
-                        critic_role=plan_task.critic_role,
-                        status="failed",
-                        external_call_made=False,
-                        error_message=f"adapter outcome=failed for backend {critic.backend_id}",
-                    )
-                )
-                continue
-            if adapter.fixture_outcome in ("blocked", "skipped"):
-                task_results.append(
-                    DarsTaskResult(
-                        task_id=plan_task.task_id,
-                        critic_id=plan_task.critic_id,
-                        critic_role=plan_task.critic_role,
-                        status="blocked",
-                        external_call_made=False,
-                        error_message=f"adapter outcome={adapter.fixture_outcome}",
-                    )
-                )
-                continue
-            critique_ref = self._write_critique(
-                critiques_dir=critiques_dir,
+                else:
+                    if (
+                        adapter.adapter_class != "external"
+                        and critic.external_call_allowed
+                        and not critic.approval_ref
+                    ):
+                        dispatch_decision = "blocked"
+                        dispatch_reason = "external_call_allowed without approval_ref"
+                        task_results.append(
+                            DarsTaskResult(
+                                task_id=plan_task.task_id,
+                                critic_id=plan_task.critic_id,
+                                critic_role=plan_task.critic_role,
+                                status="blocked",
+                                external_call_made=False,
+                                error_message=dispatch_reason,
+                            )
+                        )
+                    elif adapter.fixture_outcome == "failed":
+                        dispatch_decision = "allowed"
+                        dispatch_reason = (
+                            f"adapter outcome=failed for backend {critic.backend_id}"
+                        )
+                        task_results.append(
+                            DarsTaskResult(
+                                task_id=plan_task.task_id,
+                                critic_id=plan_task.critic_id,
+                                critic_role=plan_task.critic_role,
+                                status="failed",
+                                external_call_made=False,
+                                error_message=dispatch_reason,
+                            )
+                        )
+                    elif adapter.fixture_outcome in ("blocked", "skipped"):
+                        dispatch_decision = "blocked"
+                        dispatch_reason = f"adapter outcome={adapter.fixture_outcome}"
+                        task_results.append(
+                            DarsTaskResult(
+                                task_id=plan_task.task_id,
+                                critic_id=plan_task.critic_id,
+                                critic_role=plan_task.critic_role,
+                                status="blocked",
+                                external_call_made=False,
+                                error_message=dispatch_reason,
+                            )
+                        )
+                    else:
+                        critique_ref = self._write_critique(
+                            critiques_dir=critiques_dir,
+                            instance_root=instance_root,
+                            plan_task=plan_task,
+                            critic=critic,
+                            request_id=request_id,
+                        )
+                        critique_refs.append(critique_ref)
+                        dispatch_decision = "allowed"
+                        dispatch_reason = "adapter resolved"
+                        task_results.append(
+                            DarsTaskResult(
+                                task_id=plan_task.task_id,
+                                critic_id=plan_task.critic_id,
+                                critic_role=plan_task.critic_role,
+                                status="completed",
+                                critique_ref=critique_ref,
+                                external_call_made=False,
+                                mutation_performed=False,
+                            )
+                        )
+            boundary_record = ExecutionBoundaryRecord(
+                task_id=plan_task.task_id,
+                critic_id=plan_task.critic_id,
+                critic_role=plan_task.critic_role,
+                adapter_class=adapter.adapter_class if adapter is not None else "fixture",
+                backend_id=plan_task.backend_id,
+                dispatch_decision=dispatch_decision,
+                dispatch_reason=dispatch_reason,
+                started_at=timestamp,
+                completed_at=timestamp,
+                approval_ref=critic.approval_ref,
+                critique_ref=critique_ref,
+            )
+            boundary_ref = write_execution_boundary_record(
                 instance_root=instance_root,
-                plan_task=plan_task,
-                critic=critic,
+                date=yyyymmdd,
                 request_id=request_id,
+                record=boundary_record,
             )
-            critique_refs.append(critique_ref)
-            task_results.append(
-                DarsTaskResult(
-                    task_id=plan_task.task_id,
-                    critic_id=plan_task.critic_id,
-                    critic_role=plan_task.critic_role,
-                    status="completed",
-                    critique_ref=critique_ref,
-                    external_call_made=False,
-                    mutation_performed=False,
-                )
-            )
+            execution_boundary_refs.append(boundary_ref)
 
         synthesis_ref = self._write_synthesis(
             panel_dir=panel_dir,
@@ -467,6 +612,7 @@ class DarsCriticPanelRuntime:
             round_trace_ref=round_trace_ref,
             synthesis_ref=synthesis_ref,
             task_results=task_results,
+            execution_boundary_refs=execution_boundary_refs,
         )
 
     @staticmethod
@@ -483,6 +629,8 @@ class DarsCriticPanelRuntime:
                 )
 
     def _panel_dir(self, yyyymmdd: str, request_id: str) -> Path:
+        _validate_slug("yyyymmdd", yyyymmdd, _DATE_PATTERN)
+        _validate_slug("request_id", request_id, _REQUEST_ID_PATTERN)
         return Path(self.instance.root) / "data" / "dars-panel" / yyyymmdd / request_id
 
     def _write_critique(
@@ -628,5 +776,9 @@ __all__ = [
     "DarsRoundResult",
     "DarsSynthesisTask",
     "DarsTaskResult",
+    "DispatchDecision",
+    "ExecutionBoundaryRecord",
     "FixtureCriticAdapter",
+    "RUNTIME_BOUNDARY_SUBTREE",
+    "write_execution_boundary_record",
 ]
