@@ -29,12 +29,132 @@ from ..config.instance import InstanceRoot
 CRITIQUE_RECORD_CONTRACT = "DarsCritiqueRecord"
 ADVISORY_ONLY = "advisory_only"
 CONCURRENCY_GROUP = "dars-critics"
-FAILURE_BACKEND_MARKER = "fail"
 EXTERNAL_BACKEND_PREFIX = "external-"
 
 CriticRole = str
 TaskStatus = Literal["completed", "failed", "blocked"]
 ExecutionMode = Literal["serial", "bounded_parallel"]
+AdapterClass = Literal["fixture", "loopback", "external"]
+BackendDispatchOutcome = Literal["completed", "failed", "blocked", "skipped"]
+
+
+@dataclass
+class FixtureCriticAdapter:
+    """Typed adapter binding a critic role and backend id to a declared outcome.
+
+    M-CP-EXT-1: replaces the ``"fail" in backend_id`` substring heuristic with
+    an explicit ``fixture_outcome`` field. The adapter is the runtime's single
+    source of truth for dispatch class (``fixture``/``loopback``/``external``)
+    and fixture outcome; ``DarsCriticPanelRuntime`` never inspects backend ids
+    for failure or external classification.
+    """
+
+    critic_role: CriticRole
+    backend_id: str
+    adapter_class: AdapterClass = "fixture"
+    fixture_outcome: BackendDispatchOutcome = "completed"
+
+    def __post_init__(self) -> None:
+        if self.adapter_class not in ("fixture", "loopback", "external"):
+            raise ValueError(
+                f"adapter_class must be fixture|loopback|external; got {self.adapter_class}"
+            )
+        if self.fixture_outcome not in ("completed", "failed", "blocked", "skipped"):
+            raise ValueError(
+                f"fixture_outcome must be completed|failed|blocked|skipped; "
+                f"got {self.fixture_outcome}"
+            )
+
+
+class CriticAdapterRegistry:
+    """Explicit critic adapter registry (M-CP-EXT-1).
+
+    The registry rejects duplicate ``(critic_role, backend_id)`` registrations
+    and blocks external adapter dispatch unless ``external_dispatch_allowed``
+    is True *and* the resolver receives a truthy ``approval_ref``. There is no
+    fallback to backend-name heuristics: every adapter must be registered.
+    """
+
+    def __init__(self, *, external_dispatch_allowed: bool = False) -> None:
+        self.external_dispatch_allowed = external_dispatch_allowed
+        self._adapters: dict[tuple[str, str], FixtureCriticAdapter] = {}
+
+    def register(self, adapter: FixtureCriticAdapter) -> None:
+        key = (adapter.critic_role, adapter.backend_id)
+        if key in self._adapters:
+            raise ValueError(
+                f"duplicate critic adapter for role={adapter.critic_role} "
+                f"backend_id={adapter.backend_id}"
+            )
+        self._adapters[key] = adapter
+
+    def resolve(
+        self,
+        *,
+        critic_role: CriticRole,
+        backend_id: str,
+        approval_ref: str | None = None,
+    ) -> FixtureCriticAdapter:
+        try:
+            adapter = self._adapters[(critic_role, backend_id)]
+        except KeyError as exc:
+            raise LookupError(
+                f"no critic adapter registered for role={critic_role} backend_id={backend_id}"
+            ) from exc
+        if adapter.adapter_class == "external":
+            if not self.external_dispatch_allowed:
+                raise PermissionError(
+                    "external adapter dispatch is disabled by the registry"
+                )
+            if not approval_ref:
+                raise PermissionError(
+                    "external adapter dispatch requires approval_ref"
+                )
+        return adapter
+
+
+class _DefaultFixturePolicy(CriticAdapterRegistry):
+    """Permissive fixture-only fallback that preserves M-CP-EXT-0 behavior.
+
+    Used when ``DarsCriticPanelRuntime`` is constructed without an explicit
+    registry. Backends prefixed ``external-`` are classified as external (and
+    therefore blocked at resolve time); ``fixture-failing-critic`` resolves to
+    a typed ``failed`` outcome; any other fixture/loopback backend resolves to
+    ``completed``. No external dispatch is ever authorized through this
+    fallback.
+    """
+
+    _FAILING_FIXTURE_BACKEND_ID = "fixture-failing-critic"
+
+    def __init__(self) -> None:
+        super().__init__(external_dispatch_allowed=False)
+
+    def resolve(
+        self,
+        *,
+        critic_role: CriticRole,
+        backend_id: str,
+        approval_ref: str | None = None,
+    ) -> FixtureCriticAdapter:
+        key = (critic_role, backend_id)
+        if key not in self._adapters:
+            adapter_class: AdapterClass = (
+                "external" if backend_id.startswith(EXTERNAL_BACKEND_PREFIX) else "fixture"
+            )
+            fixture_outcome: BackendDispatchOutcome = (
+                "failed" if backend_id == self._FAILING_FIXTURE_BACKEND_ID else "completed"
+            )
+            self._adapters[key] = FixtureCriticAdapter(
+                critic_role=critic_role,
+                backend_id=backend_id,
+                adapter_class=adapter_class,
+                fixture_outcome=fixture_outcome,
+            )
+        return super().resolve(
+            critic_role=critic_role,
+            backend_id=backend_id,
+            approval_ref=approval_ref,
+        )
 
 
 @dataclass
@@ -148,8 +268,14 @@ class DarsCriticPanelRuntime:
     explicit ``approval_ref`` are blocked at dispatch (HISYS-FR-DARS-CP-007).
     """
 
-    def __init__(self, *, instance: InstanceRoot) -> None:
+    def __init__(
+        self,
+        *,
+        instance: InstanceRoot,
+        adapter_registry: CriticAdapterRegistry | None = None,
+    ) -> None:
         self.instance = instance
+        self.adapter_registry = adapter_registry or _DefaultFixturePolicy()
 
     def build_round_plan(
         self,
@@ -227,8 +353,7 @@ class DarsCriticPanelRuntime:
         task_results: list[DarsTaskResult] = []
         critique_refs: list[str] = []
         for plan_task, critic in zip(plan.critic_tasks, panel_config.critics, strict=True):
-            dispatch = self._evaluate_dispatch(critic)
-            if dispatch == "blocked":
+            if not critic.enabled:
                 task_results.append(
                     DarsTaskResult(
                         task_id=plan_task.task_id,
@@ -236,11 +361,45 @@ class DarsCriticPanelRuntime:
                         critic_role=plan_task.critic_role,
                         status="blocked",
                         external_call_made=False,
-                        error_message="external or non-fixture backend without approval_ref",
+                        error_message="critic disabled",
                     )
                 )
                 continue
-            if self._is_fixture_failure(critic.backend_id):
+            try:
+                adapter = self.adapter_registry.resolve(
+                    critic_role=critic.critic_role,
+                    backend_id=critic.backend_id,
+                    approval_ref=critic.approval_ref,
+                )
+            except PermissionError as exc:
+                task_results.append(
+                    DarsTaskResult(
+                        task_id=plan_task.task_id,
+                        critic_id=plan_task.critic_id,
+                        critic_role=plan_task.critic_role,
+                        status="blocked",
+                        external_call_made=False,
+                        error_message=str(exc),
+                    )
+                )
+                continue
+            if (
+                adapter.adapter_class != "external"
+                and critic.external_call_allowed
+                and not critic.approval_ref
+            ):
+                task_results.append(
+                    DarsTaskResult(
+                        task_id=plan_task.task_id,
+                        critic_id=plan_task.critic_id,
+                        critic_role=plan_task.critic_role,
+                        status="blocked",
+                        external_call_made=False,
+                        error_message="external_call_allowed without approval_ref",
+                    )
+                )
+                continue
+            if adapter.fixture_outcome == "failed":
                 task_results.append(
                     DarsTaskResult(
                         task_id=plan_task.task_id,
@@ -248,7 +407,19 @@ class DarsCriticPanelRuntime:
                         critic_role=plan_task.critic_role,
                         status="failed",
                         external_call_made=False,
-                        error_message=f"fixture failure backend: {critic.backend_id}",
+                        error_message=f"adapter outcome=failed for backend {critic.backend_id}",
+                    )
+                )
+                continue
+            if adapter.fixture_outcome in ("blocked", "skipped"):
+                task_results.append(
+                    DarsTaskResult(
+                        task_id=plan_task.task_id,
+                        critic_id=plan_task.critic_id,
+                        critic_role=plan_task.critic_role,
+                        status="blocked",
+                        external_call_made=False,
+                        error_message=f"adapter outcome={adapter.fixture_outcome}",
                     )
                 )
                 continue
@@ -313,20 +484,6 @@ class DarsCriticPanelRuntime:
 
     def _panel_dir(self, yyyymmdd: str, request_id: str) -> Path:
         return Path(self.instance.root) / "data" / "dars-panel" / yyyymmdd / request_id
-
-    @staticmethod
-    def _evaluate_dispatch(critic: DarsCriticRoleConfig) -> Literal["allowed", "blocked"]:
-        if not critic.enabled:
-            return "blocked"
-        is_external = critic.backend_id.startswith(EXTERNAL_BACKEND_PREFIX)
-        if is_external or critic.external_call_allowed:
-            if not critic.approval_ref:
-                return "blocked"
-        return "allowed"
-
-    @staticmethod
-    def _is_fixture_failure(backend_id: str) -> bool:
-        return FAILURE_BACKEND_MARKER in backend_id
 
     def _write_critique(
         self,
@@ -457,8 +614,11 @@ class DarsCriticPanelRuntime:
 
 __all__ = [
     "ADVISORY_ONLY",
+    "AdapterClass",
+    "BackendDispatchOutcome",
     "CONCURRENCY_GROUP",
     "CRITIQUE_RECORD_CONTRACT",
+    "CriticAdapterRegistry",
     "DarsCriticPanelConfig",
     "DarsCriticPanelRuntime",
     "DarsCriticRoleConfig",
@@ -468,4 +628,5 @@ __all__ = [
     "DarsRoundResult",
     "DarsSynthesisTask",
     "DarsTaskResult",
+    "FixtureCriticAdapter",
 ]
