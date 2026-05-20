@@ -1,0 +1,23 @@
+{
+  "argument_inference": "omitted; inferred from Discord Hisys develop thread and live repo state",
+  "arguments": "",
+  "baseline_head": "028edfb docs: plan m21 advanced codebase roadmap",
+  "constraints": [
+    "current_session_only",
+    "no_tmux",
+    "no_background_agent",
+    "local_only",
+    "advisory_only",
+    "no_remote_push",
+    "no_live_external_action",
+    "no_credentials",
+    "no_raw_source_archival"
+  ],
+  "formal_hisys_execution_requested": false,
+  "implementation_plan_ref": "docs/plans/m21-roadmap-implementation-plan.md",
+  "next_safe_task": "MB-M21-3-PREP",
+  "profile": "develop",
+  "request_type": "current_session_bootstrap_refresh",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "version": "v0.0.10"
+}

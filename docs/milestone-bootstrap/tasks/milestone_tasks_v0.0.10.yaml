@@ -1,0 +1,29 @@
+version: v0.0.10
+milestone: M21
+baseline_head: "028edfb docs: plan m21 advanced codebase roadmap"
+implementation_plan_ref: docs/plans/m21-roadmap-implementation-plan.md
+current_session_bootstrap: true
+tasks:
+  - id: MB-M21-3-PREP
+    title: Prepare runtime-boundary consistency checker implementation plan
+    status: next
+    type: document_red
+    create_plan: docs/plans/m21-3-runtime-boundary-consistency-checker-implementation-tasks.md
+    first_red: "PYTHONPATH=src pytest tests/unit/test_runtime_boundary_consistency.py::test_runtime_boundary_consistency_flags_missing_and_unsafe_refs -q"
+    expected_red: "ModuleNotFoundError for hisys.operations.runtime_boundary_consistency"
+    boundary:
+      local_only: true
+      advisory_only: true
+      production_code_in_this_bootstrap: false
+      remote_push_authorized: false
+      live_external_action_authorized: false
+  - id: MB-M21-3-GREEN
+    title: Implement pure runtime-boundary consistency report after Prepare commit
+    status: planned
+    type: tdd
+    depends_on: [MB-M21-3-PREP]
+  - id: MB-M21-3-CLI
+    title: Add thin runtime-boundary-check CLI wrapper after pure checker stabilizes
+    status: planned
+    type: tdd
+    depends_on: [MB-M21-3-GREEN]

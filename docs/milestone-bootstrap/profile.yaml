@@ -1,12 +1,13 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.9
-focus: M21 roadmap and runtime-boundary consistency sequencing
+version: v0.0.10
+focus: current-session bootstrap refresh for M21.3 runtime-boundary consistency Prepare
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
 next_safe_task: MB-M21-3-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
-bootstrap_arguments: "user requested M21 planning after M21.2 completion"
-baseline_head: "fa54acd feat: add traceability coverage CLI wrapper"
+bootstrap_arguments: "omitted; inferred target/profile from Discord Hisys develop thread and live repo state"
+baseline_head: "028edfb docs: plan m21 advanced codebase roadmap"
+no_tmux_or_background_agent: true

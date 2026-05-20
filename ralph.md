@@ -1946,6 +1946,28 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — Current-session bootstrap refresh for M21.3 Prepare
+
+- Phase completed: `/bootstrap`-style current-session readiness refresh with omitted arguments. No tmux or background agent was spawned.
+- Target/profile inference: arguments were omitted; inferred target `/home/cbchoi/workspaces/develop/repos/hisys` and `develop` profile from the Discord Hisys develop thread, live Git root, existing `profile.yaml`, and latest M21 roadmap reflection.
+- Baseline inspected: branch `dars`, HEAD `028edfb docs: plan m21 advanced codebase roadmap`, working tree clean before bootstrap writes, latest roadmap plan `docs/plans/m21-roadmap-implementation-plan.md`, and v0.0.9 milestone-bootstrap package.
+- Document-GREEN artifact: created milestone-bootstrap `v0.0.10` current-session refresh artifacts without duplicating the existing M21 roadmap plan. The refresh records `formal_hisys_result=not_run_in_this_bootstrap`, `local_advisory_result=RALPH_START_READY_WITH_CONTROLS`, and next safe task `MB-M21-3-PREP`.
+- Next safe task: create `docs/plans/m21-3-runtime-boundary-consistency-checker-implementation-tasks.md` as Prepare/document-RED before any `src/hisys/operations/runtime_boundary_consistency.py` production module exists.
+- Boundary: local docs/control refresh only. No production code, remote push, live external action, credential lookup, raw source archival, runtime artifact repair/delete, process adapter, LSP server, or subagent protocol is authorized.
+- Quality gate result: pass — structural bootstrap parser passed; profile/version/task/ref checks passed; traceability/domain/CLI focused gate 32 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=579 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Continue decision: after committing this refresh package, proceed only to M21.3-PREP unless the user changes scope.
+- Stop condition: bootstrap refresh boundary reached; production M21.3 code remains gated by future RED test.
+- Commit pending: `docs: refresh m21.3 bootstrap readiness`.
+
+Resume checkpoint:
+- Current HEAD: 028edfb docs: plan m21 advanced codebase roadmap
+- Working tree: milestone-bootstrap v0.0.10 artifacts and `ralph.md` modified until commit
+- Last completed milestone/task: current-session bootstrap refresh for M21.3 Prepare
+- Next safe task: `MB-M21-3-PREP` / runtime-boundary consistency checker Prepare
+- Next command after commit: create `docs/plans/m21-3-runtime-boundary-consistency-checker-implementation-tasks.md`
+- Quality gate status: pass — structural parser passed; traceability/domain/CLI 32 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21 roadmap planning after traceability coverage CLI wrapper
 
 - Phase completed: roadmap/control planning for the remaining M21 advanced codebase-analysis backlog after M21.1 and M21.2 completed.

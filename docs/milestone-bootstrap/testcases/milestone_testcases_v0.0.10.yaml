@@ -1,0 +1,18 @@
+version: v0.0.10
+testcases:
+  - id: M21-BOOTSTRAP-REFRESH-001
+    name: target_and_profile_inferred_from_current_context
+    method: inspect profile.yaml and git state
+    pass_condition: target workspace is hisys develop repo and selected_profile is develop
+  - id: M21-BOOTSTRAP-REFRESH-002
+    name: next_task_is_m21_3_prepare
+    method: inspect tasks YAML and Ralph reflection
+    pass_condition: MB-M21-3-PREP is the only next task and points to the M21.3 implementation plan path
+  - id: M21-BOOTSTRAP-REFRESH-003
+    name: no_background_agent_boundary
+    method: inspect profile and validation log
+    pass_condition: no tmux/background agent was spawned and no production code was changed
+  - id: M21-BOOTSTRAP-REFRESH-004
+    name: local_advisory_safety_boundary
+    method: inspect quality gate and decision record
+    pass_condition: no remote push, live external action, credential resolution, raw source archival, runtime repair/delete, process adapter, LSP, or subagent protocol is authorized
