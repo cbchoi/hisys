@@ -21,10 +21,10 @@ Boundary invariants:
 - ``boundary_violation_detected`` becomes ``True`` only when the input report
   exposes a non-empty ``unsafe_*`` or ``outside_runtime_boundary_*`` partition.
 
-The M21.8.1.A increment supports two of the five M21.8 PREP question types:
-``traceability_coverage_review`` and ``runtime_boundary_consistency_review``.
-The remaining three (``codebase_map_freshness_review``,
-``change_impact_review``, ``architecture_candidate_review``) raise
+After M21.8.1.B, three of the five M21.8 PREP question types are supported:
+``traceability_coverage_review``, ``runtime_boundary_consistency_review``,
+and ``codebase_map_freshness_review``. The remaining two
+(``change_impact_review`` and ``architecture_candidate_review``) raise
 ``NotImplementedError`` and are added in follow-up increments.
 """
 
@@ -53,9 +53,9 @@ CodeAnalysisQuestionType = Literal[
 _SUPPORTED_QUESTION_TYPES = {
     "traceability_coverage_review",
     "runtime_boundary_consistency_review",
+    "codebase_map_freshness_review",
 }
 _DEFERRED_QUESTION_TYPES = {
-    "codebase_map_freshness_review",
     "change_impact_review",
     "architecture_candidate_review",
 }
@@ -111,6 +111,36 @@ def _consistency_review_summary(boundary_report: dict[str, Any]) -> EvidenceSumm
     )
 
 
+def _freshness_review_summary(freshness_report: dict[str, Any]) -> EvidenceSummary:
+    schema_id = str(
+        freshness_report.get("schema_id", "hisys.codebase_map.freshness.v1")
+    )
+    fresh = list(freshness_report.get("fresh_partitions") or [])
+    stale = list(freshness_report.get("stale_partitions") or [])
+    incomplete = list(freshness_report.get("incomplete_partitions") or [])
+    unsafe = list(freshness_report.get("unsafe_partitions") or [])
+
+    boundary_violation = bool(unsafe)
+    has_other_issue = bool(stale) or bool(incomplete)
+    claims_covered = (
+        (not boundary_violation) and (not has_other_issue) and bool(fresh)
+    )
+
+    artifact_refs: list[str] = []
+    if boundary_violation or has_other_issue:
+        for ref in (*unsafe, *stale, *incomplete, *fresh):
+            if ref not in artifact_refs:
+                artifact_refs.append(ref)
+    else:
+        artifact_refs.append(schema_id)
+
+    return EvidenceSummary(
+        artifact_refs=artifact_refs,
+        claims_covered=claims_covered,
+        boundary_violation_detected=boundary_violation,
+    )
+
+
 def build_code_analysis_evidence_summary(
     *,
     question_type: str,
@@ -135,6 +165,12 @@ def build_code_analysis_evidence_summary(
                 "runtime_boundary_consistency_review requires boundary_report payload"
             )
         return _consistency_review_summary(boundary_report)
+    if question_type == "codebase_map_freshness_review":
+        if freshness_report is None:
+            raise ValueError(
+                "codebase_map_freshness_review requires freshness_report payload"
+            )
+        return _freshness_review_summary(freshness_report)
     if question_type in _DEFERRED_QUESTION_TYPES:
         raise NotImplementedError(
             f"{question_type} mapping is deferred to a follow-up M21.8.1 increment"

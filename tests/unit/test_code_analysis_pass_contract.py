@@ -125,7 +125,6 @@ def test_build_code_analysis_evidence_summary_requires_boundary_for_consistency_
 @pytest.mark.parametrize(
     "question_type",
     [
-        "codebase_map_freshness_review",
         "change_impact_review",
         "architecture_candidate_review",
     ],
@@ -135,6 +134,88 @@ def test_build_code_analysis_evidence_summary_defers_other_question_types(
 ) -> None:
     with pytest.raises(NotImplementedError, match=question_type):
         build_code_analysis_evidence_summary(question_type=question_type)
+
+
+def _m21_4_freshness_payload_clean() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.codebase_map.freshness.v1",
+        "fresh_partitions": [
+            "runtime-boundary/codebase-analysis/20260520/REQ-CLEAN",
+        ],
+        "stale_partitions": [],
+        "incomplete_partitions": [],
+        "unsafe_partitions": [],
+    }
+
+
+def _m21_4_freshness_payload_stale() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.codebase_map.freshness.v1",
+        "fresh_partitions": [
+            "runtime-boundary/codebase-analysis/20260520/REQ-FRESH",
+        ],
+        "stale_partitions": [
+            "runtime-boundary/codebase-analysis/20260418/REQ-OLD",
+        ],
+        "incomplete_partitions": [],
+        "unsafe_partitions": [],
+    }
+
+
+def _m21_4_freshness_payload_unsafe() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.codebase_map.freshness.v1",
+        "fresh_partitions": [],
+        "stale_partitions": [],
+        "incomplete_partitions": [],
+        "unsafe_partitions": [
+            "runtime-boundary/codebase-analysis/20260520/../escape",
+        ],
+    }
+
+
+def test_build_code_analysis_evidence_summary_passes_clean_freshness_review() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="codebase_map_freshness_review",
+        freshness_report=_m21_4_freshness_payload_clean(),
+    )
+    assert summary.boundary_violation_detected is False
+    assert summary.claims_covered is True
+    assert summary.artifact_refs == ["hisys.codebase_map.freshness.v1"]
+
+
+def test_build_code_analysis_evidence_summary_flags_stale_freshness_review() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="codebase_map_freshness_review",
+        freshness_report=_m21_4_freshness_payload_stale(),
+    )
+    assert summary.boundary_violation_detected is False
+    assert summary.claims_covered is False
+    assert (
+        "runtime-boundary/codebase-analysis/20260418/REQ-OLD"
+        in summary.artifact_refs
+    )
+    assert (
+        "runtime-boundary/codebase-analysis/20260520/REQ-FRESH"
+        in summary.artifact_refs
+    )
+
+
+def test_build_code_analysis_evidence_summary_marks_boundary_violation_on_unsafe_partitions() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="codebase_map_freshness_review",
+        freshness_report=_m21_4_freshness_payload_unsafe(),
+    )
+    assert summary.boundary_violation_detected is True
+    assert summary.claims_covered is False
+
+
+def test_build_code_analysis_evidence_summary_requires_freshness_for_freshness_review() -> None:
+    with pytest.raises(ValueError, match="freshness_report"):
+        build_code_analysis_evidence_summary(
+            question_type="codebase_map_freshness_review",
+            freshness_report=None,
+        )
 
 
 def test_build_code_analysis_evidence_summary_rejects_unknown_question_type() -> None:
