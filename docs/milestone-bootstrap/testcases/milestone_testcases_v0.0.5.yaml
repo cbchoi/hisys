@@ -1,0 +1,20 @@
+schema_id: hisys.milestone_bootstrap.testcases
+version: v0.0.5
+testcases:
+  - id: TC-M20-2-001
+    name: incomplete_bundle_missing_evidence
+    command: PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_code_investigation_layer_records_incomplete_bundle_missing_evidence -q
+    expected_before_green: fails with missing work-product gating fields
+    expected_after_green: passes with missing risk_scan, scope_map, validation_plan
+  - id: TC-M20-2-002
+    name: complete_bundle_candidate_complete_not_approved
+    command: PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_code_investigation_layer_marks_complete_bundle_candidate_complete -q
+    expected_after_green: candidate_complete, no missing evidence, requires_human_review true
+  - id: TC-M20-2-003
+    name: domain_regression
+    command: PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py -q
+    expected_after_green: pass
+  - id: TC-M20-2-004
+    name: dars_regression
+    command: PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q
+    expected_after_green: pass

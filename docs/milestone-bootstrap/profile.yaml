@@ -1,28 +1,27 @@
 schema_id: hisys.milestone_bootstrap.profile
-version: v0.0.4
-created: '2026-05-19'
+version: v0.0.5
+created: '2026-05-20'
 updated: '2026-05-20'
 target:
   workspace_root: /home/cbchoi/workspaces/develop/repos/hisys
   git_repository: true
   branch: dars
   upstream: origin/dars
-  head: aa707ca
+  head: d87bc96
   context_source: discord_thread
-  context_hint: Hisys develop thread; user selected next option 1 after M-CP-EXT-8 completion
+  context_hint: Hisys develop thread; user said go after M20.1 and next safe increment was M20.2 Prepare
 profile:
   detected_profile: develop
   selected_profile: develop
   rationale:
-  - Current branch contains the read-only DARS panel CLI and per-task distinct boundary timing.
-  - M-CP-EXT-8 explicitly deferred per-task duration_ms because it requires a schema field addition and traceability update.
-  - The next safe action is a document-RED Prepare package for M-CP-EXT-9 before any RED test or production schema code is written.
+  - Current branch has M20.1 codebase artifact refs accepted and validated.
+  - M20.2 changes the semantics from refs-only to bundle completeness gating, so a document-RED Prepare boundary is required before production code.
 version_policy:
-  current_version: v0.0.4
-  previous_version: v0.0.3
+  current_version: v0.0.5
+  previous_version: v0.0.4
   bump_type: patch
-  bump_reason: follow-on increment Prepare for M-CP-EXT-9 duration_ms after M-CP-EXT-8 implementation
-  next_minor_reason: M-CP-EXT-9 GREEN plus readiness gates pass or explicit advisory readiness acceptance
+  bump_reason: follow-on increment Prepare for M20.2 incomplete codebase artifact bundle gating
+  next_minor_reason: M20.2 GREEN plus readiness gates pass or explicit advisory readiness acceptance
 governance_boundaries:
   no_tmux_or_background_agent_spawned: true
   external_calls_allowed: false

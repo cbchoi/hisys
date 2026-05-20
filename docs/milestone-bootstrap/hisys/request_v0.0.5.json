@@ -1,0 +1,10 @@
+{
+  "schema_id": "hisys.bootstrap.request",
+  "version": "v0.0.5",
+  "target": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "profile": "develop",
+  "increment": "M20.2",
+  "objective": "Prepare incomplete codebase artifact bundle gating",
+  "formal_hisys_result": "not_run_in_this_bootstrap",
+  "local_advisory_result": "RALPH_START_READY_WITH_CONTROLS"
+}

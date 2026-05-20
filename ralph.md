@@ -1946,6 +1946,35 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M20.2 incomplete codebase artifact bundle gate Prepare
+
+- Phase completed: Prepare / document-RED / Gate for `M20.2`, the incomplete codebase artifact bundle gating follow-on after `M20.1` refs-only acceptance. This is a docs/bootstrap-only checkpoint; no production code or RED tests were written in this iteration.
+- Controlled anchors checked: `d87bc96 feat: accept codebase artifact bundle refs`; `docs/plans/m20-codebase-domain-artifact-bridge-implementation-tasks.md` M20.2 outline; `src/hisys/domain/layers.py` `InvestigationWorkProduct.codebase_artifact_refs`; `src/hisys/domain/use_cases.py` `_extract_codebase_artifact_refs`; `src/hisys/operations/codebase_analysis.py` `CodebaseReviewBundle`, `_REQUIRED_ARTIFACT_NAMES`, and `load_codebase_review_bundle`; focused domain and DARS regression surfaces.
+- Baseline observed: branch `dars`, HEAD `d87bc96 feat: accept codebase artifact bundle refs`, working tree clean before Prepare writes. Domain gate `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py -q` -> 15 passed. DARS focused gate -> 48 passed.
+- Document-RED artifact: created `docs/plans/m20-codebase-domain-artifact-bridge-m20-2-implementation-tasks.md`. The plan pins M20.2 as bundle completeness gating only: classify required codebase-analysis artifact roles (`inventory`, `symbol_index`, `scope_map`, `validation_plan`, `risk_scan`), surface missing evidence on the internal work product, preserve `requires_human_review=True`, do not approve or enrich the final result, and defer CLI arguments to M20.4.
+- Bootstrap artifacts added/updated: milestone-bootstrap current package bumped to `v0.0.5` with plan, task YAML, testcase YAML, quality gate, readiness decision, Hisys request/result, and validation log.
+- Local advisory readiness: `RALPH_START_READY_WITH_CONTROLS`.
+- Formal Hisys result: `not_run_in_this_bootstrap`; this bootstrap records local advisory readiness only.
+- Next safe task: `MB-M20-2-T001`, write and observe the RED test `tests/unit/test_codebase_domain_artifact_bridge.py::test_code_investigation_layer_records_incomplete_bundle_missing_evidence` before any production work-product gating fields are added.
+- RED observed: n/a for this Prepare-only increment. The planned first RED is expected to fail with `AttributeError` for missing `codebase_bundle_gate` or `codebase_missing_evidence`.
+- GREEN observed: n/a for production code; baseline focused regressions passed before document writes.
+- Quality gate result: pass — domain gate 15 passed; DARS critic-panel focused regression 48 passed; traceability validator OK; secret scan `scanned_files=531 skipped_files=0 hit_count=0`; structural bootstrap check passed; `git diff --check` clean.
+- Potential issues / open items: (a) M20.2 should not read or surface raw source content. (b) A pure role-classification gate is preferred first; if schema-id/file-read validation is needed, use only existing safe chokepoints. (c) M20.3 owns complete-bundle enrichment into `DomainInvestigationResult`; M20.4 owns CLI args.
+- Continue decision: after committing this Prepare package, continue into M20.2 Task 1 RED only if the next instruction asks for implementation progress.
+- Stop condition: document-RED/Prepare checkpoint reached; production behavior remains gated by future RED test.
+- Commit pending: `docs: prepare codebase bundle gating increment`.
+
+Resume checkpoint:
+- Current HEAD: d87bc96 feat: accept codebase artifact bundle refs
+- Working tree: M20.2 plan, milestone-bootstrap v0.0.5 artifacts, and `ralph.md` modified until committed
+- Last completed milestone/task: M20.2 Prepare/document-RED plan
+- Current in-progress task: validate and commit `docs: prepare codebase bundle gating increment`
+- RED observed: n/a for Prepare-only; future RED command is `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_code_investigation_layer_records_incomplete_bundle_missing_evidence -q`
+- GREEN observed: n/a for production code; baseline domain gate 15 passed and DARS focused gate 48 passed
+- Quality gate status: pass — domain gate 15 passed; DARS focused gate 48 passed; traceability OK; secret scan hit_count=0; structural check passed; `git diff --check` clean
+- Next command to run: final validation, then stage only the M20.2 Prepare files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M20.1 codebase-domain artifact bundle acceptance (RED -> GREEN)
 
 - Phase completed: RED / GREEN / Refactor-skipped / Gate for `M20.1`, the refs-only first implementation step of Milestone M20 (Bridge Codebase Artifacts into `investigate-domain --domain codebase`). The increment lets `CodeInvestigationLayer` surface codebase-analysis runtime refs in a dedicated internal work-product field without loading JSON artifacts or changing the CLI/result envelope.

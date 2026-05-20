@@ -1,0 +1,35 @@
+schema_id: hisys.milestone_bootstrap.tasks
+version: v0.0.5
+tasks:
+  - id: MB-M20-2-T001
+    title: RED incomplete codebase bundle records missing evidence
+    status: next
+    type: tdd_red
+    files:
+      - tests/unit/test_codebase_domain_artifact_bridge.py
+    command: PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_code_investigation_layer_records_incomplete_bundle_missing_evidence -q
+    expected_red: AttributeError for missing codebase_bundle_gate or codebase_missing_evidence
+  - id: MB-M20-2-T002
+    title: GREEN classify bundle role completeness
+    status: queued
+    type: implementation
+    files:
+      - src/hisys/domain/layers.py
+      - src/hisys/domain/use_cases.py
+    depends_on: [MB-M20-2-T001]
+  - id: MB-M20-2-T003
+    title: RED/GREEN complete role set candidate-complete but not approved
+    status: queued
+    type: tdd_green
+    files:
+      - tests/unit/test_codebase_domain_artifact_bridge.py
+      - src/hisys/domain/use_cases.py
+    depends_on: [MB-M20-2-T002]
+  - id: MB-M20-2-T004
+    title: Traceability, Ralph reflection, validation, local commit
+    status: queued
+    type: gate
+    files:
+      - docs/traceability/README.md
+      - ralph.md
+    depends_on: [MB-M20-2-T003]
