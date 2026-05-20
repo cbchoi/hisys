@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.3 runtime-boundary consistency checker Prepare
+
+- Phase completed: Prepare/document-RED for M21.3 after M21 roadmap committed at `028edfb` and bootstrap refresh at `5534f8e docs: refresh m21.3 bootstrap readiness`.
+- Controlled anchors checked: `ralph.md` Milestone M21 backlog; `docs/plans/m21-roadmap-implementation-plan.md` (`M21.3` detailed implementation plan section); `docs/milestone-bootstrap/tasks/milestone_tasks_v0.0.10.yaml` (`MB-M21-3-PREP`); `docs/milestone-bootstrap/reports/milestone_plan_v0.0.10.md`; `src/hisys/operations/codebase_analysis.py` `resolve_instance_runtime_ref`; `src/hisys/operations/traceability_coverage.py` (M21.1 writer pattern); `docs/traceability/README.md`.
+- Baseline inspected: branch `dars`, HEAD `5534f8e docs: refresh m21.3 bootstrap readiness`, working tree clean before Prepare writes. Combined traceability/domain/CLI gate 32 passed before writes; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `git diff --check` clean.
+- Decision: M21.3 ships as a pure local-only checker plus runtime-boundary writer. Tasks are RED -> GREEN -> writer/`..` regression -> docs/gate/commit. CLI wrapper `hisys runtime-boundary-check` is explicitly deferred to a separate M21.3-CLI increment. Issue vocabulary is fixed at `unsafe_ref`, `missing_file`, `malformed_json`, `missing_markdown_pair`, `missing_advisory_flags`, `outside_runtime_boundary` for this increment.
+- Document-RED artifact: created `docs/plans/m21-3-runtime-boundary-consistency-checker-implementation-tasks.md`. The planned first RED is `PYTHONPATH=src pytest tests/unit/test_runtime_boundary_consistency.py::test_runtime_boundary_consistency_flags_missing_and_unsafe_refs -q`, expected to fail with `ModuleNotFoundError` because `hisys.operations.runtime_boundary_consistency` does not exist.
+- Boundary: local docs/control preparation only. No production code, no CLI surface, no remote push, no live external action, no credential lookup, no raw source archival, no artifact repair/deletion. The future checker reads only through `resolve_instance_runtime_ref` and writes only under `runtime-boundary/runtime-boundary-consistency/<YYYYMMDD>/`.
+- Quality gate result: pass — traceability/domain/CLI focused gate 32 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=580 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) Schema-id-aware deep validation per artifact family is intentionally deferred until fixture benchmarks in M21.5. (b) Cross-date drift is deferred to M21.4. (c) The pure checker must not be allowed to grow approval/safe-to-deploy/readiness language; M21.3 GREEN test should pin `advisory_only=true` and `requires_human_review=true`.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M21.3` Task 1 RED — author and observe the failing `tests/unit/test_runtime_boundary_consistency.py` test before any production module exists.
+- Stop condition: Prepare/document-RED checkpoint reached; production checker behavior remains gated by future RED test.
+- Commit pending: `docs: prepare runtime-boundary consistency checker`.
+
+Resume checkpoint:
+- Current HEAD: 5534f8e docs: refresh m21.3 bootstrap readiness
+- Working tree: M21.3 implementation plan and `ralph.md` modified until commit
+- Last completed milestone/task: M21.3 Prepare/document-RED
+- Next safe task: `M21.3` Task 1 RED — author failing consistency-checker unit test
+- Next command to run after commit: `PYTHONPATH=src pytest tests/unit/test_runtime_boundary_consistency.py::test_runtime_boundary_consistency_flags_missing_and_unsafe_refs -q`
+- Quality gate status: pass — traceability/domain/CLI 32 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — Current-session bootstrap refresh for M21.3 Prepare
 
 - Phase completed: `/bootstrap`-style current-session readiness refresh with omitted arguments. No tmux or background agent was spawned.
