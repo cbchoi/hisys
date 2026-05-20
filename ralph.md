@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M21.6 change-impact analyzer (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for M21.6 after Prepare commit `d75ca1a docs: prepare change-impact analyzer`.
+- Controlled anchors checked: `docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md`; `src/hisys/operations/traceability_coverage.py` (`TraceabilityAnchors`, writer pattern); `src/hisys/operations/codebase_analysis.py` (`resolve_instance_runtime_ref`, `_DATE_PATTERN`); `src/hisys/operations/runtime_boundary_consistency.py`, `src/hisys/operations/codebase_map_freshness.py`, `src/hisys/operations/codebase_regression_benchmarks.py` (M21.3/M21.4/M21.5 writer patterns); `tests/unit/test_runtime_boundary_consistency.py` (test/seed pattern); `docs/traceability/README.md`.
+- Baseline observed: branch `dars`, HEAD `d75ca1a docs: prepare change-impact analyzer`, working tree clean before edits. Project focused gate 46 passed pre-edit; DARS focused gate 50 passed; traceability validator OK.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_change_impact.py::test_build_change_impact_report_classifies_changed_refs -q` failed during collection with `ModuleNotFoundError: No module named 'hisys.operations.change_impact'`.
+- Implementation: added `src/hisys/operations/change_impact.py` with `ChangeImpactRequest`, `ChangeImpactReport`, a pure `build_change_impact_report(*, request, anchors)` classifier, a deterministic Markdown renderer, and `write_change_impact_report(*, instance_root, date, report)` that persists JSON/Markdown only under `runtime-boundary/change-impact/<YYYYMMDD>/` through `resolve_instance_runtime_ref`. The analyzer reads only the M21.1 `TraceabilityAnchors` IDs/refs; it does not run `git diff`, does not call `subprocess`, does not read `.git/`, does not call `date.today()`, and does not open any changed-file body. Impact vocabulary is fixed at `impacted_requirement_ids`, `impacted_test_id_or_refs`, `impacted_design_or_interface_refs`, `impacted_runtime_boundary_refs`, `unmapped_changed_refs`, and `unsafe_changed_refs`. Unsafe refs (absolute paths, refs containing a `..` segment, empty refs) are rejected without filesystem access. Refs that start with `runtime-boundary/` are recorded as impacted runtime artifacts even when they are not also mapped through traceability anchors.
+- Tests: added `tests/unit/test_change_impact.py` with five focused tests covering (a) the RED classification path across design/interface/test/runtime/unmapped/unsafe inputs, (b) writer round-trip and JSON payload invariants, (c) unsafe-ref rejection without mutation, (d) `_validate_date` rejection of non-`YYYYMMDD` input, and (e) the empty changed-list edge case (`changed_ref_count == 0` and every impact partition empty).
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_change_impact.py -q` -> 5 passed; extended focused gate `PYTHONPATH=src pytest tests/unit/test_change_impact.py tests/unit/test_codebase_regression_benchmarks.py tests/unit/test_codebase_map_freshness.py tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py tests/unit/test_domain_cli.py -q` -> 51 passed; DARS focused gate 50 passed.
+- Documentation/traceability: prepended an M21.6 implemented-increment row to `docs/traceability/README.md` linking the plan, module, and tests with explicit advisory-only/no-mutation/no-external-call/no-git-shellout invariants. Existing M21.5 and earlier rows preserved.
+- Quality gate result: pass — extended focused gate 51 passed; DARS critic-panel focused regression 50 passed; governance current-state 1 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=643 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) First GREEN bundles RED + regression tests in one commit because the planned Task 3 supplemental tests are tightly coupled to the writer/unsafe-ref paths that the M21.6 analyzer pins; future M21.x increments should still keep one canonical RED before any production code. (b) File-ref granularity only; symbol-level impact (function/class) remains deferred. (c) No diff capture inside the analyzer; a future `M21.6-DIFFCAP` Prepare/RED is required if a local diff-capture helper is wanted. (d) Test runner orchestration is intentionally out of scope; the report names impacted test IDs/refs but does not execute them. (e) The optional `hisys change-impact` CLI wrapper remains M21.6-CLI backlog and was intentionally not added in this increment.
+- Continue decision: after committing this implementation, the next safe queue item is `M21.6-CLI` Prepare (thin `hisys change-impact` wrapper following the M21.3-CLI/M21.4-CLI pattern) or, alternatively, M21.7 Prepare for the architecture candidate generator. Both remain local-only/advisory-only.
+- Stop condition: M21.6 GREEN implementation boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: add change-impact analyzer`.
+
+Resume checkpoint:
+- Current HEAD: d75ca1a docs: prepare change-impact analyzer
+- Working tree: M21.6 code/tests/docs/ralph modified until commit
+- Last completed milestone/task: M21.6 change-impact analyzer implementation
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_change_impact.py::test_build_change_impact_report_classifies_changed_refs -q` -> `ModuleNotFoundError`
+- GREEN observed: focused change-impact tests 5 passed; extended focused gate 51 passed; DARS focused gate 50 passed
+- Quality gate status: pass — extended focused gate 51 passed; DARS 50 passed; governance current-state 1 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.6 files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-21 — M21.6 change-impact analyzer Prepare
 
 - Phase completed: Prepare/document-RED planning for M21.6 after the M21.5 regression benchmark fixtures shipped at `641e9a8 feat: add codebase regression benchmarks` and the M21.6 bootstrap refresh at `2d8d4ac docs: refresh m21.6 bootstrap readiness`.
