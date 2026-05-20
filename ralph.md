@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.1 traceability coverage report (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for M21.1 Traceability Coverage Report after QUEUE-REFILL-PREP selected it as the safest M21 local-only increment.
+- Controlled anchors checked: `2249057 docs: queue m21.1 traceability coverage report`; `docs/plans/m21-1-traceability-coverage-report-implementation-tasks.md`; `scripts/validate_traceability.py`; `docs/traceability/README.md`; `src/hisys/operations/codebase_analysis.py` `resolve_instance_runtime_ref`; existing domain/CLI regression gates.
+- Baseline observed: branch `dars`, HEAD `2249057`, working tree clean before edits; combined domain + CLI gate 29 passed; traceability validator OK.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_traceability_coverage.py -q` failed during collection with `ModuleNotFoundError: No module named 'hisys.operations.traceability_coverage'` after adding the first reporter test.
+- Implementation: added `src/hisys/operations/traceability_coverage.py` with `TraceabilityAnchors`, `TraceabilityCoverageReport`, pure `build_traceability_coverage_report`, Markdown renderer, and `write_traceability_coverage_report` that writes JSON/Markdown only under `runtime-boundary/traceability-coverage/<YYYYMMDD>/` through `resolve_instance_runtime_ref`. Added standalone `scripts/report_traceability_coverage.py` wrapper with a deterministic repo anchor loader; no Hisys CLI subcommand, live read, credential, publication, or raw source archival was added.
+- Tests: added `tests/unit/test_traceability_coverage.py` for unreferenced requirement/orphan test coverage and bounded runtime artifact writer invariants. The writer test was added as a supplemental regression after the first GREEN because the initial RED scoped the pure reporter seam.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_traceability_coverage.py -q` -> 2 passed; script smoke `PYTHONPATH=src python3 scripts/report_traceability_coverage.py --date 20260520 --instance-root /tmp/hisys-traceability-coverage-smoke` emitted coverage refs and no external/mutation authority.
+- Documentation/traceability: added an M21.1 implemented-increment row to `docs/traceability/README.md` linking the plan, module, script wrapper, tests, and advisory/runtime-boundary invariants.
+- Quality gate result: pass — combined traceability/domain/CLI gate 31 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=553 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The standalone loader is intentionally minimal and uses existing repo/schema/traceability references; a richer SRS/SDD/IDD/STD parser remains possible follow-on work if needed. (b) A `hisys traceability-coverage` CLI subcommand remains M21.2 backlog. (c) Coverage report output is advisory and human-review-required only.
+- Continue decision: after committing this increment, the next safe item is M21.2 Prepare for optional CLI wrapping or M21 backlog triage if CLI expansion is not desired.
+- Stop condition: M21.1 implementation boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: add traceability coverage report`.
+
+Resume checkpoint:
+- Current HEAD: 2249057 docs: queue m21.1 traceability coverage report
+- Working tree: M21.1 code/tests/docs/ralph modified until commit
+- Last completed milestone/task: M21.1 traceability coverage report implementation
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_traceability_coverage.py -q` -> ModuleNotFoundError for `hisys.operations.traceability_coverage`
+- GREEN observed: unit traceability coverage tests 2 passed; script smoke emitted runtime-boundary refs
+- Quality gate status: pass — combined traceability/domain/CLI 31 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.1 files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — QUEUE-REFILL-PREP after M20 close → seeded M21.1 traceability coverage report
 
 - Phase completed: QUEUE-REFILL-PREP after the full M20 milestone closed (`cae708d docs: document codebase domain artifact bridge`). The M21 backlog list in `ralph.md` Section 14 carries 10+ advisory candidates; this checkpoint surveys them against the M21 stop condition (no live external access, no credential/security authority, no publication, no remote push, no raw source archival) and converts the safest candidate into a spec-first active task.

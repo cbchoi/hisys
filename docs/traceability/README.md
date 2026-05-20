@@ -11,6 +11,7 @@ This file is a working pointer; if it drifts, fix it here, not in the docs.
 
 | Increment | Source doc | Status here |
 |---|---|---|
+| Traceability coverage report (M21.1) | docs/plans/m21-1-traceability-coverage-report-implementation-tasks.md; ralph.md M21.1; src/hisys/operations/traceability_coverage.py; scripts/report_traceability_coverage.py; tests/unit/test_traceability_coverage.py; docs/traceability/README.md; HISYS-REPO-001; HISYS-IMP-001; HISYS-IDD-001 | Implemented: `build_traceability_coverage_report` computes deterministic requirement coverage, unreferenced requirement IDs, orphan test IDs, and advisory boundary flags from bounded anchor IDs without embedding raw source text. `write_traceability_coverage_report` writes JSON/Markdown only under `runtime-boundary/traceability-coverage/<YYYYMMDD>/` through `resolve_instance_runtime_ref`; `scripts/report_traceability_coverage.py` provides the M21.1 standalone script wrapper without adding a Hisys CLI subcommand. Tests pin the RED-start pure reporter behavior and bounded runtime artifact writer. |
 | I0 Repository skeleton | HISYS-IMP-001 (implementation-plan.md) Section 3 | Complete |
 | I1 Schemas and IDs | HISYS-IMP-001 Section 3; HISYS-SCHEMA-001 (schema-definitions.md) | Initial Pydantic v2 models for all named records |
 | I2 Source governance | HISYS-IMP-001 Section 3; HISYS-SRC-REG-INIT-001; HISYS-CHECK-WEB-001 | Initial in-memory registry, fixture registry, and web compliance gate |
