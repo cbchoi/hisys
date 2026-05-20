@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.4 codebase map freshness/drift review Prepare
+
+- Phase completed: Prepare/document-RED for M21.4 after the M21.3 pure checker and M21.3-CLI thin wrapper shipped at `3c3e0bd feat: add runtime-boundary-check cli wrapper`.
+- Controlled anchors checked: `docs/plans/m21-roadmap-implementation-plan.md` (M21.4 sequencing); `src/hisys/operations/codebase_analysis.py` (`INVENTORY_RUNTIME_PREFIX`, `_REQUIRED_ARTIFACT_NAMES`, `resolve_instance_runtime_ref`); `src/hisys/operations/runtime_boundary_consistency.py` (M21.3 writer/report shape to mirror); `src/hisys/operations/traceability_coverage.py` (M21.1 writer pattern reference); existing focused fixture-writing patterns under `tests/unit/test_codebase_*`.
+- Baseline inspected: branch `dars`, HEAD `3c3e0bd feat: add runtime-boundary-check cli wrapper`, working tree clean before Prepare writes. Extended focused gate 38 passed; DARS focused gate 48 passed; traceability validator OK.
+- Decision: M21.4 ships as a pure local-only checker plus runtime-boundary writer. Inputs are `instance_root`, caller-supplied `current_date`, `max_age_days`, and optional `current_head_short`. Outputs are sorted fresh / stale / incomplete / unsafe_partition lists under `runtime-boundary/codebase-map-freshness/<YYYYMMDD>/freshness-report.{json,md}`. The checker reads directory listings and file presence only; it never opens artifact bodies, never calls `date.today()`, and never accesses `.git/`. CLI wrapper is deferred to a separate M21.4-CLI increment.
+- Document-RED artifact: created `docs/plans/m21-4-codebase-map-freshness-drift-review-implementation-tasks.md`. Planned first RED is `PYTHONPATH=src pytest tests/unit/test_codebase_map_freshness.py::test_codebase_map_freshness_classifies_partitions -q`, expected to fail with `ModuleNotFoundError` because `hisys.operations.codebase_map_freshness` does not exist.
+- Boundary: local docs/control preparation only. No production code, no CLI surface, no remote push, no live external action, no credential lookup, no raw source archival, no artifact repair/deletion. The future checker reads only `<instance>/runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` listings through `resolve_instance_runtime_ref` and writes only under `runtime-boundary/codebase-map-freshness/<YYYYMMDD>/`.
+- Quality gate result: pass — extended focused gate 38 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=584 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) Schema-id-aware deep validation per artifact family is deferred to M21.5 fixture benchmarks. (b) Cross-instance / cross-branch drift is intentionally out of scope. (c) The checker must never call `date.today()` or read `.git/`; callers provide all date/HEAD inputs. (d) Future CLI surface is gated behind a separate M21.4-CLI Prepare; do not bundle it into M21.4 GREEN.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M21.4` Task 1 RED — author and observe the failing `tests/unit/test_codebase_map_freshness.py` test before any production module exists.
+- Stop condition: Prepare/document-RED checkpoint reached; production checker behavior remains gated by future RED test.
+- Commit pending: `docs: prepare codebase map freshness review`.
+
+Resume checkpoint:
+- Current HEAD: 3c3e0bd feat: add runtime-boundary-check cli wrapper
+- Working tree: M21.4 implementation plan and `ralph.md` modified until commit
+- Last completed milestone/task: M21.4 Prepare/document-RED
+- Next safe task: `M21.4` Task 1 RED — author failing freshness checker unit test
+- Next command to run after commit: `PYTHONPATH=src pytest tests/unit/test_codebase_map_freshness.py::test_codebase_map_freshness_classifies_partitions -q`
+- Quality gate status: pass — extended focused gate 38 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.3-CLI runtime-boundary-check CLI wrapper (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for M21.3-CLI after Prepare commit `6f25749 docs: prepare runtime-boundary-check cli wrapper`.
