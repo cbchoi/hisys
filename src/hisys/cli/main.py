@@ -151,6 +151,11 @@ from ..operations.change_impact import (
     build_change_impact_report,
     write_change_impact_report,
 )
+from ..operations.architecture_candidates import (
+    ArchitectureCandidateInputs,
+    build_architecture_candidate_report,
+    write_architecture_candidate_report,
+)
 from ..investigator import (
     ClaimRecord,
     CollectionReport,
@@ -1547,6 +1552,50 @@ def _cmd_change_impact(
     return 0
 
 
+def _load_json_report(path: Path | None) -> dict[str, object] | None:
+    if path is None:
+        return None
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    if not isinstance(payload, dict):
+        raise ValueError(f"expected JSON object report at {path}")
+    return payload
+
+
+def _cmd_architecture_candidates(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    coverage_report_path: Path | None,
+    freshness_report_path: Path | None,
+    change_impact_report_path: Path | None,
+    current_head_short: str | None,
+) -> int:
+    """Write a local advisory architecture-candidate report via the CLI."""
+
+    inputs = ArchitectureCandidateInputs(
+        instance_root=instance_root,
+        coverage_report=_load_json_report(coverage_report_path),
+        freshness_report=_load_json_report(freshness_report_path),
+        change_impact_report=_load_json_report(change_impact_report_path),
+        current_head_short=current_head_short,
+    )
+    report = build_architecture_candidate_report(inputs=inputs)
+    written = write_architecture_candidate_report(
+        instance_root=instance_root, date=yyyymmdd, report=report
+    )
+    print(f"architecture-candidates report: json={written['json_ref']}")
+    print(f"markdown: {written['markdown_ref']}")
+    print(f"candidate_count: {report.candidate_count}")
+    print("advisory_only: true")
+    print("requires_human_review: true")
+    print("external_call_made: false")
+    print("mutation_performed: false")
+    print("raw_source_content_persisted: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_codebase_map_freshness_review(
     *,
     instance_root: Path,
@@ -2141,6 +2190,37 @@ def _build_parser() -> argparse.ArgumentParser:
         help="repeatable relative changed file ref (caller-supplied)",
     )
     change_impact.add_argument(
+        "--current-head-short",
+        default=None,
+        help="optional caller-supplied git HEAD short hash recorded verbatim",
+    )
+
+    architecture_candidates = sub.add_parser(
+        "architecture-candidates",
+        help="write local advisory architecture-candidate report artifacts",
+    )
+    architecture_candidates.add_argument(
+        "--instance", required=True, help="Hisys instance root"
+    )
+    architecture_candidates.add_argument(
+        "--date", required=True, help="YYYYMMDD report partition"
+    )
+    architecture_candidates.add_argument(
+        "--coverage-report",
+        default=None,
+        help="optional explicit hisys.traceability.coverage.v1 JSON report path",
+    )
+    architecture_candidates.add_argument(
+        "--freshness-report",
+        default=None,
+        help="optional explicit hisys.codebase_map.freshness.v1 JSON report path",
+    )
+    architecture_candidates.add_argument(
+        "--change-impact-report",
+        default=None,
+        help="optional explicit hisys.change_impact.v1 JSON report path",
+    )
+    architecture_candidates.add_argument(
         "--current-head-short",
         default=None,
         help="optional caller-supplied git HEAD short hash recorded verbatim",
@@ -3409,6 +3489,23 @@ def main(argv: list[str] | None = None) -> int:
             yyyymmdd=args.date,
             repo_root=args.repo,
             changed_refs=tuple(args.changed_ref),
+            current_head_short=args.current_head_short,
+        )
+    if args.command == "architecture-candidates":
+        return _cmd_architecture_candidates(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            coverage_report_path=(
+                Path(args.coverage_report) if args.coverage_report else None
+            ),
+            freshness_report_path=(
+                Path(args.freshness_report) if args.freshness_report else None
+            ),
+            change_impact_report_path=(
+                Path(args.change_impact_report)
+                if args.change_impact_report
+                else None
+            ),
             current_head_short=args.current_head_short,
         )
     if args.command == "codebase-map-freshness-review":

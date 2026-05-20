@@ -194,6 +194,104 @@ def test_change_impact_cli_writes_report(tmp_path: Path, capsys) -> None:
     assert "src/hisys/agents/unrelated_helper.py" in data["unmapped_changed_refs"]
 
 
+def _architecture_coverage_payload() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.traceability.coverage.v1",
+        "unreferenced_requirements": ["HISYS-FR-DOM-001", "HISYS-FR-DOM-002"],
+    }
+
+
+def _architecture_freshness_payload() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.codebase_map.freshness.v1",
+        "stale_partitions": [
+            "runtime-boundary/codebase-analysis/20260418/REQ-OLD",
+        ],
+    }
+
+
+def _architecture_impact_payload() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.change_impact.v1",
+        "changed_ref_count": 3,
+        "impacted_requirement_ids": ["HISYS-FR-DOM-001"],
+        "impacted_design_or_interface_refs": ["docs/some-design.md"],
+    }
+
+
+def test_architecture_candidates_cli_writes_report(tmp_path: Path, capsys) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    coverage_path = tmp_path / "coverage.json"
+    freshness_path = tmp_path / "freshness.json"
+    impact_path = tmp_path / "impact.json"
+    coverage_path.write_text(
+        json.dumps(_architecture_coverage_payload()), encoding="utf-8"
+    )
+    freshness_path.write_text(
+        json.dumps(_architecture_freshness_payload()), encoding="utf-8"
+    )
+    impact_path.write_text(
+        json.dumps(_architecture_impact_payload()), encoding="utf-8"
+    )
+
+    result = main(
+        [
+            "architecture-candidates",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260521",
+            "--coverage-report",
+            str(coverage_path),
+            "--freshness-report",
+            str(freshness_path),
+            "--change-impact-report",
+            str(impact_path),
+            "--current-head-short",
+            "50b7263",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "architecture-candidates report" in captured.out
+    assert "candidate_count:" in captured.out
+    assert "external_call_made: false" in captured.out
+    assert "allowed_actions: advisory_only" in captured.out
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "architecture-candidates"
+        / "20260521"
+        / "architecture-candidates-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "architecture-candidates"
+        / "20260521"
+        / "architecture-candidates-report.md"
+    )
+    assert json_path.exists()
+    assert md_path.exists()
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["schema_id"] == "hisys.architecture_candidates.v1"
+    assert data["advisory_only"] is True
+    assert data["requires_human_review"] is True
+    assert data["external_call_made"] is False
+    assert data["mutation_performed"] is False
+    assert data["raw_source_content_persisted"] is False
+    assert data["current_head_short"] == "50b7263"
+    assert data["candidate_count"] > 0
+    for candidate in data["candidates"]:
+        assert candidate["recommendation_strength"] in (
+            "advisory_candidate",
+            "advisory_candidate_low_evidence",
+        )
+
+
 def test_runtime_boundary_check_cli_writes_consistency_report(tmp_path: Path, capsys) -> None:
     instance_root = tmp_path / "instance"
     instance_root.mkdir()
