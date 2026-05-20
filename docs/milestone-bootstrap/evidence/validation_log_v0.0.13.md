@@ -241,3 +241,42 @@ Results:
 - traceability: `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`.
 - secret scan: `secret_scan: scanned_files=623 skipped_files=0 hit_count=0`.
 - diff check: clean.
+
+## M21.5 codebase regression benchmark fixture evidence
+
+RED observed:
+
+```text
+ModuleNotFoundError: No module named 'hisys.operations.codebase_regression_benchmarks'
+```
+
+GREEN observed:
+
+```bash
+PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py -q
+```
+
+Result: `2 passed in 0.07s`.
+
+Final M21.5 validation:
+
+```bash
+python3 <structural parse for profile/tasks/testcases/request/benchmark manifest>
+PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py tests/unit/test_codebase_map_freshness.py tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py tests/unit/test_domain_cli.py -q
+PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py tests/unit/test_codebase_map_freshness.py tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py tests/unit/test_domain_cli.py -q
+PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+Results:
+
+- structural check: `m21.5 structural parse ok`.
+- codebase focused: `26 passed in 0.33s`.
+- project focused: `46 passed in 0.38s`.
+- DARS focused: `50 passed in 1.23s`.
+- governance current-state: `1 passed in 0.06s`.
+- traceability: `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`.
+- secret scan: `secret_scan: scanned_files=633 skipped_files=0 hit_count=0`.
+- diff check: clean.

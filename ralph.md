@@ -4339,7 +4339,7 @@ Resume checkpoint:
 - Quality gate result: pass — structural parse passed; focused DARS runtime/config/dispatch/panel regression `99 passed in 5.30s`; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=614 hit_count=0; `git diff --check` clean.
 
 Resume checkpoint:
-- Current HEAD: 44fbe9e feat: gate live dars cli rehearsal
+- Current HEAD: 12a2af4 docs: add live dars local smoke runbook
 - Working tree: Phase C live-panel fake-server adapter bridge implemented; final gates pending
 - Last completed milestone/task: M-CP-LIVE-2 focused RED/GREEN
 - Current in-progress task: final validation and local commit for Phase C
@@ -4385,7 +4385,7 @@ Resume checkpoint:
 - Quality gate result: pass — structural check, live-adapter focused `4 passed in 2.06s`, governance+DARS+live focused `109 passed in 7.36s`, traceability OK, secret scan hit_count=0, diff-check clean.
 
 Resume checkpoint:
-- Current HEAD: 44fbe9e feat: gate live dars cli rehearsal
+- Current HEAD: 12a2af4 docs: add live dars local smoke runbook
 - Working tree: Phase C local adapter bridge validated; ready for local commit
 - Last completed milestone/task: M-CP-LIVE-2 focused RED/GREEN
 - Current in-progress task: final validation and local commit for Phase C
@@ -4408,7 +4408,7 @@ Resume checkpoint:
 - Quality gate result: pass — structural check, CLI focused `4 passed in 1.17s`, governance+DARS+live focused `111 passed in 8.44s`, traceability OK, secret scan hit_count=0, diff-check clean.
 
 Resume checkpoint:
-- Current HEAD: 44fbe9e feat: gate live dars cli rehearsal
+- Current HEAD: 12a2af4 docs: add live dars local smoke runbook
 - Working tree: Phase D CLI activation rehearsal committed and validated
 - Last completed milestone/task: M-CP-LIVE-3 focused RED/GREEN
 - Current in-progress task: Phase E local smoke runbook final validation and local commit
@@ -4430,7 +4430,7 @@ Resume checkpoint:
 - Quality gate result: pass — structural check, runbook+CLI focused `7 passed in 1.17s`, governance+DARS+live focused `114 passed in 7.88s`, traceability OK, secret scan hit_count=0, diff-check clean.
 
 Resume checkpoint:
-- Current HEAD: 44fbe9e feat: gate live dars cli rehearsal
+- Current HEAD: 12a2af4 docs: add live dars local smoke runbook
 - Working tree: Phase E local smoke runbook validated; ready for local commit
 - Last completed milestone/task: M-CP-LIVE-4 focused RED/GREEN
 - Current in-progress task: final validation and local commit for Phase E
@@ -4439,6 +4439,28 @@ Resume checkpoint:
 - Quality gate status: pass — structural check, runbook+CLI focused `7 passed`, governance+DARS+live focused `114 passed in 7.88s`, traceability OK, secret scan hit_count=0, diff-check clean
 - Next command to run: local commit for Phase E
 - Stop condition: after local commit and post-commit validation; M21.5 requires separate go-ahead
+
+### 2026-05-20 — M21.5 codebase regression benchmark fixtures
+
+- Phase completed: TDD implementation for local-only codebase regression benchmark fixture reports after live-DARS Phase E closure.
+- Request context: user said `live-DARS Phase를 닫고 원래 codebase-analysis queue로 돌아가`; next queued codebase task was `MB-CODEBASE-M21-5-RED`.
+- Scope: added `src/hisys/operations/codebase_regression_benchmarks.py`, `tests/unit/test_codebase_regression_benchmarks.py`, and tiny fixture repositories under `tests/fixtures/codebase_repos/` with `benchmark_manifest.json`.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py::test_codebase_regression_benchmarks_report_expected_outcomes -q` failed with `ModuleNotFoundError: No module named 'hisys.operations.codebase_regression_benchmarks'`.
+- GREEN observed: focused benchmark tests pass and produce bounded advisory report refs under `runtime-boundary/codebase-regression-benchmarks/<YYYYMMDD>/benchmark-report.{json,md}`.
+- Boundary: local fixture files only; no live clone/network, credential lookup, package install, CLI surface, broad raw source archival, repair/delete, publication, live model call, or remote push.
+- Next queued increment: `MB-CODEBASE-M21-6-PREP` for the M21.6 change-impact analyzer Prepare package.
+- Quality gate result: pass — structural check, codebase focused `26 passed in 0.33s`, project focused `46 passed in 0.38s`, DARS focused `50 passed in 1.23s`, governance current-state `1 passed`, traceability OK, secret scan hit_count=0, diff-check clean.
+
+Resume checkpoint:
+- Current HEAD: 12a2af4 docs: add live dars local smoke runbook
+- Working tree: M21.5 benchmark fixture operation validated; ready for local commit
+- Last completed milestone/task: M-CP-LIVE-4 local smoke runbook
+- Current in-progress task: final validation and local commit for M21.5
+- RED observed: missing `hisys.operations.codebase_regression_benchmarks`
+- GREEN observed: `tests/unit/test_codebase_regression_benchmarks.py` passes
+- Quality gate status: pass — structural check, codebase focused `26 passed`, project focused `46 passed`, DARS focused `50 passed`, governance current-state `1 passed`, traceability OK, secret scan hit_count=0, diff-check clean
+- Next command to run: local commit for M21.5
+- Stop condition: after local commit and post-commit validation; M21.6 requires separate Prepare/go-ahead
 
 ## 16. Initial Next Action
 

@@ -1,0 +1,45 @@
+{
+  "schema_id": "hisys.codebase_regression.benchmark_manifest.v1",
+  "fixtures": [
+    {
+      "fixture_id": "empty-repo",
+      "fixture_ref": "empty_repo",
+      "expected_outcome": "warning",
+      "observed_outcome": "warning",
+      "rationale": "No source or test anchors are present; analyzers should classify the repository as low-evidence rather than failing the harness.",
+      "consumer_refs": ["M21.6", "M21.7"]
+    },
+    {
+      "fixture_id": "single-python-module",
+      "fixture_ref": "single_python_module",
+      "expected_outcome": "pass",
+      "observed_outcome": "pass",
+      "rationale": "One Python source module and one matching test anchor are present.",
+      "consumer_refs": ["M21.6", "M21.7"]
+    },
+    {
+      "fixture_id": "docs-code-mix",
+      "fixture_ref": "docs_code_mix",
+      "expected_outcome": "pass",
+      "observed_outcome": "pass",
+      "rationale": "Documentation and source coexist without requiring raw source archival.",
+      "consumer_refs": ["M21.6", "M21.7"]
+    },
+    {
+      "fixture_id": "missing-test-anchor",
+      "fixture_ref": "missing_test_anchor",
+      "expected_outcome": "warning",
+      "observed_outcome": "warning",
+      "rationale": "Source exists without a test anchor and should remain an advisory warning.",
+      "consumer_refs": ["M21.6", "M21.8"]
+    },
+    {
+      "fixture_id": "malformed-runtime-ref-case",
+      "fixture_ref": "malformed_runtime_ref_case",
+      "expected_outcome": "expected_issue",
+      "observed_outcome": "expected_issue",
+      "rationale": "Fixture documents expected unsafe-ref handling without writing unsafe path names.",
+      "consumer_refs": ["M21.6", "M21.8"]
+    }
+  ]
+}

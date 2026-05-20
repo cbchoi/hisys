@@ -80,10 +80,28 @@ tasks:
       - docs/traceability/dars-critic-panel-runtime-traceability.md
       - ralph.md
   - id: MB-CODEBASE-M21-5-RED
-    title: Future RED for M21.5 codebase regression benchmark fixtures
-    status: queued
+    title: M21.5 codebase regression benchmark fixtures
+    status: completed
     command: "PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py::test_codebase_regression_benchmarks_report_expected_outcomes -q"
     expected_red: "ModuleNotFoundError: No module named 'hisys.operations.codebase_regression_benchmarks'"
+    evidence:
+      - tests/unit/test_codebase_regression_benchmarks.py
+      - src/hisys/operations/codebase_regression_benchmarks.py
+      - tests/fixtures/codebase_repos/benchmark_manifest.json
+      - tests/fixtures/codebase_repos/empty_repo/README.md
+      - tests/fixtures/codebase_repos/single_python_module/src/example.py
+      - tests/fixtures/codebase_repos/single_python_module/tests/test_example.py
+      - tests/fixtures/codebase_repos/docs_code_mix/README.md
+      - tests/fixtures/codebase_repos/docs_code_mix/src/docs_code_mix.py
+      - tests/fixtures/codebase_repos/missing_test_anchor/src/untested.py
+      - tests/fixtures/codebase_repos/malformed_runtime_ref_case/README.md
+      - docs/traceability/README.md
+      - ralph.md
+  - id: MB-CODEBASE-M21-6-PREP
+    title: Future Prepare for M21.6 change-impact analyzer
+    status: queued
+    command: "prepare M21.6 change-impact analyzer plan before RED"
+    expected_red: "TBD in M21.6 Prepare package"
 constraints:
   production_code_created: true
   tests_created: true
