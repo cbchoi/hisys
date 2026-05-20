@@ -396,10 +396,89 @@ gates; the source-inspection decision packet is recorded as
 `FINISH-HISYS-CODEBASE-ANALYSIS-005` after M19 completes its local
 gates.
 
+## Increment 6 — `investigate-domain --domain codebase` bridge
+
+Milestone M20 wires the codebase-analysis bundle into the existing
+`investigate-domain` CLI surface without adding any new argparse flag.
+A `DomainInvestigationRequest` whose `domain` is `codebase` may include
+ordered `runtime_record` `DomainSourceRef` entries pointing at the five
+canonical bundle roles (`inventory`, `symbol_index`, `scope_map`,
+`validation_plan`, `risk_scan`). The structured codebase adapter
+classifies the role set, loads the bundle through the existing safe
+`load_codebase_review_bundle` chokepoint (which routes every caller
+ref through `resolve_instance_runtime_ref`), and surfaces one bounded
+`codebase_analysis_bundle` `DomainEvidencePackage` on the result.
+
+### Role-level gate
+
+The work-product gate is pure role classification over the request
+refs. Complete role sets yield advisory `candidate_complete`;
+incomplete sets yield `needs_more_evidence` with sorted missing roles.
+Both outcomes preserve `requires_human_review=True`. The gate never
+opens artifact files and never imply approval.
+
+### Bundle enrichment
+
+On a `candidate_complete` gate the adapter loads the four real
+artifact files (the validation plan lives inside `scope-map.json` and
+is not opened separately) and emits one `DomainEvidencePackage` with:
+
+- `evidence_type="codebase_analysis_bundle"`
+- ordered `evidence_refs=[inventory, symbol_index, scope_map, risk_scan]`
+- a bounded summary recording `inventory_files`, `scopes`, and
+  `risk_categories` counts (no raw source content)
+- limitations that preserve advisory/human-review boundaries
+- `external_call_made=False`, `mutation_performed=False`
+
+### Fail-closed behavior
+
+Loader exceptions (`FileNotFoundError`, `ValueError`, `OSError`) and
+incomplete role refs both downgrade the result to
+`quality_gate="needs_more_evidence"` and emit a bounded
+`codebase_analysis_bundle` evidence package whose limitations include
+`unreadable` or `missing role: <role>`. The dispatch never raises into
+the CLI on expected load failures.
+
+### CLI surface
+
+The existing `investigate-domain` command accepts the codebase request
+JSON unchanged:
+
+```bash
+hisys investigate-domain \
+    --instance <instance-root> \
+    --request <codebase-request.json> \
+    --date YYYYMMDD
+```
+
+The persisted `hisys-tool-result-<request_id>.json` carries the compact
+`HisysToolResult` projection (status, domain, governance flags,
+quality gate, recommendation summary, runtime boundary refs). The full
+evidence remains in the structured `domain-investigation-result-*.json`
+artifact under
+`runtime-boundary/domain-investigation/codebase/<YYYYMMDD>/`.
+
+### Safety invariants
+
+The bridge introduces no new CLI argument and authorizes no live
+action. A complete bundle never implies `approved`, `safe_to_deploy`,
+or `ready_for_live_action`; human review remains required. A
+repeatable `--codebase-artifact` argparse flag is backlog-only.
+
+### Command
+
+```bash
+hisys investigate-domain \
+    --instance <instance> \
+    --request <codebase-request.json> \
+    --date 20260520
+```
+
 ## What is intentionally out of scope
 
-Increments 1 through 5 do not implement and do not authorize:
+Increments 1 through 6 do not implement and do not authorize:
 
-- `investigate-domain --domain codebase` bridge (Increment 6 / M20).
 - External repository clone, raw source content archiving, live network
   access, model calls, credential use, remote push, or publication.
+- A repeatable `--codebase-artifact` argparse flag; bundle refs travel
+  through the request JSON as `runtime_record` sources.

@@ -388,3 +388,15 @@ This codebase use case must remain compatible with `docs/use-cases/hermes-hisys-
 - Domain-specific schemas may refine generic `InvestigationDataPackage`, `AlternativeDecisionSet`, and recommendation memo shapes.
 - The same Hermes-facing tool can later support research, business, investment, ISO/process, and other domains by changing domain adapter, rubric binding, and prompt bundle.
 - Any domain adapter remains read-only by default and advisory unless a later human-approved workflow explicitly enables mutation.
+
+## 13. M20 Implementation Notes — Codebase Artifact Bridge
+
+Milestone M20 implements the codebase artifact bridge across five increments:
+
+- **M20.1** added `InvestigationWorkProduct.codebase_artifact_refs` to carry ordered, deduplicated `runtime-boundary/codebase-analysis/...` refs from `runtime_record` `DomainSourceRef` entries. The refs are surfaced only on the internal work product; the public CLI and `DomainInvestigationResult` schema are unchanged.
+- **M20.2** added the role-classification gate (`codebase_bundle_gate`, `codebase_missing_evidence`, `requires_human_review`) over the five canonical roles `inventory`, `symbol_index`, `scope_map`, `validation_plan`, `risk_scan`. Incomplete role sets yield `needs_more_evidence`; complete role sets yield advisory `candidate_complete` and never imply approval.
+- **M20.3** enriches `DomainInvestigationResult.investigation_data.evidence_packages` with one bounded `codebase_analysis_bundle` `DomainEvidencePackage` when a complete bundle loads through the existing `load_codebase_review_bundle` safe-ref chokepoint. Loader failures and incomplete bundles produce structured `needs_more_evidence` evidence rather than unhandled exceptions, with bounded `unreadable` or `missing role:` limitations. Complete-bundle results set `quality_gate="passed"` in the existing Hisys meaning of evidence-ready for human review, never approved-for-live-action.
+- **M20.4** ships a fixture-only `investigate-domain --domain codebase` CLI smoke that materializes a complete local bundle, writes a `DomainInvestigationRequest` JSON with five `runtime_record` refs, dispatches through the existing argparse entry point, and pins the persisted `HisysToolResult` / `DomainInvestigationResult` / run-summary shape end-to-end. No new CLI argument is introduced.
+- **M20.5** documents the bridge across this use-case doc, `docs/public/codebase-analysis.md`, and the traceability table.
+
+All five increments preserve the no-live-action invariants: no external repository clone, no raw source archival, no model/network call, no credential resolution, no destructive Git, no remote push, and no publication. Codebase bundle evidence remains advisory and requires human review. A repeatable `--codebase-artifact` argparse flag is backlog-only; current callers thread the refs through the request JSON.

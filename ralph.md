@@ -1946,6 +1946,28 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M20.5 docs + finish packet for codebase artifact bridge
+
+- Phase completed: Documentation/finish packet for the full M20 milestone after M20.1..M20.4 turned green. This is a docs-only commit; no production code, RED test, or CLI plumbing changed.
+- Controlled anchors checked: `7c85395 feat: bridge codebase artifacts into investigate-domain`; `docs/use-cases/codebase-analysis-design-candidates.md`; `docs/public/codebase-analysis.md`; `docs/traceability/README.md`; existing M20.1..M20.4 traceability rows.
+- Baseline observed: branch `dars`, HEAD `7c85395 feat: bridge codebase artifacts into investigate-domain`, working tree clean before edits. Combined domain + CLI gate `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py tests/unit/test_domain_cli.py -q` -> 29 passed. DARS focused gate -> 48 passed.
+- Implementation: appended a new `## 13. M20 Implementation Notes — Codebase Artifact Bridge` section to `docs/use-cases/codebase-analysis-design-candidates.md`, summarizing the M20.1..M20.5 increments, the role-level gate semantics, the bundle-enrichment evidence package shape, and the no-live-action invariants. Added a new `## Increment 6 — investigate-domain --domain codebase bridge` section to `docs/public/codebase-analysis.md` with subsections for role-level gate, bundle enrichment, fail-closed behavior, CLI surface, safety invariants, and command sample. Updated the public-doc "What is intentionally out of scope" list to remove Increment 6 (now shipped) and to record the deferred repeatable `--codebase-artifact` argparse flag. No traceability row was added for M20.5 since the M20.4 row covers the implementation reference; M20.5 narrative lives in this Reflection Log entry and the public/use-case doc updates.
+- Quality gate result: pass — combined domain + CLI gate 29 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=549 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) A repeatable `--codebase-artifact` argparse flag remains a future ergonomic improvement, recorded as backlog only. (b) The validation plan continues to live inside `scope-map.json`; a separate `validation-plan.json` writer is a possible future cleanup but is not required by any open M20 task. (c) The full M20 milestone (codebase artifact bridge into `investigate-domain --domain codebase`) is now docs/traceability/closed.
+- Continue decision: after committing this finish packet, the M20 milestone is complete. The next safe queue item is M21 backlog triage / QUEUE-REFILL-PREP, or — if appropriate — a stop at the milestone boundary.
+- Stop condition: M20 milestone boundary reached; no remote push and no live/external action.
+- Commit pending: `docs: document codebase domain artifact bridge`.
+
+Resume checkpoint:
+- Current HEAD: 7c85395 feat: bridge codebase artifacts into investigate-domain
+- Working tree: M20.5 docs and `ralph.md` modified until commit
+- Last completed milestone/task: M20.5 finish packet — milestone M20 complete
+- RED observed: n/a — docs-only finish packet
+- GREEN observed: combined domain + CLI 29 passed; DARS focused 48 passed
+- Quality gate status: pass — domain + CLI 29 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M20.5 docs/ralph and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M20.4 investigate-domain codebase fixture smoke (GREEN-on-arrival)
 
 - Phase completed: Implementation/Gate for `M20.4` (`investigate-domain --domain codebase` fixture smoke). The full CLI dispatch path was already wired by M20.3, so the new test passes immediately and serves as an acceptance/regression pin for the end-to-end contract.
