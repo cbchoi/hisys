@@ -4349,6 +4349,29 @@ Resume checkpoint:
 - Next command to run: `git add src/hisys/operations/governance_docs.py tests/unit/test_governance_docs_current_state.py docs/milestone-bootstrap ralph.md && git commit -m "feat: sync governance current-state docs"`
 - Stop condition: after local commit and post-commit validation, continue to Phase B only with explicit go-ahead
 
+
+### 2026-05-20 — Phase B M-CP-LIVE-1 activation packet
+
+- Phase completed: TDD implementation for the controlled live DARS panel activation packet.
+- Request context: user said `go for b`, referring to Phase B from the weakness-driven improvement sequence.
+- Scope: created `src/hisys/agents/dars_panel_live_config.py` and `tests/unit/test_dars_critic_panel_live_config.py`; updated DARS traceability and milestone-bootstrap queue to mark `MB-DARS-LIVE-1-RED` completed and queue `MB-DARS-LIVE-2-RED`.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_config.py::test_live_panel_activation_requires_human_approval_ref -q` failed with `ModuleNotFoundError: No module named 'hisys.agents.dars_panel_live_config'`.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_config.py -q` -> `5 passed in 0.05s`.
+- Boundary: declarative activation/config validation only. No live model call, no fake server, no HTTP request, no external API, no credential lookup, no publication/deployment, no runtime mutation, and no remote push. The packet records only localhost-only/advisory-only authorization metadata and still preserves `requires_human_review=true`.
+- Next queued implementation: M-CP-LIVE-2 fake-server local model panel adapter bridge with RED `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_adapter.py::test_live_panel_adapter_calls_fake_local_model_and_records_model_boundary -q`.
+- Quality gate result: pass — structural check, activation focused `5 passed in 0.05s`, governance+DARS focused `105 passed in 5.41s`, traceability OK, secret scan hit_count=0, diff-check clean.
+
+Resume checkpoint:
+- Current HEAD: 57a8e6f feat: sync governance current-state docs
+- Working tree: Phase B activation-packet implementation validated; ready for local commit
+- Last completed milestone/task: M-CP-LIVE-1 focused RED/GREEN
+- Current in-progress task: final validation and local commit for Phase B
+- RED observed: missing `hisys.agents.dars_panel_live_config`
+- GREEN observed: activation-packet focused test file `5 passed`
+- Quality gate status: pass — structural check, activation focused `5 passed`, governance+DARS focused `105 passed in 5.41s`, traceability OK, secret scan hit_count=0, diff-check clean
+- Next command to run: `git add src/hisys/agents/dars_panel_live_config.py tests/unit/test_dars_critic_panel_live_config.py docs/traceability/dars-critic-panel-runtime-traceability.md docs/milestone-bootstrap ralph.md && git commit -m "feat: add live dars activation packet"`
+- Stop condition: after local commit and post-commit validation; M-CP-LIVE-2 requires separate go-ahead
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The codebase-analysis foundation has advanced through M18; the next implementation milestone is M19.

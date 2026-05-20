@@ -38,10 +38,20 @@ tasks:
       - docs/milestone-bootstrap/tasks/milestone_tasks_v0.0.12.yaml
       - ralph.md
   - id: MB-DARS-LIVE-1-RED
-    title: Future RED for live panel activation packet
-    status: queued
+    title: Phase B live panel activation packet
+    status: completed
     command: "PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_config.py::test_live_panel_activation_requires_human_approval_ref -q"
     expected_red: "ModuleNotFoundError: No module named 'hisys.agents.dars_panel_live_config'"
+    evidence:
+      - tests/unit/test_dars_critic_panel_live_config.py
+      - src/hisys/agents/dars_panel_live_config.py
+      - docs/traceability/dars-critic-panel-runtime-traceability.md
+      - ralph.md
+  - id: MB-DARS-LIVE-2-RED
+    title: Future RED for fake-server local model panel adapter bridge
+    status: queued
+    command: "PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_adapter.py::test_live_panel_adapter_calls_fake_local_model_and_records_model_boundary -q"
+    expected_red: "ModuleNotFoundError or missing adapter bridge for hisys.agents.dars_panel_live_adapter"
 constraints:
   production_code_created: true
   tests_created: true
