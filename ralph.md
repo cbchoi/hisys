@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.4 codebase map freshness review (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for M21.4 after Prepare commit `8eff03a docs: prepare codebase map freshness review`.
+- Controlled anchors checked: `docs/plans/m21-4-codebase-map-freshness-drift-review-implementation-tasks.md`; `src/hisys/operations/codebase_analysis.py` (`INVENTORY_RUNTIME_PREFIX`, `resolve_instance_runtime_ref`); `src/hisys/operations/runtime_boundary_consistency.py` (writer pattern reference); `src/hisys/operations/traceability_coverage.py` (M21.1 writer/Markdown pattern reference); `docs/traceability/README.md`.
+- Baseline observed: branch `dars`, HEAD `8eff03a docs: prepare codebase map freshness review`, working tree clean before edits. Extended focused gate 38 passed pre-edit; DARS focused gate 48 passed; traceability validator OK.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_codebase_map_freshness.py::test_codebase_map_freshness_classifies_partitions -q` failed during collection with `ModuleNotFoundError: No module named 'hisys.operations.codebase_map_freshness'`.
+- Implementation: added `src/hisys/operations/codebase_map_freshness.py` with `CodebaseMapFreshnessReport`, a pure `build_codebase_map_freshness_report(*, instance_root, current_date, max_age_days, current_head_short=None)` classifier, a deterministic Markdown renderer, and `write_codebase_map_freshness_report(*, instance_root, date, report)` that persists JSON/Markdown only under `runtime-boundary/codebase-map-freshness/<YYYYMMDD>/` through `resolve_instance_runtime_ref`. The checker lists `<instance>/runtime-boundary/codebase-analysis/<YYYYMMDD>/<REQUEST_ID>/` partitions and classifies each by directory-name pattern (`^\d{8}$`), file presence (the four required artifact filenames `inventory.json`, `symbol-index.json`, `scope-map.json`, `risk-scan.json`), and age relative to the caller's `current_date`/`max_age_days`. The module never opens artifact bodies, never calls `date.today()`, never reads `.git/`, never repairs/regenerates partitions, and adds no CLI surface.
+- Tests: added `tests/unit/test_codebase_map_freshness.py` with five focused tests covering (a) the original RED on fresh/stale/incomplete/unsafe_partition classification, (b) writer round-trip and ref paths, (c) missing-root fallback (no `runtime-boundary/codebase-analysis/` tree), (d) `_validate_date` rejection of non-YYYYMMDD input, and (e) the exact `max_age_days` boundary semantics (a partition exactly `max_age_days` days old is `fresh`; one day past becomes `stale`).
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_codebase_map_freshness.py -q` -> 5 passed; extended focused gate `PYTHONPATH=src pytest tests/unit/test_codebase_map_freshness.py tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py tests/unit/test_domain_cli.py -q` -> 43 passed; DARS critic-panel focused regression 48 passed.
+- Documentation/traceability: prepended an M21.4 implemented-increment row to `docs/traceability/README.md` linking the plan, module, and tests with explicit advisory-only/no-mutation/no-external-call invariants. Existing M21.3-CLI and earlier rows preserved.
+- Quality gate result: pass — extended focused gate 43 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=586 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) First GREEN bundles RED + regression tests in one commit because the planned Task 3 supplemental tests are tightly coupled to the writer/boundary paths that M21.4 pins; future M21.x increments should still keep one canonical RED before any production code. (b) Schema-id-aware deep validation of artifact bodies remains deferred to M21.5 fixture benchmarks. (c) Cross-instance/cross-branch drift is intentionally out of scope. (d) The optional `hisys codebase-map-freshness-review` CLI wrapper remains M21.4-CLI backlog.
+- Continue decision: after committing this implementation, the next safe queue item is `M21.4-CLI` Prepare (thin `hisys codebase-map-freshness-review` wrapper following the M21.3-CLI pattern) or alternatively `M21.5-PREP` (regression benchmark fixture repositories). Both remain local-only/advisory-only.
+- Stop condition: M21.4 GREEN implementation boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: add codebase map freshness review`.
+
+Resume checkpoint:
+- Current HEAD: 8eff03a docs: prepare codebase map freshness review
+- Working tree: M21.4 code/tests/docs/ralph modified until commit
+- Last completed milestone/task: M21.4 codebase map freshness review implementation
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_codebase_map_freshness.py::test_codebase_map_freshness_classifies_partitions -q` -> `ModuleNotFoundError`
+- GREEN observed: focused freshness tests 5 passed; extended focused gate 43 passed
+- Quality gate status: pass — extended focused gate 43 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.4 files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.4 codebase map freshness/drift review Prepare
 
 - Phase completed: Prepare/document-RED for M21.4 after the M21.3 pure checker and M21.3-CLI thin wrapper shipped at `3c3e0bd feat: add runtime-boundary-check cli wrapper`.
