@@ -126,6 +126,10 @@ from ..operations.codebase_analysis import (
 from ..operations.backup import create_backup, restore_backup_dry_run
 from ..operations.health import collect_health_status
 from ..operations.release_readiness import QualityGateResult, build_release_readiness_report
+from ..operations.codebase_map_freshness import (
+    build_codebase_map_freshness_report,
+    write_codebase_map_freshness_report,
+)
 from ..operations.runtime_boundary_consistency import (
     build_runtime_boundary_consistency_report,
     write_runtime_boundary_consistency_report,
@@ -1495,6 +1499,39 @@ def _cmd_traceability_coverage(*, instance_root: Path, yyyymmdd: str, repo_root:
     return 0
 
 
+def _cmd_codebase_map_freshness_review(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    current_date_iso: str,
+    max_age_days: int,
+    current_head_short: str | None,
+) -> int:
+    """Write a local advisory codebase map freshness report via the CLI."""
+
+    from datetime import date as _date
+
+    parsed_current = _date.fromisoformat(current_date_iso)
+    report = build_codebase_map_freshness_report(
+        instance_root=instance_root,
+        current_date=parsed_current,
+        max_age_days=max_age_days,
+        current_head_short=current_head_short,
+    )
+    written = write_codebase_map_freshness_report(
+        instance_root=instance_root, date=yyyymmdd, report=report
+    )
+    print(f"codebase map freshness report: json={written['json_ref']}")
+    print(f"markdown: {written['markdown_ref']}")
+    print(f"fresh_partitions: {len(report.fresh_partitions)}")
+    print(f"stale_partitions: {len(report.stale_partitions)}")
+    print(f"incomplete_partitions: {len(report.incomplete_partitions)}")
+    print(f"unsafe_partitions: {len(report.unsafe_partitions)}")
+    print("external_call_made: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_runtime_boundary_check(
     *,
     instance_root: Path,
@@ -1937,6 +1974,29 @@ def _build_parser() -> argparse.ArgumentParser:
     traceability_coverage.add_argument("--instance", required=True, help="Hisys instance root")
     traceability_coverage.add_argument("--date", required=True, help="YYYYMMDD report partition")
     traceability_coverage.add_argument("--repo", type=Path, default=Path.cwd(), help="repo root to scan; defaults to cwd")
+
+    codebase_map_freshness_review = sub.add_parser(
+        "codebase-map-freshness-review",
+        help="write local advisory codebase map freshness/drift report artifacts",
+    )
+    codebase_map_freshness_review.add_argument("--instance", required=True, help="Hisys instance root")
+    codebase_map_freshness_review.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    codebase_map_freshness_review.add_argument(
+        "--current-date",
+        required=True,
+        help="YYYY-MM-DD caller date used for freshness comparison",
+    )
+    codebase_map_freshness_review.add_argument(
+        "--max-age-days",
+        required=True,
+        type=int,
+        help="freshness threshold in days; partitions older than this are stale",
+    )
+    codebase_map_freshness_review.add_argument(
+        "--current-head-short",
+        default=None,
+        help="optional caller-supplied git HEAD short hash recorded verbatim",
+    )
 
     runtime_boundary_check = sub.add_parser(
         "runtime-boundary-check",
@@ -3155,6 +3215,14 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             repo_root=args.repo,
+        )
+    if args.command == "codebase-map-freshness-review":
+        return _cmd_codebase_map_freshness_review(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            current_date_iso=args.current_date,
+            max_age_days=args.max_age_days,
+            current_head_short=args.current_head_short,
         )
     if args.command == "runtime-boundary-check":
         return _cmd_runtime_boundary_check(

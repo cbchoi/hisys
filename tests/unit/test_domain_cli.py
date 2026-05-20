@@ -57,6 +57,73 @@ def _write_domain_request(path: Path) -> None:
     )
 
 
+def test_codebase_map_freshness_review_cli_writes_report(tmp_path: Path, capsys) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    partition_dir = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-analysis"
+        / "20260518"
+        / "REQ-CLI-FRESH"
+    )
+    partition_dir.mkdir(parents=True, exist_ok=True)
+    for name in (
+        "inventory.json",
+        "symbol-index.json",
+        "scope-map.json",
+        "risk-scan.json",
+    ):
+        (partition_dir / name).write_text("{}\n", encoding="utf-8")
+
+    result = main(
+        [
+            "codebase-map-freshness-review",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260520",
+            "--current-date",
+            "2026-05-20",
+            "--max-age-days",
+            "30",
+            "--current-head-short",
+            "1cb2857",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "codebase map freshness report" in captured.out
+    assert "external_call_made: false" in captured.out
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-map-freshness"
+        / "20260520"
+        / "freshness-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-map-freshness"
+        / "20260520"
+        / "freshness-report.md"
+    )
+    assert json_path.exists()
+    assert md_path.exists()
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["schema_id"] == "hisys.codebase_map.freshness.v1"
+    assert data["advisory_only"] is True
+    assert data["current_date"] == "2026-05-20"
+    assert data["max_age_days"] == 30
+    assert data["current_head_short"] == "1cb2857"
+    assert data["fresh_partitions"] == [
+        "runtime-boundary/codebase-analysis/20260518/REQ-CLI-FRESH"
+    ]
+
+
 def test_runtime_boundary_check_cli_writes_consistency_report(tmp_path: Path, capsys) -> None:
     instance_root = tmp_path / "instance"
     instance_root.mkdir()

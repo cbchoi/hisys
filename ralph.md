@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.4-CLI codebase-map-freshness-review CLI wrapper (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for M21.4-CLI after Prepare commit `15f2453 docs: prepare codebase-map-freshness-review cli wrapper`.
+- Controlled anchors checked: `docs/plans/m21-4-cli-codebase-map-freshness-review-implementation-tasks.md`; `src/hisys/operations/codebase_map_freshness.py`; `src/hisys/cli/main.py` `_cmd_runtime_boundary_check` and `runtime_boundary_check` parser block (M21.3-CLI precedent); `tests/unit/test_domain_cli.py`.
+- Baseline observed: branch `dars`, HEAD `15f2453 docs: prepare codebase-map-freshness-review cli wrapper`, working tree clean before edits. Extended focused gate 43 passed pre-edit; DARS focused gate 48 passed; traceability validator OK.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_codebase_map_freshness_review_cli_writes_report -q` failed with `SystemExit: 2` because argparse rejected `codebase-map-freshness-review` as an unknown subcommand.
+- Implementation: added `from ..operations.codebase_map_freshness import build_codebase_map_freshness_report, write_codebase_map_freshness_report` in `src/hisys/cli/main.py`; defined `_cmd_codebase_map_freshness_review(*, instance_root, yyyymmdd, current_date_iso, max_age_days, current_head_short)` next to `_cmd_runtime_boundary_check`; added the `codebase-map-freshness-review` subparser with `--instance`, `--date`, required `--current-date`, required `--max-age-days` (`type=int`), and optional `--current-head-short` arguments next to the `runtime-boundary-check` parser; added the dispatcher branch in `main` next to the `runtime-boundary-check` branch. The CLI parses `--current-date` via `date.fromisoformat` (no system clock surface), forwards inputs to the pure checker, prints bounded partition counts plus `external_call_made: false` / `allowed_actions: advisory_only`, and always returns exit code `0`.
+- Tests: added `tests/unit/test_domain_cli.py::test_codebase_map_freshness_review_cli_writes_report`. Test seeds one complete fresh partition at `runtime-boundary/codebase-analysis/20260518/REQ-CLI-FRESH/`, then invokes the CLI with `--current-date 2026-05-20 --max-age-days 30 --current-head-short 1cb2857`. Asserts `result == 0`, the partition is correctly classified as fresh, the report partition is written, and the JSON content carries `schema_id=hisys.codebase_map.freshness.v1`, all advisory flags, the verbatim head hash, and the correct `current_date` / `max_age_days`.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_codebase_map_freshness_review_cli_writes_report -q` -> 1 passed; extended focused gate 44 passed; DARS focused gate 48 passed.
+- Documentation/traceability: prepended a `M21.4-CLI` row to `docs/traceability/README.md` linking the plan, CLI/dispatcher, pure module, and CLI test with explicit advisory-only/no-mutation/no-external-call invariants. Existing M21.4 row preserved.
+- Quality gate result: pass — extended focused gate 44 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=587 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) `--scan` mode for multi-date drift remains deferred. (b) Exit-code policy is advisory-only `0` regardless of stale/incomplete counts; raising exit code on issues requires a separate RED. (c) The CLI uses `date.fromisoformat`, not `date.today()`; bad input raises a deterministic `ValueError` (test does not currently pin this path — backlog).
+- Continue decision: after committing this implementation, M21.4 is fully closed (pure + CLI). The next safe queue item is `M21.5-PREP` (regression benchmark fixture repositories) or `M21.6-PREP` (change-impact analyzer); both are local-only/advisory-only.
+- Stop condition: M21.4-CLI GREEN implementation boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: add codebase-map-freshness-review cli wrapper`.
+
+Resume checkpoint:
+- Current HEAD: 15f2453 docs: prepare codebase-map-freshness-review cli wrapper
+- Working tree: M21.4-CLI code/tests/docs/ralph modified until commit
+- Last completed milestone/task: M21.4-CLI codebase-map-freshness-review CLI wrapper implementation
+- RED observed: argparse rejected `codebase-map-freshness-review` with `SystemExit: 2`
+- GREEN observed: focused CLI test 1 passed; extended focused gate 44 passed
+- Quality gate status: pass — extended focused gate 44 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.4-CLI files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.4-CLI codebase-map-freshness-review CLI wrapper Prepare
 
 - Phase completed: Prepare/document-RED for the M21.4-CLI thin CLI wrapper after the M21.4 pure checker shipped at `1cb2857 feat: add codebase map freshness review`.
