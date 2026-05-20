@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M20.4 CLI integration smoke Prepare
+
+- Phase completed: Prepare / document-RED checkpoint for `M20.4` (`investigate-domain --domain codebase` fixture smoke). This is a docs-only commit; no production code, RED test, or CLI plumbing was added in this iteration.
+- Controlled anchors checked: `39efadc test: pin codebase bundle downgrade paths`; `src/hisys/cli/main.py` `_cmd_investigate_domain` and `_default_domain_adapter_registry`; `src/hisys/domain/specs.py` `codebase_spec`; `src/hisys/domain/domain_adapters.py` `StructuredDomainAdapter`; `src/hisys/domain/translation.py` `build_codebase_bundle_enrichment`; `tests/unit/test_domain_cli.py` existing CLI smoke pattern; `tests/unit/test_codebase_domain_artifact_bridge.py` Task 1+2+3 helpers.
+- Baseline observed: branch `dars`, HEAD `39efadc test: pin codebase bundle downgrade paths`, working tree clean before edits. Domain gate `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py -q` -> 20 passed. Domain CLI gate `PYTHONPATH=src pytest tests/unit/test_domain_cli.py -q` -> 8 passed. DARS focused gate -> 48 passed.
+- Document-RED artifact: created `docs/plans/m20-codebase-domain-artifact-bridge-m20-4-implementation-tasks.md`. The plan pins M20.4 as a fixture-only CLI smoke: reuse the existing argparse entry point, materialize a complete codebase-analysis bundle via the existing artifact writers, write a `DomainInvestigationRequest` JSON with five `runtime_record` source refs, dispatch through `_default_domain_adapter_registry`, and assert the persisted tool-result preserves `external_call_made=false`, `mutation_performed=false`, `requires_human_review=true`, and `quality_gate=="passed"`. Adding a repeatable `--codebase-artifact` CLI flag is intentionally deferred; the request JSON convention is the M20.4 surface.
+- Local advisory readiness: `RALPH_START_READY_WITH_CONTROLS`. No formal Hisys execution claimed.
+- Next safe task: `M20.4` Task 1 RED — write and observe the failing CLI smoke `test_investigate_domain_codebase_smokes_local_bundle` in `tests/unit/test_domain_cli.py` before any helper/CLI wiring is added.
+- RED observed: n/a for this Prepare-only increment. The planned first RED is expected to fail because the helper functions and the new test do not yet exist.
+- GREEN observed: n/a for production code; baseline focused regressions (domain 20, CLI 8, DARS 48) passed before docs writes.
+- Quality gate result: pass — domain gate 20 passed; domain CLI gate 8 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=549 skipped_files=0 hit_count=0`; `git diff --check` clean (post-Prepare write set is plan + ralph.md only).
+- Potential issues / open items: (a) The persisted compact `HisysToolResult` envelope may not surface codebase bundle evidence directly; M20.4 must decide whether the smoke reads the structured `DomainInvestigationResult` artifact written by the runtime artifact writer rather than the compact tool-result envelope. (b) The mini-repo seed must be deterministic and small so `inventory_files` / `scopes` counts in the summary remain stable across runs. (c) M20.5 finish packet remains deferred until M20.4 turns green.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M20.4` Task 1 RED. Implementation is fixture-local, advisory-only, and adds no live external authority.
+- Stop condition: Prepare/document-RED checkpoint reached; production behavior remains gated by future RED test.
+- Commit pending: `docs: prepare codebase artifact CLI smoke increment`.
+
+Resume checkpoint:
+- Current HEAD: 39efadc test: pin codebase bundle downgrade paths
+- Working tree: M20.4 plan and `ralph.md` modified until committed
+- Last completed milestone/task: M20.4 Prepare/document-RED plan
+- RED observed: n/a for Prepare-only; future RED command is `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_investigate_domain_codebase_smokes_local_bundle -q`
+- GREEN observed: n/a for production code; baseline domain 20 passed, domain CLI 8 passed, DARS focused 48 passed
+- Quality gate status: pass — domain 20 passed; domain CLI 8 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M20.4 Prepare files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M20.3 Task 3 unreadable/incomplete bundle downgrade regression pins
 
 - Phase completed: Regression-pin tests for `M20.3` Task 3 (RED/GREEN — invalid or unsafe bundle yields `needs_more_evidence`). The production downgrade logic was already shipped with the Task 1+2 increment for defensive safety; this increment adds explicit per-path tests that lock the contract.
