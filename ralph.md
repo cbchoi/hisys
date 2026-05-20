@@ -4325,6 +4325,30 @@ Resume checkpoint:
 - Next command to run: `git add docs/plans/dars-live-panel-configuration-implementation-tasks.md docs/milestone-bootstrap ralph.md && git commit -m "docs: prepare live dars panel configuration"`
 - Stop condition: after local commit; future M-CP-LIVE-1 implementation requires explicit go-ahead and must start with RED
 
+
+### 2026-05-20 — Current code/document weakness analysis improvement plan
+
+- Phase completed: Prepare/document-RED planning for weakness-driven improvements based on current code and documents.
+- Request context: user asked to analyze weaknesses from the current code/document base, derive improvements, and establish an implementation plan.
+- Evidence scope: inspected local repository state at `ff89b1b`, current DARS panel/live-DARS surfaces, M21 codebase-analysis surfaces, milestone-bootstrap artifacts, traceability docs, and Ralph checkpoint state. Analysis used local code/docs only; no live model call, external API, credential lookup, browser/search action, publication, deployment, or remote push was performed.
+- Weakness summary: (1) live DARS activation packet absent; (2) panel boundary record lacks local-model boundary fields; (3) panel-to-local-model adapter bridge absent; (4) CLI live rehearsal fail-closed path not pinned; (5) Ralph/bootstrap current-state drift; (6) plan lifecycle/traceability indexing incomplete; (7) M21.5 benchmark fixture surface and M21.6 change-impact analyzer absent; (8) M21.3/M21.4 hardening tests needed.
+- Artifacts added/updated: `docs/plans/current-code-doc-weakness-analysis-improvement-plan.md`; milestone-bootstrap `v0.0.13` package under `docs/milestone-bootstrap/`; this Ralph reflection entry.
+- Selected implementation sequence: Phase A governance sync/current-state consistency; Phase B M-CP-LIVE-1 activation packet; Phase C fake-server local model panel adapter bridge; Phase D CLI activation rehearsal; Phase E resume M21 benchmark/change-impact queue.
+- Boundary: docs/control planning only for this increment. No production code, no tests, no live model call, no credential lookup, no remote/external API, no browser/search/tool authorization, no mutation authority beyond local docs/control files, no publication, no deployment, and no remote push.
+- RED expectation for the next implementation step: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py::test_governance_profile_and_ralph_checkpoint_match_current_head -q` should fail initially because the governance current-state validator/test does not yet exist.
+- Quality gate result: pass — structural parse passed; focused DARS runtime/config/dispatch/panel regression `99 passed in 5.30s`; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=614 hit_count=0; `git diff --check` clean.
+
+Resume checkpoint:
+- Current HEAD: ff89b1b docs: prepare live dars panel configuration
+- Working tree: weakness-analysis plan/bootstrap/Ralph modified; ready for local commit
+- Last completed milestone/task: current code/document weakness analysis and improvement plan artifact creation and validation
+- Current in-progress task: local commit for v0.0.13 planning package
+- RED observed: n/a (document-RED planning only)
+- GREEN observed: n/a until future governance-sync implementation
+- Quality gate status: pass — structural parse, focused 99/99, traceability OK, secret scan hit_count=0, diff-check clean
+- Next command to run: `git add docs/plans/current-code-doc-weakness-analysis-improvement-plan.md docs/milestone-bootstrap ralph.md && git commit -m "docs: plan weakness-driven improvements"`
+- Stop condition: after local commit; future governance-sync or M-CP-LIVE-1 implementation requires explicit go-ahead and must start with RED
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The codebase-analysis foundation has advanced through M18; the next implementation milestone is M19.

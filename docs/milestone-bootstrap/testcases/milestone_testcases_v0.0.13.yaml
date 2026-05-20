@@ -1,0 +1,22 @@
+version: v0.0.13
+focus: Current code/document weakness analysis and improvement planning
+testcases:
+  - id: HISYS-T-WEAKNESS-001
+    future_anchor: test_governance_profile_and_ralph_checkpoint_match_current_head
+    requirement: Governance profile and Ralph checkpoint record current repository path, branch, and HEAD without confusing planning baseline and current state.
+    expected_initial_red: governance validator or test missing before implementation
+  - id: HISYS-T-WEAKNESS-002
+    future_anchor: test_live_panel_activation_requires_human_approval_ref
+    requirement: Live DARS panel activation requires explicit approval, operator, localhost-only scope, advisory-only actions, and expiry/review timestamp.
+  - id: HISYS-T-WEAKNESS-003
+    future_anchor: test_live_panel_boundary_records_local_model_crossing_without_external_call
+    requirement: Local model boundary crossing is recorded separately from external API calls.
+  - id: HISYS-T-WEAKNESS-004
+    future_anchor: test_codebase_regression_benchmarks_report_expected_outcomes
+    requirement: M21.5 benchmark fixture reports preserve local-only advisory benchmark outcomes.
+prepare_validation:
+  - structural_yaml_json_parse
+  - dars_runtime_config_dispatch_panel_regression
+  - traceability_validator
+  - secret_scan
+  - git_diff_check

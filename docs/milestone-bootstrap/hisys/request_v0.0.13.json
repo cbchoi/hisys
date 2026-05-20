@@ -1,0 +1,21 @@
+{
+  "allowed_actions": [
+    "local_docs_control_artifacts",
+    "local_validation",
+    "local_commit_after_green_gates"
+  ],
+  "baseline_head": "ff89b1b docs: prepare live dars panel configuration",
+  "date": "2026-05-20",
+  "forbidden_actions": [
+    "live_model_call",
+    "external_api_call",
+    "credential_lookup",
+    "remote_push",
+    "publication",
+    "deployment"
+  ],
+  "request": "현재 코드와 문서 기반으로 약점 분석해서 개선점을 도출하고 구현 계획 수립",
+  "schema_id": "hisys.milestone_bootstrap.request",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "version": "v0.0.13"
+}

@@ -1,0 +1,41 @@
+version: v0.0.13
+focus: Current code/document weakness analysis and improvement planning
+baseline_head: "ff89b1b docs: prepare live dars panel configuration"
+implementation_plan_ref: docs/plans/current-code-doc-weakness-analysis-improvement-plan.md
+tasks:
+  - id: MB-WEAKNESS-ANALYSIS-1
+    title: Inspect current code/docs and collect weakness evidence
+    status: completed
+    evidence:
+      - src/hisys/agents/dars_panel.py
+      - src/hisys/agents/dars.py
+      - src/hisys/agents/dars_config.py
+      - src/hisys/agents/dars_dispatch.py
+      - src/hisys/operations/runtime_boundary_consistency.py
+      - src/hisys/operations/codebase_map_freshness.py
+      - docs/plans/dars-live-panel-configuration-implementation-tasks.md
+      - docs/plans/m21-5-regression-benchmark-fixture-repositories-implementation-tasks.md
+      - docs/milestone-bootstrap/profile.yaml
+      - ralph.md
+  - id: MB-WEAKNESS-ANALYSIS-2
+    title: Prioritize weaknesses and select improvement sequence
+    status: completed
+    evidence:
+      - docs/plans/current-code-doc-weakness-analysis-improvement-plan.md
+  - id: MB-WEAKNESS-ANALYSIS-3
+    title: Validate planning artifacts and preserve no-live-action boundary
+    status: completed
+    evidence:
+      - docs/milestone-bootstrap/evidence/validation_log_v0.0.13.md
+  - id: MB-DARS-LIVE-GOV-SYNC-RED
+    title: Future RED for governance current-state synchronization
+    status: queued
+    command: "PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py::test_governance_profile_and_ralph_checkpoint_match_current_head -q"
+    expected_red: "test file or governance validator missing before sync implementation"
+constraints:
+  production_code_created: false
+  tests_created: false
+  live_model_call_authorized: false
+  external_api_authorized: false
+  credential_lookup_authorized: false
+  remote_push_authorized: false

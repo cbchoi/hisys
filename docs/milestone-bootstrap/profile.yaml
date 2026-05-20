@@ -1,13 +1,15 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.12
-focus: DARS live panel configuration Prepare/document-RED
+version: v0.0.13
+focus: Current code/document weakness analysis and improvement planning
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: MB-DARS-LIVE-1-RED
+next_safe_task: MB-DARS-LIVE-GOV-SYNC-RED
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "live DARS 패널 구성을 위한 계획 수립"
-baseline_head: "6cbef3a docs: prepare regression benchmark fixtures"
+bootstrap_arguments: "현재 코드와 문서 기반으로 약점 분석해서 개선점을 도출하고 구현 계획 수립"
+planning_baseline_head: "ff89b1b docs: prepare live dars panel configuration"
+current_head_at_plan_creation: "ff89b1b docs: prepare live dars panel configuration"
+previous_bootstrap_version: v0.0.12
