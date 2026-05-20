@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M21.7 architecture candidate generator Prepare
+
+- Phase completed: Prepare/document-RED planning for M21.7 after M21.6 closed end-to-end at `7c4d5d0 feat: add change-impact analyzer` and `3297909 feat: add change-impact cli wrapper`.
+- Controlled anchors checked: `docs/plans/m21-roadmap-implementation-plan.md` (M21.7 sequencing and human-gate language); `src/hisys/operations/traceability_coverage.py` (M21.1 schema `hisys.traceability.coverage.v1`); `src/hisys/operations/codebase_map_freshness.py` (M21.4 schema `hisys.codebase_map.freshness.v1`); `src/hisys/operations/change_impact.py` (M21.6 schema `hisys.change_impact.v1`); `src/hisys/operations/runtime_boundary_consistency.py` and `src/hisys/operations/codebase_regression_benchmarks.py` (M21.3/M21.5 writer patterns); `tests/unit/test_change_impact.py` and earlier focused unit tests (fixture seeding patterns); `docs/traceability/README.md`.
+- Baseline inspected: branch `dars`, HEAD `3297909 feat: add change-impact cli wrapper`, working tree clean before Prepare writes. Extended focused gate 52 passed pre-edit; DARS focused gate 50 passed; governance current-state 1 passed; traceability validator OK.
+- Decision: M21.7 ships as a pure local-only architecture-candidate generator plus runtime-boundary writer. Inputs are caller-supplied trusted M21.1/M21.4/M21.6 dict payloads. Outputs are bounded `ArchitectureCandidate` records with kinds limited to `coverage_gap`, `freshness_drift`, `change_impact_concentration`, and `cross_signal_alignment`, with `recommendation_strength` strictly limited to `advisory_candidate` and `advisory_candidate_low_evidence`. The candidate `summary`/`rationale` strings must never contain `recommended`, `required`, `approved`, `must`, `next step`, or `should`; this is enforced by an explicit regression test. The generator reads no file bodies, never calls `subprocess`, never calls `date.today()`, never reads `.git/`. CLI wrapper is deferred to a separate M21.7-CLI Prepare/RED. Stronger recommendation labels and architectural change proposals naming specific refactors/replacements remain behind an explicit user approval gate.
+- Document-RED artifact: created `docs/plans/m21-7-architecture-candidate-generator-implementation-tasks.md`. Planned first RED is `PYTHONPATH=src pytest tests/unit/test_architecture_candidates.py::test_build_architecture_candidate_report_produces_bounded_candidates -q`, expected to fail with `ModuleNotFoundError: No module named 'hisys.operations.architecture_candidates'`.
+- Boundary: local docs/control preparation only. No production code, no tests, no CLI surface, no remote push, no live external action, no credential lookup, no `subprocess` invocation, no `.git/` read, no raw source archival, no recommendation-strength language beyond the two advisory values. The future generator reads only M21.1/M21.4/M21.6 dict payloads and writes only under `runtime-boundary/architecture-candidates/<YYYYMMDD>/`.
+- Quality gate result: pass — extended focused gate 52 passed; DARS focused gate 50 passed; governance current-state 1 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=645 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The human-gate boundary is enforced in M21.7 by limiting the recommendation-strength vocabulary; expanding it to `recommended`, `required`, or `approved` requires explicit user sign-off and a separate Prepare/RED. (b) Candidate-kind vocabulary is intentionally narrow at four kinds; growth requires a separate RED. (c) The MVP reads only trusted dict payloads; re-deriving facts from raw source is explicitly out of scope. (d) Cross-instance/cross-branch comparison and subagent-driven evidence collection are deferred. (e) The optional `hisys architecture-candidates` CLI wrapper remains M21.7-CLI backlog.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M21.7` Task 1 RED — author and observe the failing generator unit test before any production module exists.
+- Stop condition: Prepare/document-RED checkpoint reached; production generator behavior remains gated by future RED test and the human-gate language boundary.
+- Commit pending: `docs: prepare architecture candidate generator`.
+
+Resume checkpoint:
+- Current HEAD: 3297909 feat: add change-impact cli wrapper
+- Working tree: M21.7 implementation plan and `ralph.md` modified until commit
+- Last completed milestone/task: M21.7 Prepare/document-RED
+- Next safe task: `M21.7` Task 1 RED — author failing generator unit test in `tests/unit/test_architecture_candidates.py`
+- Next command to run after commit: `PYTHONPATH=src pytest tests/unit/test_architecture_candidates.py::test_build_architecture_candidate_report_produces_bounded_candidates -q`
+- Quality gate status: pass — extended focused gate 52 passed; DARS 50 passed; governance 1 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Stop condition: no remote push and no live/external action; recommendation-strength language remains within the bounded advisory vocabulary
+
 ### 2026-05-21 — M21.6-CLI change-impact CLI wrapper (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for M21.6-CLI after Prepare commit `0e37a86 docs: prepare change-impact cli wrapper`.
