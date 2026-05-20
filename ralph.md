@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M21.7-CLI architecture candidates CLI wrapper Prepare
+
+- Phase completed: Prepare/document-RED planning for the M21.7-CLI thin CLI wrapper after the M21.7 pure generator shipped at `50b7263 feat: add architecture candidate generator` and the current baseline reached `c4c7b96 test: exclude fixture repositories from collection`.
+- Controlled anchors checked: `docs/plans/m21-7-architecture-candidate-generator-implementation-tasks.md`; `src/hisys/operations/architecture_candidates.py`; `tests/unit/test_architecture_candidates.py`; `src/hisys/cli/main.py` `_cmd_change_impact` and `change-impact` parser block (M21.6-CLI precedent); `tests/unit/test_domain_cli.py` M21.6-CLI shape.
+- Baseline observed: branch `dars`, HEAD `c4c7b96 test: exclude fixture repositories from collection`, working tree clean before Prepare writes. Focused baseline gate `PYTHONPATH=src pytest tests/unit/test_architecture_candidates.py tests/unit/test_domain_cli.py -q` -> 18 passed; traceability validator OK; secret scan `hit_count=0`; `git diff --check` clean.
+- Decision: M21.7-CLI will expose the pure generator through `hisys architecture-candidates --instance <root> --date <YYYYMMDD> [--coverage-report <json>] [--freshness-report <json>] [--change-impact-report <json>] [--current-head-short <hash>]`. Input reports are explicit caller-supplied JSON files only. The CLI does not auto-discover runtime-boundary artifacts, does not read raw source, does not inspect `.git/`, does not call `date.today()`, does not shell out, and does not expand candidate semantics.
+- Document-RED artifact: created `docs/plans/m21-7-cli-architecture-candidates-cli-wrapper-implementation-tasks.md`. Planned first RED is `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_architecture_candidates_cli_writes_report -q`, expected to fail because argparse rejects the missing `architecture-candidates` subcommand with `SystemExit: 2`.
+- Boundary: local docs/control preparation only. No production code, no tests, no CLI implementation, no remote push, no live external action, no credential lookup, no `subprocess` invocation, no `.git/` read, no raw source archival, no recommendation-strength expansion, and no approval/readiness wording.
+- Quality gate result: pass after Prepare write — `python3 scripts/validate_traceability.py` OK; `python3 scripts/scan_secrets.py` `hit_count=0`; `git diff --check` clean. Focused baseline gate passed before edit.
+- Potential issues / open items: (a) The CLI reads explicit JSON files, so callers must supply the desired M21.1/M21.4/M21.6 report paths; latest-artifact discovery is intentionally deferred. (b) JSON schema validation beyond object loading is deferred to a separate RED if needed. (c) Exit code remains advisory-only `0` after successful write regardless of candidate count.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M21.7-CLI` Task 1 RED — add the CLI smoke test and observe argparse rejection before adding the parser/dispatcher.
+- Stop condition: Prepare/document-RED checkpoint reached; production CLI behavior remains gated by future RED test.
+- Commit pending: `docs: prepare architecture candidates cli wrapper`.
+
+Resume checkpoint:
+- Current HEAD: `c4c7b96 test: exclude fixture repositories from collection`
+- Working tree: M21.7-CLI Prepare docs/ralph modified until commit
+- Last completed milestone/task: M21.7-CLI Prepare/document-RED
+- RED observed: not yet; next command is the planned CLI RED test after adding it
+- Quality gate status: Prepare gate pass — traceability OK; secret scan hit_count=0; `git diff --check` clean; focused baseline 18 passed before edit
+- Next command to run: stage `docs/plans/m21-7-cli-architecture-candidates-cli-wrapper-implementation-tasks.md` and `ralph.md`, commit, then start M21.7-CLI Task 1 RED in the next increment
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-21 — M21.7 architecture candidate generator (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for M21.7 after Prepare commit `05eb295 docs: prepare architecture candidate generator`.
