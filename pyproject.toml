@@ -43,6 +43,7 @@ include = ["hisys*"]
 testpaths = ["tests"]
 addopts = "-ra"
 pythonpath = ["src"]
+norecursedirs = ["tests/fixtures"]
 
 [tool.hisys.traceability]
 requirements_baseline = "HISYS-SRS-001 v0.6.2"
