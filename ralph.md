@@ -4339,15 +4339,15 @@ Resume checkpoint:
 - Quality gate result: pass — structural parse passed; focused DARS runtime/config/dispatch/panel regression `99 passed in 5.30s`; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=614 hit_count=0; `git diff --check` clean.
 
 Resume checkpoint:
-- Current HEAD: ff89b1b docs: prepare live dars panel configuration
-- Working tree: weakness-analysis plan/bootstrap/Ralph modified; ready for local commit
-- Last completed milestone/task: current code/document weakness analysis and improvement plan artifact creation and validation
-- Current in-progress task: local commit for v0.0.13 planning package
-- RED observed: n/a (document-RED planning only)
-- GREEN observed: n/a until future governance-sync implementation
-- Quality gate status: pass — structural parse, focused 99/99, traceability OK, secret scan hit_count=0, diff-check clean
-- Next command to run: `git add docs/plans/current-code-doc-weakness-analysis-improvement-plan.md docs/milestone-bootstrap ralph.md && git commit -m "docs: plan weakness-driven improvements"`
-- Stop condition: after local commit; future governance-sync or M-CP-LIVE-1 implementation requires explicit go-ahead and must start with RED
+- Current HEAD: 75156e5 docs: plan weakness-driven improvements
+- Working tree: Phase A governance-sync implementation validated; ready for local commit
+- Last completed milestone/task: Phase A governance current-state consistency RED/GREEN
+- Current in-progress task: local commit for Phase A governance-sync increment
+- RED observed: `ModuleNotFoundError: No module named 'hisys.operations.governance_docs'`, then stale checkpoint mismatch before docs sync
+- GREEN observed: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q` -> `1 passed in 0.06s`
+- Quality gate status: pass — structural check, governance focused `1 passed`, DARS focused `99 passed in 5.31s`, traceability OK, secret scan hit_count=0, diff-check clean
+- Next command to run: `git add src/hisys/operations/governance_docs.py tests/unit/test_governance_docs_current_state.py docs/milestone-bootstrap ralph.md && git commit -m "feat: sync governance current-state docs"`
+- Stop condition: after local commit and post-commit validation, continue to Phase B only with explicit go-ahead
 
 ## 16. Initial Next Action
 

@@ -28,13 +28,23 @@ tasks:
     evidence:
       - docs/milestone-bootstrap/evidence/validation_log_v0.0.13.md
   - id: MB-DARS-LIVE-GOV-SYNC-RED
-    title: Future RED for governance current-state synchronization
-    status: queued
+    title: Phase A governance current-state synchronization
+    status: completed
     command: "PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py::test_governance_profile_and_ralph_checkpoint_match_current_head -q"
-    expected_red: "test file or governance validator missing before sync implementation"
+    expected_red: "ModuleNotFoundError: No module named 'hisys.operations.governance_docs', followed by stale governance checkpoint mismatch before sync"
+    evidence:
+      - tests/unit/test_governance_docs_current_state.py
+      - src/hisys/operations/governance_docs.py
+      - docs/milestone-bootstrap/tasks/milestone_tasks_v0.0.12.yaml
+      - ralph.md
+  - id: MB-DARS-LIVE-1-RED
+    title: Future RED for live panel activation packet
+    status: queued
+    command: "PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_config.py::test_live_panel_activation_requires_human_approval_ref -q"
+    expected_red: "ModuleNotFoundError: No module named 'hisys.agents.dars_panel_live_config'"
 constraints:
-  production_code_created: false
-  tests_created: false
+  production_code_created: true
+  tests_created: true
   live_model_call_authorized: false
   external_api_authorized: false
   credential_lookup_authorized: false

@@ -5,11 +5,11 @@ version: v0.0.13
 focus: Current code/document weakness analysis and improvement planning
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: MB-DARS-LIVE-GOV-SYNC-RED
+next_safe_task: MB-DARS-LIVE-1-RED
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: "현재 코드와 문서 기반으로 약점 분석해서 개선점을 도출하고 구현 계획 수립"
 planning_baseline_head: "ff89b1b docs: prepare live dars panel configuration"
-current_head_at_plan_creation: "ff89b1b docs: prepare live dars panel configuration"
+current_head_at_plan_creation: "75156e5 docs: plan weakness-driven improvements"
 previous_bootstrap_version: v0.0.12

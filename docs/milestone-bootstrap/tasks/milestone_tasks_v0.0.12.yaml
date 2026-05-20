@@ -18,7 +18,7 @@ tasks:
       - docs/plans/dars-live-panel-configuration-implementation-tasks.md
   - id: MB-DARS-LIVE-PREP-3
     title: Validate Prepare artifacts and preserve no-live-action boundary
-    status: pending_validation
+    status: completed
     evidence:
       - docs/milestone-bootstrap/evidence/validation_log_v0.0.12.md
   - id: MB-DARS-LIVE-1-RED
