@@ -49,6 +49,9 @@ class InvestigationWorkProduct:
     memo_refs: list[str]
     evidence_refs: list[str]
     codebase_artifact_refs: list[str] = field(default_factory=list)
+    codebase_bundle_gate: str = "not_applicable"
+    codebase_missing_evidence: list[str] = field(default_factory=list)
+    requires_human_review: bool = True
     domain_subtype: str | None = None
     external_call_made: bool = False
     mutation_performed: bool = False

@@ -77,3 +77,38 @@ def test_code_investigation_layer_returns_empty_artifact_refs_when_none_present(
 
     assert work_product.codebase_artifact_refs == []
     assert "SRC-EVD" in work_product.evidence_refs
+
+
+def test_code_investigation_layer_records_incomplete_bundle_missing_evidence(tmp_path: Path) -> None:
+    request = _build_codebase_request(
+        refs=[
+            ("SRC-INV", "runtime-boundary/codebase-analysis/20260520/REQ-M20-2/inventory.json"),
+            ("SRC-SYM", "runtime-boundary/codebase-analysis/20260520/REQ-M20-2/symbol-index.json"),
+        ],
+    )
+
+    layer = CodeInvestigationLayer(requirements_root=str(tmp_path / "requirements"))
+    work_product = layer.investigate(request=request, context=_context(tmp_path))
+
+    assert work_product.codebase_bundle_gate == "needs_more_evidence"
+    assert work_product.codebase_missing_evidence == ["risk_scan", "scope_map", "validation_plan"]
+    assert work_product.requires_human_review is True
+
+
+def test_code_investigation_layer_marks_complete_bundle_candidate_complete(tmp_path: Path) -> None:
+    request = _build_codebase_request(
+        refs=[
+            ("SRC-INV", "runtime-boundary/codebase-analysis/20260520/REQ-M20-2/inventory.json"),
+            ("SRC-SYM", "runtime-boundary/codebase-analysis/20260520/REQ-M20-2/symbol-index.json"),
+            ("SRC-SCOPE", "runtime-boundary/codebase-analysis/20260520/REQ-M20-2/scope-map.json"),
+            ("SRC-VALID", "runtime-boundary/codebase-analysis/20260520/REQ-M20-2/validation-plan.json"),
+            ("SRC-RISK", "runtime-boundary/codebase-analysis/20260520/REQ-M20-2/risk-scan.json"),
+        ],
+    )
+
+    layer = CodeInvestigationLayer(requirements_root=str(tmp_path / "requirements"))
+    work_product = layer.investigate(request=request, context=_context(tmp_path))
+
+    assert work_product.codebase_bundle_gate == "candidate_complete"
+    assert work_product.codebase_missing_evidence == []
+    assert work_product.requires_human_review is True

@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M20.2 incomplete codebase artifact bundle gate (RED -> GREEN)
+
+- Phase completed: RED / GREEN / Refactor-skipped / Gate for `M20.2`, the incomplete codebase artifact bundle gating increment after `M20.1` refs-only acceptance.
+- Controlled anchors checked: `718d1dd docs: prepare codebase bundle gating increment`; `docs/plans/m20-codebase-domain-artifact-bridge-m20-2-implementation-tasks.md`; `src/hisys/domain/layers.py`; `src/hisys/domain/use_cases.py`; `tests/unit/test_codebase_domain_artifact_bridge.py`; `docs/traceability/README.md`.
+- Baseline observed: branch `dars`, HEAD `718d1dd`, working tree clean before implementation. Domain baseline `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py -q` -> 15 passed. DARS focused baseline -> 48 passed.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_code_investigation_layer_records_incomplete_bundle_missing_evidence -q` failed with `AttributeError: 'InvestigationWorkProduct' object has no attribute 'codebase_bundle_gate'`, matching the planned missing-field RED before production changes.
+- Implementation: added internal work-product fields `codebase_bundle_gate`, `codebase_missing_evidence`, and `requires_human_review` to `InvestigationWorkProduct`; added canonical required artifact roles and pure role classification helpers in `src/hisys/domain/use_cases.py`; threaded the gate into `CodeInvestigationLayer.investigate`. The logic remains refs-only: it does not read JSON, resolve files, add CLI flags, enrich `DomainInvestigationResult`, clone repositories, call models, or authorize action/publication.
+- Tests: added missing-evidence RED/GREEN coverage and candidate-complete coverage in `tests/unit/test_codebase_domain_artifact_bridge.py`. Incomplete refs with only inventory and symbol-index yield `codebase_bundle_gate="needs_more_evidence"`, sorted missing roles `risk_scan`, `scope_map`, `validation_plan`, and `requires_human_review=True`. Complete role refs yield `candidate_complete`, empty missing evidence, and still require human review.
+- GREEN observed: focused missing-evidence test -> 1 passed; bridge test file -> 4 passed; combined domain gate -> 17 passed.
+- Documentation/traceability: updated `docs/traceability/README.md` with implemented-increments row `Codebase domain artifact bundle gate (M20.2)` and deferred M20.3/M20.4/M20.5 boundaries.
+- Quality gate result: pass — combined domain gate 17 passed; DARS critic-panel focused regression 48 passed; traceability validator OK; secret scan `scanned_files=531 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: M20.2 is pure role classification; schema-id/file-content validation and enrichment are intentionally deferred to M20.3 using safe loader chokepoints. CLI artifact-ref flags remain M20.4.
+- Continue decision: after committing this increment, the next safe queue item is M20.3 Prepare for safe local bundle load/schema validation and result enrichment planning.
+- Stop condition: M20.2 implementation boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: gate incomplete codebase artifact bundles`.
+
+Resume checkpoint:
+- Current HEAD: 718d1dd docs: prepare codebase bundle gating increment
+- Working tree: M20.2 code/tests/docs/Ralph modified until commit
+- Last completed milestone/task: M20.2 RED/GREEN implementation
+- RED observed: missing `codebase_bundle_gate` AttributeError
+- GREEN observed: bridge file 4 passed; combined domain gate 17 passed
+- Quality gate status: pass — domain 17 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M20.2 implementation files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M20.2 incomplete codebase artifact bundle gate Prepare
 
 - Phase completed: Prepare / document-RED / Gate for `M20.2`, the incomplete codebase artifact bundle gating follow-on after `M20.1` refs-only acceptance. This is a docs/bootstrap-only checkpoint; no production code or RED tests were written in this iteration.

@@ -58,6 +58,13 @@ def _is_requirements_analysis_objective(objective: str) -> bool:
 
 
 CODEBASE_ARTIFACT_REF_PREFIX = "runtime-boundary/codebase-analysis/"
+CODEBASE_REQUIRED_ARTIFACT_ROLES = (
+    "inventory",
+    "symbol_index",
+    "scope_map",
+    "validation_plan",
+    "risk_scan",
+)
 
 
 def _is_codebase_artifact_ref(ref: str) -> bool:
@@ -84,6 +91,37 @@ def _extract_codebase_artifact_refs(request: DomainInvestigationRequest) -> list
     return refs
 
 
+def _codebase_artifact_role(ref: str) -> str | None:
+    """Classify a codebase-analysis artifact ref by canonical bundle role."""
+
+    filename = ref.rsplit("/", 1)[-1]
+    if filename == "inventory.json":
+        return "inventory"
+    if filename in {"symbol-index.json", "symbol_index.json"}:
+        return "symbol_index"
+    if filename in {"scope-map.json", "scope_map.json"}:
+        return "scope_map"
+    if filename in {"validation-plan.json", "validation_plan.json"}:
+        return "validation_plan"
+    if filename in {"risk-scan.json", "risk_scan.json"}:
+        return "risk_scan"
+    if filename == "source-inspection-decision.json":
+        return "source_inspection_decision"
+    return None
+
+
+def _classify_codebase_bundle_gate(refs: list[str]) -> tuple[str, list[str]]:
+    """Return advisory completeness gate and sorted missing evidence roles."""
+
+    if not refs:
+        return "not_applicable", []
+    roles = {_codebase_artifact_role(ref) for ref in refs}
+    missing = sorted(set(CODEBASE_REQUIRED_ARTIFACT_ROLES).difference(roles))
+    if missing:
+        return "needs_more_evidence", missing
+    return "candidate_complete", []
+
+
 class CodeInvestigationLayer:
     """Investigate code evidence from local memos and requirements folders."""
 
@@ -108,6 +146,9 @@ class CodeInvestigationLayer:
             else "local-code-and-requirements-memos"
         )
         codebase_artifact_refs = _extract_codebase_artifact_refs(request)
+        codebase_bundle_gate, codebase_missing_evidence = _classify_codebase_bundle_gate(
+            codebase_artifact_refs
+        )
         codebase_artifact_ref_set = set(codebase_artifact_refs)
         return InvestigationWorkProduct(
             work_product_id=f"INVEST-{request.request_id}-{suffix}",
@@ -124,6 +165,8 @@ class CodeInvestigationLayer:
                 f"requirements-folder://{self._requirements_root}",
             ],
             codebase_artifact_refs=codebase_artifact_refs,
+            codebase_bundle_gate=codebase_bundle_gate,
+            codebase_missing_evidence=codebase_missing_evidence,
             domain_subtype="requirements-analysis" if is_requirements_analysis else None,
         )
 
