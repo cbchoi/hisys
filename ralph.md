@@ -4339,7 +4339,7 @@ Resume checkpoint:
 - Quality gate result: pass — structural parse passed; focused DARS runtime/config/dispatch/panel regression `99 passed in 5.30s`; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=614 hit_count=0; `git diff --check` clean.
 
 Resume checkpoint:
-- Current HEAD: 8eb55e3 feat: add live dars local adapter bridge
+- Current HEAD: 44fbe9e feat: gate live dars cli rehearsal
 - Working tree: Phase C live-panel fake-server adapter bridge implemented; final gates pending
 - Last completed milestone/task: M-CP-LIVE-2 focused RED/GREEN
 - Current in-progress task: final validation and local commit for Phase C
@@ -4385,7 +4385,7 @@ Resume checkpoint:
 - Quality gate result: pass — structural check, live-adapter focused `4 passed in 2.06s`, governance+DARS+live focused `109 passed in 7.36s`, traceability OK, secret scan hit_count=0, diff-check clean.
 
 Resume checkpoint:
-- Current HEAD: 8eb55e3 feat: add live dars local adapter bridge
+- Current HEAD: 44fbe9e feat: gate live dars cli rehearsal
 - Working tree: Phase C local adapter bridge validated; ready for local commit
 - Last completed milestone/task: M-CP-LIVE-2 focused RED/GREEN
 - Current in-progress task: final validation and local commit for Phase C
@@ -4408,15 +4408,37 @@ Resume checkpoint:
 - Quality gate result: pass — structural check, CLI focused `4 passed in 1.17s`, governance+DARS+live focused `111 passed in 8.44s`, traceability OK, secret scan hit_count=0, diff-check clean.
 
 Resume checkpoint:
-- Current HEAD: 8eb55e3 feat: add live dars local adapter bridge
-- Working tree: Phase D CLI activation rehearsal validated; ready for local commit
+- Current HEAD: 44fbe9e feat: gate live dars cli rehearsal
+- Working tree: Phase D CLI activation rehearsal committed and validated
 - Last completed milestone/task: M-CP-LIVE-3 focused RED/GREEN
-- Current in-progress task: final validation and local commit for Phase D
+- Current in-progress task: Phase E local smoke runbook final validation and local commit
 - RED observed: CLI lacked activation-packet-gated local-model rehearsal args
 - GREEN observed: DARS critic panel CLI test file `4 passed`
 - Quality gate status: pass — structural check, CLI focused `4 passed`, governance+DARS+live focused `111 passed in 8.44s`, traceability OK, secret scan hit_count=0, diff-check clean
-- Next command to run: `git add src/hisys/cli/main.py tests/unit/test_dars_critic_panel_cli.py tests/unit/test_governance_docs_current_state.py docs/examples/dars/live-panel-localhost-config.example.json docs/traceability/dars-critic-panel-runtime-traceability.md docs/milestone-bootstrap ralph.md && git commit -m "feat: gate live dars cli rehearsal"`
-- Stop condition: after local commit and post-commit validation; M-CP-LIVE-4 requires separate go-ahead
+- Next command to run: Phase E final gates, then local commit
+- Stop condition: after Phase E local commit and post-commit validation; M21.5 requires separate go-ahead
+
+
+### 2026-05-20 — Phase E M-CP-LIVE-4 local smoke runbook
+
+- Phase completed: TDD documentation/control increment for a human-gated localhost smoke runbook.
+- Request context: user said `go for e`, referring to Phase E from the live-DARS safety sequence.
+- Scope: added `docs/runbooks/dars-live-panel-localhost-smoke.md` and `tests/unit/test_dars_critic_panel_live_runbook.py`; updated traceability and milestone-bootstrap queue to mark `MB-DARS-LIVE-4-RED` completed and queue `MB-CODEBASE-M21-5-RED`.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_runbook.py::test_live_panel_local_smoke_runbook_requires_operator_supplied_localhost_endpoint -q` failed with `FileNotFoundError` for `docs/runbooks/dars-live-panel-localhost-smoke.md`.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_runbook.py -q` -> `3 passed in 0.01s`.
+- Boundary: runbook requires an operator-supplied already-running localhost-only endpoint and a M-CP-LIVE-1 activation packet. It documents stop conditions for non-loopback endpoint, credentials, Authorization header, tool/search/browser permission, mutation, publication, remote API, secret-scan failure, and human uncertainty. This increment performs no real local model smoke, HTTP request, credential lookup, remote API call, runtime mutation, publication/deployment, or remote push.
+- Quality gate result: pass — structural check, runbook+CLI focused `7 passed in 1.17s`, governance+DARS+live focused `114 passed in 7.88s`, traceability OK, secret scan hit_count=0, diff-check clean.
+
+Resume checkpoint:
+- Current HEAD: 44fbe9e feat: gate live dars cli rehearsal
+- Working tree: Phase E local smoke runbook validated; ready for local commit
+- Last completed milestone/task: M-CP-LIVE-4 focused RED/GREEN
+- Current in-progress task: final validation and local commit for Phase E
+- RED observed: local smoke runbook artifact absent
+- GREEN observed: live runbook test file `3 passed`
+- Quality gate status: pass — structural check, runbook+CLI focused `7 passed`, governance+DARS+live focused `114 passed in 7.88s`, traceability OK, secret scan hit_count=0, diff-check clean
+- Next command to run: local commit for Phase E
+- Stop condition: after local commit and post-commit validation; M21.5 requires separate go-ahead
 
 ## 16. Initial Next Action
 

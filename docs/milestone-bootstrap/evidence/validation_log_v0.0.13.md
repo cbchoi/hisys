@@ -205,3 +205,39 @@ Results:
 - traceability: `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`
 - secret scan: `secret_scan: scanned_files=621 skipped_files=0 hit_count=0`
 - diff check: clean.
+
+## Phase E local smoke runbook evidence
+
+RED observed:
+
+```text
+FileNotFoundError: [Errno 2] No such file or directory: '/home/cbchoi/workspaces/develop/repos/hisys/docs/runbooks/dars-live-panel-localhost-smoke.md'
+```
+
+GREEN observed:
+
+```bash
+PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_runbook.py -q
+```
+
+Result: `3 passed in 0.01s`.
+
+Final Phase E validation:
+
+```bash
+python3 <structural parse for profile/tasks/testcases/request/live-panel-localhost example>
+PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_runbook.py tests/unit/test_dars_critic_panel_cli.py -q
+PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py <DARS focused cohort> tests/unit/test_dars_critic_panel_live_config.py tests/unit/test_dars_critic_panel_live_adapter.py tests/unit/test_dars_critic_panel_live_runbook.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+Results:
+
+- structural check: `phase E structural parse ok`.
+- runbook+CLI focused: `7 passed in 1.17s`.
+- governance+DARS+live focused: `114 passed in 7.88s`.
+- traceability: `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`.
+- secret scan: `secret_scan: scanned_files=623 skipped_files=0 hit_count=0`.
+- diff check: clean.

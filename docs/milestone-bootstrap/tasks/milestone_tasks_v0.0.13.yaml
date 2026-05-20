@@ -70,10 +70,20 @@ tasks:
       - docs/traceability/dars-critic-panel-runtime-traceability.md
       - ralph.md
   - id: MB-DARS-LIVE-4-RED
-    title: Future RED for local smoke runbook
-    status: queued
+    title: Phase E local smoke runbook
+    status: completed
     command: "PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_runbook.py::test_live_panel_local_smoke_runbook_requires_operator_supplied_localhost_endpoint -q"
-    expected_red: "local smoke runbook artifact is absent"
+    expected_red: "FileNotFoundError for docs/runbooks/dars-live-panel-localhost-smoke.md"
+    evidence:
+      - tests/unit/test_dars_critic_panel_live_runbook.py
+      - docs/runbooks/dars-live-panel-localhost-smoke.md
+      - docs/traceability/dars-critic-panel-runtime-traceability.md
+      - ralph.md
+  - id: MB-CODEBASE-M21-5-RED
+    title: Future RED for M21.5 codebase regression benchmark fixtures
+    status: queued
+    command: "PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py::test_codebase_regression_benchmarks_report_expected_outcomes -q"
+    expected_red: "ModuleNotFoundError: No module named 'hisys.operations.codebase_regression_benchmarks'"
 constraints:
   production_code_created: true
   tests_created: true
