@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.3 runtime-boundary consistency checker (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for M21.3 after Prepare commit `01cea3f docs: prepare runtime-boundary consistency checker`.
+- Controlled anchors checked: `docs/plans/m21-3-runtime-boundary-consistency-checker-implementation-tasks.md`; `src/hisys/operations/codebase_analysis.py` `resolve_instance_runtime_ref`; `src/hisys/operations/traceability_coverage.py` (writer pattern reference); `docs/traceability/README.md`; existing focused regression suites.
+- Baseline observed: branch `dars`, HEAD `01cea3f docs: prepare runtime-boundary consistency checker`, working tree clean before edits. Combined traceability/domain/CLI gate 32 passed pre-edit; DARS focused gate 48 passed; traceability validator OK.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_runtime_boundary_consistency.py::test_runtime_boundary_consistency_flags_missing_and_unsafe_refs -q` failed during collection with `ModuleNotFoundError: No module named 'hisys.operations.runtime_boundary_consistency'`.
+- Implementation: added `src/hisys/operations/runtime_boundary_consistency.py` with `RuntimeBoundaryConsistencyReport`, a pure `build_runtime_boundary_consistency_report(*, instance_root, candidate_refs)` classifier, a deterministic Markdown renderer, and `write_runtime_boundary_consistency_report(*, instance_root, date, report)` that persists JSON/Markdown only under `runtime-boundary/runtime-boundary-consistency/<YYYYMMDD>/` through `resolve_instance_runtime_ref`. Issue vocabulary is fixed at `unsafe_ref`, `missing_file`, `malformed_json`, `missing_markdown_pair`, `missing_advisory_flag`, `outside_runtime_boundary`. Refs that escape `runtime-boundary/` are reported as `outside_runtime_boundary` without filesystem access; refs that survive the prefix check but fail the `resolve_instance_runtime_ref` chokepoint (absolute path, `..`, escape to parent) are reported as `unsafe_ref`. JSON refs that load successfully are also checked for the advisory-flag pair (`advisory_only`, `requires_human_review`) and for a sibling Markdown companion. The checker does not authorize action, repair, delete, or rewrite any artifact, and does not add a CLI subcommand. A `hisys runtime-boundary-check` wrapper is deferred to a separate M21.3-CLI increment.
+- Tests: added `tests/unit/test_runtime_boundary_consistency.py` with five focused tests covering (a) the original RED on missing/unsafe/outside-root classification, (b) malformed JSON + missing-markdown-pair + missing-advisory-flag classification, (c) writer round-trip and ref paths, (d) `..` traversal rejection, and (e) `_validate_date` rejection of non-YYYYMMDD input.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_runtime_boundary_consistency.py -q` -> 5 passed; extended gate `PYTHONPATH=src pytest tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py tests/unit/test_domain_cli.py -q` -> 37 passed; DARS critic-panel focused regression 48 passed.
+- Documentation/traceability: added an M21.3 implemented-increment row to `docs/traceability/README.md` linking the plan, module, and tests with explicit advisory-only/no-mutation/no-external-call invariants.
+- Quality gate result: pass — extended focused gate 37 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=582 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The first GREEN bundles RED + regression tests in one commit because the planned Task 3 supplemental tests are tightly coupled to the writer/traversal paths that the M21.3 checker pins; future M21.x increments should still keep one canonical RED before any code. (b) Schema-id-aware deep validation per artifact family remains deferred to M21.5 fixture benchmarks. (c) Cross-date drift is deferred to M21.4. (d) The optional `hisys runtime-boundary-check` CLI wrapper remains M21.3-CLI backlog and was intentionally not added in this increment.
+- Continue decision: after committing this implementation, the next safe queue item is `M21.3-CLI` Prepare (thin `hisys runtime-boundary-check` wrapper) or, alternatively, M21.4 Prepare for the codebase map freshness/drift review. Both remain local-only/advisory-only.
+- Stop condition: M21.3 GREEN implementation boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: add runtime-boundary consistency checker`.
+
+Resume checkpoint:
+- Current HEAD: 01cea3f docs: prepare runtime-boundary consistency checker
+- Working tree: M21.3 code/tests/docs/ralph modified until commit
+- Last completed milestone/task: M21.3 runtime-boundary consistency checker implementation
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_runtime_boundary_consistency.py::test_runtime_boundary_consistency_flags_missing_and_unsafe_refs -q` -> `ModuleNotFoundError`
+- GREEN observed: focused consistency tests 5 passed; extended focused gate 37 passed
+- Quality gate status: pass — extended focused gate 37 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.3 implementation files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.3 runtime-boundary consistency checker Prepare
 
 - Phase completed: Prepare/document-RED for M21.3 after M21 roadmap committed at `028edfb` and bootstrap refresh at `5534f8e docs: refresh m21.3 bootstrap readiness`.
