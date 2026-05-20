@@ -4339,7 +4339,7 @@ Resume checkpoint:
 - Quality gate result: pass — structural parse passed; focused DARS runtime/config/dispatch/panel regression `99 passed in 5.30s`; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=614 hit_count=0; `git diff --check` clean.
 
 Resume checkpoint:
-- Current HEAD: 0ef6b4d feat: add live dars activation packet
+- Current HEAD: 8eb55e3 feat: add live dars local adapter bridge
 - Working tree: Phase C live-panel fake-server adapter bridge implemented; final gates pending
 - Last completed milestone/task: M-CP-LIVE-2 focused RED/GREEN
 - Current in-progress task: final validation and local commit for Phase C
@@ -4385,7 +4385,7 @@ Resume checkpoint:
 - Quality gate result: pass — structural check, live-adapter focused `4 passed in 2.06s`, governance+DARS+live focused `109 passed in 7.36s`, traceability OK, secret scan hit_count=0, diff-check clean.
 
 Resume checkpoint:
-- Current HEAD: 0ef6b4d feat: add live dars activation packet
+- Current HEAD: 8eb55e3 feat: add live dars local adapter bridge
 - Working tree: Phase C local adapter bridge validated; ready for local commit
 - Last completed milestone/task: M-CP-LIVE-2 focused RED/GREEN
 - Current in-progress task: final validation and local commit for Phase C
@@ -4394,6 +4394,29 @@ Resume checkpoint:
 - Quality gate status: pass — structural check, live-adapter focused `4 passed`, governance+DARS+live focused `109 passed in 7.36s`, traceability OK, secret scan hit_count=0, diff-check clean
 - Next command to run: `git add src/hisys/agents/dars_panel_live_adapter.py tests/unit/test_dars_critic_panel_live_adapter.py tests/unit/test_governance_docs_current_state.py docs/traceability/dars-critic-panel-runtime-traceability.md docs/milestone-bootstrap ralph.md && git commit -m "feat: add live dars local adapter bridge"`
 - Stop condition: after local commit and post-commit validation; M-CP-LIVE-3 requires separate go-ahead
+
+
+### 2026-05-20 — Phase D M-CP-LIVE-3 CLI activation rehearsal
+
+- Phase completed: TDD implementation for activation-packet-gated local-model CLI rehearsal.
+- Request context: user said `go for d`, referring to Phase D from the weakness-driven improvement sequence.
+- Scope: extended `hisys run-dars-panel` with `--local-model-endpoint`, `--local-model`, and `--activation-packet`; added CLI tests for missing activation fail-closed behavior and approved localhost fake-server rehearsal; added `docs/examples/dars/live-panel-localhost-config.example.json`; updated traceability and milestone-bootstrap queue to mark `MB-DARS-LIVE-3-RED` completed and queue `MB-DARS-LIVE-4-RED`.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode -q` failed because argparse rejected unrecognized `--local-model-endpoint` and `--local-model` rather than enforcing the activation-packet gate.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py -q` -> `4 passed in 1.16s`.
+- Boundary: existing fixture mode remains unchanged. Local-model CLI mode is opt-in and requires a M-CP-LIVE-1 activation packet. The only model-boundary call in tests is to `127.0.0.1` fake OpenAI-compatible server. No real local model runner, remote API, credential lookup, Authorization header, browser/search/tool authorization, publication, deployment, runtime mutation, or remote push is introduced.
+- Next queued implementation: M-CP-LIVE-4 local smoke runbook with RED `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_runbook.py::test_live_panel_local_smoke_runbook_requires_operator_supplied_localhost_endpoint -q`.
+- Quality gate result: pass — structural check, CLI focused `4 passed in 1.17s`, governance+DARS+live focused `111 passed in 8.44s`, traceability OK, secret scan hit_count=0, diff-check clean.
+
+Resume checkpoint:
+- Current HEAD: 8eb55e3 feat: add live dars local adapter bridge
+- Working tree: Phase D CLI activation rehearsal validated; ready for local commit
+- Last completed milestone/task: M-CP-LIVE-3 focused RED/GREEN
+- Current in-progress task: final validation and local commit for Phase D
+- RED observed: CLI lacked activation-packet-gated local-model rehearsal args
+- GREEN observed: DARS critic panel CLI test file `4 passed`
+- Quality gate status: pass — structural check, CLI focused `4 passed`, governance+DARS+live focused `111 passed in 8.44s`, traceability OK, secret scan hit_count=0, diff-check clean
+- Next command to run: `git add src/hisys/cli/main.py tests/unit/test_dars_critic_panel_cli.py tests/unit/test_governance_docs_current_state.py docs/examples/dars/live-panel-localhost-config.example.json docs/traceability/dars-critic-panel-runtime-traceability.md docs/milestone-bootstrap ralph.md && git commit -m "feat: gate live dars cli rehearsal"`
+- Stop condition: after local commit and post-commit validation; M-CP-LIVE-4 requires separate go-ahead
 
 ## 16. Initial Next Action
 

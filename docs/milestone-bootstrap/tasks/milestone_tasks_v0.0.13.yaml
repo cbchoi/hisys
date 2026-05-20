@@ -59,10 +59,21 @@ tasks:
       - docs/traceability/dars-critic-panel-runtime-traceability.md
       - ralph.md
   - id: MB-DARS-LIVE-3-RED
-    title: Future RED for CLI activation rehearsal
-    status: queued
+    title: Phase D CLI activation rehearsal
+    status: completed
     command: "PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode -q"
-    expected_red: "CLI lacks activation-packet-gated local model rehearsal mode"
+    expected_red: "argparse rejects unrecognized --local-model-endpoint and --local-model because CLI lacks activation-packet-gated local model rehearsal mode"
+    evidence:
+      - tests/unit/test_dars_critic_panel_cli.py
+      - src/hisys/cli/main.py
+      - docs/examples/dars/live-panel-localhost-config.example.json
+      - docs/traceability/dars-critic-panel-runtime-traceability.md
+      - ralph.md
+  - id: MB-DARS-LIVE-4-RED
+    title: Future RED for local smoke runbook
+    status: queued
+    command: "PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_runbook.py::test_live_panel_local_smoke_runbook_requires_operator_supplied_localhost_endpoint -q"
+    expected_red: "local smoke runbook artifact is absent"
 constraints:
   production_code_created: true
   tests_created: true

@@ -41,6 +41,8 @@ from ..agents.dars_panel import (
     DarsCriticPanelRuntime,
     DarsCriticRoleConfig,
 )
+from ..agents.dars_panel_live_adapter import LocalModelCriticRequest, LocalModelPanelAdapter
+from ..agents.dars_panel_live_config import LiveDarsPanelActivationPacket
 from ..audit import LapidaryGovernanceAuditWriter
 from ..browser.public_profile import load_public_browser_profile
 from ..browser.public_summary import write_public_browser_run_summary
@@ -1613,6 +1615,75 @@ def _load_dars_panel_config(path: Path) -> DarsCriticPanelConfig:
     )
 
 
+def _load_live_dars_activation_packet(path: Path) -> LiveDarsPanelActivationPacket:
+    """Load a local M-CP-LIVE-1 activation packet without credential lookup."""
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return LiveDarsPanelActivationPacket.model_validate(payload)
+
+
+def _run_dars_panel_local_model_rehearsal(
+    *,
+    instance: InstanceRoot,
+    yyyymmdd: str,
+    request_id: str,
+    panel_config: DarsCriticPanelConfig,
+    candidate_ref: str,
+    evidence_refs: list[str],
+    local_model_endpoint: str,
+    local_model: str,
+    activation_packet_path: Path | None,
+) -> dict[str, object]:
+    """Run local-model panel rehearsal through the localhost-only adapter bridge."""
+
+    if activation_packet_path is None:
+        print("error: --activation-packet is required for --local-model-endpoint", file=sys.stderr)
+        raise SystemExit(2)
+    activation_packet = _load_live_dars_activation_packet(activation_packet_path)
+    adapter = LocalModelPanelAdapter(instance=instance)
+    task_statuses: dict[str, str] = {}
+    local_model_boundary_refs: list[str] = []
+    model_boundary_crossed = False
+    local_model_call_made = False
+    for index, critic in enumerate(panel_config.critics):
+        task_id = f"TASK-{request_id}-{index:02d}-{critic.critic_id}"
+        result = adapter.run_critic(
+            activation_packet=activation_packet,
+            critic_request=LocalModelCriticRequest(
+                yyyymmdd=yyyymmdd,
+                request_id=request_id,
+                task_id=task_id,
+                critic_id=critic.critic_id,
+                critic_role=critic.critic_role,
+                backend_id=critic.backend_id,
+                model=local_model,
+                endpoint=local_model_endpoint,
+                candidate_ref=candidate_ref,
+                evidence_refs=list(evidence_refs),
+                rubric_ref=critic.rubric_ref,
+                critique_dimensions=list(critic.critique_dimensions),
+            ),
+        )
+        task_statuses[task_id] = result.status
+        local_model_boundary_refs.append(result.boundary_ref)
+        model_boundary_crossed = model_boundary_crossed or result.model_boundary_crossed
+        local_model_call_made = local_model_call_made or result.local_model_call_made
+    return {
+        "request_id": request_id,
+        "panel_id": panel_config.panel_id,
+        "execution_mode": "local_model_rehearsal",
+        "task_statuses": task_statuses,
+        "local_model_boundary_refs": local_model_boundary_refs,
+        "model_boundary_crossed": model_boundary_crossed,
+        "local_model_call_made": local_model_call_made,
+        "endpoint_scope": "localhost_only",
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_performed": False,
+        "allowed_actions": "advisory_only",
+    }
+
+
 def _cmd_run_dars_panel(
     *,
     instance_root: Path,
@@ -1622,6 +1693,9 @@ def _cmd_run_dars_panel(
     candidate_ref: str,
     evidence_refs: list[str],
     output_format: str,
+    local_model_endpoint: str | None = None,
+    local_model: str = "local-dars-panel",
+    activation_packet_path: Path | None = None,
 ) -> int:
     """Run the fixture-local DARS critic panel and print a bounded summary.
 
@@ -1634,6 +1708,33 @@ def _cmd_run_dars_panel(
 
     panel_config = _load_dars_panel_config(panel_config_path)
     instance = InstanceRoot(instance_root)
+    if local_model_endpoint is not None:
+        summary = _run_dars_panel_local_model_rehearsal(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            request_id=request_id,
+            panel_config=panel_config,
+            candidate_ref=candidate_ref,
+            evidence_refs=list(evidence_refs),
+            local_model_endpoint=local_model_endpoint,
+            local_model=local_model,
+            activation_packet_path=activation_packet_path,
+        )
+        if output_format == "json":
+            print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
+        else:
+            lines = [
+                f"request_id: {request_id}",
+                f"panel_id: {panel_config.panel_id}",
+                "execution_mode: local_model_rehearsal",
+                f"model_boundary_crossed: {summary['model_boundary_crossed']}",
+                f"local_model_call_made: {summary['local_model_call_made']}",
+                "local_model_boundary_refs:",
+            ]
+            for ref in summary["local_model_boundary_refs"]:
+                lines.append(f"  - {ref}")
+            print("\n".join(lines))
+        return 0
     runtime = DarsCriticPanelRuntime(instance=instance)
     result = runtime.run_round(
         yyyymmdd=yyyymmdd,
@@ -2040,6 +2141,22 @@ def _build_parser() -> argparse.ArgumentParser:
         help="instance-relative evidence artifact ref; repeatable",
     )
     run_dars_panel.add_argument("--format", choices=["json", "text"], default="text")
+    run_dars_panel.add_argument(
+        "--local-model-endpoint",
+        default=None,
+        help="localhost-only OpenAI-compatible endpoint for controlled local model rehearsal",
+    )
+    run_dars_panel.add_argument(
+        "--local-model",
+        default="local-dars-panel",
+        help="local model name sent to the localhost-only rehearsal endpoint",
+    )
+    run_dars_panel.add_argument(
+        "--activation-packet",
+        type=Path,
+        default=None,
+        help="M-CP-LIVE-1 activation packet JSON required for local model rehearsal",
+    )
 
     spec_packet = sub.add_parser("build-spec-first-packet", help="write a spec-first run packet before governed agent work")
     spec_packet.add_argument("--instance", required=True, help="Hisys instance root")
@@ -3250,6 +3367,9 @@ def main(argv: list[str] | None = None) -> int:
             candidate_ref=args.candidate_ref,
             evidence_refs=args.evidence_ref,
             output_format=args.format,
+            local_model_endpoint=args.local_model_endpoint,
+            local_model=args.local_model,
+            activation_packet_path=args.activation_packet,
         )
     if args.command == "build-spec-first-packet":
         return _cmd_build_spec_first_packet(

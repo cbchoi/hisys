@@ -1,0 +1,16 @@
+{
+  "panel_id": "PANEL-DARS-LIVE-LOCALHOST-EXAMPLE",
+  "max_parallel_critics": 1,
+  "critics": [
+    {
+      "critic_id": "logical-devil",
+      "critic_role": "logical_devil",
+      "backend_id": "local-fake-openai",
+      "rubric_ref": "data/dars-panel-fixtures/20260520/rubric-001.md",
+      "critique_dimensions": [
+        "logical_validity",
+        "missing_evidence"
+      ]
+    }
+  ]
+}

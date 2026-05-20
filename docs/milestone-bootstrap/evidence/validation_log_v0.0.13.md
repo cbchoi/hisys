@@ -169,3 +169,39 @@ Results:
 - traceability: `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`
 - secret scan: `secret_scan: scanned_files=620 skipped_files=0 hit_count=0`
 - diff check: clean.
+
+## Phase D CLI activation rehearsal evidence
+
+RED observed:
+
+```text
+argparse rejected unrecognized --local-model-endpoint and --local-model arguments
+```
+
+GREEN observed:
+
+```bash
+PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py -q
+```
+
+Result: `4 passed in 1.16s`.
+
+Final Phase D validation:
+
+```bash
+python3 <structural parse for profile/tasks/testcases/request/live-panel-localhost example>
+PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py -q
+PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py <DARS focused cohort> tests/unit/test_dars_critic_panel_live_config.py tests/unit/test_dars_critic_panel_live_adapter.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+Results:
+
+- structural check: `phase D structural parse ok`
+- CLI focused: `4 passed in 1.17s`
+- governance+DARS+live focused: `111 passed in 8.44s`
+- traceability: `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`
+- secret scan: `secret_scan: scanned_files=621 skipped_files=0 hit_count=0`
+- diff check: clean.

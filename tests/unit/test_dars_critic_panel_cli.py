@@ -13,6 +13,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
+from helpers.fake_openai_server import FakeOpenAIServer
+
 
 def _candidate_fixture(tmp_path: Path) -> tuple[str, list[str], str]:
     data_dir = tmp_path / "data" / "dars-panel-fixtures" / "20260520"
@@ -173,3 +177,154 @@ def test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch(
     assert boundary["advisory_only"] is True
     assert boundary["requires_human_review"] is True
     assert boundary["adapter_class"] == "unresolved"
+
+
+def _activation_packet_file(tmp_path: Path) -> Path:
+    path = tmp_path / "activation-packet.json"
+    path.write_text(
+        json.dumps(
+            {
+                "activation_id": "ACT-DARS-LIVE-3",
+                "approval_ref": "APPROVAL-DARS-LIVE-LOCALHOST-ONLY",
+                "operator_id": "operator-professor",
+                "approved_endpoint_scope": "localhost_only",
+                "allowed_actions": "advisory_only",
+                "human_approved": True,
+                "expires_at": "2026-05-21T00:00:00Z",
+                "requested_backend_id": "local-fake-openai",
+                "requested_adapter_class": "local_model",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _local_model_panel_config(tmp_path: Path, rubric_ref: str) -> Path:
+    path = tmp_path / "local-model-panel-config.json"
+    path.write_text(
+        json.dumps(
+            {
+                "panel_id": "PANEL-DARS-LIVE-3",
+                "max_parallel_critics": 1,
+                "critics": [
+                    {
+                        "critic_id": "logical-devil",
+                        "critic_role": "logical_devil",
+                        "backend_id": "local-fake-openai",
+                        "rubric_ref": rubric_ref,
+                        "critique_dimensions": ["logical_validity", "missing_evidence"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode(
+    tmp_path: Path, capsys
+):
+    """M-CP-LIVE-3: local-model CLI mode fails closed without activation."""
+
+    from hisys.cli.main import main
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    config_path = _local_model_panel_config(tmp_path, rubric_ref)
+
+    with FakeOpenAIServer() as server:
+        with pytest.raises(SystemExit) as excinfo:
+            main(
+                [
+                    "run-dars-panel",
+                    "--instance",
+                    str(tmp_path),
+                    "--date",
+                    "20260520",
+                    "--request-id",
+                    "REQ-DARS-LIVE-3-MISSING-ACTIVATION",
+                    "--panel-config",
+                    str(config_path),
+                    "--candidate-ref",
+                    candidate_ref,
+                    "--evidence-ref",
+                    evidence_refs[0],
+                    "--local-model-endpoint",
+                    server.endpoint,
+                    "--local-model",
+                    "fake-local-dars",
+                    "--format",
+                    "json",
+                ]
+            )
+
+    assert excinfo.value.code == 2
+    assert "--activation-packet is required" in capsys.readouterr().err
+    assert server.contacted is False
+
+
+def test_run_dars_panel_cli_rehearses_local_model_with_activation_packet(
+    tmp_path: Path, capsys
+):
+    """M-CP-LIVE-3: approved CLI local mode uses only the localhost fake server."""
+
+    from hisys.cli.main import main
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    config_path = _local_model_panel_config(tmp_path, rubric_ref)
+    activation_path = _activation_packet_file(tmp_path)
+
+    with FakeOpenAIServer(response_content="local cli fake critique") as server:
+        exit_code = main(
+            [
+                "run-dars-panel",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260520",
+                "--request-id",
+                "REQ-DARS-LIVE-3",
+                "--panel-config",
+                str(config_path),
+                "--candidate-ref",
+                candidate_ref,
+                "--evidence-ref",
+                evidence_refs[0],
+                "--local-model-endpoint",
+                server.endpoint,
+                "--local-model",
+                "fake-local-dars",
+                "--activation-packet",
+                str(activation_path),
+                "--format",
+                "json",
+            ]
+        )
+        server_host = server.host
+
+    assert exit_code == 0
+    assert server_host == "127.0.0.1"
+    assert server.contacted is True
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["request_id"] == "REQ-DARS-LIVE-3"
+    assert payload["panel_id"] == "PANEL-DARS-LIVE-3"
+    assert payload["execution_mode"] == "local_model_rehearsal"
+    assert payload["model_boundary_crossed"] is True
+    assert payload["local_model_call_made"] is True
+    assert payload["external_call_made"] is False
+    assert payload["mutation_performed"] is False
+    assert payload["publication_performed"] is False
+    assert payload["allowed_actions"] == "advisory_only"
+    assert payload["task_statuses"] == {"TASK-REQ-DARS-LIVE-3-00-logical-devil": "completed"}
+    assert len(payload["local_model_boundary_refs"]) == 1
+
+    boundary = json.loads((tmp_path / payload["local_model_boundary_refs"][0]).read_text(encoding="utf-8"))
+    assert boundary["approval_ref"] == "APPROVAL-DARS-LIVE-LOCALHOST-ONLY"
+    assert boundary["adapter_class"] == "local_model"
+    assert boundary["endpoint_scope"] == "localhost_only"
+    assert boundary["model_boundary_crossed"] is True
+    assert boundary["local_model_call_made"] is True
+    assert boundary["external_call_made"] is False
+    assert boundary["mutation_performed"] is False
+    assert boundary["publication_performed"] is False
