@@ -1,12 +1,12 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.7
-focus: Current-session bootstrap refresh for M20.3 RED start readiness
+version: v0.0.8
+focus: M21.2 traceability coverage CLI wrapper Prepare
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: MB-M20-3-T001
+next_safe_task: MB-M21-2-T001
 remote_push_authorized: false
 live_external_action_authorized: false
-bootstrap_arguments: "omitted; target/profile inferred from Discord Hisys thread context"
-baseline_head: "a6d310b docs: prepare codebase bundle enrichment increment"
+bootstrap_arguments: "follow-on Prepare inferred from user go after M21.1 completion"
+baseline_head: "6e5a1ce feat: add traceability coverage report"

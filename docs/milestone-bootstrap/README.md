@@ -1,15 +1,10 @@
-# Milestone Bootstrap Current Package — v0.0.7
+# Milestone Bootstrap Package — v0.0.8
 
-Current-session `/bootstrap` refresh for the Hisys develop workspace.
+This package records a follow-on develop-profile Prepare increment for M21.2 after M21.1 completed at `6e5a1ce`.
 
-- Arguments: omitted; target/profile inferred from Discord Hisys thread context
-- Target workspace: `/home/cbchoi/workspaces/develop/repos/hisys`
 - Selected profile: `develop`
-- Focus: M20.3 RED start readiness after the M20.3 Prepare package
 - Formal Hisys result: `not_run_in_this_bootstrap`
 - Local advisory result: `RALPH_START_READY_WITH_CONTROLS`
-- Next safe task: `MB-M20-3-T001`
-- Implementation plan: `docs/plans/m20-codebase-domain-artifact-bridge-m20-3-implementation-tasks.md`
-- Production code in this bootstrap: none
+- Next safe task: `MB-M21-2-T001` — write and observe the RED CLI smoke for `hisys traceability-coverage`.
+- External/live authority: not authorized
 - Remote push: not authorized
-- tmux/background agent: not used

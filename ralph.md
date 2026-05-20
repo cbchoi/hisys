@@ -1946,6 +1946,28 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.2 traceability coverage CLI wrapper Prepare
+
+- Phase completed: Prepare/document-RED for M21.2 after M21.1 completed at `6e5a1ce feat: add traceability coverage report`.
+- Baseline inspected: branch `dars`, ahead 34 before Prepare writes; current M21.1 reporter in `src/hisys/operations/traceability_coverage.py`; standalone wrapper in `scripts/report_traceability_coverage.py`; CLI parser/dispatcher in `src/hisys/cli/main.py`; CLI tests in `tests/unit/test_domain_cli.py`.
+- Decision: M21.2 should be a thin `hisys traceability-coverage` CLI wrapper around the existing M21.1 local advisory reporter. Do not add richer SRS/SDD/IDD/STD parsing, live access, credential resolution, publication authority, or report semantic changes in this increment.
+- Document-RED artifact: created `docs/plans/m21-2-traceability-coverage-cli-wrapper-implementation-tasks.md` plus milestone-bootstrap `v0.0.8` artifacts. The planned first RED is `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_traceability_coverage_cli_writes_runtime_boundary_report -q`, expected to fail because argparse rejects `traceability-coverage` or no dispatcher exists.
+- Baseline validation before writes: traceability/domain/CLI focused gate 31 passed; traceability validator OK.
+- Quality gate result: pass — traceability/domain/CLI focused gate 31 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=562 skipped_files=0 hit_count=0`; structural bootstrap parser passed; `git diff --check` clean.
+- Potential issues / open items: (a) `scripts/report_traceability_coverage.py` currently owns `load_repo_traceability_anchors`; implementation may import it minimally or move it into operations only if needed. (b) The CLI wrapper must preserve advisory-only/human-review-required/no-raw-source/no-external-call flags. (c) Richer traceability parsers remain later M21 backlog, not M21.2.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M21.2` Task 1 RED.
+- Stop condition: Prepare/document-RED checkpoint reached; production CLI behavior remains gated by future RED test.
+- Commit pending: `docs: prepare traceability coverage CLI wrapper`.
+
+Resume checkpoint:
+- Current HEAD: 6e5a1ce feat: add traceability coverage report
+- Working tree: M21.2 plan, milestone-bootstrap artifacts, and `ralph.md` modified until commit
+- Last completed milestone/task: M21.2 Prepare/document-RED
+- Next safe task: `MB-M21-2-T001` / M21.2 Task 1 RED CLI smoke
+- Next command to run: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_traceability_coverage_cli_writes_runtime_boundary_report -q`
+- Quality gate status: pass — traceability/domain/CLI 31 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; structural parser passed; `git diff --check` clean
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.1 traceability coverage report (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for M21.1 Traceability Coverage Report after QUEUE-REFILL-PREP selected it as the safest M21 local-only increment.

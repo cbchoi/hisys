@@ -1,0 +1,11 @@
+version: v0.0.8
+testcases:
+  - id: TC-M21-2-CLI-RED
+    command: PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_traceability_coverage_cli_writes_runtime_boundary_report -q
+    expected_red: unknown traceability-coverage command or missing dispatcher
+  - id: TC-M21-2-FOCUSED-GREEN
+    command: PYTHONPATH=src pytest tests/unit/test_traceability_coverage.py tests/unit/test_domain_cli.py -q
+    expected_green: traceability coverage unit tests and domain CLI tests pass
+  - id: TC-M21-2-GOVERNANCE
+    command: python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check
+    expected_green: traceability OK, secret hit_count=0, whitespace clean

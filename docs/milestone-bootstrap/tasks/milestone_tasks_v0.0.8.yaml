@@ -1,0 +1,21 @@
+version: v0.0.8
+milestone: M21.2 traceability coverage CLI wrapper
+profile: develop
+tasks:
+  - id: MB-M21-2-T001
+    title: RED CLI smoke for traceability-coverage command
+    status: next
+    command: PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_traceability_coverage_cli_writes_runtime_boundary_report -q
+    expected_result: argparse unknown command or missing dispatcher failure
+  - id: MB-M21-2-T002
+    title: Minimal GREEN parser and dispatcher wrapper
+    status: pending
+    files:
+      - src/hisys/cli/main.py
+      - tests/unit/test_domain_cli.py
+  - id: MB-M21-2-T003
+    title: Documentation, validation, and local commit
+    status: pending
+    files:
+      - docs/traceability/README.md
+      - ralph.md

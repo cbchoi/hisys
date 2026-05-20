@@ -1,0 +1,15 @@
+{
+  "constraints": [
+    "local_only",
+    "advisory_only",
+    "no_external_call",
+    "no_remote_push",
+    "no_credentials"
+  ],
+  "formal_hisys_execution_requested": false,
+  "objective": "Prepare M21.2 traceability coverage CLI wrapper",
+  "schema_id": "hisys.milestone_bootstrap.request",
+  "selected_profile": "develop",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "version": "v0.0.8"
+}
