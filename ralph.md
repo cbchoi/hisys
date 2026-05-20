@@ -1946,6 +1946,31 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — Current-session bootstrap refresh for M20.3 RED start readiness
+
+- Phase completed: `/bootstrap` current-session readiness refresh with omitted arguments; target/profile inferred from Discord Hisys thread context as `/home/cbchoi/workspaces/develop/repos/hisys`, selected profile `develop`.
+- Controlled anchors checked: Git branch `dars`; HEAD `a6d310b docs: prepare codebase bundle enrichment increment`; previous milestone-bootstrap current package `v0.0.6`; M20.3 implementation plan `docs/plans/m20-codebase-domain-artifact-bridge-m20-3-implementation-tasks.md`; latest M20.3 Ralph Prepare handoff.
+- Bootstrap artifacts added/updated: milestone-bootstrap current package bumped to `v0.0.7` with current-session report, task YAML, testcase YAML, quality gate, readiness decision, Hisys request/result, and validation log.
+- Local advisory readiness: `RALPH_START_READY_WITH_CONTROLS`.
+- Formal Hisys result: `not_run_in_this_bootstrap`; no formal Hisys execution was claimed.
+- Next safe task: `MB-M20-3-T001`, write and observe RED `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_codebase_domain_result_enriches_complete_local_bundle -q`.
+- RED observed: n/a for bootstrap-only refresh.
+- GREEN observed: n/a for production code; baseline domain and DARS regressions are rerun in the validation gate.
+- Quality gate result: pass — domain gate 17 passed; DARS critic-panel focused regression 48 passed; traceability validator OK; secret scan `scanned_files=548 skipped_files=0 hit_count=0`; structural bootstrap parser passed; `git diff --check` clean.
+- Stop condition: bootstrap-only boundary reached; no tmux/background agent, no production code, no remote push, no live external action, no credentials.
+- Commit pending: `docs: refresh M20.3 bootstrap readiness`.
+
+Resume checkpoint:
+- Current HEAD: a6d310b docs: prepare codebase bundle enrichment increment
+- Working tree: milestone-bootstrap v0.0.7 artifacts and `ralph.md` modified until committed
+- Last completed milestone/task: current-session bootstrap refresh for M20.3 RED start readiness
+- Current in-progress task: validate and commit `docs: refresh M20.3 bootstrap readiness`
+- RED observed: n/a for bootstrap-only; future RED command is `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_codebase_domain_result_enriches_complete_local_bundle -q`
+- GREEN observed: n/a for production code
+- Quality gate status: pass — domain 17 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; structural parser passed; `git diff --check` clean
+- Next command to run: stage bootstrap refresh files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M20.3 safe codebase bundle load/result enrichment Prepare
 
 - Phase completed: Prepare / document-RED / Gate for `M20.3`, the safe local bundle load and `DomainInvestigationResult` enrichment follow-on after `M20.2` role-level bundle gating. This is a docs/bootstrap-only checkpoint; no production code or RED tests were written in this iteration.

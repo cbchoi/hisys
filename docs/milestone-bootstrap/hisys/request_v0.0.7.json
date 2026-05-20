@@ -1,0 +1,18 @@
+{
+  "arguments": "omitted; inferred from Discord Hisys thread context",
+  "baseline_head": "a6d310b docs: prepare codebase bundle enrichment increment",
+  "constraints": {
+    "credential_use_authorized": false,
+    "live_external_action_authorized": false,
+    "remote_push_authorized": false,
+    "tmux_or_background_agent_authorized": false
+  },
+  "detected_profile": "develop",
+  "focus": "current-session bootstrap refresh for M20.3 RED start readiness",
+  "formal_hisys_requested": false,
+  "next_safe_task": "MB-M20-3-T001",
+  "schema_id": "hisys.bootstrap.request",
+  "selected_profile": "develop",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "version": "v0.0.7"
+}

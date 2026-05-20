@@ -1,0 +1,26 @@
+version: v0.0.7
+focus: M20.3 RED start readiness after current-session bootstrap refresh
+tasks:
+  - id: MB-M20-3-T001
+    title: RED complete local bundle enriches DomainInvestigationResult evidence
+    type: code-red
+    files:
+      - tests/unit/test_codebase_domain_artifact_bridge.py
+      - src/hisys/domain/use_cases.py
+      - src/hisys/domain/adapters.py
+      - src/hisys/schemas/domain_investigation.py
+    command: PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_codebase_domain_result_enriches_complete_local_bundle -q
+    expected_red: missing enrichment helper/seam or assertion failure because no codebase_analysis_bundle evidence package exists yet
+    boundary: fixture/local-only; no live external action; no CLI change
+  - id: MB-M20-3-T002
+    title: GREEN safe-loader evidence package enrichment
+    type: code-green
+    depends_on: MB-M20-3-T001
+  - id: MB-M20-3-T003
+    title: RED/GREEN unreadable bundle maps to needs_more_evidence
+    type: code-red-green
+    depends_on: MB-M20-3-T002
+  - id: MB-M20-3-T004
+    title: traceability Ralph validation and local commit
+    type: docs-gate-commit
+    depends_on: MB-M20-3-T003
