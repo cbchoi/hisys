@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.4-CLI codebase-map-freshness-review CLI wrapper Prepare
+
+- Phase completed: Prepare/document-RED for the M21.4-CLI thin CLI wrapper after the M21.4 pure checker shipped at `1cb2857 feat: add codebase map freshness review`.
+- Controlled anchors checked: `docs/plans/m21-4-codebase-map-freshness-drift-review-implementation-tasks.md`; `src/hisys/operations/codebase_map_freshness.py`; `src/hisys/cli/main.py` `_cmd_runtime_boundary_check` and `runtime_boundary_check` parser block (M21.3-CLI precedent); `tests/unit/test_domain_cli.py` `test_runtime_boundary_check_cli_writes_consistency_report` (M21.3-CLI test shape).
+- Baseline inspected: branch `dars`, HEAD `1cb2857 feat: add codebase map freshness review`, working tree clean before Prepare writes. Extended focused gate 43 passed pre-edit.
+- Decision: M21.4-CLI ships as a thin argparse subparser plus dispatcher in `src/hisys/cli/main.py`, mirroring the M21.3-CLI pattern. The CLI requires `--current-date YYYY-MM-DD` and `--max-age-days <int>` (no default), forwarding both to the pure checker; `--current-head-short` is optional and recorded verbatim. `--scan` for multi-date drift is deferred. Exit code is always `0`; advisory-only semantics preserved.
+- Document-RED artifact: created `docs/plans/m21-4-cli-codebase-map-freshness-review-implementation-tasks.md`. Planned first RED is `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_codebase_map_freshness_review_cli_writes_report -q`, expected to fail with `SystemExit: 2` because argparse will reject `codebase-map-freshness-review` as an unknown subcommand.
+- Boundary: local docs/control preparation only. No production code, no remote push, no live external action, no credential lookup, no system-clock surface, no `.git/` read. The future CLI must not reshape report semantics, must not expand the partition vocabulary, and must not raise the exit code on stale/incomplete counts.
+- Quality gate result: pass — extended focused gate 43 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=587 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) `--scan` multi-date drift remains deferred to preserve deterministic, single-instance reporting. (b) Exit-code policy is advisory-only `0` regardless of stale/incomplete counts; raising exit code on issues requires a separate RED and explicit traceability update. (c) The CLI must use `date.fromisoformat` on `--current-date`; it must never call `date.today()`.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M21.4-CLI` Task 1 RED — author the failing CLI smoke test.
+- Stop condition: Prepare/document-RED checkpoint reached; production CLI behavior remains gated by future RED test.
+- Commit pending: `docs: prepare codebase-map-freshness-review cli wrapper`.
+
+Resume checkpoint:
+- Current HEAD: 1cb2857 feat: add codebase map freshness review
+- Working tree: M21.4-CLI plan and `ralph.md` modified until commit
+- Last completed milestone/task: M21.4-CLI Prepare/document-RED
+- Next safe task: `M21.4-CLI` Task 1 RED — author failing CLI smoke test in `tests/unit/test_domain_cli.py`
+- Next command to run after commit: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_codebase_map_freshness_review_cli_writes_report -q`
+- Quality gate status: pass — extended focused gate 43 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.4 codebase map freshness review (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for M21.4 after Prepare commit `8eff03a docs: prepare codebase map freshness review`.
