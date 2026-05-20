@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M21.6-CLI change-impact CLI wrapper Prepare
+
+- Phase completed: Prepare/document-RED for the M21.6-CLI thin CLI wrapper after the M21.6 pure analyzer shipped at `7c4d5d0 feat: add change-impact analyzer`.
+- Controlled anchors checked: `docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md`; `src/hisys/operations/change_impact.py`; `src/hisys/cli/main.py` `_cmd_codebase_map_freshness_review` and `codebase_map_freshness_review` parser block (M21.4-CLI precedent); `tests/unit/test_domain_cli.py` `test_codebase_map_freshness_review_cli_writes_report` (M21.4-CLI test shape); `src/hisys/operations/traceability_coverage.py` (`load_repo_traceability_anchors`).
+- Baseline inspected: branch `dars`, HEAD `7c4d5d0 feat: add change-impact analyzer`, working tree clean before Prepare writes. Extended focused gate 51 passed pre-edit; DARS focused gate 50 passed; traceability validator OK.
+- Decision: M21.6-CLI ships as a thin argparse subparser plus dispatcher in `src/hisys/cli/main.py`, mirroring the M21.4-CLI pattern. Changed refs come from repeatable `--changed-ref` flags only; a `--from-git-diff` / `--scan` mode is deferred to a separate M21.6-DIFFCAP increment. `--repo` defaults to the current working directory and is used only by the bounded `load_repo_traceability_anchors` loader. `--current-head-short` is optional and recorded verbatim. Exit code is always `0`; advisory-only semantics preserved. The CLI never calls `date.today()`, never reads `.git/`, never shells out to `git diff` / `git log`, and never calls `subprocess`.
+- Document-RED artifact: created `docs/plans/m21-6-cli-change-impact-cli-wrapper-implementation-tasks.md`. Planned first RED is `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_change_impact_cli_writes_report -q`, expected to fail with `SystemExit: 2` because argparse will reject `change-impact` as an unknown subcommand.
+- Boundary: local docs/control preparation only. No production code, no tests, no remote push, no live external action, no credential lookup, no system-clock surface, no `.git/` read, no `subprocess`. The future CLI must not reshape report semantics, must not expand the impact vocabulary, and must not raise the exit code on impact/unsafe-ref counts.
+- Quality gate result: pass — extended focused gate 51 passed; DARS focused gate 50 passed; governance current-state 1 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=644 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) `--from-git-diff` / `--scan` modes for local diff capture remain deferred to preserve the no-`subprocess` boundary. (b) Exit-code policy is advisory-only `0` regardless of impact/unsafe-ref counts; raising exit code on issues requires a separate RED and explicit traceability update. (c) `load_repo_traceability_anchors` is called with `--repo` (defaulting to CWD); a future hardening RED could pin error behavior when the supplied repo does not contain expected anchor files.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M21.6-CLI` Task 1 RED — author the failing CLI smoke test.
+- Stop condition: Prepare/document-RED checkpoint reached; production CLI behavior remains gated by future RED test.
+- Commit pending: `docs: prepare change-impact cli wrapper`.
+
+Resume checkpoint:
+- Current HEAD: 7c4d5d0 feat: add change-impact analyzer
+- Working tree: M21.6-CLI plan and `ralph.md` modified until commit
+- Last completed milestone/task: M21.6-CLI Prepare/document-RED
+- Next safe task: `M21.6-CLI` Task 1 RED — author failing CLI smoke test in `tests/unit/test_domain_cli.py`
+- Next command to run after commit: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_change_impact_cli_writes_report -q`
+- Quality gate status: pass — extended focused gate 51 passed; DARS 50 passed; governance 1 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-21 — M21.6 change-impact analyzer (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for M21.6 after Prepare commit `d75ca1a docs: prepare change-impact analyzer`.
