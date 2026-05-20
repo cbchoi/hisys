@@ -21,11 +21,11 @@ Boundary invariants:
 - ``boundary_violation_detected`` becomes ``True`` only when the input report
   exposes a non-empty ``unsafe_*`` or ``outside_runtime_boundary_*`` partition.
 
-After M21.8.1.B, three of the five M21.8 PREP question types are supported:
+After M21.8.1.C, four of the five M21.8 PREP question types are supported:
 ``traceability_coverage_review``, ``runtime_boundary_consistency_review``,
-and ``codebase_map_freshness_review``. The remaining two
-(``change_impact_review`` and ``architecture_candidate_review``) raise
-``NotImplementedError`` and are added in follow-up increments.
+``codebase_map_freshness_review``, and ``change_impact_review``. The remaining
+one (``architecture_candidate_review``) raises ``NotImplementedError`` and is
+added in a follow-up increment.
 """
 
 from __future__ import annotations
@@ -54,9 +54,9 @@ _SUPPORTED_QUESTION_TYPES = {
     "traceability_coverage_review",
     "runtime_boundary_consistency_review",
     "codebase_map_freshness_review",
+    "change_impact_review",
 }
 _DEFERRED_QUESTION_TYPES = {
-    "change_impact_review",
     "architecture_candidate_review",
 }
 
@@ -141,6 +141,49 @@ def _freshness_review_summary(freshness_report: dict[str, Any]) -> EvidenceSumma
     )
 
 
+def _change_impact_review_summary(
+    change_impact_report: dict[str, Any],
+    coverage_report: dict[str, Any] | None,
+) -> EvidenceSummary:
+    unsafe = list(change_impact_report.get("unsafe_changed_refs") or [])
+    unmapped = list(change_impact_report.get("unmapped_changed_refs") or [])
+    impacted_reqs = list(change_impact_report.get("impacted_requirement_ids") or [])
+    impacted_tests = list(change_impact_report.get("impacted_test_id_or_refs") or [])
+    impacted_design = list(
+        change_impact_report.get("impacted_design_or_interface_refs") or []
+    )
+    impacted_runtime = list(
+        change_impact_report.get("impacted_runtime_boundary_refs") or []
+    )
+
+    boundary_violation = bool(unsafe)
+    has_impact_signal = bool(
+        impacted_reqs or impacted_tests or impacted_design or impacted_runtime
+    )
+    claims_covered = (
+        (not boundary_violation) and (not unmapped) and has_impact_signal
+    )
+
+    artifact_refs: list[str] = []
+    for ref in (
+        *unsafe,
+        *impacted_reqs,
+        *impacted_tests,
+        *impacted_design,
+        *impacted_runtime,
+        *unmapped,
+    ):
+        if ref not in artifact_refs:
+            artifact_refs.append(ref)
+
+    return EvidenceSummary(
+        artifact_refs=artifact_refs,
+        claims_covered=claims_covered,
+        boundary_violation_detected=boundary_violation,
+        contradiction_checked=coverage_report is not None,
+    )
+
+
 def build_code_analysis_evidence_summary(
     *,
     question_type: str,
@@ -171,6 +214,15 @@ def build_code_analysis_evidence_summary(
                 "codebase_map_freshness_review requires freshness_report payload"
             )
         return _freshness_review_summary(freshness_report)
+    if question_type == "change_impact_review":
+        if change_impact_report is None:
+            raise ValueError(
+                "change_impact_review requires change_impact_report payload"
+            )
+        return _change_impact_review_summary(
+            change_impact_report=change_impact_report,
+            coverage_report=coverage_report,
+        )
     if question_type in _DEFERRED_QUESTION_TYPES:
         raise NotImplementedError(
             f"{question_type} mapping is deferred to a follow-up M21.8.1 increment"

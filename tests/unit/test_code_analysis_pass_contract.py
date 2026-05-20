@@ -125,7 +125,6 @@ def test_build_code_analysis_evidence_summary_requires_boundary_for_consistency_
 @pytest.mark.parametrize(
     "question_type",
     [
-        "change_impact_review",
         "architecture_candidate_review",
     ],
 )
@@ -215,6 +214,95 @@ def test_build_code_analysis_evidence_summary_requires_freshness_for_freshness_r
         build_code_analysis_evidence_summary(
             question_type="codebase_map_freshness_review",
             freshness_report=None,
+        )
+
+
+def _m21_6_change_impact_payload_clean() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.change_impact.v1",
+        "changed_ref_count": 2,
+        "impacted_requirement_ids": ["HISYS-FR-DOM-001"],
+        "impacted_test_id_or_refs": ["HISYS-T-024"],
+        "impacted_design_or_interface_refs": ["docs/some-design.md"],
+        "impacted_runtime_boundary_refs": [],
+        "unmapped_changed_refs": [],
+        "unsafe_changed_refs": [],
+    }
+
+
+def _m21_6_change_impact_payload_unsafe() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.change_impact.v1",
+        "changed_ref_count": 3,
+        "impacted_requirement_ids": [],
+        "impacted_test_id_or_refs": [],
+        "impacted_design_or_interface_refs": [],
+        "impacted_runtime_boundary_refs": [],
+        "unmapped_changed_refs": ["src/hisys/unrelated.py"],
+        "unsafe_changed_refs": ["/etc/passwd"],
+    }
+
+
+def _m21_6_change_impact_payload_with_unmapped() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.change_impact.v1",
+        "changed_ref_count": 2,
+        "impacted_requirement_ids": ["HISYS-FR-DOM-001"],
+        "impacted_test_id_or_refs": [],
+        "impacted_design_or_interface_refs": [],
+        "impacted_runtime_boundary_refs": [],
+        "unmapped_changed_refs": ["src/hisys/unrelated.py"],
+        "unsafe_changed_refs": [],
+    }
+
+
+def test_build_code_analysis_evidence_summary_passes_clean_change_impact_review() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="change_impact_review",
+        change_impact_report=_m21_6_change_impact_payload_clean(),
+    )
+    assert summary.boundary_violation_detected is False
+    assert summary.claims_covered is True
+    assert summary.contradiction_checked is False
+    assert "HISYS-FR-DOM-001" in summary.artifact_refs
+    assert "docs/some-design.md" in summary.artifact_refs
+
+
+def test_build_code_analysis_evidence_summary_marks_boundary_violation_on_unsafe_changed_refs() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="change_impact_review",
+        change_impact_report=_m21_6_change_impact_payload_unsafe(),
+    )
+    assert summary.boundary_violation_detected is True
+    assert summary.claims_covered is False
+    assert "/etc/passwd" in summary.artifact_refs
+
+
+def test_build_code_analysis_evidence_summary_blocks_change_impact_with_unmapped_refs() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="change_impact_review",
+        change_impact_report=_m21_6_change_impact_payload_with_unmapped(),
+    )
+    assert summary.boundary_violation_detected is False
+    assert summary.claims_covered is False
+    assert "src/hisys/unrelated.py" in summary.artifact_refs
+
+
+def test_build_code_analysis_evidence_summary_sets_contradiction_checked_when_coverage_provided() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="change_impact_review",
+        change_impact_report=_m21_6_change_impact_payload_clean(),
+        coverage_report=_m21_1_coverage_payload(),
+    )
+    assert summary.contradiction_checked is True
+    assert summary.claims_covered is True
+
+
+def test_build_code_analysis_evidence_summary_requires_change_impact_for_change_impact_review() -> None:
+    with pytest.raises(ValueError, match="change_impact_report"):
+        build_code_analysis_evidence_summary(
+            question_type="change_impact_review",
+            change_impact_report=None,
         )
 
 
