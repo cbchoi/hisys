@@ -1,13 +1,12 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.10
-focus: current-session bootstrap refresh for M21.3 runtime-boundary consistency Prepare
+version: v0.0.11
+focus: M21.5 regression benchmark fixture repositories Prepare/document-RED
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: MB-M21-3-PREP
+next_safe_task: MB-M21-5-RED
 remote_push_authorized: false
 live_external_action_authorized: false
-bootstrap_arguments: "omitted; inferred target/profile from Discord Hisys develop thread and live repo state"
-baseline_head: "028edfb docs: plan m21 advanced codebase roadmap"
-no_tmux_or_background_agent: true
+bootstrap_arguments: "계획수립; inferred as next M21 safe Prepare after M21.4 completion"
+baseline_head: "d992905 feat: add codebase-map-freshness-review cli wrapper"

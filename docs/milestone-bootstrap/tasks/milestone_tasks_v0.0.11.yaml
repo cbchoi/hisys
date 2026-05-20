@@ -1,0 +1,26 @@
+version: v0.0.11
+milestone: M21
+baseline_head: "d992905 feat: add codebase-map-freshness-review cli wrapper"
+implementation_plan_ref: docs/plans/m21-5-regression-benchmark-fixture-repositories-implementation-tasks.md
+tasks:
+  - id: MB-M21-5-RED
+    title: Write failing regression benchmark operation test
+    status: next
+    type: tdd_red
+    command: "PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py::test_codebase_regression_benchmarks_report_expected_outcomes -q"
+    expected_failure: "ModuleNotFoundError: No module named 'hisys.operations.codebase_regression_benchmarks'"
+  - id: MB-M21-5-GREEN
+    title: Implement minimal local advisory benchmark operation and writer
+    status: planned
+    type: tdd_green
+    depends_on: [MB-M21-5-RED]
+  - id: MB-M21-5-FIXTURES
+    title: Add minimal deterministic fixture repositories and manifest
+    status: planned
+    type: fixture
+    depends_on: [MB-M21-5-GREEN]
+  - id: MB-M21-5-DOCS
+    title: Update traceability and Ralph after GREEN
+    status: planned
+    type: docs
+    depends_on: [MB-M21-5-FIXTURES]

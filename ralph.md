@@ -1946,6 +1946,28 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.5 regression benchmark fixture repositories Prepare
+
+- Phase completed: Prepare/document-RED planning for M21.5 after M21.4 codebase-map-freshness-review CLI wrapper completed at `d992905 feat: add codebase-map-freshness-review cli wrapper`.
+- Controlled anchors checked: `docs/plans/m21-roadmap-implementation-plan.md`; latest M21.3/M21.4 operation patterns in `src/hisys/operations/runtime_boundary_consistency.py` and `src/hisys/operations/codebase_map_freshness.py`; tests `tests/unit/test_runtime_boundary_consistency.py`, `tests/unit/test_codebase_map_freshness.py`, `tests/unit/test_codebase_symbol_index.py`; latest branch state and bootstrap package.
+- Decision: M21.5 should create a manifest-driven, local-only regression benchmark fixture surface before M21.6 change-impact work. The selected shape is a pure advisory benchmark operation plus minimal synthetic fixture repositories under `tests/fixtures/codebase_repos/`; no live clone/network, credential lookup, broad raw source archival, runtime repair/delete, CLI wrapper, or publication is authorized in this Prepare package.
+- Document-RED artifact: created `docs/plans/m21-5-regression-benchmark-fixture-repositories-implementation-tasks.md` plus milestone-bootstrap `v0.0.11` artifacts. Planned first RED is `PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py::test_codebase_regression_benchmarks_report_expected_outcomes -q`, expected to fail with `ModuleNotFoundError` because `hisys.operations.codebase_regression_benchmarks` does not exist.
+- Boundary: local docs/control preparation only. No production code, no fixture directories, no CLI surface, no remote push, and no live external action in this increment.
+- Quality gate result: pass — structural bootstrap parser passed; profile/version/task/ref checks passed; extended focused gate 44 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=596 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) fixture manifests must keep refs relative and bounded under `tests/fixtures/codebase_repos/`; (b) benchmark reports must store counts/status/refs only and not raw source content; (c) analyzer replay should remain deterministic and fixture-local; (d) a future CLI wrapper requires a separate Prepare/RED increment.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M21.5` Task 1 RED — author and observe the failing benchmark operation test.
+- Stop condition: Prepare/document-RED checkpoint reached; production benchmark behavior remains gated by future RED test.
+- Commit pending: `docs: prepare regression benchmark fixtures`.
+
+Resume checkpoint:
+- Current HEAD: d992905 feat: add codebase-map-freshness-review cli wrapper
+- Working tree: M21.5 plan, milestone-bootstrap v0.0.11 artifacts, and `ralph.md` modified until commit
+- Last completed milestone/task: M21.5 Prepare/document-RED
+- Next safe task: `MB-M21-5-RED` / write failing benchmark operation test
+- Next command after commit: `PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py::test_codebase_regression_benchmarks_report_expected_outcomes -q`
+- Quality gate status: pass — structural parser passed; extended focused gate 44 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.4-CLI codebase-map-freshness-review CLI wrapper (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for M21.4-CLI after Prepare commit `15f2453 docs: prepare codebase-map-freshness-review cli wrapper`.

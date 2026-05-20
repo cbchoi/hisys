@@ -1,0 +1,20 @@
+{
+  "baseline_head": "d992905 feat: add codebase-map-freshness-review cli wrapper",
+  "constraints": [
+    "local_only",
+    "advisory_only",
+    "no_remote_push",
+    "no_live_clone",
+    "no_network",
+    "no_credentials",
+    "no_raw_source_archival",
+    "no_cli_in_prepare"
+  ],
+  "formal_hisys_execution_requested": false,
+  "implementation_plan_ref": "docs/plans/m21-5-regression-benchmark-fixture-repositories-implementation-tasks.md",
+  "next_safe_task": "MB-M21-5-RED",
+  "profile": "develop",
+  "request_type": "follow_on_prepare",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "version": "v0.0.11"
+}

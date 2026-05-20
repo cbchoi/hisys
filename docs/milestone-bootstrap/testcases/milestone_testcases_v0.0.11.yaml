@@ -1,0 +1,18 @@
+version: v0.0.11
+testcases:
+  - id: M21-5-TC-001
+    name: benchmark_report_expected_outcomes
+    command: "PYTHONPATH=src pytest tests/unit/test_codebase_regression_benchmarks.py::test_codebase_regression_benchmarks_report_expected_outcomes -q"
+    red_expected: "ModuleNotFoundError before production module exists"
+  - id: M21-5-TC-002
+    name: fixture_manifest_paths_are_bounded
+    method: load benchmark_manifest.json after fixtures exist
+    pass_condition: all fixture refs are relative and stay under tests/fixtures/codebase_repos
+  - id: M21-5-TC-003
+    name: benchmark_report_preserves_advisory_boundary
+    method: inspect JSON/Markdown runtime-boundary report
+    pass_condition: advisory_only=true, requires_human_review=true, external_call_made=false, mutation_performed=false, raw_source_content_persisted=false
+  - id: M21-5-TC-004
+    name: no_live_clone_or_network
+    method: code review and tests
+    pass_condition: implementation uses supplied local fixture refs only and does not call network, subprocess clone, or credential APIs
