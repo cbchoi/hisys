@@ -1,0 +1,17 @@
+{
+  "baseline_head": "fa54acd feat: add traceability coverage CLI wrapper",
+  "constraints": [
+    "local_only",
+    "advisory_only",
+    "no_remote_push",
+    "no_live_external_action",
+    "no_credentials",
+    "no_raw_source_archival"
+  ],
+  "formal_hisys_execution_requested": false,
+  "next_safe_task": "MB-M21-3-PREP",
+  "profile": "develop",
+  "request_type": "m21_roadmap_readiness",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "version": "v0.0.9"
+}

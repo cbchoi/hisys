@@ -1,10 +1,7 @@
-# Milestone Bootstrap Package — v0.0.8
+# Hisys Milestone Bootstrap Package
 
-This package records a follow-on develop-profile Prepare increment for M21.2 after M21.1 completed at `6e5a1ce`.
+Current package: `v0.0.9`.
 
-- Selected profile: `develop`
-- Formal Hisys result: `not_run_in_this_bootstrap`
-- Local advisory result: `RALPH_START_READY_WITH_CONTROLS`
-- Next safe task: `MB-M21-2-T001` — write and observe the RED CLI smoke for `hisys traceability-coverage`.
-- External/live authority: not authorized
-- Remote push: not authorized
+This package records local advisory readiness artifacts for the Hisys develop repository. The current focus is the M21 advanced codebase-analysis roadmap after M21.1 and M21.2 completed.
+
+See `index.md` for the current artifact set.

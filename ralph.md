@@ -1946,6 +1946,28 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21 roadmap planning after traceability coverage CLI wrapper
+
+- Phase completed: roadmap/control planning for the remaining M21 advanced codebase-analysis backlog after M21.1 and M21.2 completed.
+- Controlled anchors checked: current HEAD `fa54acd feat: add traceability coverage CLI wrapper`; `ralph.md` Milestone M21 backlog; completed M21.1/M21.2 plans; `docs/traceability/README.md`; operation surfaces under `src/hisys/operations/`; CLI surface in `src/hisys/cli/main.py`; existing focused validation commands.
+- Decision: sequence remaining M21 work as M21.3 runtime-boundary consistency checker, M21.4 codebase map freshness/drift review, M21.5 regression benchmark fixture repositories, M21.6 change-impact analyzer, then M21.7+ architecture/pass-contract candidates. External/process/subagent candidates remain human-gated.
+- Document-RED artifact: created `docs/plans/m21-roadmap-implementation-plan.md` plus milestone-bootstrap `v0.0.9` artifacts. The next executable task is `MB-M21-3-PREP`, which should create `docs/plans/m21-3-runtime-boundary-consistency-checker-implementation-tasks.md` before any production checker module exists.
+- Boundary: M21 remains local-only/advisory-only. No remote push, live external action, credential lookup, raw source archival, process-spawning adapter, LSP server, or subagent protocol is authorized by this roadmap.
+- Quality gate result: pass — structural bootstrap parser passed; traceability/domain/CLI focused gate 32 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=571 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: M21.3 must remain report-only and must not repair/delete runtime artifacts; M21.4/M21.6 should consume refs/counts and fixture data rather than embedding raw code; M21.7+ recommendation/generator wording requires an advisory-only claim boundary.
+- Continue decision: after committing this roadmap package, next safe item is M21.3-PREP runtime-boundary consistency checker Prepare/document-RED.
+- Stop condition: roadmap planning boundary reached; production M21.3 code remains gated by future RED test.
+- Commit pending: `docs: plan m21 advanced codebase roadmap`.
+
+Resume checkpoint:
+- Current HEAD: fa54acd feat: add traceability coverage CLI wrapper
+- Working tree: M21 roadmap plan, milestone-bootstrap v0.0.9 artifacts, and `ralph.md` modified until commit
+- Last completed milestone/task: M21 roadmap planning
+- Next safe task: `MB-M21-3-PREP` / runtime-boundary consistency checker Prepare
+- Next command to run after commit: create `docs/plans/m21-3-runtime-boundary-consistency-checker-implementation-tasks.md`
+- Quality gate status: pass — structural parser passed; traceability/domain/CLI 32 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.2 traceability coverage CLI wrapper (RED -> GREEN)
 
 - Phase completed: RED/GREEN/docs for M21.2 after Prepare commit `2c19717 docs: prepare traceability coverage CLI wrapper`.

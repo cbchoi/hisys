@@ -1,0 +1,44 @@
+version: v0.0.9
+milestone: M21
+baseline_head: "fa54acd feat: add traceability coverage CLI wrapper"
+tasks:
+  - id: MB-M21-3-PREP
+    title: Prepare runtime-boundary consistency checker
+    status: next
+    type: document_red
+    output_plan: docs/plans/m21-3-runtime-boundary-consistency-checker-implementation-tasks.md
+    first_red: "PYTHONPATH=src pytest tests/unit/test_runtime_boundary_consistency.py::test_runtime_boundary_consistency_flags_missing_and_unsafe_refs -q"
+    expected_red: "ModuleNotFoundError for hisys.operations.runtime_boundary_consistency"
+  - id: MB-M21-3-GREEN
+    title: Implement pure runtime-boundary consistency reporter
+    status: planned
+    type: tdd
+    depends_on: [MB-M21-3-PREP]
+  - id: MB-M21-3-CLI
+    title: Add thin runtime-boundary-check CLI wrapper
+    status: planned
+    type: tdd
+    depends_on: [MB-M21-3-GREEN]
+  - id: MB-M21-4-PREP
+    title: Prepare codebase map freshness and drift review
+    status: planned
+    type: document_red
+    depends_on: [MB-M21-3-GREEN]
+  - id: MB-M21-5-PREP
+    title: Prepare regression benchmark fixture repositories
+    status: planned
+    type: document_red
+    depends_on: [MB-M21-4-PREP]
+  - id: MB-M21-6-PREP
+    title: Prepare change-impact analyzer
+    status: planned
+    type: document_red
+    depends_on: [MB-M21-5-PREP]
+  - id: MB-M21-HUMAN-GATE
+    title: Gate external/process/subagent candidates
+    status: gated
+    type: human_decision
+    candidates:
+      - approved_oss_comparison_adapter
+      - optional_local_lsp_adapter
+      - subagent_evidence_collector_protocol

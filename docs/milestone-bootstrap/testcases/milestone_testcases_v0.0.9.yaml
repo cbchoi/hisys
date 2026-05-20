@@ -1,0 +1,18 @@
+version: v0.0.9
+testcases:
+  - id: M21-TC-ROADMAP-001
+    name: roadmap_sequence_matches_completed_baseline
+    method: inspect docs/plans/m21-roadmap-implementation-plan.md and ralph.md
+    pass_condition: M21.1 and M21.2 are marked complete and M21.3-PREP is the next safe task
+  - id: M21-TC-BOUNDARY-001
+    name: local_advisory_boundary_preserved
+    method: inspect roadmap boundary and stop conditions
+    pass_condition: no remote push, live external action, credential resolution, raw source archival, process adapter, or subagent protocol is authorized
+  - id: M21-TC-TDD-001
+    name: next_increment_has_explicit_red
+    method: inspect M21.3-PREP task
+    pass_condition: first RED command and expected missing-module failure are recorded
+  - id: M21-TC-GATE-001
+    name: validation_gate_defined
+    method: inspect quality gates
+    pass_condition: focused tests, DARS regression, traceability validation, secret scan, and diff check are listed
