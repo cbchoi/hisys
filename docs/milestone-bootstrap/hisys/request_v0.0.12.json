@@ -1,0 +1,24 @@
+{
+  "baseline_head": "6cbef3a",
+  "boundaries": {
+    "allowed_actions": "documentation_only",
+    "credential_lookup": false,
+    "external_api_call": false,
+    "live_model_call": false,
+    "production_code": false,
+    "remote_push": false,
+    "test_creation": false
+  },
+  "next_red": "PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_config.py::test_live_panel_activation_requires_human_approval_ref -q",
+  "request_context": "live DARS 패널 구성을 위한 계획 수립",
+  "requested_actions": [
+    "prepare_plan",
+    "bootstrap_artifacts",
+    "ralph_update",
+    "validation"
+  ],
+  "schema_id": "hisys.bootstrap.request",
+  "schema_version": "0.1.0",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "version": "v0.0.12"
+}

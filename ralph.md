@@ -4302,7 +4302,28 @@ continue.
 This block is informational for the next iteration. Ralph/Hermes does
 not execute `git push` itself.
 
+### 2026-05-20 — DARS live panel configuration Prepare
 
+- Phase completed: Prepare/document-RED planning for the controlled live DARS panel configuration line.
+- Request context: user asked to plan live DARS panel configuration. This entry treats "live" as crossing a runtime model boundary, with the first implementation target restricted to approved localhost-only local model calls and fake-server tests before any real local smoke.
+- Evidence scope: inspected current branch/head (`6cbef3a`), DARS panel runtime (`src/hisys/agents/dars_panel.py`), local DARS model-boundary runtime (`src/hisys/agents/dars.py`), DARS config validation (`src/hisys/agents/dars_config.py`), dispatch gate (`src/hisys/agents/dars_dispatch.py`), prior local DARS/ByeSys plan, panel runtime plan, and panel traceability matrix.
+- Artifacts added/updated: `docs/plans/dars-live-panel-configuration-implementation-tasks.md`; milestone-bootstrap `v0.0.12` package under `docs/milestone-bootstrap/`; this Ralph reflection entry.
+- Planned implementation sequence: M-CP-LIVE-1 activation packet/config validation; M-CP-LIVE-2 fake-server localhost model panel adapter bridge; M-CP-LIVE-3 CLI activation rehearsal; M-CP-LIVE-4 local smoke runbook; M-CP-LIVE-5 remote/external DARS policy packet deferred.
+- Boundary: no production code, no tests, no live model call, no credential lookup, no remote/external API, no browser/search/tool authorization, no mutation authority, no publication, no remote push. Current plan authorizes only the future first RED step.
+- RED expectation for the next implementation step: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_config.py::test_live_panel_activation_requires_human_approval_ref -q` should fail initially with `ModuleNotFoundError: No module named 'hisys.agents.dars_panel_live_config'`.
+- Quality gate result: pass — structural parse passed; focused DARS runtime/config/dispatch/panel regression `99 passed in 5.37s`; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=605 hit_count=0; `git diff --check` clean.
+- Continue decision: commit this docs/bootstrap Prepare package locally, then stop and wait for explicit approval before M-CP-LIVE-1 RED.
+
+Resume checkpoint:
+- Current HEAD: 6cbef3a docs: prepare regression benchmark fixtures
+- Working tree: live DARS panel Prepare docs/bootstrap/Ralph modified; ready for local commit
+- Last completed milestone/task: DARS live panel configuration Prepare artifact creation and validation
+- Current in-progress task: local commit for Prepare package
+- RED observed: n/a (document-RED planning only)
+- GREEN observed: n/a until future implementation
+- Quality gate status: pass — structural parse, focused 99/99, traceability OK, secret scan hit_count=0, diff-check clean
+- Next command to run: `git add docs/plans/dars-live-panel-configuration-implementation-tasks.md docs/milestone-bootstrap ralph.md && git commit -m "docs: prepare live dars panel configuration"`
+- Stop condition: after local commit; future M-CP-LIVE-1 implementation requires explicit go-ahead and must start with RED
 
 ## 16. Initial Next Action
 

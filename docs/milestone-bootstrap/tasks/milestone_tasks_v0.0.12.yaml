@@ -1,0 +1,35 @@
+version: v0.0.12
+focus: DARS live panel configuration Prepare/document-RED
+tasks:
+  - id: MB-DARS-LIVE-PREP-1
+    title: Inspect current DARS panel and local model boundary surfaces
+    status: completed
+    evidence:
+      - docs/plans/dars-critic-panel-platform-runtime-next.md
+      - docs/plans/2026-05-16-local-dars-byesys-provenance.md
+      - src/hisys/agents/dars_panel.py
+      - src/hisys/agents/dars.py
+      - src/hisys/agents/dars_config.py
+      - src/hisys/agents/dars_dispatch.py
+  - id: MB-DARS-LIVE-PREP-2
+    title: Create live DARS panel configuration implementation plan
+    status: completed
+    evidence:
+      - docs/plans/dars-live-panel-configuration-implementation-tasks.md
+  - id: MB-DARS-LIVE-PREP-3
+    title: Validate Prepare artifacts and preserve no-live-action boundary
+    status: pending_validation
+    evidence:
+      - docs/milestone-bootstrap/evidence/validation_log_v0.0.12.md
+  - id: MB-DARS-LIVE-1-RED
+    title: Future RED for live panel activation packet
+    status: queued
+    command: PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_config.py::test_live_panel_activation_requires_human_approval_ref -q
+    expected_red: "ModuleNotFoundError: No module named 'hisys.agents.dars_panel_live_config'"
+constraints:
+  production_code_created: false
+  tests_created: false
+  live_model_call_authorized: false
+  external_api_authorized: false
+  credential_lookup_authorized: false
+  remote_push_authorized: false

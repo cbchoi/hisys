@@ -1,0 +1,25 @@
+version: v0.0.12
+focus: DARS live panel configuration Prepare/document-RED
+testcases:
+  - id: HISYS-T-DARS-LIVE-001
+    future_anchor: test_live_panel_activation_requires_human_approval_ref
+    requirement: Live panel activation requires explicit human approval reference and localhost-only scope.
+    expected_initial_red: ModuleNotFoundError for hisys.agents.dars_panel_live_config
+  - id: HISYS-T-DARS-LIVE-002
+    future_anchor: test_live_panel_activation_rejects_external_api_scope_and_raw_credentials
+    requirement: Activation packet rejects external API scope and raw credential fields.
+  - id: HISYS-T-DARS-LIVE-003
+    future_anchor: test_live_panel_adapter_calls_fake_local_model_and_records_model_boundary
+    requirement: Fake-server local model panel adapter records model-boundary fields without external-call semantics.
+  - id: HISYS-T-DARS-LIVE-004
+    future_anchor: test_live_panel_adapter_rejects_remote_endpoint_before_http_request
+    requirement: Non-loopback or deceptive endpoints fail closed before HTTP request.
+  - id: HISYS-T-DARS-LIVE-005
+    future_anchor: test_run_dars_panel_live_mode_requires_activation_packet
+    requirement: CLI live/local model mode remains blocked without activation packet.
+prepare_validation:
+  - structural_yaml_json_parse
+  - dars_runtime_config_dispatch_panel_regression
+  - traceability_validator
+  - secret_scan
+  - git_diff_check
