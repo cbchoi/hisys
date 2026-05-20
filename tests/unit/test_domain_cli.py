@@ -17,6 +17,17 @@ from hisys.connectors.open_access_pdf import OpenAccessPdfConnector
 from hisys.connectors.recommendation_claim_registry import RecommendationClaimRegistryBuilder
 from hisys.connectors.pdf_evidence_promotion import PdfEvidencePromotionLoader
 from hisys.connectors.pdf_quote_extractor import PdfQuoteExtractor
+from hisys.operations.codebase_analysis import (
+    build_codebase_inventory,
+    build_codebase_scope_map,
+    build_codebase_validation_plan,
+    build_python_symbol_index,
+    scan_codebase_risk_boundaries,
+    write_codebase_inventory,
+    write_codebase_risk_scan,
+    write_codebase_scope_map,
+    write_python_symbol_index,
+)
 
 
 def _write_domain_request(path: Path) -> None:
@@ -647,3 +658,211 @@ def test_investigate_domain_preserves_recommendation_claim_registry_refs_as_cond
     assert chief_decision["feeds_live_k_coverage_gates"] is True
     assert chief_decision["status"] == "recommend_with_conditions"
     assert "Run Live-K claim coverage gates before stronger manuscript-facing claims." in chief_decision["conditions"]
+
+
+# ---------------------------------------------------------------------------
+# M20.4 — investigate-domain --domain codebase fixture smoke.
+# ---------------------------------------------------------------------------
+
+
+def _seed_codebase_smoke_repo(repo: Path) -> None:
+    (repo / "pkg").mkdir()
+    (repo / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "pkg" / "mod.py").write_text(
+        "def add(a, b):\n    return a + b\n", encoding="utf-8"
+    )
+
+
+def _materialize_complete_codebase_bundle_for_cli(
+    *, instance_root: Path, repo: Path, date: str, request_id: str
+) -> dict[str, str]:
+    inventory = build_codebase_inventory(repo_root=repo)
+    inv_ref = write_codebase_inventory(
+        instance_root=instance_root,
+        date=date,
+        request_id=request_id,
+        inventory=inventory,
+    )["json_ref"]
+
+    symbol_index = build_python_symbol_index(repo_root=repo)
+    sym_ref = write_python_symbol_index(
+        instance_root=instance_root,
+        date=date,
+        request_id=request_id,
+        symbol_index=symbol_index,
+    )["json_ref"]
+
+    scope_map = build_codebase_scope_map(
+        inventory=inventory, symbol_index=symbol_index
+    )
+    validation_plan = build_codebase_validation_plan(scope_map)
+    scope_ref = write_codebase_scope_map(
+        instance_root=instance_root,
+        date=date,
+        request_id=request_id,
+        scope_map=scope_map,
+        validation_plan=validation_plan,
+    )["json_ref"]
+
+    risk_scan = scan_codebase_risk_boundaries(repo_root=repo)
+    risk_ref = write_codebase_risk_scan(
+        instance_root=instance_root,
+        date=date,
+        request_id=request_id,
+        scan=risk_scan,
+    )["json_ref"]
+
+    return {
+        "inventory": inv_ref,
+        "symbol_index": sym_ref,
+        "scope_map": scope_ref,
+        "validation_plan": (
+            f"runtime-boundary/codebase-analysis/{date}/{request_id}/validation-plan.json"
+        ),
+        "risk_scan": risk_ref,
+    }
+
+
+def _write_codebase_smoke_request(
+    path: Path, *, request_id: str, refs: dict[str, str]
+) -> None:
+    sources = [
+        {
+            "source_id": "SRC-INV",
+            "source_type": "runtime_record",
+            "ref": refs["inventory"],
+            "access_mode": "read_only",
+            "sensitivity": "public",
+        },
+        {
+            "source_id": "SRC-SYM",
+            "source_type": "runtime_record",
+            "ref": refs["symbol_index"],
+            "access_mode": "read_only",
+            "sensitivity": "public",
+        },
+        {
+            "source_id": "SRC-SCOPE",
+            "source_type": "runtime_record",
+            "ref": refs["scope_map"],
+            "access_mode": "read_only",
+            "sensitivity": "public",
+        },
+        {
+            "source_id": "SRC-VALID",
+            "source_type": "runtime_record",
+            "ref": refs["validation_plan"],
+            "access_mode": "read_only",
+            "sensitivity": "public",
+        },
+        {
+            "source_id": "SRC-RISK",
+            "source_type": "runtime_record",
+            "ref": refs["risk_scan"],
+            "access_mode": "read_only",
+            "sensitivity": "public",
+        },
+    ]
+    path.write_text(
+        json.dumps(
+            {
+                "producer_id": "hermes",
+                "status": "submitted",
+                "request_id": request_id,
+                "domain": "codebase",
+                "objective": "codebase: investigate-domain artifact-bridge smoke",
+                "sources": sources,
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_investigate_domain_codebase_smokes_local_bundle(
+    tmp_path: Path, capsys
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_codebase_smoke_repo(repo)
+    refs = _materialize_complete_codebase_bundle_for_cli(
+        instance_root=instance_root,
+        repo=repo,
+        date="20260520",
+        request_id="m20_4_smoke",
+    )
+
+    request_path = instance_root / "codebase-request.json"
+    _write_codebase_smoke_request(
+        request_path, request_id="HISYS-REQ-M20-4-SMOKE", refs=refs
+    )
+
+    exit_code = main(
+        [
+            "investigate-domain",
+            "--instance",
+            str(instance_root),
+            "--request",
+            str(request_path),
+            "--date",
+            "20260520",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "domain: codebase" in captured.out
+
+    boundary_dir = (
+        instance_root
+        / "runtime-boundary"
+        / "domain-investigation"
+        / "codebase"
+        / "20260520"
+    )
+    result_artifact = boundary_dir / "hisys-tool-result-HISYS-REQ-M20-4-SMOKE.json"
+    assert result_artifact.exists()
+
+    tool_result = json.loads(result_artifact.read_text(encoding="utf-8"))
+    assert tool_result["domain"] == "codebase"
+    assert tool_result["external_call_made"] is False
+    assert tool_result["mutation_performed"] is False
+    assert tool_result["requires_human_review"] is True
+    assert tool_result["quality_gate"] == "passed"
+    assert tool_result["status"] == "completed"
+
+    domain_result_artifacts = list(boundary_dir.glob("domain-investigation-result-*.json"))
+    assert len(domain_result_artifacts) == 1
+    domain_payload = json.loads(domain_result_artifacts[0].read_text(encoding="utf-8"))
+    codebase_packages = [
+        pkg
+        for pkg in domain_payload["investigation_data"]["evidence_packages"]
+        if pkg["evidence_type"] == "codebase_analysis_bundle"
+    ]
+    assert len(codebase_packages) == 1
+    package = codebase_packages[0]
+    assert package["evidence_refs"] == [
+        refs["inventory"],
+        refs["symbol_index"],
+        refs["scope_map"],
+        refs["risk_scan"],
+    ]
+    assert package["external_call_made"] is False
+    assert package["mutation_performed"] is False
+
+    report_path = (
+        instance_root
+        / "reports"
+        / "run-summaries"
+        / "20260520"
+        / "domain-investigation-report.json"
+    )
+    assert report_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["request_id"] == "HISYS-REQ-M20-4-SMOKE"
+    assert report["domain"] == "codebase"
+    assert report["tool_result_ref"] == str(result_artifact.relative_to(instance_root))

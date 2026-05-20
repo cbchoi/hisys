@@ -1946,6 +1946,31 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M20.4 investigate-domain codebase fixture smoke (GREEN-on-arrival)
+
+- Phase completed: Implementation/Gate for `M20.4` (`investigate-domain --domain codebase` fixture smoke). The full CLI dispatch path was already wired by M20.3, so the new test passes immediately and serves as an acceptance/regression pin for the end-to-end contract.
+- Controlled anchors checked: `f55f500 docs: prepare codebase artifact CLI smoke increment`; `docs/plans/m20-codebase-domain-artifact-bridge-m20-4-implementation-tasks.md`; `src/hisys/cli/main.py` `_cmd_investigate_domain` and `_default_domain_adapter_registry`; `src/hisys/domain/specs.py` `codebase_spec`; `src/hisys/domain/domain_adapters.py` `StructuredDomainAdapter`; `src/hisys/domain/translation.py` `build_codebase_bundle_enrichment`.
+- Baseline observed: branch `dars`, HEAD `f55f500 docs: prepare codebase artifact CLI smoke increment`, working tree clean before edits. Domain + CLI gate `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py tests/unit/test_domain_cli.py -q` -> 28 passed. DARS focused gate -> 48 passed.
+- TDD note: M20.3 already shipped the dispatch contract that the smoke exercises (codebase `StructuredDomainAdapter`, `build_codebase_bundle_enrichment` enrichment, `HisysToolResult.from_domain_result` projection). The new test is therefore not RED-first — it is a CLI-level acceptance/regression pin that locks the end-to-end shape. No production code or CLI plumbing changed in this increment.
+- Implementation: added `tests/unit/test_domain_cli.py::test_investigate_domain_codebase_smokes_local_bundle` plus three helper functions (`_seed_codebase_smoke_repo`, `_materialize_complete_codebase_bundle_for_cli`, `_write_codebase_smoke_request`). The smoke seeds a deterministic mini-repo under `tmp_path/repo`, materializes a complete codebase-analysis bundle under `tmp_path/instance` via the existing M15..M18 writers, writes a `DomainInvestigationRequest` JSON with five `runtime_record` `DomainSourceRef` entries (one per canonical role) including a synthetic `validation-plan.json` ref that satisfies the work-product role classifier without being read by the safe loader (the validation plan lives inside `scope-map.json`). The CLI dispatches through the structured codebase adapter; the smoke asserts `exit_code==0`, the persisted `hisys-tool-result-HISYS-REQ-M20-4-SMOKE.json` carries `domain=="codebase"`, `external_call_made==false`, `mutation_performed==false`, `requires_human_review==true`, `quality_gate=="passed"`, `status=="completed"`; the structured `domain-investigation-result-*.json` carries exactly one `codebase_analysis_bundle` evidence package with ordered four-role refs; and the run-summary report at `reports/run-summaries/20260520/domain-investigation-report.json` records the `codebase` domain and the tool-result ref.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_investigate_domain_codebase_smokes_local_bundle -q` -> 1 passed on first run (no RED phase required because the production wiring was already in HEAD). Combined domain + CLI gate -> 29 passed. DARS focused gate -> 48 passed.
+- Documentation/traceability: added implemented-increments row `Codebase domain investigate-domain CLI smoke (M20.4)` to `docs/traceability/README.md`. Existing M20.1..M20.3 rows preserved with no narrative drift.
+- Quality gate result: pass — combined domain + CLI gate 29 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=549 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The smoke uses a synthetic `validation-plan.json` ref (the validation plan record actually lives inside `scope-map.json`); changing the writer to emit a separate `validation-plan.json` file is a backlog cleanup. (b) A future repeatable `--codebase-artifact` argparse flag would let humans construct requests without writing the source JSON by hand; deferred. (c) M20.5 milestone finish packet remains the last task to close M20.
+- Continue decision: after committing this increment, the next safe queue item is `M20.5` finish packet for the full M20 milestone (docs/traceability/Hisys readiness wrap-up).
+- Stop condition: M20.4 CLI smoke boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: bridge codebase artifacts into investigate-domain`.
+
+Resume checkpoint:
+- Current HEAD: f55f500 docs: prepare codebase artifact CLI smoke increment
+- Working tree: M20.4 test/docs/ralph modified until commit
+- Last completed milestone/task: M20.4 CLI smoke acceptance test
+- RED observed: n/a — production wiring already in HEAD from M20.3; new test is an acceptance/regression pin
+- GREEN observed: combined domain + CLI gate 29 passed; DARS focused gate 48 passed
+- Quality gate status: pass — domain + CLI 29 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M20.4 files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M20.4 CLI integration smoke Prepare
 
 - Phase completed: Prepare / document-RED checkpoint for `M20.4` (`investigate-domain --domain codebase` fixture smoke). This is a docs-only commit; no production code, RED test, or CLI plumbing was added in this iteration.
