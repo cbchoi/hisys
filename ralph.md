@@ -1946,6 +1946,37 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — QUEUE-REFILL-PREP after M20 close → seeded M21.1 traceability coverage report
+
+- Phase completed: QUEUE-REFILL-PREP after the full M20 milestone closed (`cae708d docs: document codebase domain artifact bridge`). The M21 backlog list in `ralph.md` Section 14 carries 10+ advisory candidates; this checkpoint surveys them against the M21 stop condition (no live external access, no credential/security authority, no publication, no remote push, no raw source archival) and converts the safest candidate into a spec-first active task.
+- Controlled anchors checked: `cae708d docs: document codebase domain artifact bridge`; `ralph.md` Milestone M21 backlog; `scripts/validate_traceability.py`; `docs/traceability/README.md`; existing schema-level `REQUIREMENTS` tuples under `src/hisys/schemas/`.
+- Baseline observed: branch `dars`, HEAD `cae708d docs: document codebase domain artifact bridge`, working tree clean before edits. Combined domain + CLI gate -> 29 passed. DARS focused gate -> 48 passed. Traceability validator -> OK.
+- Candidate triage (safe local-only vs non-delegable):
+  - SAFE: `traceability coverage checker` (pure local read-only over existing anchors), `runtime-boundary consistency checker` (pure local read-only over runtime-boundary artifacts), `codebase map freshness/drift review` (pure local read-only over codebase-analysis bundles), `regression benchmark fixture repositories` (local fixture-only).
+  - DEFER: `optional local LSP adapter` (process spawn surface), `subagent evidence collector protocol` (subagent integration), `approved OSS comparison adapter` (external OSS comparison surface needs explicit boundary review), `code-analysis pass-contract loop` (substantial cross-cutting work; defer until simpler M21.x increments deliver), `architecture candidate generator` (heuristic surface that benefits from prior coverage data), `change-impact analyzer` (deferred until M21.1 coverage data is available).
+- Selected next safe pending task: `M21.1` — `Traceability Coverage Report`. Rationale: (a) pure local read-only over already-controlled anchors; (b) directly extends the existing `scripts/validate_traceability.py` chokepoint; (c) produces advisory evidence aligned with the M20 governance-first posture; (d) emits data that several other M21 candidates can consume (change-impact analyzer, architecture candidate generator). All M21 stop-condition bars (no live external access, no credential, no publication, no remote push, no raw source archival) are cleared.
+- Document-RED artifact: created `docs/plans/m21-1-traceability-coverage-report-implementation-tasks.md`. The plan pins M21.1 as the safest M21 spec-first task: build `src/hisys/operations/traceability_coverage.py` with a pure `build_traceability_coverage_report` plus a `write_traceability_coverage_report` writer that persists JSON + Markdown under `runtime-boundary/traceability-coverage/<YYYYMMDD>/`, wrap it in a `scripts/report_traceability_coverage.py` runner, and verify it through a new `tests/unit/test_traceability_coverage.py`. The reporter must remain advisory, must not embed raw source text, must reuse existing slug validators / `resolve_instance_runtime_ref`, and must not introduce a new CLI argument (a `hisys traceability-coverage` subcommand remains M21.2 backlog).
+- Local advisory readiness: `RALPH_START_READY_WITH_CONTROLS`. No formal Hisys execution claimed.
+- Next safe task: `M21.1` Task 1 RED — write and observe the failing `tests/unit/test_traceability_coverage.py` test before any production module exists.
+- RED observed: n/a for this Prepare-only increment. The planned first RED is expected to fail with `ImportError` or `ModuleNotFoundError`.
+- GREEN observed: n/a for production code; baseline focused regressions (domain + CLI 29, DARS 48) passed before docs writes.
+- Quality gate result: pass — combined domain + CLI gate 29 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=550 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The coverage report must not embed raw source content; only requirement/test/design IDs and counts may appear. (b) The anchor loader should fail closed when an SRS/SDD/IDD/STD path is missing rather than emitting a false-clean report. (c) A `hisys traceability-coverage` CLI subcommand is deferred to M21.2. (d) `change-impact analyzer` and `architecture candidate generator` candidates are deferred until M21.1 coverage data is in place.
+- Continue decision: after committing this QUEUE-REFILL-PREP package, the next safe queue item is `M21.1` Task 1 RED. Implementation remains advisory-only, fixture-local, and adds no live external authority.
+- Stop condition: Prepare/document-RED/queue-refill checkpoint reached; production behavior remains gated by future RED test.
+- Commit pending: `docs: queue m21.1 traceability coverage report`.
+
+Resume checkpoint:
+- Current HEAD: cae708d docs: document codebase domain artifact bridge
+- Working tree: M21.1 plan and `ralph.md` modified until committed
+- Last completed milestone/task: QUEUE-REFILL-PREP for M21; M21.1 selected and planned
+- Current in-progress task: stage M21.1 Prepare files and commit
+- RED observed: n/a for Prepare-only; future RED command is `PYTHONPATH=src pytest tests/unit/test_traceability_coverage.py -q`
+- GREEN observed: n/a for production code; baseline domain + CLI gate 29 passed, DARS focused gate 48 passed
+- Quality gate status: pass — domain + CLI 29 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.1 Prepare files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M20.5 docs + finish packet for codebase artifact bridge
 
 - Phase completed: Documentation/finish packet for the full M20 milestone after M20.1..M20.4 turned green. This is a docs-only commit; no production code, RED test, or CLI plumbing changed.
