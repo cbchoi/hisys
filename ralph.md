@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.3-CLI runtime-boundary-check CLI wrapper (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for M21.3-CLI after Prepare commit `6f25749 docs: prepare runtime-boundary-check cli wrapper`.
+- Controlled anchors checked: `docs/plans/m21-3-cli-runtime-boundary-check-implementation-tasks.md`; `src/hisys/operations/runtime_boundary_consistency.py`; `src/hisys/cli/main.py` `_cmd_traceability_coverage` block (M21.2 precedent); `tests/unit/test_domain_cli.py`; `docs/traceability/README.md`.
+- Baseline observed: branch `dars`, HEAD `6f25749 docs: prepare runtime-boundary-check cli wrapper`, working tree clean before edits. Extended focused gate 37 passed pre-edit; DARS focused gate 48 passed; traceability validator OK.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_runtime_boundary_check_cli_writes_consistency_report -q` failed with `SystemExit: 2` because argparse rejected `runtime-boundary-check` as an unknown subcommand.
+- Implementation: added `from ..operations.runtime_boundary_consistency import build_runtime_boundary_consistency_report, write_runtime_boundary_consistency_report` in `src/hisys/cli/main.py`; defined `_cmd_runtime_boundary_check(*, instance_root, yyyymmdd, refs)` next to `_cmd_traceability_coverage`; added the `runtime-boundary-check` subparser with `--instance`, `--date`, and repeatable `--ref` arguments next to the `traceability-coverage` parser; added the dispatcher branch in `main` next to the `traceability-coverage` branch. The CLI prints bounded refs/counts and `external_call_made: false` / `allowed_actions: advisory_only` summary lines and always returns exit code `0`.
+- Tests: added `tests/unit/test_domain_cli.py::test_runtime_boundary_check_cli_writes_consistency_report`. Test seeds a complete JSON/Markdown traceability-coverage artifact under the temp instance, then invokes the CLI with safe refs (JSON + Markdown), one missing ref, and one `..`-traversal ref. Asserts `result == 0`, the report partition was written, and the JSON content carries `schema_id=hisys.runtime_boundary.consistency.v1`, all five advisory flags, `ok_ref_count == 2`, `unsafe_refs == ["runtime-boundary/../escape.txt"]`, and the missing-file ref correctly classified.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_runtime_boundary_check_cli_writes_consistency_report -q` -> 1 passed; extended focused gate 38 passed; DARS focused gate 48 passed; CLI smoke with empty `--ref` set emitted the bounded summary lines and wrote both report files under `runtime-boundary/runtime-boundary-consistency/20260520/`.
+- Documentation/traceability: prepended an `M21.3-CLI` row to `docs/traceability/README.md` linking the plan, CLI/dispatcher, pure module, and CLI test with explicit advisory-only/no-mutation/no-external-call invariants. Existing M21.3 row preserved.
+- Quality gate result: pass — extended focused gate 38 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=583 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) `--scan` mode for recursive `runtime-boundary/` enumeration remains deferred to a separate M21.3-SCAN increment to preserve bounded inputs. (b) Exit-code policy is advisory-only `0` regardless of issue counts; raising exit code on issues requires a separate RED with explicit traceability update. (c) M21.4 (codebase map freshness/drift review) is the natural next M21 milestone now that the runtime-boundary consistency surface is exposed end-to-end.
+- Continue decision: after committing this implementation, the next safe queue item is `M21.4-PREP` (codebase map freshness/drift review) Prepare, or alternatively a `M21.3-SCAN` Prepare if a scanning mode is needed before M21.4. Both remain local-only/advisory-only.
+- Stop condition: M21.3-CLI GREEN implementation boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: add runtime-boundary-check cli wrapper`.
+
+Resume checkpoint:
+- Current HEAD: 6f25749 docs: prepare runtime-boundary-check cli wrapper
+- Working tree: M21.3-CLI code/tests/docs/ralph modified until commit
+- Last completed milestone/task: M21.3-CLI runtime-boundary-check CLI wrapper implementation
+- RED observed: argparse rejected `runtime-boundary-check` with `SystemExit: 2`
+- GREEN observed: focused CLI test 1 passed; extended focused gate 38 passed; empty-ref CLI smoke wrote bounded report under runtime-boundary partition
+- Quality gate status: pass — extended focused gate 38 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.3-CLI files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.3-CLI runtime-boundary-check CLI wrapper Prepare
 
 - Phase completed: Prepare/document-RED for the M21.3-CLI thin CLI wrapper after the M21.3 pure checker shipped at `6a067ed feat: add runtime-boundary consistency checker`.

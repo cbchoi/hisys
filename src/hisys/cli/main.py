@@ -126,6 +126,10 @@ from ..operations.codebase_analysis import (
 from ..operations.backup import create_backup, restore_backup_dry_run
 from ..operations.health import collect_health_status
 from ..operations.release_readiness import QualityGateResult, build_release_readiness_report
+from ..operations.runtime_boundary_consistency import (
+    build_runtime_boundary_consistency_report,
+    write_runtime_boundary_consistency_report,
+)
 from ..operations.runtime_status_surface import (
     build_runtime_status_packet,
     render_runtime_status_text,
@@ -1491,6 +1495,34 @@ def _cmd_traceability_coverage(*, instance_root: Path, yyyymmdd: str, repo_root:
     return 0
 
 
+def _cmd_runtime_boundary_check(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    refs: tuple[str, ...],
+) -> int:
+    """Write a local advisory runtime-boundary consistency report via the CLI."""
+
+    report = build_runtime_boundary_consistency_report(
+        instance_root=instance_root, candidate_refs=refs
+    )
+    written = write_runtime_boundary_consistency_report(
+        instance_root=instance_root, date=yyyymmdd, report=report
+    )
+    print(f"runtime-boundary consistency report: json={written['json_ref']}")
+    print(f"markdown: {written['markdown_ref']}")
+    print(f"ok_ref_count: {report.ok_ref_count}")
+    print(f"unsafe_refs: {len(report.unsafe_refs)}")
+    print(f"missing_files: {len(report.missing_files)}")
+    print(f"malformed_json_refs: {len(report.malformed_json_refs)}")
+    print(f"missing_markdown_pair_refs: {len(report.missing_markdown_pair_refs)}")
+    print(f"missing_advisory_flag_refs: {len(report.missing_advisory_flag_refs)}")
+    print(f"outside_runtime_boundary_refs: {len(report.outside_runtime_boundary_refs)}")
+    print("external_call_made: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_runtime_status_surface(
     *,
     instance_root: Path,
@@ -1905,6 +1937,19 @@ def _build_parser() -> argparse.ArgumentParser:
     traceability_coverage.add_argument("--instance", required=True, help="Hisys instance root")
     traceability_coverage.add_argument("--date", required=True, help="YYYYMMDD report partition")
     traceability_coverage.add_argument("--repo", type=Path, default=Path.cwd(), help="repo root to scan; defaults to cwd")
+
+    runtime_boundary_check = sub.add_parser(
+        "runtime-boundary-check",
+        help="write local advisory runtime-boundary consistency report artifacts",
+    )
+    runtime_boundary_check.add_argument("--instance", required=True, help="Hisys instance root")
+    runtime_boundary_check.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    runtime_boundary_check.add_argument(
+        "--ref",
+        action="append",
+        default=[],
+        help="relative runtime-boundary ref under <instance>/runtime-boundary/; repeatable",
+    )
 
     runtime_status_surface = sub.add_parser(
         "runtime-status-surface",
@@ -3110,6 +3155,12 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             repo_root=args.repo,
+        )
+    if args.command == "runtime-boundary-check":
+        return _cmd_runtime_boundary_check(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            refs=tuple(args.ref),
         )
     if args.command == "runtime-status-surface":
         return _cmd_runtime_status_surface(

@@ -57,6 +57,89 @@ def _write_domain_request(path: Path) -> None:
     )
 
 
+def test_runtime_boundary_check_cli_writes_consistency_report(tmp_path: Path, capsys) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    safe_ref = "runtime-boundary/traceability-coverage/20260520/coverage-report.json"
+    safe_md = "runtime-boundary/traceability-coverage/20260520/coverage-report.md"
+    safe_json_path = instance_root / safe_ref
+    safe_md_path = instance_root / safe_md
+    safe_json_path.parent.mkdir(parents=True, exist_ok=True)
+    safe_json_path.write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.traceability.coverage.v1",
+                "advisory_only": True,
+                "requires_human_review": True,
+                "external_call_made": False,
+                "mutation_performed": False,
+                "raw_source_content_persisted": False,
+                "requirement_count": 0,
+                "covered_requirement_count": 0,
+                "coverage_ratio": 1.0,
+                "unreferenced_requirements": [],
+                "orphan_test_ids": [],
+            },
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    safe_md_path.write_text("# coverage\n- advisory_only: true\n", encoding="utf-8")
+
+    result = main(
+        [
+            "runtime-boundary-check",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260520",
+            "--ref",
+            safe_ref,
+            "--ref",
+            safe_md,
+            "--ref",
+            "runtime-boundary/codebase-analysis/20260520/REQ-MISSING/inventory.json",
+            "--ref",
+            "runtime-boundary/../escape.txt",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "runtime-boundary consistency report" in captured.out
+    assert "external_call_made: false" in captured.out
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "runtime-boundary-consistency"
+        / "20260520"
+        / "consistency-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "runtime-boundary-consistency"
+        / "20260520"
+        / "consistency-report.md"
+    )
+    assert json_path.exists()
+    assert md_path.exists()
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["schema_id"] == "hisys.runtime_boundary.consistency.v1"
+    assert data["advisory_only"] is True
+    assert data["requires_human_review"] is True
+    assert data["external_call_made"] is False
+    assert data["mutation_performed"] is False
+    assert data["raw_source_content_persisted"] is False
+    assert data["ok_ref_count"] == 2
+    assert data["unsafe_refs"] == ["runtime-boundary/../escape.txt"]
+    assert data["missing_files"] == [
+        "runtime-boundary/codebase-analysis/20260520/REQ-MISSING/inventory.json"
+    ]
+
+
 def test_traceability_coverage_cli_writes_runtime_boundary_report(tmp_path: Path, capsys) -> None:
     result = main(
         [
