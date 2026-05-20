@@ -21,11 +21,11 @@ Boundary invariants:
 - ``boundary_violation_detected`` becomes ``True`` only when the input report
   exposes a non-empty ``unsafe_*`` or ``outside_runtime_boundary_*`` partition.
 
-After M21.8.1.C, four of the five M21.8 PREP question types are supported:
+After M21.8.1.D, all five M21.8 PREP question types are supported:
 ``traceability_coverage_review``, ``runtime_boundary_consistency_review``,
-``codebase_map_freshness_review``, and ``change_impact_review``. The remaining
-one (``architecture_candidate_review``) raises ``NotImplementedError`` and is
-added in a follow-up increment.
+``codebase_map_freshness_review``, ``change_impact_review``, and
+``architecture_candidate_review``. The next M21.8 backlog rows are the fixture
+registry contracts (``M21.8.2``) and the thin CLI wrapper (``M21.8-CLI``).
 """
 
 from __future__ import annotations
@@ -55,10 +55,9 @@ _SUPPORTED_QUESTION_TYPES = {
     "runtime_boundary_consistency_review",
     "codebase_map_freshness_review",
     "change_impact_review",
-}
-_DEFERRED_QUESTION_TYPES = {
     "architecture_candidate_review",
 }
+_DEFERRED_QUESTION_TYPES: set[str] = set()
 
 
 def _coverage_review_summary(coverage_report: dict[str, Any]) -> EvidenceSummary:
@@ -184,6 +183,57 @@ def _change_impact_review_summary(
     )
 
 
+def _architecture_candidate_review_summary(
+    architecture_candidates_report: dict[str, Any],
+    coverage_report: dict[str, Any] | None,
+    freshness_report: dict[str, Any] | None,
+    change_impact_report: dict[str, Any] | None,
+) -> EvidenceSummary:
+    candidates = list(architecture_candidates_report.get("candidates") or [])
+    supporting_refs: list[str] = []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        for ref in candidate.get("supporting_refs") or []:
+            ref_str = str(ref)
+            if ref_str not in supporting_refs:
+                supporting_refs.append(ref_str)
+
+    freshness_unsafe: list[str] = []
+    if freshness_report is not None:
+        freshness_unsafe = list(freshness_report.get("unsafe_partitions") or [])
+    change_unsafe: list[str] = []
+    if change_impact_report is not None:
+        change_unsafe = list(change_impact_report.get("unsafe_changed_refs") or [])
+
+    boundary_violation = bool(freshness_unsafe) or bool(change_unsafe)
+    has_candidates = len(candidates) > 0
+    claims_covered = has_candidates and not boundary_violation
+
+    artifact_refs: list[str] = []
+    if boundary_violation:
+        for ref in (*freshness_unsafe, *change_unsafe):
+            if ref not in artifact_refs:
+                artifact_refs.append(ref)
+    artifact_refs.extend(
+        ref for ref in supporting_refs if ref not in artifact_refs
+    )
+
+    cross_signal_complete = (
+        coverage_report is not None
+        and freshness_report is not None
+        and change_impact_report is not None
+    )
+
+    return EvidenceSummary(
+        artifact_refs=artifact_refs,
+        alternative_count=len(candidates),
+        claims_covered=claims_covered,
+        boundary_violation_detected=boundary_violation,
+        contradiction_checked=cross_signal_complete,
+    )
+
+
 def build_code_analysis_evidence_summary(
     *,
     question_type: str,
@@ -222,6 +272,17 @@ def build_code_analysis_evidence_summary(
         return _change_impact_review_summary(
             change_impact_report=change_impact_report,
             coverage_report=coverage_report,
+        )
+    if question_type == "architecture_candidate_review":
+        if architecture_candidates_report is None:
+            raise ValueError(
+                "architecture_candidate_review requires architecture_candidates_report payload"
+            )
+        return _architecture_candidate_review_summary(
+            architecture_candidates_report=architecture_candidates_report,
+            coverage_report=coverage_report,
+            freshness_report=freshness_report,
+            change_impact_report=change_impact_report,
         )
     if question_type in _DEFERRED_QUESTION_TYPES:
         raise NotImplementedError(

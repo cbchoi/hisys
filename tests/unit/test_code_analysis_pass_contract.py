@@ -122,17 +122,24 @@ def test_build_code_analysis_evidence_summary_requires_boundary_for_consistency_
         )
 
 
-@pytest.mark.parametrize(
-    "question_type",
-    [
+def test_build_code_analysis_evidence_summary_no_longer_defers_any_prep_question_type() -> None:
+    """All five M21.8 PREP question types must have a mapping after M21.8.1.D."""
+
+    for question_type in (
+        "traceability_coverage_review",
+        "runtime_boundary_consistency_review",
+        "codebase_map_freshness_review",
+        "change_impact_review",
         "architecture_candidate_review",
-    ],
-)
-def test_build_code_analysis_evidence_summary_defers_other_question_types(
-    question_type: str,
-) -> None:
-    with pytest.raises(NotImplementedError, match=question_type):
-        build_code_analysis_evidence_summary(question_type=question_type)
+    ):
+        try:
+            build_code_analysis_evidence_summary(question_type=question_type)
+        except NotImplementedError:
+            raise AssertionError(
+                f"{question_type} should be supported after M21.8.1.D"
+            )
+        except (ValueError, KeyError, TypeError):
+            pass
 
 
 def _m21_4_freshness_payload_clean() -> dict[str, object]:
@@ -303,6 +310,85 @@ def test_build_code_analysis_evidence_summary_requires_change_impact_for_change_
         build_code_analysis_evidence_summary(
             question_type="change_impact_review",
             change_impact_report=None,
+        )
+
+
+def _m21_7_architecture_candidates_payload(candidate_count: int = 2) -> dict[str, object]:
+    candidates = []
+    for index in range(candidate_count):
+        candidates.append(
+            {
+                "candidate_id": f"cand-coverage-gap-{index + 1:03d}",
+                "kind": "coverage_gap",
+                "summary": "observation: requirement REQ unreferenced",
+                "supporting_refs": [f"HISYS-FR-DOM-{index + 1:03d}"],
+                "recommendation_strength": "advisory_candidate_low_evidence",
+                "rationale": "M21.1 coverage observation only",
+            }
+        )
+    return {
+        "schema_id": "hisys.architecture_candidates.v1",
+        "candidate_count": candidate_count,
+        "candidates": candidates,
+    }
+
+
+def test_build_code_analysis_evidence_summary_passes_architecture_candidate_review_with_full_cross_signal() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="architecture_candidate_review",
+        architecture_candidates_report=_m21_7_architecture_candidates_payload(
+            candidate_count=2
+        ),
+        coverage_report=_m21_1_coverage_payload(),
+        freshness_report=_m21_4_freshness_payload_clean(),
+        change_impact_report=_m21_6_change_impact_payload_clean(),
+    )
+    assert summary.boundary_violation_detected is False
+    assert summary.claims_covered is True
+    assert summary.contradiction_checked is True
+    assert summary.alternative_count == 2
+    assert "HISYS-FR-DOM-001" in summary.artifact_refs
+    assert "HISYS-FR-DOM-002" in summary.artifact_refs
+
+
+def test_build_code_analysis_evidence_summary_marks_boundary_violation_when_freshness_unsafe() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="architecture_candidate_review",
+        architecture_candidates_report=_m21_7_architecture_candidates_payload(),
+        freshness_report=_m21_4_freshness_payload_unsafe(),
+    )
+    assert summary.boundary_violation_detected is True
+    assert summary.claims_covered is False
+
+
+def test_build_code_analysis_evidence_summary_marks_boundary_violation_when_change_impact_unsafe() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="architecture_candidate_review",
+        architecture_candidates_report=_m21_7_architecture_candidates_payload(),
+        change_impact_report=_m21_6_change_impact_payload_unsafe(),
+    )
+    assert summary.boundary_violation_detected is True
+    assert summary.claims_covered is False
+
+
+def test_build_code_analysis_evidence_summary_blocks_architecture_review_without_candidates() -> None:
+    summary = build_code_analysis_evidence_summary(
+        question_type="architecture_candidate_review",
+        architecture_candidates_report=_m21_7_architecture_candidates_payload(
+            candidate_count=0
+        ),
+        coverage_report=_m21_1_coverage_payload(),
+    )
+    assert summary.claims_covered is False
+    assert summary.alternative_count == 0
+    assert summary.boundary_violation_detected is False
+
+
+def test_build_code_analysis_evidence_summary_requires_architecture_candidates_for_architecture_review() -> None:
+    with pytest.raises(ValueError, match="architecture_candidates_report"):
+        build_code_analysis_evidence_summary(
+            question_type="architecture_candidate_review",
+            architecture_candidates_report=None,
         )
 
 
