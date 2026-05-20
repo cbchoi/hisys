@@ -133,3 +133,39 @@ Results:
 - traceability: `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`
 - secret scan: `secret_scan: scanned_files=618 skipped_files=0 hit_count=0`
 - diff check: clean.
+
+## Phase C fake-server local model panel adapter evidence
+
+RED observed:
+
+```text
+ModuleNotFoundError: No module named 'hisys.agents.dars_panel_live_adapter'
+```
+
+GREEN observed:
+
+```bash
+PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_adapter.py -q
+```
+
+Result: `4 passed in 2.07s`.
+
+Final Phase C validation:
+
+```bash
+python3 <structural parse for profile/tasks/testcases/request>
+PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_adapter.py -q
+PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py <DARS focused cohort> tests/unit/test_dars_critic_panel_live_config.py tests/unit/test_dars_critic_panel_live_adapter.py -q
+python3 scripts/validate_traceability.py
+python3 scripts/scan_secrets.py
+git diff --check
+```
+
+Results:
+
+- structural check: `phase C local adapter bootstrap structural check: pass`
+- live-adapter focused: `4 passed in 2.06s`
+- governance+DARS+live focused: `109 passed in 7.36s`
+- traceability: `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`
+- secret scan: `secret_scan: scanned_files=620 skipped_files=0 hit_count=0`
+- diff check: clean.

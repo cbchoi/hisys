@@ -4339,15 +4339,15 @@ Resume checkpoint:
 - Quality gate result: pass — structural parse passed; focused DARS runtime/config/dispatch/panel regression `99 passed in 5.30s`; `scripts/validate_traceability.py` OK; `scripts/scan_secrets.py` scanned_files=614 hit_count=0; `git diff --check` clean.
 
 Resume checkpoint:
-- Current HEAD: 75156e5 docs: plan weakness-driven improvements
-- Working tree: Phase A governance-sync implementation validated; ready for local commit
-- Last completed milestone/task: Phase A governance current-state consistency RED/GREEN
-- Current in-progress task: local commit for Phase A governance-sync increment
-- RED observed: `ModuleNotFoundError: No module named 'hisys.operations.governance_docs'`, then stale checkpoint mismatch before docs sync
-- GREEN observed: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q` -> `1 passed in 0.06s`
-- Quality gate status: pass — structural check, governance focused `1 passed`, DARS focused `99 passed in 5.31s`, traceability OK, secret scan hit_count=0, diff-check clean
-- Next command to run: `git add src/hisys/operations/governance_docs.py tests/unit/test_governance_docs_current_state.py docs/milestone-bootstrap ralph.md && git commit -m "feat: sync governance current-state docs"`
-- Stop condition: after local commit and post-commit validation, continue to Phase B only with explicit go-ahead
+- Current HEAD: 0ef6b4d feat: add live dars activation packet
+- Working tree: Phase C live-panel fake-server adapter bridge implemented; final gates pending
+- Last completed milestone/task: M-CP-LIVE-2 focused RED/GREEN
+- Current in-progress task: final validation and local commit for Phase C
+- RED observed: missing `hisys.agents.dars_panel_live_adapter`
+- GREEN observed: live-adapter focused test file `4 passed in 2.07s`
+- Quality gate status: pending final repository gates
+- Next command to run: final validation gates, then `git add src/hisys/agents/dars_panel_live_adapter.py tests/unit/test_dars_critic_panel_live_adapter.py tests/unit/test_governance_docs_current_state.py docs/traceability/dars-critic-panel-runtime-traceability.md docs/milestone-bootstrap ralph.md && git commit -m "feat: add live dars local adapter bridge"`
+- Stop condition: after local commit and post-commit validation; M-CP-LIVE-3 requires separate go-ahead
 
 
 ### 2026-05-20 — Phase B M-CP-LIVE-1 activation packet
@@ -4371,6 +4371,29 @@ Resume checkpoint:
 - Quality gate status: pass — structural check, activation focused `5 passed`, governance+DARS focused `105 passed in 5.41s`, traceability OK, secret scan hit_count=0, diff-check clean
 - Next command to run: `git add src/hisys/agents/dars_panel_live_config.py tests/unit/test_dars_critic_panel_live_config.py docs/traceability/dars-critic-panel-runtime-traceability.md docs/milestone-bootstrap ralph.md && git commit -m "feat: add live dars activation packet"`
 - Stop condition: after local commit and post-commit validation; M-CP-LIVE-2 requires separate go-ahead
+
+
+### 2026-05-20 — Phase C M-CP-LIVE-2 fake-server local adapter bridge
+
+- Phase completed: TDD implementation for the fake-server localhost model panel adapter bridge.
+- Request context: user said `go for c`, referring to Phase C from the weakness-driven improvement sequence.
+- Scope: created `src/hisys/agents/dars_panel_live_adapter.py` and `tests/unit/test_dars_critic_panel_live_adapter.py`; updated DARS traceability and milestone-bootstrap queue to mark `MB-DARS-LIVE-2-RED` completed and queue `MB-DARS-LIVE-3-RED`.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_adapter.py::test_live_panel_adapter_calls_fake_local_model_and_records_model_boundary -q` failed with `ModuleNotFoundError: No module named 'hisys.agents.dars_panel_live_adapter'`.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_adapter.py -q` -> `4 passed in 2.07s`.
+- Boundary: fake-server localhost rehearsal only. The fake server binds to `127.0.0.1` on an ephemeral port. The adapter rejects remote endpoints and invalid activation packets before HTTP, sends no Authorization header, performs no credential lookup, makes no external API call, and preserves `external_call_made=false`, `mutation_performed=false`, `publication_performed=false`, and `allowed_actions=advisory_only` in boundary records.
+- Next queued implementation: M-CP-LIVE-3 CLI activation rehearsal with RED `PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode -q`.
+- Quality gate result: pass — structural check, live-adapter focused `4 passed in 2.06s`, governance+DARS+live focused `109 passed in 7.36s`, traceability OK, secret scan hit_count=0, diff-check clean.
+
+Resume checkpoint:
+- Current HEAD: 0ef6b4d feat: add live dars activation packet
+- Working tree: Phase C local adapter bridge validated; ready for local commit
+- Last completed milestone/task: M-CP-LIVE-2 focused RED/GREEN
+- Current in-progress task: final validation and local commit for Phase C
+- RED observed: missing `hisys.agents.dars_panel_live_adapter`
+- GREEN observed: live-adapter focused test file `4 passed`
+- Quality gate status: pass — structural check, live-adapter focused `4 passed`, governance+DARS+live focused `109 passed in 7.36s`, traceability OK, secret scan hit_count=0, diff-check clean
+- Next command to run: `git add src/hisys/agents/dars_panel_live_adapter.py tests/unit/test_dars_critic_panel_live_adapter.py tests/unit/test_governance_docs_current_state.py docs/traceability/dars-critic-panel-runtime-traceability.md docs/milestone-bootstrap ralph.md && git commit -m "feat: add live dars local adapter bridge"`
+- Stop condition: after local commit and post-commit validation; M-CP-LIVE-3 requires separate go-ahead
 
 ## 16. Initial Next Action
 

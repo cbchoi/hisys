@@ -48,10 +48,21 @@ tasks:
       - docs/traceability/dars-critic-panel-runtime-traceability.md
       - ralph.md
   - id: MB-DARS-LIVE-2-RED
-    title: Future RED for fake-server local model panel adapter bridge
-    status: queued
+    title: Phase C fake-server local model panel adapter bridge
+    status: completed
     command: "PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_live_adapter.py::test_live_panel_adapter_calls_fake_local_model_and_records_model_boundary -q"
-    expected_red: "ModuleNotFoundError or missing adapter bridge for hisys.agents.dars_panel_live_adapter"
+    expected_red: "ModuleNotFoundError: No module named 'hisys.agents.dars_panel_live_adapter'"
+    evidence:
+      - tests/unit/test_dars_critic_panel_live_adapter.py
+      - src/hisys/agents/dars_panel_live_adapter.py
+      - tests/unit/helpers/fake_openai_server.py
+      - docs/traceability/dars-critic-panel-runtime-traceability.md
+      - ralph.md
+  - id: MB-DARS-LIVE-3-RED
+    title: Future RED for CLI activation rehearsal
+    status: queued
+    command: "PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode -q"
+    expected_red: "CLI lacks activation-packet-gated local model rehearsal mode"
 constraints:
   production_code_created: true
   tests_created: true
