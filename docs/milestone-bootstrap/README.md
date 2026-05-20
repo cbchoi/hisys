@@ -1,5 +1,7 @@
-# Milestone Bootstrap — v0.0.12
+# Milestone Bootstrap — v0.0.14
 
-This bootstrap snapshot prepares the controlled live DARS panel configuration line. It is documentation-only and does not authorize live model calls, credential lookup, external API dispatch, or remote push.
+This current-session bootstrap refresh records that live-DARS Phase E is closed and the Hisys develop repository has returned to the codebase-analysis queue. It selects the next safe task as M21.6 Prepare for a change-impact analyzer.
+
+No tmux session, background agent, production code, tests, live model call, external API call, credential lookup, publication, deployment, destructive Git action, remote push, or other externally visible action is authorized by this refresh.
 
 See `index.md` for artifact pointers.

@@ -1,0 +1,23 @@
+version: v0.0.14
+focus: Current-session bootstrap refresh for M21.6 Prepare
+testcases:
+  - id: HISYS-T-BOOTSTRAP-014-001
+    requirement: Bootstrap package structurally parses and records selected profile develop, omitted arguments, target workspace, current HEAD, roadmap ref, and next safe task.
+    validation: structural_yaml_json_parse
+  - id: HISYS-T-BOOTSTRAP-014-002
+    requirement: Ralph and governance current-state checks align with the current committed HEAD and next safe task.
+    validation: tests/unit/test_governance_docs_current_state.py
+  - id: HISYS-T-BOOTSTRAP-014-003
+    requirement: M21.5 codebase regression benchmark fixtures remain green after bootstrap refresh.
+    validation: tests/unit/test_codebase_regression_benchmarks.py
+  - id: HISYS-T-BOOTSTRAP-014-004
+    requirement: Traceability and secret-scan gates remain clean.
+    validation: scripts/validate_traceability.py and scripts/scan_secrets.py
+prepare_validation:
+  - structural_yaml_json_parse
+  - governance_current_state_test
+  - codebase_regression_benchmark_test
+  - codebase_analysis_focused_regression
+  - traceability_validator
+  - secret_scan
+  - git_diff_check
