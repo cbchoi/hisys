@@ -258,6 +258,76 @@ def test_codebase_domain_result_enriches_complete_local_bundle(tmp_path: Path) -
     assert package.mutation_performed is False
 
 
+def test_codebase_domain_result_maps_incomplete_bundle_refs_to_needs_more_evidence(
+    tmp_path: Path,
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+
+    # Four real role refs, validation_plan omitted -> work-product gate
+    # is needs_more_evidence; loader is not called.
+    request = _build_codebase_request_with_id(
+        request_id="REQ-M20-3-INCOMPLETE",
+        refs=[
+            ("SRC-INV", "runtime-boundary/codebase-analysis/20260520/REQ-M20-3-INCOMPLETE/inventory.json"),
+            ("SRC-SYM", "runtime-boundary/codebase-analysis/20260520/REQ-M20-3-INCOMPLETE/symbol-index.json"),
+            ("SRC-SCOPE", "runtime-boundary/codebase-analysis/20260520/REQ-M20-3-INCOMPLETE/scope-map.json"),
+            ("SRC-RISK", "runtime-boundary/codebase-analysis/20260520/REQ-M20-3-INCOMPLETE/risk-scan.json"),
+        ],
+    )
+
+    result = _run_codebase_domain_result(request=request, instance_root=instance_root)
+
+    assert result.quality_gate == "needs_more_evidence"
+    assert result.requires_human_review is True
+    assert result.external_call_made is False
+    assert result.mutation_performed is False
+    codebase_packages = [
+        pkg
+        for pkg in result.investigation_data.evidence_packages
+        if pkg.evidence_type == "codebase_analysis_bundle"
+    ]
+    assert len(codebase_packages) == 1
+    package = codebase_packages[0]
+    assert any("missing role: validation_plan" in lim for lim in package.limitations)
+
+
+def test_codebase_domain_result_maps_unreadable_complete_bundle_to_needs_more_evidence(
+    tmp_path: Path,
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+
+    # Five role refs satisfy the work-product gate (`candidate_complete`),
+    # but no files exist on disk -> loader raises FileNotFoundError and
+    # the adapter downgrades the result.
+    request = _build_codebase_request_with_id(
+        request_id="REQ-M20-3-UNREADABLE",
+        refs=[
+            ("SRC-INV", "runtime-boundary/codebase-analysis/20260520/REQ-M20-3-UNREADABLE/inventory.json"),
+            ("SRC-SYM", "runtime-boundary/codebase-analysis/20260520/REQ-M20-3-UNREADABLE/symbol-index.json"),
+            ("SRC-SCOPE", "runtime-boundary/codebase-analysis/20260520/REQ-M20-3-UNREADABLE/scope-map.json"),
+            ("SRC-VALID", "runtime-boundary/codebase-analysis/20260520/REQ-M20-3-UNREADABLE/validation-plan.json"),
+            ("SRC-RISK", "runtime-boundary/codebase-analysis/20260520/REQ-M20-3-UNREADABLE/risk-scan.json"),
+        ],
+    )
+
+    result = _run_codebase_domain_result(request=request, instance_root=instance_root)
+
+    assert result.quality_gate == "needs_more_evidence"
+    assert result.requires_human_review is True
+    assert result.external_call_made is False
+    assert result.mutation_performed is False
+    codebase_packages = [
+        pkg
+        for pkg in result.investigation_data.evidence_packages
+        if pkg.evidence_type == "codebase_analysis_bundle"
+    ]
+    assert len(codebase_packages) == 1
+    package = codebase_packages[0]
+    assert any("unreadable" in lim for lim in package.limitations)
+
+
 def _build_codebase_request_with_id(
     *, request_id: str, refs: list[tuple[str, str]]
 ) -> DomainInvestigationRequest:

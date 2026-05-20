@@ -1946,6 +1946,31 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M20.3 Task 3 unreadable/incomplete bundle downgrade regression pins
+
+- Phase completed: Regression-pin tests for `M20.3` Task 3 (RED/GREEN — invalid or unsafe bundle yields `needs_more_evidence`). The production downgrade logic was already shipped with the Task 1+2 increment for defensive safety; this increment adds explicit per-path tests that lock the contract.
+- Controlled anchors checked: `8cfffc8 feat: enrich codebase domain result from local bundle`; `docs/plans/m20-codebase-domain-artifact-bridge-m20-3-implementation-tasks.md` Task 3; `src/hisys/domain/translation.py` `build_codebase_bundle_enrichment`; `tests/unit/test_codebase_domain_artifact_bridge.py`.
+- Baseline observed: branch `dars`, HEAD `8cfffc8 feat: enrich codebase domain result from local bundle`, working tree clean before edits. Bridge gate `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py -q` -> 5 passed.
+- TDD note: the failure-path production code (catching `(FileNotFoundError, ValueError, OSError)` from the safe loader and emitting `override_quality_gate="needs_more_evidence"` with a bounded `unreadable bundle` limitation; producing a `missing role` limitation when the work-product gate is `needs_more_evidence`) was added in the Task 1+2 commit. The new tests are therefore not RED-first — they are regression pins that lock both downgrade paths so a future refactor cannot silently weaken the contract.
+- Implementation: added two regression-pin tests in `tests/unit/test_codebase_domain_artifact_bridge.py`. `test_codebase_domain_result_maps_incomplete_bundle_refs_to_needs_more_evidence` passes four role refs (no validation_plan) at non-existent paths; the work-product gate stays `needs_more_evidence`, the loader is never called, and the resulting codebase evidence package contains a `missing role: validation_plan` limitation. `test_codebase_domain_result_maps_unreadable_complete_bundle_to_needs_more_evidence` passes five role refs at non-existent paths; the work-product gate is `candidate_complete`, the loader raises `FileNotFoundError`, the adapter catches and downgrades to `needs_more_evidence`, and the resulting codebase evidence package contains an `unreadable` limitation. Both tests assert `requires_human_review is True`, `external_call_made is False`, `mutation_performed is False`, and exactly one `codebase_analysis_bundle` package.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py -q` -> 7 passed; combined domain gate -> 20 passed; DARS focused gate -> 48 passed.
+- Documentation/traceability: updated the existing `Codebase domain bundle enrichment of DomainInvestigationResult (M20.3)` row in `docs/traceability/README.md` with explicit regression-pin coverage of both downgrade paths and an updated gate pass count (20 passed). No other rows touched.
+- Quality gate result: pass — combined domain gate 20 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=548 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The regression-pin tests assert substring matches on limitation strings; future copy edits to those strings will need to coordinate with the assertions. (b) `quality_gate="passed"` still means evidence-ready for human review and never authorizes deployment. (c) M20.4 CLI repeatable artifact-ref argument and M20.5 docs/gate finish remain deferred.
+- Continue decision: after committing this increment, the next safe queue item is `M20.4` Prepare for the CLI integration smoke. M20.4 introduces CLI argument parsing for repeatable artifact refs and a fixture smoke test of `investigate-domain --domain codebase`. It remains a fixture-local, advisory-only increment.
+- Stop condition: M20.3 Task 3 regression-pin boundary reached; no remote push and no live/external action.
+- Commit pending: `test: pin codebase bundle downgrade paths`.
+
+Resume checkpoint:
+- Current HEAD: 8cfffc8 feat: enrich codebase domain result from local bundle
+- Working tree: M20.3 Task 3 test/docs/ralph modified until commit
+- Last completed milestone/task: M20.3 Task 3 regression-pin tests for unreadable / incomplete bundle downgrade
+- RED observed: n/a — failure-path production code already in HEAD; tests are regression pins, not RED-first
+- GREEN observed: 7 bridge tests passed; combined domain gate 20 passed; DARS focused gate 48 passed
+- Quality gate status: pass — domain 20 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M20.3 Task 3 files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M20.3 codebase bundle enrichment of DomainInvestigationResult (RED -> GREEN)
 
 - Phase completed: RED / GREEN / Gate for `M20.3` Task 1+2, the safe local codebase-analysis bundle load and `DomainInvestigationResult` enrichment increment after `M20.2` role-level gating.
