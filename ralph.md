@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.3-CLI runtime-boundary-check CLI wrapper Prepare
+
+- Phase completed: Prepare/document-RED for the M21.3-CLI thin CLI wrapper after the M21.3 pure checker shipped at `6a067ed feat: add runtime-boundary consistency checker`.
+- Controlled anchors checked: `docs/plans/m21-3-runtime-boundary-consistency-checker-implementation-tasks.md`; `src/hisys/operations/runtime_boundary_consistency.py`; `src/hisys/cli/main.py` `_cmd_traceability_coverage` and `traceability_coverage` parser block (M21.2 precedent); `tests/unit/test_domain_cli.py` `test_traceability_coverage_cli_writes_runtime_boundary_report` (M21.2 test shape); `docs/traceability/README.md`.
+- Baseline inspected: branch `dars`, HEAD `6a067ed feat: add runtime-boundary consistency checker`, working tree clean before Prepare writes. Extended focused gate `PYTHONPATH=src pytest tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py tests/unit/test_domain_cli.py -q` -> 37 passed.
+- Decision: M21.3-CLI ships as a thin argparse subparser plus dispatcher in `src/hisys/cli/main.py`, mirroring the M21.2 `traceability-coverage` pattern. Refs come from repeatable `--ref` flags only; recursive `--scan` is deferred. Exit code is always `0`; advisory-only semantics are preserved.
+- Document-RED artifact: created `docs/plans/m21-3-cli-runtime-boundary-check-implementation-tasks.md`. Planned first RED is `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_runtime_boundary_check_cli_writes_consistency_report -q`, expected to fail because argparse rejects `runtime-boundary-check` as an unknown subcommand.
+- Boundary: local docs/control preparation only. No production code, no remote push, no live external action, no credential lookup, no raw source archival, no artifact repair/deletion. The future CLI must not reshape report semantics, must not expand the issue vocabulary, and must not raise the exit code on issues.
+- Quality gate result: pass — extended focused gate 37 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=583 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) A `--scan` recursive mode is intentionally deferred to a separate M21.3-SCAN increment to preserve bounded inputs. (b) The CLI should print bounded summary lines only (refs/counts), never embed raw source. (c) Exit-code policy is advisory-only `0`; if a downstream gate needs `2`-on-issues, that change requires a separate RED and explicit traceability update.
+- Continue decision: after committing this Prepare package, the next safe queue item is `M21.3-CLI` Task 1 RED — author the failing CLI smoke test.
+- Stop condition: Prepare/document-RED checkpoint reached; production CLI behavior remains gated by future RED test.
+- Commit pending: `docs: prepare runtime-boundary-check cli wrapper`.
+
+Resume checkpoint:
+- Current HEAD: 6a067ed feat: add runtime-boundary consistency checker
+- Working tree: M21.3-CLI plan and `ralph.md` modified until commit
+- Last completed milestone/task: M21.3-CLI Prepare/document-RED
+- Next safe task: `M21.3-CLI` Task 1 RED — author failing CLI smoke test in `tests/unit/test_domain_cli.py`
+- Next command to run after commit: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_runtime_boundary_check_cli_writes_consistency_report -q`
+- Quality gate status: pass — extended focused gate 37 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.3 runtime-boundary consistency checker (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for M21.3 after Prepare commit `01cea3f docs: prepare runtime-boundary consistency checker`.
