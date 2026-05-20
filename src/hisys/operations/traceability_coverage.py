@@ -19,6 +19,8 @@ from hisys.operations.codebase_analysis import resolve_instance_runtime_ref
 
 _DATE_PATTERN = re.compile(r"^\d{8}$")
 _TRACEABILITY_RUNTIME_PREFIX = "runtime-boundary/traceability-coverage"
+_REQUIREMENT_ID_PATTERN = re.compile(r"HISYS-[A-Z]+-[A-Z0-9]+(?:-\d+)?")
+_TEST_ID_PATTERN = re.compile(r"STD-[A-Z0-9_-]+")
 
 
 class TraceabilityAnchors(BaseModel):
@@ -63,6 +65,53 @@ def _referenced_requirements(anchors: TraceabilityAnchors) -> set[str]:
             if refs:
                 referenced.add(req_id)
     return referenced
+
+
+def _ids_from_file(path: Path, pattern: re.Pattern[str]) -> tuple[str, ...]:
+    """Return sorted unique IDs matched in one bounded local text file."""
+
+    if not path.is_file():
+        return ()
+    text = path.read_text(encoding="utf-8")
+    return tuple(sorted(dict.fromkeys(pattern.findall(text))))
+
+
+def load_repo_traceability_anchors(repo_root: Path) -> TraceabilityAnchors:
+    """Load deterministic traceability anchors from local repo files.
+
+    The loader records only IDs and relative file refs. It does not persist raw
+    source content, resolve credentials, or perform external calls.
+    """
+
+    root = repo_root.resolve()
+    schema_refs: dict[str, list[str]] = {}
+    schemas_dir = root / "src" / "hisys" / "schemas"
+    for path in sorted(schemas_dir.glob("*.py")):
+        if path.name in {"__init__.py", "base.py"}:
+            continue
+        for req_id in _ids_from_file(path, _REQUIREMENT_ID_PATTERN):
+            schema_refs.setdefault(req_id, []).append(path.relative_to(root).as_posix())
+
+    traceability_doc = root / "docs" / "traceability" / "README.md"
+    design_refs = {
+        req_id: (traceability_doc.relative_to(root).as_posix(),)
+        for req_id in _ids_from_file(traceability_doc, _REQUIREMENT_ID_PATTERN)
+    }
+    requirement_ids = tuple(sorted(set(schema_refs) | set(design_refs)))
+
+    trace_test = root / "tests" / "integration" / "test_trace_path.py"
+    test_req_ids = _ids_from_file(trace_test, _REQUIREMENT_ID_PATTERN)
+    test_ids = _ids_from_file(trace_test, _TEST_ID_PATTERN) or ("tests/integration/test_trace_path.py",)
+    test_requirement_links = {test_id: test_req_ids for test_id in test_ids}
+
+    return TraceabilityAnchors(
+        requirement_ids=requirement_ids,
+        design_requirement_refs=design_refs,
+        interface_requirement_refs={req_id: tuple(paths) for req_id, paths in schema_refs.items()},
+        test_requirement_refs={req_id: (trace_test.relative_to(root).as_posix(),) for req_id in test_req_ids},
+        test_ids=test_ids,
+        test_requirement_links=test_requirement_links,
+    )
 
 
 def build_traceability_coverage_report(

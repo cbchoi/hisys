@@ -57,6 +57,34 @@ def _write_domain_request(path: Path) -> None:
     )
 
 
+def test_traceability_coverage_cli_writes_runtime_boundary_report(tmp_path: Path, capsys) -> None:
+    result = main(
+        [
+            "traceability-coverage",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260520",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "traceability coverage report" in captured.out
+    assert "external_call_made: false" in captured.out
+    json_path = tmp_path / "runtime-boundary" / "traceability-coverage" / "20260520" / "coverage-report.json"
+    md_path = tmp_path / "runtime-boundary" / "traceability-coverage" / "20260520" / "coverage-report.md"
+    assert json_path.exists()
+    assert md_path.exists()
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["schema_id"] == "hisys.traceability.coverage.v1"
+    assert data["advisory_only"] is True
+    assert data["requires_human_review"] is True
+    assert data["external_call_made"] is False
+    assert data["mutation_performed"] is False
+    assert data["raw_source_content_persisted"] is False
+
+
 def test_investigate_domain_writes_request_and_tool_result_boundary(tmp_path: Path, capsys) -> None:
     request_path = tmp_path / "domain-request.json"
     _write_domain_request(request_path)

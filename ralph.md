@@ -1946,6 +1946,30 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-20 — M21.2 traceability coverage CLI wrapper (RED -> GREEN)
+
+- Phase completed: RED/GREEN/docs for M21.2 after Prepare commit `2c19717 docs: prepare traceability coverage CLI wrapper`.
+- Controlled anchors checked: M21.2 plan, `tests/unit/test_domain_cli.py`, `src/hisys/cli/main.py`, `src/hisys/operations/traceability_coverage.py`, `scripts/report_traceability_coverage.py`, and `docs/traceability/README.md`.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_traceability_coverage_cli_writes_runtime_boundary_report -q` failed with `SystemExit: 2` because argparse rejected `traceability-coverage` as an invalid subcommand.
+- Implementation: added a focused CLI smoke test; moved the deterministic repo traceability anchor loader into `src/hisys/operations/traceability_coverage.py`; updated the standalone script to reuse that loader; added `hisys traceability-coverage --instance <root> --date <YYYYMMDD> [--repo <repo>]` parser/dispatcher in `src/hisys/cli/main.py`; preserved advisory-only, human-review-required, no-external-call, no-mutation, and no-raw-source-content report flags.
+- GREEN observed: focused CLI RED test -> 1 passed; `PYTHONPATH=src pytest tests/unit/test_traceability_coverage.py tests/unit/test_domain_cli.py -q` -> 12 passed; CLI smoke `PYTHONPATH=src python3 -m hisys.cli.main traceability-coverage --instance /tmp/hisys-traceability-cli-smoke --date 20260520 --repo /home/cbchoi/workspaces/develop/repos/hisys` emitted runtime-boundary refs, `coverage_ratio: 1.0`, and `external_call_made: false`.
+- Documentation/traceability: added M21.2 row to `docs/traceability/README.md` linking the CLI wrapper, shared loader, standalone script, and tests.
+- Quality gate result: pass — traceability/domain/CLI focused gate 32 passed; DARS critic-panel focused regression 48 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=562 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: richer SRS/SDD/IDD/STD parsing remains a later M21 candidate; the current CLI wrapper intentionally reports IDs/counts from bounded local anchors only.
+- Continue decision: after committing this implementation, next safe item is M21 backlog triage or a runtime-boundary consistency checker Prepare.
+- Stop condition: M21.2 implementation boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: add traceability coverage CLI wrapper`.
+
+Resume checkpoint:
+- Current HEAD: 2c19717 docs: prepare traceability coverage CLI wrapper
+- Working tree: M21.2 code/tests/docs/ralph modified until commit
+- Last completed milestone/task: M21.2 traceability coverage CLI wrapper implementation
+- RED observed: CLI smoke rejected unknown `traceability-coverage` subcommand with `SystemExit: 2`
+- GREEN observed: focused CLI test 1 passed; coverage/domain CLI tests 12 passed; CLI smoke emitted runtime-boundary refs
+- Quality gate status: pass — traceability/domain/CLI 32 passed; DARS 48 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.2 files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-20 — M21.2 traceability coverage CLI wrapper Prepare
 
 - Phase completed: Prepare/document-RED for M21.2 after M21.1 completed at `6e5a1ce feat: add traceability coverage report`.

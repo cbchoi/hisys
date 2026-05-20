@@ -131,6 +131,11 @@ from ..operations.runtime_status_surface import (
     render_runtime_status_text,
     write_runtime_status_surface,
 )
+from ..operations.traceability_coverage import (
+    build_traceability_coverage_report,
+    load_repo_traceability_anchors,
+    write_traceability_coverage_report,
+)
 from ..investigator import (
     ClaimRecord,
     CollectionReport,
@@ -1466,6 +1471,26 @@ def _cmd_release_readiness(
     return 0 if report.overall_status == "ready_for_review" else 2
 
 
+def _cmd_traceability_coverage(*, instance_root: Path, yyyymmdd: str, repo_root: Path) -> int:
+    """Write a local advisory traceability coverage report via the Hisys CLI."""
+
+    anchors = load_repo_traceability_anchors(repo_root)
+    report = build_traceability_coverage_report(anchors)
+    refs = write_traceability_coverage_report(
+        instance_root=instance_root,
+        date=yyyymmdd,
+        report=report,
+    )
+    print(f"traceability coverage report: json={refs['json_ref']}")
+    print(f"markdown: {refs['markdown_ref']}")
+    print(f"coverage_ratio: {report.coverage_ratio}")
+    print(f"unreferenced_requirements: {len(report.unreferenced_requirements)}")
+    print(f"orphan_test_ids: {len(report.orphan_test_ids)}")
+    print("external_call_made: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_runtime_status_surface(
     *,
     instance_root: Path,
@@ -1872,6 +1897,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="validation status as name=status, e.g. focused=passed; repeatable",
     )
     completion_status.add_argument("--format", choices=["json", "markdown"], default="json")
+
+    traceability_coverage = sub.add_parser(
+        "traceability-coverage",
+        help="write local advisory traceability coverage report artifacts",
+    )
+    traceability_coverage.add_argument("--instance", required=True, help="Hisys instance root")
+    traceability_coverage.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    traceability_coverage.add_argument("--repo", type=Path, default=Path.cwd(), help="repo root to scan; defaults to cwd")
 
     runtime_status_surface = sub.add_parser(
         "runtime-status-surface",
@@ -3071,6 +3104,12 @@ def main(argv: list[str] | None = None) -> int:
             yyyymmdd=args.date,
             validation_items=args.validation,
             output_format=args.format,
+        )
+    if args.command == "traceability-coverage":
+        return _cmd_traceability_coverage(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            repo_root=args.repo,
         )
     if args.command == "runtime-status-surface":
         return _cmd_runtime_status_surface(
