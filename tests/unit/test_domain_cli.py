@@ -124,6 +124,76 @@ def test_codebase_map_freshness_review_cli_writes_report(tmp_path: Path, capsys)
     ]
 
 
+def test_change_impact_cli_writes_report(tmp_path: Path, capsys) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo_root = Path(__file__).resolve().parents[2]
+
+    result = main(
+        [
+            "change-impact",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260521",
+            "--repo",
+            str(repo_root),
+            "--changed-ref",
+            "docs/traceability/README.md",
+            "--changed-ref",
+            "src/hisys/agents/unrelated_helper.py",
+            "--changed-ref",
+            "runtime-boundary/codebase-analysis/20260520/REQ-X/inventory.json",
+            "--changed-ref",
+            "/etc/passwd",
+            "--current-head-short",
+            "7c4d5d0",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "change-impact report" in captured.out
+    assert "external_call_made: false" in captured.out
+    assert "allowed_actions: advisory_only" in captured.out
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "change-impact"
+        / "20260521"
+        / "impact-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "change-impact"
+        / "20260521"
+        / "impact-report.md"
+    )
+    assert json_path.exists()
+    assert md_path.exists()
+
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["schema_id"] == "hisys.change_impact.v1"
+    assert data["advisory_only"] is True
+    assert data["external_call_made"] is False
+    assert data["mutation_performed"] is False
+    assert data["raw_source_content_persisted"] is False
+    assert data["current_head_short"] == "7c4d5d0"
+    assert data["changed_ref_count"] == 4
+    assert "/etc/passwd" in data["unsafe_changed_refs"]
+    assert (
+        "runtime-boundary/codebase-analysis/20260520/REQ-X/inventory.json"
+        in data["impacted_runtime_boundary_refs"]
+    )
+    assert (
+        "docs/traceability/README.md"
+        in data["impacted_design_or_interface_refs"]
+    )
+    assert "src/hisys/agents/unrelated_helper.py" in data["unmapped_changed_refs"]
+
+
 def test_runtime_boundary_check_cli_writes_consistency_report(tmp_path: Path, capsys) -> None:
     instance_root = tmp_path / "instance"
     instance_root.mkdir()

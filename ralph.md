@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M21.6-CLI change-impact CLI wrapper (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for M21.6-CLI after Prepare commit `0e37a86 docs: prepare change-impact cli wrapper`.
+- Controlled anchors checked: `docs/plans/m21-6-cli-change-impact-cli-wrapper-implementation-tasks.md`; `src/hisys/operations/change_impact.py`; `src/hisys/cli/main.py` `_cmd_codebase_map_freshness_review` and `codebase_map_freshness_review` parser block (M21.4-CLI precedent); `tests/unit/test_domain_cli.py`; `src/hisys/operations/traceability_coverage.load_repo_traceability_anchors`.
+- Baseline observed: branch `dars`, HEAD `0e37a86 docs: prepare change-impact cli wrapper`, working tree clean before edits. Extended focused gate 51 passed pre-edit; DARS focused gate 50 passed; traceability validator OK.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_change_impact_cli_writes_report -q` failed with `SystemExit: 2` because argparse rejected `change-impact` as an unknown subcommand.
+- Implementation: added `from ..operations.change_impact import ChangeImpactRequest, build_change_impact_report, write_change_impact_report` in `src/hisys/cli/main.py`; defined `_cmd_change_impact(*, instance_root, yyyymmdd, repo_root, changed_refs, current_head_short)` next to `_cmd_codebase_map_freshness_review`; added the `change-impact` subparser with `--instance`, `--date`, `--repo` (defaults to `Path.cwd()`), repeatable `--changed-ref`, and optional `--current-head-short` arguments next to the `codebase-map-freshness-review` parser; added the dispatcher branch in `main` next to the `codebase-map-freshness-review` branch. The CLI calls `load_repo_traceability_anchors(repo_root)`, builds a `ChangeImpactRequest`, forwards it to `build_change_impact_report` and `write_change_impact_report`, prints bounded count summary lines plus `external_call_made: false` / `allowed_actions: advisory_only`, and always returns exit code `0`.
+- Tests: added `tests/unit/test_domain_cli.py::test_change_impact_cli_writes_report`. Test points `--repo` at the live repo root (via `Path(__file__).resolve().parents[2]`), passes a mixed `--changed-ref` set (design doc anchor, unmapped source, runtime-boundary ref, `/etc/passwd`), and a verbatim `--current-head-short`. Asserts `result == 0`, the impact partition is written under `runtime-boundary/change-impact/20260521/`, and the JSON content carries `schema_id=hisys.change_impact.v1`, all advisory flags, the verbatim head hash, the correct `changed_ref_count`, the unsafe ref in `unsafe_changed_refs`, the runtime ref in `impacted_runtime_boundary_refs`, the doc anchor in `impacted_design_or_interface_refs`, and the unrelated source path in `unmapped_changed_refs`.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_change_impact_cli_writes_report -q` -> 1 passed; extended focused gate 52 passed; DARS focused gate 50 passed.
+- Documentation/traceability: prepended an `M21.6-CLI` row to `docs/traceability/README.md` linking the plan, CLI/dispatcher, pure module, and CLI test with explicit advisory-only/no-mutation/no-external-call/no-git-shellout invariants. Existing M21.6 and earlier rows preserved.
+- Quality gate result: pass — extended focused gate 52 passed; DARS critic-panel focused regression 50 passed; governance current-state 1 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=645 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) `--from-git-diff` / `--scan` modes for local diff capture remain deferred to preserve the no-`subprocess` boundary; a future M21.6-DIFFCAP Prepare/RED is required if a diff-capture helper is wanted. (b) Exit-code policy is advisory-only `0` regardless of impact/unsafe-ref counts; raising exit code on issues requires a separate RED. (c) The CLI defaults `--repo` to `Path.cwd()` to match the M21.2 `traceability-coverage` precedent; callers running from outside the repo must pass `--repo` explicitly.
+- Continue decision: after committing this implementation, M21.6 is fully closed (pure + CLI). The next safe queue item is `M21.7-PREP` (architecture candidate generator) or alternatively a `M21.6-DIFFCAP` Prepare if a local diff-capture front-end is needed first. Both remain local-only/advisory-only.
+- Stop condition: M21.6-CLI GREEN implementation boundary reached; no remote push and no live/external action.
+- Commit pending: `feat: add change-impact cli wrapper`.
+
+Resume checkpoint:
+- Current HEAD: 0e37a86 docs: prepare change-impact cli wrapper
+- Working tree: M21.6-CLI code/tests/docs/ralph modified until commit
+- Last completed milestone/task: M21.6-CLI change-impact CLI wrapper implementation
+- RED observed: argparse rejected `change-impact` with `SystemExit: 2`
+- GREEN observed: focused CLI test 1 passed; extended focused gate 52 passed
+- Quality gate status: pass — extended focused gate 52 passed; DARS 50 passed; governance 1 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.6-CLI files and commit
+- Stop condition: no remote push and no live/external action
+
 ### 2026-05-21 — M21.6-CLI change-impact CLI wrapper Prepare
 
 - Phase completed: Prepare/document-RED for the M21.6-CLI thin CLI wrapper after the M21.6 pure analyzer shipped at `7c4d5d0 feat: add change-impact analyzer`.

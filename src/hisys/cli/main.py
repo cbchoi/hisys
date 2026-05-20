@@ -146,6 +146,11 @@ from ..operations.traceability_coverage import (
     load_repo_traceability_anchors,
     write_traceability_coverage_report,
 )
+from ..operations.change_impact import (
+    ChangeImpactRequest,
+    build_change_impact_report,
+    write_change_impact_report,
+)
 from ..investigator import (
     ClaimRecord,
     CollectionReport,
@@ -1501,6 +1506,47 @@ def _cmd_traceability_coverage(*, instance_root: Path, yyyymmdd: str, repo_root:
     return 0
 
 
+def _cmd_change_impact(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    repo_root: Path,
+    changed_refs: tuple[str, ...],
+    current_head_short: str | None,
+) -> int:
+    """Write a local advisory change-impact report via the CLI."""
+
+    anchors = load_repo_traceability_anchors(repo_root)
+    request = ChangeImpactRequest(
+        instance_root=instance_root,
+        repo_root=repo_root,
+        changed_file_refs=changed_refs,
+        current_head_short=current_head_short,
+    )
+    report = build_change_impact_report(request=request, anchors=anchors)
+    written = write_change_impact_report(
+        instance_root=instance_root, date=yyyymmdd, report=report
+    )
+    print(f"change-impact report: json={written['json_ref']}")
+    print(f"markdown: {written['markdown_ref']}")
+    print(f"changed_ref_count: {report.changed_ref_count}")
+    print(f"impacted_requirements: {len(report.impacted_requirement_ids)}")
+    print(f"impacted_tests: {len(report.impacted_test_id_or_refs)}")
+    print(
+        "impacted_design_or_interface_refs: "
+        f"{len(report.impacted_design_or_interface_refs)}"
+    )
+    print(
+        "impacted_runtime_boundary_refs: "
+        f"{len(report.impacted_runtime_boundary_refs)}"
+    )
+    print(f"unmapped_changed_refs: {len(report.unmapped_changed_refs)}")
+    print(f"unsafe_changed_refs: {len(report.unsafe_changed_refs)}")
+    print("external_call_made: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_codebase_map_freshness_review(
     *,
     instance_root: Path,
@@ -2075,6 +2121,30 @@ def _build_parser() -> argparse.ArgumentParser:
     traceability_coverage.add_argument("--instance", required=True, help="Hisys instance root")
     traceability_coverage.add_argument("--date", required=True, help="YYYYMMDD report partition")
     traceability_coverage.add_argument("--repo", type=Path, default=Path.cwd(), help="repo root to scan; defaults to cwd")
+
+    change_impact = sub.add_parser(
+        "change-impact",
+        help="write local advisory change-impact report artifacts",
+    )
+    change_impact.add_argument("--instance", required=True, help="Hisys instance root")
+    change_impact.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    change_impact.add_argument(
+        "--repo",
+        type=Path,
+        default=Path.cwd(),
+        help="repo root for traceability anchor loading; defaults to cwd",
+    )
+    change_impact.add_argument(
+        "--changed-ref",
+        action="append",
+        default=[],
+        help="repeatable relative changed file ref (caller-supplied)",
+    )
+    change_impact.add_argument(
+        "--current-head-short",
+        default=None,
+        help="optional caller-supplied git HEAD short hash recorded verbatim",
+    )
 
     codebase_map_freshness_review = sub.add_parser(
         "codebase-map-freshness-review",
@@ -3332,6 +3402,14 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             repo_root=args.repo,
+        )
+    if args.command == "change-impact":
+        return _cmd_change_impact(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            repo_root=args.repo,
+            changed_refs=tuple(args.changed_ref),
+            current_head_short=args.current_head_short,
         )
     if args.command == "codebase-map-freshness-review":
         return _cmd_codebase_map_freshness_review(
