@@ -1,0 +1,14 @@
+{
+  "constraints": {
+    "credential_use_authorized": false,
+    "live_external_action_authorized": false,
+    "remote_push_authorized": false
+  },
+  "focus": "M20.3 safe local codebase bundle load and DomainInvestigationResult enrichment Prepare",
+  "formal_hisys_requested": false,
+  "next_safe_task": "MB-M20-3-T001",
+  "profile": "develop",
+  "schema_id": "hisys.bootstrap.request",
+  "target_workspace": "/home/cbchoi/workspaces/develop/repos/hisys",
+  "version": "v0.0.6"
+}

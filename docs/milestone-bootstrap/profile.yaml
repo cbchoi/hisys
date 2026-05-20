@@ -1,32 +1,11 @@
-schema_id: hisys.milestone_bootstrap.profile
-version: v0.0.5
-created: '2026-05-20'
-updated: '2026-05-20'
-target:
-  workspace_root: /home/cbchoi/workspaces/develop/repos/hisys
-  git_repository: true
-  branch: dars
-  upstream: origin/dars
-  head: d87bc96
-  context_source: discord_thread
-  context_hint: Hisys develop thread; user said go after M20.1 and next safe increment was M20.2 Prepare
-profile:
-  detected_profile: develop
-  selected_profile: develop
-  rationale:
-  - Current branch has M20.1 codebase artifact refs accepted and validated.
-  - M20.2 changes the semantics from refs-only to bundle completeness gating, so a document-RED Prepare boundary is required before production code.
-version_policy:
-  current_version: v0.0.5
-  previous_version: v0.0.4
-  bump_type: patch
-  bump_reason: follow-on increment Prepare for M20.2 incomplete codebase artifact bundle gating
-  next_minor_reason: M20.2 GREEN plus readiness gates pass or explicit advisory readiness acceptance
-governance_boundaries:
-  no_tmux_or_background_agent_spawned: true
-  external_calls_allowed: false
-  mutation_scope: local workspace planning/bootstrap files and ralph.md merge only
-  remote_push_allowed_in_this_bootstrap: false
-  credential_mutation_allowed: false
-  destructive_git_allowed: false
-  publication_or_live_action_allowed: false
+selected_profile: develop
+detected_profile: develop
+target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
+version: v0.0.6
+focus: M20.3 safe local codebase bundle load and DomainInvestigationResult enrichment Prepare
+formal_hisys_result: not_run_in_this_bootstrap
+local_advisory_result: RALPH_START_READY_WITH_CONTROLS
+next_safe_task: MB-M20-3-T001
+remote_push_authorized: false
+live_external_action_authorized: false
+baseline_head: "aba9aa6 feat: gate incomplete codebase artifact bundles"

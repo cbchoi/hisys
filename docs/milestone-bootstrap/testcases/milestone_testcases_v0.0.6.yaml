@@ -1,0 +1,19 @@
+version: v0.0.6
+testcases:
+  - id: TC-M20-3-001
+    name: complete_local_bundle_enriches_result
+    command: PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_codebase_domain_result_enriches_complete_local_bundle -q
+    expected_initial: RED before M20.3 implementation
+    expected_final: PASS with codebase_analysis_bundle evidence package and quality_gate passed/human_review_required
+  - id: TC-M20-3-002
+    name: unreadable_bundle_needs_more_evidence
+    command: PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_codebase_domain_result_maps_unreadable_bundle_to_needs_more_evidence -q
+    expected_final: PASS with needs_more_evidence and no external/mutation flags
+  - id: TC-M20-3-003
+    name: focused_domain_regression
+    command: PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py tests/unit/test_domain_three_layer_use_cases.py tests/unit/test_structured_domain_adapter.py tests/unit/test_domain_runtime_artifacts.py -q
+    expected_final: PASS
+  - id: TC-M20-3-004
+    name: focused_dars_regression
+    command: PYTHONPATH=src pytest tests/unit/test_dars_critic_panel_cli.py tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_critic_panel_tool_execution_runtime.py tests/unit/test_dars_critic_panel_execution_graph_plan.py -q
+    expected_final: PASS

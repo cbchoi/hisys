@@ -1,0 +1,23 @@
+version: v0.0.6
+focus: M20.3 safe local codebase bundle load and result enrichment
+tasks:
+  - id: MB-M20-3-T001
+    title: RED complete local bundle enriches DomainInvestigationResult evidence
+    type: code-red
+    files:
+      - tests/unit/test_codebase_domain_artifact_bridge.py
+      - domain adapter/result translation module discovered before edit
+    command: PYTHONPATH=src pytest tests/unit/test_codebase_domain_artifact_bridge.py::test_codebase_domain_result_enriches_complete_local_bundle -q
+    expected_red: missing enrichment helper/seam or assertion failure because no codebase_analysis_bundle evidence package exists yet
+  - id: MB-M20-3-T002
+    title: GREEN load bundle through safe chokepoint and create bounded evidence package
+    type: code-green
+    depends_on: MB-M20-3-T001
+  - id: MB-M20-3-T003
+    title: RED/GREEN unreadable or invalid bundle maps to needs_more_evidence
+    type: code-red-green
+    depends_on: MB-M20-3-T002
+  - id: MB-M20-3-T004
+    title: update traceability and Ralph, validate, commit
+    type: docs-gate-commit
+    depends_on: MB-M20-3-T003
