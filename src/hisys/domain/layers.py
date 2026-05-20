@@ -169,6 +169,14 @@ class DomainUseCase:
         mutation_performed = any(
             [investigation.mutation_performed, aggregation.mutation_performed, decision.mutation_performed]
         )
+        # A `candidate_complete` codebase bundle is advisory evidence-ready; the
+        # adapter/result translation seam may still downgrade to
+        # `needs_more_evidence` if the underlying artifacts fail to load.
+        quality_gate: Literal["passed", "needs_more_evidence", "failed"] = (
+            "passed"
+            if investigation.codebase_bundle_gate == "candidate_complete"
+            else "needs_more_evidence"
+        )
         return DomainUseCaseResult(
             request_id=request.request_id,
             domain=request.domain,
@@ -194,7 +202,7 @@ class DomainUseCase:
             ],
             domain_subtype=investigation.domain_subtype,
             recommendation_summary=decision.recommendation,
-            quality_gate="needs_more_evidence",
+            quality_gate=quality_gate,
             requires_human_review=decision.requires_human_review,
             governance_flags=dict(decision.governance_flags),
             external_call_made=external_call_made,

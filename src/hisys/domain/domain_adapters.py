@@ -11,7 +11,11 @@ from typing import Callable, Protocol
 from hisys.domain.adapters import DomainInvestigationContext
 from hisys.domain.layers import DomainUseCase, DomainUseCaseContext
 from hisys.domain.runtime import DomainRuntimeArtifactWriter
-from hisys.domain.translation import DomainUseCaseArtifactTranslator, build_domain_investigation_result
+from hisys.domain.translation import (
+    DomainUseCaseArtifactTranslator,
+    build_codebase_bundle_enrichment,
+    build_domain_investigation_result,
+)
 from hisys.schemas.domain_investigation import DomainInvestigationRequest, DomainInvestigationResult
 
 
@@ -66,10 +70,15 @@ class StructuredDomainAdapter:
             traceability_ids=self.spec.traceability_ids,
         )
         refs = self.spec.artifact_writer.write(packet, use_case_context)
+        enrichment = build_codebase_bundle_enrichment(
+            packet, request, instance_root=context.instance_root
+        )
         return build_domain_investigation_result(
             packet,
             request,
             runtime_boundary_refs=[str(refs.json_ref), str(refs.markdown_ref)],
+            codebase_evidence_package=enrichment.package if enrichment else None,
+            override_quality_gate=enrichment.override_quality_gate if enrichment else None,
         )
 
 
