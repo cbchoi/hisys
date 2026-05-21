@@ -2048,6 +2048,68 @@ def _cmd_run_dars_panel(
     return 0
 
 
+# DARS-CLOSE-2: Repo-relative location of the checked-in golden fixture for
+# the fixture-local DARS panel productization demo path. The wrapper command
+# ``run-dars-panel-golden`` resolves these files at runtime; the corresponding
+# golden-contract test is ``test_run_dars_panel_cli_golden_fixture_writes_
+# stable_operator_report``.
+_DARS_PANEL_GOLDEN_BASIC_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "tests"
+    / "fixtures"
+    / "dars_panel"
+    / "golden_basic"
+)
+
+
+def _cmd_run_dars_panel_golden(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_id: str,
+    output_format: str,
+) -> int:
+    """Run the DARS critic panel against the checked-in golden fixture.
+
+    Operator-facing wrapper that copies the locked golden fixture into the
+    selected Hisys instance, rewrites instance-relative refs, and delegates to
+    ``_cmd_run_dars_panel`` with ``write_report=True``. The wrapper never
+    exposes the live-model rehearsal or activation-packet arguments; live
+    external action remains outside this productization path.
+    """
+
+    if not _DARS_PANEL_GOLDEN_BASIC_DIR.is_dir():
+        raise SystemExit(
+            "run-dars-panel-golden: missing checked-in golden fixture at "
+            f"{_DARS_PANEL_GOLDEN_BASIC_DIR}"
+        )
+
+    data_dir = instance_root / "data" / "dars-panel-fixtures" / yyyymmdd
+    data_dir.mkdir(parents=True, exist_ok=True)
+    for filename in ("candidate-001.json", "evidence-001.json", "rubric-001.md"):
+        shutil.copy(_DARS_PANEL_GOLDEN_BASIC_DIR / filename, data_dir / filename)
+
+    config_blueprint = json.loads(
+        (_DARS_PANEL_GOLDEN_BASIC_DIR / "panel-config.json").read_text(encoding="utf-8")
+    )
+    rubric_ref = f"data/dars-panel-fixtures/{yyyymmdd}/rubric-001.md"
+    for critic in config_blueprint["critics"]:
+        critic["rubric_ref"] = rubric_ref
+    config_path = instance_root / "panel-config.json"
+    config_path.write_text(json.dumps(config_blueprint), encoding="utf-8")
+
+    return _cmd_run_dars_panel(
+        instance_root=instance_root,
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        panel_config_path=config_path,
+        candidate_ref=f"data/dars-panel-fixtures/{yyyymmdd}/candidate-001.json",
+        evidence_refs=[f"data/dars-panel-fixtures/{yyyymmdd}/evidence-001.json"],
+        output_format=output_format,
+        write_report=True,
+    )
+
+
 def _cmd_completion_status(
     *,
     instance_root: Path,
@@ -2558,6 +2620,26 @@ def _build_parser() -> argparse.ArgumentParser:
         "--write-report",
         action="store_true",
         help="write an operator-facing advisory round report under reports/run-summaries/<date>",
+    )
+
+    run_dars_panel_golden = sub.add_parser(
+        "run-dars-panel-golden",
+        help=(
+            "run the fixture-local DARS critic panel against the checked-in "
+            "golden fixture and write the operator report (no live action)"
+        ),
+    )
+    run_dars_panel_golden.add_argument(
+        "--instance", required=True, help="Hisys runtime instance root"
+    )
+    run_dars_panel_golden.add_argument(
+        "--date", required=True, help="YYYYMMDD run partition"
+    )
+    run_dars_panel_golden.add_argument(
+        "--request-id", required=True, help="request id slug for the round"
+    )
+    run_dars_panel_golden.add_argument(
+        "--format", choices=["json", "text"], default="text"
     )
 
     spec_packet = sub.add_parser("build-spec-first-packet", help="write a spec-first run packet before governed agent work")
@@ -3841,6 +3923,13 @@ def main(argv: list[str] | None = None) -> int:
             local_model=args.local_model,
             activation_packet_path=args.activation_packet,
             write_report=args.write_report,
+        )
+    if args.command == "run-dars-panel-golden":
+        return _cmd_run_dars_panel_golden(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_id=args.request_id,
+            output_format=args.format,
         )
     if args.command == "build-spec-first-packet":
         return _cmd_build_spec_first_packet(

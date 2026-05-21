@@ -5433,6 +5433,27 @@ Resume checkpoint:
 - Next command to run: commit DARS-CLOSE-1 increment, then push to existing `origin/dars`, then begin DARS-CLOSE-2 operator UX wrapper Prepare
 - Stop condition: continue to DARS-CLOSE-2 once the DARS-CLOSE-1 commit/push completes and validation remains green
 
+### 2026-05-21 — DARS-CLOSE-2 golden run wrapper and operator runbook
+
+- Phase completed: TDD implementation of the operator UX wrapper `hisys run-dars-panel-golden` and the fixture-local operator runbook for the DARS panel productization closure plan.
+- Request context: tmux Ralph loop continued from `0c9582f test: add dars panel golden report fixture`; DARS-CLOSE-1 was complete and pushed, so DARS-CLOSE-2 became the next safe row.
+- Scope: added `_cmd_run_dars_panel_golden` plus the `run-dars-panel-golden` argparse subcommand in `src/hisys/cli/main.py`; added `test_dars_panel_golden_run_cli_uses_fixture_and_writes_report` and `test_dars_panel_golden_run_cli_rejects_live_dispatch_arguments` in `tests/unit/test_dars_critic_panel_cli.py`; created `docs/runbooks/dars-panel-fixture-operator-run.md` documenting the copy-pasteable fixture-local run. The wrapper resolves the checked-in `tests/fixtures/dars_panel/golden_basic/` directory, copies the fixture into the operator-selected instance root, rewrites instance-relative rubric refs, and delegates to `_cmd_run_dars_panel(..., write_report=True)`. The wrapper does not expose live-model rehearsal or activation-packet arguments.
+- RED observed: `PYTHONPATH=src:. pytest tests/unit/test_dars_critic_panel_cli.py::test_dars_panel_golden_run_cli_uses_fixture_and_writes_report tests/unit/test_dars_critic_panel_cli.py::test_dars_panel_golden_run_cli_rejects_live_dispatch_arguments -q` → both failed with argparse rejecting `run-dars-panel-golden` as an invalid choice.
+- GREEN observed: same focused command → `2 passed in 0.19s`; DARS cohort (`test_dars_critic_panel_cli.py`, `test_dars_critic_panel_adapters.py`, `test_dars_critic_panel_runtime.py`, `test_dars_remote_subscription_dispatch.py`) → `40 passed in 1.28s`.
+- Boundary: fixture-local productization wrapper only. The wrapper never exposes live-model endpoint, local model name, activation packet, or any external dispatch surface. No live action, mutation, credential lookup, browser/search/tool execution, publication/deployment, or remote provider call is introduced.
+- Quality gate result: pass — focused `2 passed`, DARS cohort `40 passed`, full suite `975 passed in 21.07s`, traceability OK, secret scan `hit_count=0`, `git diff --check` clean.
+
+Resume checkpoint:
+- Current HEAD: 0c9582f test: add dars panel golden report fixture
+- Working tree: DARS-CLOSE-2 CLI wrapper, test additions, and operator runbook; final commit pending
+- Last completed milestone/task: DARS-CLOSE-1 golden fixture operator report
+- Current in-progress task: local commit for DARS-CLOSE-2 golden run wrapper and runbook
+- RED observed: argparse rejected `run-dars-panel-golden`
+- GREEN observed: focused wrapper tests `2 passed`; DARS cohort `40 passed`; full suite `975 passed`
+- Quality gate status: pass — focused, DARS cohort, full suite, traceability, secret scan, and diff-check all green
+- Next command to run: commit DARS-CLOSE-2 increment, push to existing `origin/dars`, then begin DARS-CLOSE-3 readiness status surface Prepare
+- Stop condition: continue to DARS-CLOSE-3 once the DARS-CLOSE-2 commit/push completes and validation remains green
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`, and the DARS panel productization line is intentionally prioritized before returning to the original codebase-analysis queue.
@@ -5442,8 +5463,8 @@ First execute the DARS panel closure plan:
 ```text
 Plan: docs/plans/dars-panel-completion-before-codebase-return.md
 Done: DARS-CLOSE-1 — Golden fixture scenario for operator report
-NEXT: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run
-Then: DARS-CLOSE-3 — DARS panel completion/readiness status surface
+Done: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run
+NEXT: DARS-CLOSE-3 — DARS panel completion/readiness status surface
 Then: DARS-CLOSE-4 — Closure gate and queue return to M21.6
 ```
 

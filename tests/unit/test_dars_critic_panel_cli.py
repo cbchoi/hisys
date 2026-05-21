@@ -279,6 +279,92 @@ def test_run_dars_panel_cli_golden_fixture_writes_stable_operator_report(
     assert "live_external_action_authorized: false" in report_md
 
 
+def test_dars_panel_golden_run_cli_uses_fixture_and_writes_report(
+    tmp_path: Path, capsys
+):
+    """DARS-CLOSE-2: operator-facing wrapper for the golden fixture run.
+
+    The wrapper subcommand encapsulates the golden fixture layout so an
+    operator can run the fixture-local DARS panel with a single command and
+    receive the same advisory operator report contract as
+    ``run-dars-panel --write-report``. The wrapper must not expose live model
+    or activation arguments.
+    """
+
+    from hisys.cli.main import main
+
+    exit_code = main(
+        [
+            "run-dars-panel-golden",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260521",
+            "--request-id",
+            "REQ-DARS-GOLDEN-UX",
+            "--format",
+            "json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["request_id"] == "REQ-DARS-GOLDEN-UX"
+    assert payload["panel_id"] == "PANEL-DARS-GOLDEN-BASIC"
+    assert payload["execution_mode"] == "serial"
+    assert payload["task_statuses"] == {
+        "TASK-REQ-DARS-GOLDEN-UX-00-logical-devil": "completed"
+    }
+    assert (
+        payload["report_ref"]
+        == "reports/run-summaries/20260521/dars-panel-round-report.json"
+    )
+
+    candidate_dir = tmp_path / "data" / "dars-panel-fixtures" / "20260521"
+    assert (candidate_dir / "candidate-001.json").exists()
+    assert (candidate_dir / "evidence-001.json").exists()
+    assert (candidate_dir / "rubric-001.md").exists()
+
+    report_path = tmp_path / payload["report_ref"]
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["schema_id"] == "hisys.dars_panel.round_report"
+    assert report["request_id"] == "REQ-DARS-GOLDEN-UX"
+    assert report["advisory_only"] is True
+    assert report["requires_human_review"] is True
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False
+    assert report["publication_performed"] is False
+    assert report["live_external_action_authorized"] is False
+
+
+def test_dars_panel_golden_run_cli_rejects_live_dispatch_arguments(
+    tmp_path: Path, capsys
+):
+    """DARS-CLOSE-2: the golden wrapper must not expose live model arguments."""
+
+    from hisys.cli.main import main
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(
+            [
+                "run-dars-panel-golden",
+                "--instance",
+                str(tmp_path),
+                "--date",
+                "20260521",
+                "--request-id",
+                "REQ-DARS-GOLDEN-UX",
+                "--local-model-endpoint",
+                "http://127.0.0.1:65535",
+                "--format",
+                "json",
+            ]
+        )
+
+    assert excinfo.value.code == 2
+    assert "unrecognized arguments" in capsys.readouterr().err
+
+
 def test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch(
     tmp_path: Path, capsys
 ):
