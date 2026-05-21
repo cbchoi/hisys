@@ -2110,6 +2110,42 @@ def _cmd_run_dars_panel_golden(
     )
 
 
+def _cmd_dars_panel_readiness(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    output_format: str,
+    write_report: bool,
+) -> int:
+    """Print the locked DARS panel readiness/completion status.
+
+    DARS-CLOSE-3: advisory-only surface that records which panel modes are
+    fixture-complete, which are localhost-rehearsal-available but
+    human-gated, and which remain unproven. No live action, credential
+    lookup, mutation, publication, or remote push is introduced.
+    """
+
+    from hisys.operations.dars_panel_readiness import (
+        build_dars_panel_readiness_status,
+        format_text_status,
+        write_dars_panel_readiness_report,
+    )
+
+    status = build_dars_panel_readiness_status()
+    if write_report:
+        status["report_ref"] = write_dars_panel_readiness_report(
+            instance_root=instance_root,
+            yyyymmdd=yyyymmdd,
+            status=status,
+        )
+
+    if output_format == "json":
+        print(json.dumps(status, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(format_text_status(status))
+    return 0
+
+
 def _cmd_completion_status(
     *,
     instance_root: Path,
@@ -2640,6 +2676,28 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     run_dars_panel_golden.add_argument(
         "--format", choices=["json", "text"], default="text"
+    )
+
+    dars_panel_readiness = sub.add_parser(
+        "dars-panel-readiness",
+        help=(
+            "report which DARS panel modes are fixture-complete, human-gated, "
+            "or unproven; advisory-only, no live action"
+        ),
+    )
+    dars_panel_readiness.add_argument(
+        "--instance", required=True, help="Hisys runtime instance root"
+    )
+    dars_panel_readiness.add_argument(
+        "--date", required=True, help="YYYYMMDD run partition"
+    )
+    dars_panel_readiness.add_argument(
+        "--format", choices=["json", "text"], default="text"
+    )
+    dars_panel_readiness.add_argument(
+        "--write-report",
+        action="store_true",
+        help="persist the readiness snapshot under reports/run-summaries/<date>",
     )
 
     spec_packet = sub.add_parser("build-spec-first-packet", help="write a spec-first run packet before governed agent work")
@@ -3930,6 +3988,13 @@ def main(argv: list[str] | None = None) -> int:
             yyyymmdd=args.date,
             request_id=args.request_id,
             output_format=args.format,
+        )
+    if args.command == "dars-panel-readiness":
+        return _cmd_dars_panel_readiness(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            output_format=args.format,
+            write_report=args.write_report,
         )
     if args.command == "build-spec-first-packet":
         return _cmd_build_spec_first_packet(

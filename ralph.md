@@ -5454,6 +5454,27 @@ Resume checkpoint:
 - Next command to run: commit DARS-CLOSE-2 increment, push to existing `origin/dars`, then begin DARS-CLOSE-3 readiness status surface Prepare
 - Stop condition: continue to DARS-CLOSE-3 once the DARS-CLOSE-2 commit/push completes and validation remains green
 
+### 2026-05-21 — DARS-CLOSE-3 readiness status surface
+
+- Phase completed: TDD implementation of the DARS panel readiness/completion status CLI surface for the DARS panel productization closure plan.
+- Request context: tmux Ralph loop continued from `38c22f2 feat: add dars panel golden run wrapper`; DARS-CLOSE-3 became the next safe row.
+- Scope: added `src/hisys/operations/dars_panel_readiness.py` with `build_dars_panel_readiness_status`, `write_dars_panel_readiness_report`, and `format_text_status`; added the `hisys dars-panel-readiness` argparse subcommand and `_cmd_dars_panel_readiness` dispatch in `src/hisys/cli/main.py`; added `tests/unit/test_dars_panel_readiness.py` with three RED/GREEN cases (JSON contract, text rendering, and `--write-report` snapshot). Updated `docs/traceability/dars-critic-panel-runtime-traceability.md` v0.14.0 with a DARS-CLOSE-1/2/3 closure note.
+- RED observed: `PYTHONPATH=src:. pytest tests/unit/test_dars_panel_readiness.py -q` → `3 failed` with argparse rejecting `dars-panel-readiness` before the subcommand existed.
+- GREEN observed: same focused command → `3 passed in 0.20s`; DARS cohort (`test_dars_panel_readiness.py`, `test_dars_critic_panel_cli.py`, `test_dars_critic_panel_adapters.py`, `test_dars_critic_panel_runtime.py`, `test_dars_remote_subscription_dispatch.py`) → `43 passed in 1.37s`.
+- Boundary: advisory-only readiness surface. The CLI never enables live action, credential lookup, browser/search/tool execution, mutation, publication, or remote push. The readiness JSON pins `live_provider_execution_smoked=false` and the closure pointer `next_queue_after_closure="MB-CODEBASE-M21-6-PREP"`.
+- Quality gate result: pass — focused `3 passed`, DARS cohort `43 passed`, full suite `978 passed in 22.25s`, traceability OK, secret scan `hit_count=0`, `git diff --check` clean.
+
+Resume checkpoint:
+- Current HEAD: 38c22f2 feat: add dars panel golden run wrapper
+- Working tree: DARS-CLOSE-3 readiness module, CLI dispatch, test file, traceability update; final commit pending
+- Last completed milestone/task: DARS-CLOSE-2 golden run wrapper and operator runbook
+- Current in-progress task: local commit for DARS-CLOSE-3 readiness status surface
+- RED observed: argparse rejected `dars-panel-readiness`
+- GREEN observed: focused readiness tests `3 passed`; DARS cohort `43 passed`; full suite `978 passed`
+- Quality gate status: pass — focused, DARS cohort, full suite, traceability, secret scan, and diff-check all green
+- Next command to run: commit DARS-CLOSE-3 increment, push to existing `origin/dars`, then execute DARS-CLOSE-4 closure gate
+- Stop condition: continue to DARS-CLOSE-4 once DARS-CLOSE-3 commit/push completes and validation remains green
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`, and the DARS panel productization line is intentionally prioritized before returning to the original codebase-analysis queue.
@@ -5464,8 +5485,8 @@ First execute the DARS panel closure plan:
 Plan: docs/plans/dars-panel-completion-before-codebase-return.md
 Done: DARS-CLOSE-1 — Golden fixture scenario for operator report
 Done: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run
-NEXT: DARS-CLOSE-3 — DARS panel completion/readiness status surface
-Then: DARS-CLOSE-4 — Closure gate and queue return to M21.6
+Done: DARS-CLOSE-3 — DARS panel completion/readiness status surface
+NEXT: DARS-CLOSE-4 — Closure gate and queue return to M21.6
 ```
 
 After DARS-CLOSE-4 passes, restore the original next queue target:
