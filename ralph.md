@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M21.9 subagent evidence collector protocol Prepare
+
+- Phase completed: Prepare/document-RED planning for the human-gated M21 backlog candidate `Subagent evidence collector protocol`, following the explicit user authorization phrase `m21 go` in the Discord Hisys thread. This checkpoint interprets the authorization narrowly: local documentation/control and fixture-backed schema work only. It does not authorize live subagent execution, `delegate_task` calls, process spawning, external network/browser/model calls, credential access, remote push, raw source archival, or publication.
+- Controlled anchors checked: `docs/plans/m21-roadmap-implementation-plan.md` lines 37..39 and 145..151 (remaining Human-gated M21 candidates); `revision_plan_v004.md` Section 7.8 (subagent input/output packet vocabulary and parent verification rule); prior QUEUE-REFILL-PREP and stop-preflight entries at `ab67b5f` and `b3801e6` (all remaining M21 candidates required human-gate authorization before scoping); existing M21 report boundary vocabulary (`advisory_only`, `requires_human_review`, `external_call_made=false`, `mutation_performed=false`, `raw_source_content_persisted=false`, `allowed_actions=advisory_only`).
+- Baseline observed: branch `dars`, HEAD `b3801e6 docs: stop-preflight confirms prior queue-refill-prep conclusion`, upstream `origin/dars`, working tree clean before this Prepare write, 12 commits ahead of `origin/dars`.
+- Decision: select the subagent evidence collector protocol before the approved OSS comparison adapter or optional local LSP adapter because it can start as a pure protocol/schema/control surface. The PREP plan defines `M21.9.1` as a pure validator for task/result packets under `src/hisys/contracts/subagent_evidence_collector.py` with tests in `tests/unit/test_subagent_evidence_collector_protocol.py` and a controlled contract doc in `docs/contracts/subagent-evidence-collector-protocol.md`. A future CLI wrapper is deferred.
+- Document-RED artifact: created `docs/plans/m21-9-subagent-evidence-collector-protocol-implementation-tasks.md`. Planned first RED is `PYTHONPATH=src pytest tests/unit/test_subagent_evidence_collector_protocol.py::test_subagent_task_packet_accepts_bounded_read_only_scope -q`, expected to fail with `ModuleNotFoundError: No module named 'hisys.contracts.subagent_evidence_collector'`.
+- Boundary: local docs/control preparation only. No production code, no tests, no contract document under `docs/contracts/` yet, no subagent execution, no process spawning, no network/browser/model call, no credential lookup, no raw source archival, no remote push, no publication, no pass-contract taxonomy change, and no approval/readiness wording.
+- Quality gate result: pass — `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=660 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The broad phrase `m21 go` authorizes continuing M21, but it does not specify which remaining human-gated candidate; this checkpoint chose the safest local-schema candidate and records that selection. (b) If the user intended the OSS comparison adapter or LSP adapter instead, stop before implementation and retarget with a new PREP. (c) The repo remains ahead of `origin/dars`; no push is performed because Section 10.3 still does not authorize automatic push for branch `dars`.
+- Continue decision: after committing this Prepare package, the next safe row is `M21.9.1` RED/GREEN for the pure protocol validator, provided the user authorization is considered sufficient to continue into schema code. Otherwise stop at the Prepare boundary and ask whether to continue.
+- Stop condition: M21.9-PREP boundary reached; implementation remains gated by the planned RED test and by the no-execution/no-live-action boundary.
+- Commit pending: `docs: prepare subagent evidence collector protocol`.
+
+Resume checkpoint:
+- Current HEAD: b3801e6 docs: stop-preflight confirms prior queue-refill-prep conclusion
+- Working tree: M21.9 PREP doc and `ralph.md` modified until commit
+- Last completed milestone/task: M21.9 subagent evidence collector protocol Prepare/document-RED
+- RED observed: not yet; next command after commit is the planned M21.9.1 RED test
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: validate, stage M21.9 PREP doc + `ralph.md`, commit, then start M21.9.1 RED if continuing is allowed
+- Stop condition: no remote push and no live/external/subagent/process action
+
 ### 2026-05-21 — Fresh-iteration stop-preflight confirms prior QUEUE-REFILL-PREP conclusion (no state change)
 
 - Phase completed: stop-preflight only. A fresh tmux-backed Ralph agent iteration launched against `path:/home/cbchoi/workspaces/develop/repos/hisys` on branch `dars` and re-ran the mandatory stop-preflight against the prior QUEUE-REFILL-PREP commit `ab67b5f docs: queue-refill-prep after m21-8 close — m21 backlog requires human-gate authorization`. No new task was started in this iteration because no state has changed since `ab67b5f`.
