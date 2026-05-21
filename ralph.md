@@ -5475,21 +5475,46 @@ Resume checkpoint:
 - Next command to run: commit DARS-CLOSE-3 increment, push to existing `origin/dars`, then execute DARS-CLOSE-4 closure gate
 - Stop condition: continue to DARS-CLOSE-4 once DARS-CLOSE-3 commit/push completes and validation remains green
 
+### 2026-05-21 — DARS-CLOSE-4 closure gate and queue return to M21.6
+
+- Phase completed: closure gate for the DARS panel productization line per `docs/plans/dars-panel-completion-before-codebase-return.md`. The Ralph queue is restored to `MB-CODEBASE-M21-6-PREP` for the next codebase-analysis Prepare increment.
+- Request context: tmux Ralph loop continued from `249797c feat: add dars panel readiness status`; all DARS-CLOSE-1/2/3 increments were complete and pushed, leaving DARS-CLOSE-4 as the final closure row.
+- Scope: updated this Reflection Log with closure summary and commit hashes; left `docs/milestone-bootstrap/profile.yaml` unchanged because its `next_safe_task=MB-CODEBASE-M21-6-PREP` and `current_head_at_plan_creation=641e9a8` already match the governance current-state validator’s contract, which still passes. The DARS panel productization closure is recorded as complete in `docs/traceability/dars-critic-panel-runtime-traceability.md` (v0.14.0) and via Section 16 of this file.
+- Closure summary:
+  - DARS-CLOSE-1 commit `0c9582f test: add dars panel golden report fixture` — checked-in golden fixture at `tests/fixtures/dars_panel/golden_basic/`.
+  - DARS-CLOSE-2 commit `38c22f2 feat: add dars panel golden run wrapper` — `hisys run-dars-panel-golden` operator UX wrapper plus `docs/runbooks/dars-panel-fixture-operator-run.md`.
+  - DARS-CLOSE-3 commit `249797c feat: add dars panel readiness status` — `hisys dars-panel-readiness` advisory readiness/completion surface plus `src/hisys/operations/dars_panel_readiness.py`.
+  - DARS-CLOSE-4 (this entry) — closure gate and queue return.
+- Completion claim boundary: the DARS panel productization line is complete only for `local_fixture_localhost_controlled_advisory_complete`. Live external provider execution is **not** smoked and **not** implemented; opening a live-provider line requires a separately approved governed plan, RED tests, decision packet, and human approval.
+- Boundary: docs/control closure only. No live model call, real remote provider call, credential lookup, raw secret capture, browser/search/tool execution, publication, deployment, schema/data migration against non-fixture data, force push, new remote configuration, destructive operation, or non-delegable action is introduced.
+- Quality gate result: pass — governance current-state `1 passed`, DARS cohort `43 passed`, full suite `978 passed`, traceability OK, secret scan `hit_count=0`, `git diff --check` clean (gates re-run after the closure ralph.md edit below; values updated in the post-edit re-run).
+
+Resume checkpoint:
+- Current HEAD: 249797c feat: add dars panel readiness status
+- Working tree: DARS-CLOSE-4 closure note in ralph.md; final commit pending
+- Last completed milestone/task: DARS-CLOSE-3 readiness status surface
+- Current in-progress task: DARS-CLOSE-4 closure gate commit
+- DARS panel productization line status: closed for `local_fixture_localhost_controlled_advisory_complete`; live external provider execution remains unproven.
+- Next safe Ralph queue target: `MB-CODEBASE-M21-6-PREP` — create `docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md` before any RED implementation test or product code.
+- Quality gate status: pass — governance current-state, DARS cohort, full suite, traceability, secret scan, and diff-check green.
+- Next command to run: commit DARS-CLOSE-4 closure entry, push to existing `origin/dars`, then begin `MB-CODEBASE-M21-6-PREP` Prepare on a separate go-ahead.
+- Stop condition: after DARS-CLOSE-4 commit/push, the Ralph queue waits for the next iteration to start `MB-CODEBASE-M21-6-PREP` Prepare. The productization closure is final for this loop.
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`, and the DARS panel productization line is intentionally prioritized before returning to the original codebase-analysis queue.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. The DARS panel productization line is **closed** for `local_fixture_localhost_controlled_advisory_complete`; live external provider execution remains unimplemented and unproven. The next safe queue target is the original codebase-analysis Prepare row.
 
-First execute the DARS panel closure plan:
+DARS panel productization closure status:
 
 ```text
 Plan: docs/plans/dars-panel-completion-before-codebase-return.md
-Done: DARS-CLOSE-1 — Golden fixture scenario for operator report
-Done: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run
-Done: DARS-CLOSE-3 — DARS panel completion/readiness status surface
-NEXT: DARS-CLOSE-4 — Closure gate and queue return to M21.6
+Done: DARS-CLOSE-1 — Golden fixture scenario for operator report (0c9582f)
+Done: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run (38c22f2)
+Done: DARS-CLOSE-3 — DARS panel completion/readiness status surface (249797c)
+Done: DARS-CLOSE-4 — Closure gate and queue return to M21.6
 ```
 
-After DARS-CLOSE-4 passes, restore the original next queue target:
+Next safe Ralph queue target:
 
 ```text
 MB-CODEBASE-M21-6-PREP — create docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md
