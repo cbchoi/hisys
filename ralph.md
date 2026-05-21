@@ -6155,6 +6155,36 @@ Resume checkpoint:
 - Next command to run: validate, commit, push to existing `origin/dars`, then run `QUEUE-REFILL-PREP`.
 - Stop condition: stop if validation fails, push fails, or queue refill requires new human authorization.
 
+### 2026-05-22 — QUEUE-REFILL-PREP after M23 adapter portfolio integration and live LSP smoke gate
+
+- Phase completed: queue-refill checkpoint after the authorized M23 follow-up line closed at `64677c0 docs: gate m23 live lsp smoke evidence`.
+- Request context: Section 16 listed `QUEUE-REFILL-PREP` after `M23-LIVE-LSP-SMOKE-GATE`. The user authorization covered candidate 1 (adapter portfolio integration) and candidate 2 (local ruff/pyright/eslint install+execution), both now complete and pushed.
+- Controlled anchors checked: Section 16; `docs/plans/m23-adapter-portfolio-integration-followup-plan.md`; `docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md`; `docs/reports/m23-live-lsp-server-smoke.md`; `tests/fixtures/codebase-evidence-portfolio/m21_dars_m23_bundle.json`; `roadmap.md` real OSS comparison/license boundary; current `docs/milestone-bootstrap/profile.yaml`; latest git state.
+- Baseline observed: branch `dars`, HEAD `64677c0 docs: gate m23 live lsp smoke evidence`, upstream `origin/dars` synced, working tree clean before queue-refill edits.
+- Completion verification: `M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP` committed at `c7fb9af`; `M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN` committed at `deb096d`; `M23-LIVE-LSP-SMOKE-GATE` committed at `64677c0`. The M23 portfolio bundle carries M23 OSS/LSP refs by counts/schema ids/gates only. The live LSP smoke evidence remains bounded to the existing ruff/pyright repo reports plus eslint report-only temporary fixture note.
+- Queue-refill classification:
+  - `M23-ADAPTER-PORTFOLIO-INTEGRATION` — complete.
+  - `M23-LIVE-LSP-SMOKE-GATE` — complete. Any additional live LSP execution, additional executable, command allowlist expansion, or removal of the workspace-root/timeout/kill-policy constraints requires fresh explicit user authorization.
+  - Real OSS comparison / license adjudication — human-gated by `roadmap.md`; requires approved repository URLs, explicit network fetch/clone authorization, retention/cleanup policy, LICENSE capture, license adjudication packet, and provenance records. Not authorized by the current follow-up.
+  - Live-provider DARS execution — out of scope; the DARS completion claim remains `local_fixture_localhost_controlled_advisory_complete`.
+  - M24 or any new milestone — requires explicit user authorization.
+- Implementation: no production code, no test code, no runtime report content. Updated `docs/plans/m23-adapter-portfolio-integration-followup-plan.md` queue statuses to `done`, prepended a QUEUE-REFILL-PREP traceability row, bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.37` with `next_safe_task=QUEUE-REFILL-PREP-STOP`, updated `tests/unit/test_governance_docs_current_state.py`, and rewrote Section 16 to stop and ask.
+- Boundary: docs/control only. No live model call, real remote provider call, credential lookup, secret capture, browser/search/tool execution, network fetch/clone/search, real OSS clone, license-text capture, license adjudication, live LSP execution, package install, raw source-content archival, raw diagnostic-message archival, publication/deployment/release, new or changed remote configuration, force push, destructive Git/history action, subagent execution, mutation of non-fixture/live user data, or live-provider DARS completion claim is introduced.
+- Continue decision: **stop and ask**. No safe local row remains under the current authorization after completing the M23 adapter portfolio integration and live LSP smoke gate. Every remaining candidate is human-gated or a new milestone.
+- Stop condition: post-M23 follow-up is complete; remaining candidates require explicit user authorization.
+- Commit pending: `docs: queue-refill after m23 adapter follow-up`.
+
+Resume checkpoint:
+- Current HEAD: 64677c0 docs: gate m23 live lsp smoke evidence
+- Working tree: follow-up plan status + traceability + profile + governance-test + Ralph Section 16/Reflection edits pending validation/commit/push
+- Last completed milestone/task: QUEUE-REFILL-PREP classification (this entry)
+- Current in-progress task: queue-refill docs/control validation and commit
+- RED observed: n/a (docs/control queue checkpoint)
+- GREEN observed: n/a (no behavior change)
+- Quality gate status: pass — governance current-state 1 passed; focused portfolio/LSP/CLI regression 52 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: validate, commit, push to existing `origin/dars`, then stop and ask for the next explicit authorization.
+- Stop condition: no safe local row remains under current authorization.
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone is closed at `local_fixture_advisory_complete` (`5a633dd`). The user has now authorized candidate 1, the adapter portfolio integration follow-up, and candidate 2, local LSP/lint executable installation and execution for ruff, pyright, and eslint.
@@ -6167,13 +6197,14 @@ Done: M23-LIVE-LSP-SMOKE-AUTH — installed/verified ruff, pyright, eslint and c
 Done: M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP — authored docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md with exact M23_OSS_ADAPTER and M23_LSP_ADAPTER portfolio line refs, RED command, and validation gates.
 Done: M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN — added the four-line portfolio golden fixture and byte-equality test for M23 OSS/LSP adapter evidence lines by refs/counts only.
 Done: M23-LIVE-LSP-SMOKE-GATE — preserved the existing ruff/pyright/eslint smoke evidence as a controlled docs/control gate without new live LSP execution.
-Next: QUEUE-REFILL-PREP — classify remaining post-M23 candidates and either open the next safe local row or stop on human-gated work.
+Done: QUEUE-REFILL-PREP — classified remaining post-M23 candidates; no safe local row remains under current authorization.
+Next: QUEUE-REFILL-PREP-STOP — stop and ask for explicit authorization before real OSS/license work, additional live LSP execution/allowlist expansion, live-provider DARS execution, or a new milestone.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-QUEUE-REFILL-PREP — inspect the completed M23 follow-up state, classify remaining candidates under the current boundaries, and update Ralph/profile/traceability with the next safe row or an explicit stop. Do not start a new milestone, live provider execution, real OSS clone, credential action, remote config change, deployment/publication, force push, or new live LSP execution without fresh user authorization.
+QUEUE-REFILL-PREP-STOP — no further task is authorized. Stop and ask the user which candidate to open next, if any: real OSS comparison/license workflow, additional live LSP execution or allowlist changes, live-provider DARS execution, or a new milestone.
 ```
 
 Follow-up boundary:

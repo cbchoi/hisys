@@ -1,11 +1,11 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.36
-focus: M23 live LSP smoke gate complete; next row is queue refill prep
+version: v0.0.37
+focus: M23 follow-up queue refill complete; stop on human-gated remaining candidates
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: QUEUE-REFILL-PREP
+next_safe_task: QUEUE-REFILL-PREP-STOP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
@@ -14,8 +14,8 @@ bootstrap_inference: "User authorized M23 adapter portfolio integration plus loc
 roadmap_ref: docs/plans/m23-adapter-portfolio-integration-followup-plan.md
 next_artifact_ref: docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md
 planning_baseline_head: "5a633dd docs: close m23 advanced codebase adapter milestone"
-current_head_at_plan_creation: "deb096d test: integrate m23 adapter lines into codebase evidence portfolio"
-previous_bootstrap_version: v0.0.35
+current_head_at_plan_creation: "64677c0 docs: gate m23 live lsp smoke evidence"
+previous_bootstrap_version: v0.0.36
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false

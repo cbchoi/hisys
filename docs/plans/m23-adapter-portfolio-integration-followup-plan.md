@@ -10,9 +10,13 @@ Add M23 adapter evidence-line refs to the codebase evidence portfolio so operato
 
 | Row | Task | Type | Status |
 |---|---|---|---|
-| M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP | Define the exact portfolio bundle lines for `M23_OSS_ADAPTER` and `M23_LSP_ADAPTER`, including live LSP smoke refs. | docs/control | next |
-| M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN | Add/extend fixture or test coverage proving the M22 portfolio accepts M23 adapter evidence lines by refs/counts only. | fixture-local implementation | pending after PREP |
-| M23-LIVE-LSP-SMOKE-GATE | Preserve the ruff/pyright/eslint installation+execution evidence and gate boundaries. | docs/control gate | pending after integration |
+| M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP | Define the exact portfolio bundle lines for `M23_OSS_ADAPTER` and `M23_LSP_ADAPTER`, including live LSP smoke refs. | docs/control | done |
+| M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN | Add/extend fixture or test coverage proving the M22 portfolio accepts M23 adapter evidence lines by refs/counts only. | fixture-local implementation | done |
+| M23-LIVE-LSP-SMOKE-GATE | Preserve the ruff/pyright/eslint installation+execution evidence and gate boundaries. | docs/control gate | done |
+
+## Queue refill result
+
+The authorized follow-up is complete. Remaining candidates require separate explicit user authorization: real OSS clone/fetch and license adjudication, additional live LSP execution or command allowlist expansion, live-provider DARS execution, or opening a new milestone.
 
 ## Initial portfolio lines
 
