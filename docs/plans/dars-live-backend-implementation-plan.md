@@ -93,6 +93,41 @@ external_api / remote subscription candidate
 
 Initial integration should preserve existing callers by adding an optional `backend_activation_packet_ref` argument beside `approval_ref`, then making the packet authoritative for model-boundary execution. If both are supplied, mismatched approval references must fail closed with `activation_approval_ref_mismatch`.
 
+## Validator and integration blocker controls
+
+M-DARS-BE-1 must keep the activation packet narrow and deterministic so M-DARS-BE-2 can enforce it without ambiguity. The validator may define both `localhost_only` and `external_api` endpoint scopes, but remote/external scope remains fail-closed preparation only: an `external_api` packet is valid only as a policy description when `remote_policy_packet_ref` is present; it still does not authorize remote dispatch.
+
+Validator output should follow the existing Hisys validation-report pattern with deterministic issue codes. Reuse `ConfigValidationIssue` / `ConfigValidationReport` if that fits cleanly; otherwise define a small DARS-specific report with the same `valid`, `issues`, `path`, `code`, `message`, and `severity` shape. Tests must assert issue codes rather than free-form message strings.
+
+Required M-DARS-BE-1 issue codes:
+
+```text
+external_backend_requires_remote_policy_packet
+raw_secret_value_not_allowed
+invalid_allowed_actions
+missing_approval_ref
+human_approval_required
+activation_expired
+invalid_endpoint_scope
+```
+
+Recommended additional M-DARS-BE-2/runtime mismatch codes:
+
+```text
+backend_activation_packet_required
+activation_approval_ref_mismatch
+activation_backend_id_mismatch
+activation_backend_kind_mismatch
+activation_endpoint_scope_mismatch
+remote_dispatch_not_implemented
+```
+
+`expires_at` handling must be deterministic. The validator should accept an optional injected `now` value for tests and runtime callers. Tests must not depend on wall-clock time. If an implementation cannot add `now` cleanly in the first increment, it may validate ISO format in M-DARS-BE-1 and defer expiry comparison to the runtime integration task, but the deferral must be explicit and covered by a failing test before runtime enforcement.
+
+Secret rejection must be bounded and explainable. Reject secret-like field names such as `api_key`, `token`, `secret`, `password`, and `credential` except the controlled reference field `approval_ref`. Also reject obvious raw secret-like string values with a small deterministic matcher. Do not add high-recall secret scanning that creates unstable false positives in ordinary approval or policy refs.
+
+M-DARS-BE-2 must preserve the existing `approval_ref` argument while adding `backend_activation_packet_ref`. The activation packet becomes authoritative for model-boundary execution. If both references are supplied, mismatches fail closed with `activation_approval_ref_mismatch`. Missing packet must be proven to block before endpoint contact by a test that monkeypatches or spies on `_run_openai_compatible_backend` and asserts it is not called.
+
 ## Implementation sequence
 
 ### Task M-DARS-BE-1: Backend activation policy packet validator
@@ -104,9 +139,13 @@ Initial integration should preserve existing callers by adding an optional `back
 - Create: `tests/unit/test_dars_backend_activation.py`
 - Modify: `docs/traceability/README.md`
 
-**Step 1: Write failing test**
+**Step 1: Write failing tests**
 
 ```python
+def _issue_codes(report):
+    return {issue.code for issue in report.issues}
+
+
 def test_backend_activation_rejects_external_provider_without_policy_packet():
     report = validate_dars_backend_activation_packet({
         "activation_id": "DARS-BE-ACT-20260521-001",
@@ -116,9 +155,41 @@ def test_backend_activation_rejects_external_provider_without_policy_packet():
         "allowed_actions": "advisory_only",
         "human_approved": True,
         "approval_ref": "APPROVAL-DARS-BE-20260521-001",
-    }, config_ref="inline://external")
+        "expires_at": "2026-05-22T00:00:00Z",
+    }, config_ref="inline://external", now="2026-05-21T00:00:00Z")
     assert report.valid is False
-    assert any(issue.code == "external_backend_requires_remote_policy_packet" for issue in report.issues)
+    assert "external_backend_requires_remote_policy_packet" in _issue_codes(report)
+
+
+def test_backend_activation_rejects_expired_packet_deterministically():
+    report = validate_dars_backend_activation_packet({
+        "activation_id": "DARS-BE-ACT-20260521-002",
+        "backend_id": "local-llm",
+        "backend_kind": "openai_compatible",
+        "endpoint_scope": "localhost_only",
+        "allowed_actions": "advisory_only",
+        "human_approved": True,
+        "approval_ref": "APPROVAL-DARS-BE-20260521-002",
+        "expires_at": "2026-05-20T00:00:00Z",
+    }, config_ref="inline://expired", now="2026-05-21T00:00:00Z")
+    assert report.valid is False
+    assert "activation_expired" in _issue_codes(report)
+
+
+def test_backend_activation_rejects_secret_like_fields_and_values():
+    report = validate_dars_backend_activation_packet({
+        "activation_id": "DARS-BE-ACT-20260521-003",
+        "backend_id": "local-llm",
+        "backend_kind": "openai_compatible",
+        "endpoint_scope": "localhost_only",
+        "allowed_actions": "advisory_only",
+        "human_approved": True,
+        "approval_ref": "APPROVAL-DARS-BE-20260521-003",
+        "expires_at": "2026-05-22T00:00:00Z",
+        "api_key": "sk-test-not-allowed",
+    }, config_ref="inline://secret", now="2026-05-21T00:00:00Z")
+    assert report.valid is False
+    assert "raw_secret_value_not_allowed" in _issue_codes(report)
 ```
 
 **Step 2: Verify RED**
@@ -129,11 +200,17 @@ Run:
 PYTHONPATH=src:. pytest tests/unit/test_dars_backend_activation.py::test_backend_activation_rejects_external_provider_without_policy_packet -q
 ```
 
-Expected: fail because `hisys.agents.dars_backend_activation` does not exist.
+Expected: fail because `hisys.agents.dars_backend_activation` does not exist. After creating the test file, the full RED set for this task is:
+
+```bash
+PYTHONPATH=src:. pytest tests/unit/test_dars_backend_activation.py -q
+```
 
 **Step 3: Minimal implementation**
 
-Add a Pydantic model and validator with these fields:
+Add a Pydantic model and validator with deterministic validation-report output. Prefer the existing `ConfigValidationIssue` / `ConfigValidationReport` shape if clean; otherwise mirror its fields in a small DARS-specific report. Add a `now` parameter to `validate_dars_backend_activation_packet(..., now: str | datetime | None = None)` so expiry tests do not depend on wall-clock time.
+
+Fields:
 
 - `activation_id`
 - `backend_id`
@@ -149,13 +226,15 @@ Add a Pydantic model and validator with these fields:
   - `publication_authorized=false`
   - `requires_human_review=true`
 
-Reject:
+Reject with deterministic issue codes:
 
-- any raw secret-like field or value;
-- `allowed_actions != advisory_only`;
-- `endpoint_scope=external_api` without `remote_policy_packet_ref`;
-- missing `approval_ref`;
-- `human_approved != true`.
+- any raw secret-like field or bounded raw secret-like value -> `raw_secret_value_not_allowed`;
+- `allowed_actions != advisory_only` -> `invalid_allowed_actions`;
+- `endpoint_scope` outside `localhost_only | external_api` -> `invalid_endpoint_scope`;
+- `endpoint_scope=external_api` without `remote_policy_packet_ref` -> `external_backend_requires_remote_policy_packet`;
+- missing `approval_ref` -> `missing_approval_ref`;
+- `human_approved != true` -> `human_approval_required`;
+- `expires_at` before injected `now` -> `activation_expired`.
 
 **Step 4: Verify GREEN**
 
@@ -188,7 +267,10 @@ Add tests that prove:
 - `DarsDispatchGate` is still called before activation validation and remains a dispatch/appraiser gate, not a packet validator;
 - loopback, fixture text, and fixture-local paths that do not cross a model boundary remain unchanged and do not require activation;
 - approved localhost activation requires `endpoint_scope=localhost_only`, matching `approval_ref`, `allowed_actions=advisory_only`, `human_approved=true`, and records `model_boundary_crossed=true`, `local_model_call_made=true`, `external_call_made=false`;
-- mismatched CLI/runtime `approval_ref` and activation packet `approval_ref` fails closed with `activation_approval_ref_mismatch`.
+- mismatched CLI/runtime `approval_ref` and activation packet `approval_ref` fails closed with `activation_approval_ref_mismatch`;
+- missing activation blocks before endpoint contact by monkeypatching or spying on `_run_openai_compatible_backend` and asserting it is not called;
+- direct Python calls to `DarsRuntime.run_configured_critique()` cannot bypass activation even if the CLI would normally pass the packet path;
+- the CLI only passes `--backend-activation-packet` / `backend_activation_packet_ref` through and is not the enforcement boundary.
 
 **Step 2: Verify RED**
 
@@ -203,7 +285,7 @@ Expected: fail because current configured critique only accepts `approval_ref` a
 - Add optional `backend_activation_packet_ref` pass-through to the CLI surface, but make `DarsRuntime.run_configured_critique()` the enforcement boundary.
 - In `DarsRuntime.run_configured_critique()`, run `DarsDispatchGate.evaluate()` first, then validate the activation packet immediately before dispatching any backend that crosses a model/backend boundary.
 - Keep `DarsDispatchGate` appraiser/dispatch separation unchanged; do not move packet schema validation or remote subscription policy validation into the gate.
-- For `openai_compatible` + `local_network_only`, require `endpoint_scope=localhost_only`, `activation.backend_id == backend_id`, `activation.backend_kind == backend.kind`, and `activation.approval_ref == approval_ref` when both are supplied.
+- For `openai_compatible` + `local_network_only`, require `endpoint_scope=localhost_only`, `activation.backend_id == backend_id`, `activation.backend_kind == backend.kind`, and `activation.approval_ref == approval_ref` when both are supplied. Use deterministic runtime error codes `backend_activation_packet_required`, `activation_approval_ref_mismatch`, `activation_backend_id_mismatch`, `activation_backend_kind_mismatch`, and `activation_endpoint_scope_mismatch`.
 - Preserve no Authorization header and no credential lookup for localhost-only mode.
 
 **Step 4: Verify GREEN**

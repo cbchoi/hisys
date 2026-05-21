@@ -1946,6 +1946,28 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — DARS activation blocker-control planning
+
+- Phase completed: incorporated user direction to plan against the next blockers before implementation: weak activation schema, unstable expiry checks, broad secret heuristics, ambiguous `approval_ref` coexistence, dispatch-gate responsibility drift, and endpoint-contact-before-activation bugs.
+- Decision captured: M-DARS-BE-1 must produce deterministic validation-report output with stable issue codes: `external_backend_requires_remote_policy_packet`, `raw_secret_value_not_allowed`, `invalid_allowed_actions`, `missing_approval_ref`, `human_approval_required`, `activation_expired`, and `invalid_endpoint_scope`.
+- Runtime integration captured: M-DARS-BE-2 must use deterministic fail-closed runtime codes: `backend_activation_packet_required`, `activation_approval_ref_mismatch`, `activation_backend_id_mismatch`, `activation_backend_kind_mismatch`, `activation_endpoint_scope_mismatch`, and `remote_dispatch_not_implemented`.
+- Determinism captured: expiry validation uses injected `now` rather than wall-clock time; tests assert issue codes, not free-form messages; secret rejection remains bounded to explicit secret-like fields and obvious raw secret-like values to avoid unstable false positives.
+- Enforcement captured: missing activation for `openai_compatible` + `local_network_only` must be proven to block before endpoint contact by spying/monkeypatching `_run_openai_compatible_backend`; direct Python runtime calls must not bypass activation; CLI only passes packet refs through.
+- Files updated: `docs/plans/dars-live-backend-implementation-plan.md`, `docs/traceability/README.md`, and `ralph.md`.
+- Boundary: docs/control update only. No production code, no tests executed as implementation RED, no live model call, no remote subscription call, no provider account use, no credential lookup/resolution, no adapter execution, no deployment/publication/vault mutation, and no runtime state mutation.
+- Quality gate result: pass — `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=665 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Continue decision: commit/sync this docs-control blocker plan, then next executable RED remains M-DARS-BE-1 validator with the expanded deterministic issue-code tests.
+- Stop condition: implementation remains blocked behind TDD; any real local model smoke, remote subscription call, provider configuration, credential resolution, or boundary semantics change requires a fresh explicit decision.
+
+Resume checkpoint:
+- Current HEAD: a2b5d2c before this blocker-control planning update
+- Working tree: docs/control files modified until validation and commit
+- Last completed milestone/task: DARS activation blocker-control planning
+- RED observed: not applicable; docs/control decision update
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage, commit, and push docs-control blocker plan
+- Stop condition: no live backend execution or credential/provider action in this increment
+
 ### 2026-05-21 — DARS activation enforcement placement decision
 
 - Phase completed: incorporated user decision that backend activation packet enforcement must occur in runtime, while avoiding a monolithic `DarsDispatchGate` that owns all activation validation.
