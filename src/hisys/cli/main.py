@@ -156,6 +156,11 @@ from ..operations.architecture_candidates import (
     build_architecture_candidate_report,
     write_architecture_candidate_report,
 )
+from ..operations.code_analysis_pass_contract import (
+    _SUPPORTED_QUESTION_TYPES as CODE_ANALYSIS_SUPPORTED_QUESTION_TYPES,
+    build_code_analysis_evidence_summary,
+    write_code_analysis_pass_contract_evaluation,
+)
 from ..investigator import (
     ClaimRecord,
     CollectionReport,
@@ -1596,6 +1601,63 @@ def _cmd_architecture_candidates(
     return 0
 
 
+def _cmd_evaluate_code_analysis_contract(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    contract_ref: Path,
+    question_type: str,
+    coverage_report_path: Path | None,
+    boundary_report_path: Path | None,
+    freshness_report_path: Path | None,
+    benchmark_report_path: Path | None,
+    change_impact_report_path: Path | None,
+    architecture_candidates_report_path: Path | None,
+    human_approval_ref: str | None,
+) -> int:
+    """Evaluate a code-analysis pass-contract via the CLI."""
+
+    entries = load_pass_contract_registry(contract_ref)
+    if not entries:
+        raise ValueError("contract registry is empty")
+    entry = entries[0]
+    summary = build_code_analysis_evidence_summary(
+        question_type=question_type,
+        coverage_report=_load_json_report(coverage_report_path),
+        boundary_report=_load_json_report(boundary_report_path),
+        freshness_report=_load_json_report(freshness_report_path),
+        benchmark_report=_load_json_report(benchmark_report_path),
+        change_impact_report=_load_json_report(change_impact_report_path),
+        architecture_candidates_report=_load_json_report(
+            architecture_candidates_report_path
+        ),
+    )
+    result = evaluate_pass_contract(entry, summary)
+    written = write_code_analysis_pass_contract_evaluation(
+        instance_root=instance_root,
+        date=yyyymmdd,
+        contract_id=entry.contract_id,
+        result=result,
+        human_approval_ref=human_approval_ref,
+    )
+    print(
+        f"evaluate-code-analysis-contract evaluation: json={written['json_ref']}"
+    )
+    print(f"markdown: {written['markdown_ref']}")
+    print(f"contract_id: {entry.contract_id}")
+    print(f"question_type: {question_type}")
+    print(f"quality_gate: {result.quality_gate}")
+    blockers_text = ",".join(result.blockers) if result.blockers else "none"
+    print(f"blockers: {blockers_text}")
+    print("advisory_only: true")
+    print("requires_human_review: true")
+    print("external_call_made: false")
+    print("mutation_performed: false")
+    print("raw_source_content_persisted: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_codebase_map_freshness_review(
     *,
     instance_root: Path,
@@ -2224,6 +2286,63 @@ def _build_parser() -> argparse.ArgumentParser:
         "--current-head-short",
         default=None,
         help="optional caller-supplied git HEAD short hash recorded verbatim",
+    )
+
+    evaluate_code_analysis = sub.add_parser(
+        "evaluate-code-analysis-contract",
+        help="evaluate a code-analysis pass-contract against M21.1..M21.7 reports",
+    )
+    evaluate_code_analysis.add_argument(
+        "--instance", required=True, help="Hisys instance root"
+    )
+    evaluate_code_analysis.add_argument(
+        "--date", required=True, help="YYYYMMDD evaluation partition"
+    )
+    evaluate_code_analysis.add_argument(
+        "--contract-ref",
+        required=True,
+        help="explicit caller-supplied pass-contract registry JSON path (first contract wins)",
+    )
+    evaluate_code_analysis.add_argument(
+        "--question-type",
+        required=True,
+        choices=sorted(CODE_ANALYSIS_SUPPORTED_QUESTION_TYPES),
+        help="code-analysis question type",
+    )
+    evaluate_code_analysis.add_argument(
+        "--coverage-report",
+        default=None,
+        help="optional explicit hisys.traceability.coverage.v1 JSON report path",
+    )
+    evaluate_code_analysis.add_argument(
+        "--boundary-report",
+        default=None,
+        help="optional explicit hisys.runtime_boundary.consistency.v1 JSON report path",
+    )
+    evaluate_code_analysis.add_argument(
+        "--freshness-report",
+        default=None,
+        help="optional explicit hisys.codebase_map.freshness.v1 JSON report path",
+    )
+    evaluate_code_analysis.add_argument(
+        "--benchmark-report",
+        default=None,
+        help="optional explicit hisys.codebase_regression.benchmark.v1 JSON report path",
+    )
+    evaluate_code_analysis.add_argument(
+        "--change-impact-report",
+        default=None,
+        help="optional explicit hisys.change_impact.v1 JSON report path",
+    )
+    evaluate_code_analysis.add_argument(
+        "--architecture-candidates-report",
+        default=None,
+        help="optional explicit hisys.architecture_candidates.v1 JSON report path",
+    )
+    evaluate_code_analysis.add_argument(
+        "--human-approval-ref",
+        default=None,
+        help="optional caller-supplied human-approval token recorded verbatim",
     )
 
     codebase_map_freshness_review = sub.add_parser(
@@ -3507,6 +3626,36 @@ def main(argv: list[str] | None = None) -> int:
                 else None
             ),
             current_head_short=args.current_head_short,
+        )
+    if args.command == "evaluate-code-analysis-contract":
+        return _cmd_evaluate_code_analysis_contract(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            contract_ref=Path(args.contract_ref),
+            question_type=args.question_type,
+            coverage_report_path=(
+                Path(args.coverage_report) if args.coverage_report else None
+            ),
+            boundary_report_path=(
+                Path(args.boundary_report) if args.boundary_report else None
+            ),
+            freshness_report_path=(
+                Path(args.freshness_report) if args.freshness_report else None
+            ),
+            benchmark_report_path=(
+                Path(args.benchmark_report) if args.benchmark_report else None
+            ),
+            change_impact_report_path=(
+                Path(args.change_impact_report)
+                if args.change_impact_report
+                else None
+            ),
+            architecture_candidates_report_path=(
+                Path(args.architecture_candidates_report)
+                if args.architecture_candidates_report
+                else None
+            ),
+            human_approval_ref=args.human_approval_ref,
         )
     if args.command == "codebase-map-freshness-review":
         return _cmd_codebase_map_freshness_review(

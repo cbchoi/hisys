@@ -292,6 +292,166 @@ def test_architecture_candidates_cli_writes_report(tmp_path: Path, capsys) -> No
         )
 
 
+_CODE_ANALYSIS_FIXTURE_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "fixtures"
+    / "pass-contracts"
+    / "code_analysis"
+)
+
+
+def _evaluate_code_analysis_coverage_payload() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.traceability.coverage.v1",
+        "requirement_count": 2,
+        "covered_requirement_count": 2,
+        "coverage_ratio": 1.0,
+        "unreferenced_requirements": [],
+        "orphan_test_ids": [],
+    }
+
+
+def test_evaluate_code_analysis_contract_cli_writes_artifact(
+    tmp_path: Path, capsys
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    contract_path = (
+        _CODE_ANALYSIS_FIXTURE_DIR / "traceability_coverage_review.json"
+    )
+    assert contract_path.is_file()
+    coverage_path = tmp_path / "coverage.json"
+    coverage_path.write_text(
+        json.dumps(_evaluate_code_analysis_coverage_payload()), encoding="utf-8"
+    )
+
+    result = main(
+        [
+            "evaluate-code-analysis-contract",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260521",
+            "--contract-ref",
+            str(contract_path),
+            "--question-type",
+            "traceability_coverage_review",
+            "--coverage-report",
+            str(coverage_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "evaluate-code-analysis-contract evaluation" in captured.out
+    assert "quality_gate: passed" in captured.out
+    assert "blockers: none" in captured.out
+    assert "external_call_made: false" in captured.out
+    assert "mutation_performed: false" in captured.out
+    assert "raw_source_content_persisted: false" in captured.out
+    assert "allowed_actions: advisory_only" in captured.out
+    assert (
+        "contract_id: code_analysis_traceability_coverage_review_v0_1_candidate"
+        in captured.out
+    )
+    assert "question_type: traceability_coverage_review" in captured.out
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "code-analysis-pass-contracts"
+        / "20260521"
+        / "code_analysis_traceability_coverage_review_v0_1_candidate-evaluation.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "code-analysis-pass-contracts"
+        / "20260521"
+        / "code_analysis_traceability_coverage_review_v0_1_candidate-evaluation.md"
+    )
+    assert json_path.exists()
+    assert md_path.exists()
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert (
+        data["schema_id"]
+        == "hisys.code_analysis_pass_contract.evaluation.v1"
+    )
+    assert (
+        data["contract_id"]
+        == "code_analysis_traceability_coverage_review_v0_1_candidate"
+    )
+    assert data["quality_gate"] == "passed"
+    assert data["blockers"] == []
+    assert data["advisory_only"] is True
+    assert data["requires_human_review"] is True
+    assert data["external_call_made"] is False
+    assert data["mutation_performed"] is False
+    assert data["raw_source_content_persisted"] is False
+    assert data["human_approval_ref"] is None
+
+
+def test_evaluate_code_analysis_contract_cli_records_blockers_and_approval(
+    tmp_path: Path, capsys
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    contract_path = (
+        _CODE_ANALYSIS_FIXTURE_DIR / "change_impact_review.json"
+    )
+    change_impact_path = tmp_path / "change-impact.json"
+    change_impact_path.write_text(
+        json.dumps(
+            {
+                "schema_id": "hisys.change_impact.v1",
+                "changed_ref_count": 1,
+                "impacted_requirement_ids": ["HISYS-FR-DOM-001"],
+                "impacted_test_id_or_refs": [],
+                "impacted_design_or_interface_refs": [],
+                "impacted_runtime_boundary_refs": [],
+                "unmapped_changed_refs": [],
+                "unsafe_changed_refs": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "evaluate-code-analysis-contract",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260521",
+            "--contract-ref",
+            str(contract_path),
+            "--question-type",
+            "change_impact_review",
+            "--change-impact-report",
+            str(change_impact_path),
+            "--human-approval-ref",
+            "APPROVAL-TEST-001",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "quality_gate: needs_more_evidence" in captured.out
+    assert "blockers: contradiction_unchecked" in captured.out
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "code-analysis-pass-contracts"
+        / "20260521"
+        / "code_analysis_change_impact_review_v0_1_candidate-evaluation.json"
+    )
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["quality_gate"] == "needs_more_evidence"
+    assert data["blockers"] == ["contradiction_unchecked"]
+    assert data["human_approval_ref"] == "APPROVAL-TEST-001"
+
+
 def test_runtime_boundary_check_cli_writes_consistency_report(tmp_path: Path, capsys) -> None:
     instance_root = tmp_path / "instance"
     instance_root.mkdir()
