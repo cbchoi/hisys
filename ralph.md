@@ -12,12 +12,12 @@
 | Default working directory | `/home/cbchoi/workspaces/sysailab/develop/repos/hisys` |
 | Target branch | `feat/domain-adaptive-requirements-analysis` |
 | Original baseline commit | `04d6b01 test: propagate src path to subprocess CLI tests` |
-| Current update baseline | `a21bbc8` |
+| Current update baseline | `a38e04e` |
 | Execution mode | `on-demand Discord Ralph loop unless explicitly scheduled` |
 | Default runtime limit | `5 hours` |
 | User-specified runtime limit | `<none unless stated in the invoking message>` |
 | External side effects | `disabled; security/system-risk actions require user-executed commands` |
-| Last updated | `2026-05-16` |
+| Last updated | `2026-05-21` |
 
 ## 0.1 Purpose and Existing Baseline
 
@@ -205,6 +205,18 @@ one RED/GREEN/reflection/commit unit per iteration
 ```
 
 A single run may execute multiple tasks only when each task reaches a committed clean checkpoint before the next task begins.
+
+### 5.1.2.1 DARS Panel Continuous-Completion Optimization
+
+For DARS panel completion/productization work, Ralph shall not stop merely because a clean RED/GREEN/commit/push checkpoint has been reached. A checkpoint is progress, not a terminal condition, while a safe DARS panel completion row remains available. After each DARS panel checkpoint, Ralph shall run a stop-preflight before reporting completion:
+
+1. reconstruct Git state and confirm the working tree is clean;
+2. inspect Section 16, `docs/plans/dars-panel-completion-before-codebase-return.md`, `docs/traceability/dars-critic-panel-runtime-traceability.md`, and the latest DARS readiness/status surface;
+3. search for any safe local/fixture/localhost-controlled DARS panel completion candidate that can improve operator readiness, evidence packaging, traceability, validation reproducibility, or closure confidence without changing product scope;
+4. if such a candidate exists, add or execute the next DARS-local PREP/RED/GREEN row, validate, commit, push to existing `origin/dars`, and continue;
+5. stop only when the stop-preflight records that no safe local DARS completion candidate remains, or when the next candidate would require live external provider execution, credential/security authority, browser/search/tool authorization by critics, publication/deployment, destructive Git/history action, system/runtime configuration mutation, non-fixture data mutation, or a product-scope change.
+
+This optimization keeps the completion claim bounded: `DARS panel complete` means `local_fixture_localhost_controlled_advisory_complete` unless a separate governed live-provider line is explicitly approved. Live external provider execution remains outside this continuous local-safe authorization.
 
 ### 5.1.3 Resume-First Rule
 
@@ -5500,9 +5512,25 @@ Resume checkpoint:
 - Next command to run: commit DARS-CLOSE-4 closure entry, push to existing `origin/dars`, then begin `MB-CODEBASE-M21-6-PREP` Prepare on a separate go-ahead.
 - Stop condition: after DARS-CLOSE-4 commit/push, the Ralph queue waits for the next iteration to start `MB-CODEBASE-M21-6-PREP` Prepare. The productization closure is final for this loop.
 
+### 2026-05-21 — RLOO continuous-completion optimization for DARS panel
+
+- Phase completed: docs/control optimization of the Ralph/RLOO stopping rules so the DARS panel line does not end merely at a clean checkpoint or provisional queue-return note.
+- Request context: user observed that RLOO ended too early and asked to optimize RLOOP for DARS panel completion.
+- Scope: added Section 5.1.2.1 DARS Panel Continuous-Completion Optimization and rewrote Section 16 so the next row is `DARS-PANEL-RLOOP-OPT-1`, a final local completion stop-preflight/audit before returning to `MB-CODEBASE-M21-6-PREP`.
+- Boundary: docs/control change only. No live model call, real remote provider call, credential lookup, browser/search/tool execution, publication, deployment, schema/data migration against non-fixture data, force push, new remote configuration, destructive operation, or product-code change is introduced.
+- Quality gate expectation: governance current-state, DARS focused tests, traceability, secret scan, and diff-check must pass before committing this optimization.
+
+Resume checkpoint:
+- Current HEAD: a38e04e docs: close dars panel productization queue
+- Working tree: RLOO optimization edits in ralph.md; validation/commit pending
+- Last completed milestone/task: DARS-CLOSE-4 provisional closure gate
+- Current in-progress task: local commit for RLOO continuous-completion optimization
+- Next command to run: validate `ralph.md`, commit this docs/control optimization, push to existing `origin/dars`, then start `/rloo` so `DARS-PANEL-RLOOP-OPT-1` executes.
+- Stop condition: none if the optimization commit validates; continue to DARS-PANEL-RLOOP-OPT-1 under the local-safe boundary.
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. The DARS panel productization line is **closed** for `local_fixture_localhost_controlled_advisory_complete`; live external provider execution remains unimplemented and unproven. The next safe queue target is the original codebase-analysis Prepare row.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. The user observed that RLOO ended too early and authorized optimization so the DARS panel completion line is not treated as finished merely because a clean checkpoint or queue-return note exists. The DARS panel productization line is **closed only provisionally** for `local_fixture_localhost_controlled_advisory_complete`; live external provider execution remains unimplemented and unproven. Before returning to `MB-CODEBASE-M21-6-PREP`, Ralph must execute one final DARS panel stop-preflight/audit row that proves the local completion claim against runnable fixture commands and records whether any additional safe local DARS completion work remains.
 
 DARS panel productization closure status:
 
@@ -5511,14 +5539,24 @@ Plan: docs/plans/dars-panel-completion-before-codebase-return.md
 Done: DARS-CLOSE-1 — Golden fixture scenario for operator report (0c9582f)
 Done: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run (38c22f2)
 Done: DARS-CLOSE-3 — DARS panel completion/readiness status surface (249797c)
-Done: DARS-CLOSE-4 — Closure gate and queue return to M21.6
+Done: DARS-CLOSE-4 — Closure gate and provisional queue return to M21.6 (a38e04e)
+Next: DARS-PANEL-RLOOP-OPT-1 — Continuous-completion stop-preflight and final local evidence audit
+Pending after audit: MB-CODEBASE-M21-6-PREP — create docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md
 ```
 
 Next safe Ralph queue target:
 
 ```text
-MB-CODEBASE-M21-6-PREP — create docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md
+DARS-PANEL-RLOOP-OPT-1 — create/update a final local DARS panel completion audit package by running the fixture-local golden wrapper and readiness status command, recording report refs and validation results, and explicitly deciding whether any safe local DARS panel candidate remains before returning to M21.6.
 ```
+
+Acceptance for DARS-PANEL-RLOOP-OPT-1:
+
+1. Run or test the existing local-safe surfaces without live provider calls: `hisys run-dars-panel-golden` and `hisys dars-panel-readiness` under a temporary explicit instance root.
+2. Record generated JSON/Markdown report refs or test-backed equivalent evidence in a docs/control artifact such as `docs/reports/dars-panel-local-completion-audit.md`.
+3. Confirm the readiness surface distinguishes fixture complete, localhost rehearsal human-gated, remote subscription injected-executor-only, and live provider execution not smoked.
+4. Run focused DARS panel tests, governance current-state test, traceability validation, secret scan, and diff check.
+5. Commit and push the audit/control increment to existing `origin/dars`; then, and only then, set the next row back to `MB-CODEBASE-M21-6-PREP` if no safe local DARS completion candidate remains.
 
 Runtime boundary for this queue:
 
