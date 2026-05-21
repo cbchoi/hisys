@@ -156,6 +156,12 @@ from ..operations.architecture_candidates import (
     build_architecture_candidate_report,
     write_architecture_candidate_report,
 )
+from ..operations.codebase_evidence_portfolio import (
+    CodebaseEvidencePortfolioRequest,
+    EvidenceLineRef,
+    build_codebase_evidence_portfolio_report,
+    write_codebase_evidence_portfolio_report,
+)
 from ..operations.code_analysis_pass_contract import (
     _SUPPORTED_QUESTION_TYPES as CODE_ANALYSIS_SUPPORTED_QUESTION_TYPES,
     build_code_analysis_evidence_summary,
@@ -1605,6 +1611,64 @@ def _cmd_architecture_candidates(
     return 0
 
 
+def _load_portfolio_line_bundle(path: Path) -> tuple[EvidenceLineRef, ...]:
+    """Load a caller-supplied portfolio bundle JSON into EvidenceLineRef tuples."""
+
+    payload = _load_json_report(path)
+    if payload is None:
+        raise ValueError(f"portfolio bundle is required at {path}")
+    refs = payload.get("line_refs")
+    if not isinstance(refs, list):
+        raise ValueError(
+            "portfolio bundle must contain a 'line_refs' list"
+        )
+    line_refs: list[EvidenceLineRef] = []
+    for raw in refs:
+        if not isinstance(raw, dict):
+            raise ValueError("each portfolio bundle line_ref must be an object")
+        line_refs.append(EvidenceLineRef(**raw))
+    return tuple(line_refs)
+
+
+def _cmd_codebase_evidence_portfolio(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    line_bundle_path: Path,
+    current_head_short: str | None,
+) -> int:
+    """Write a local advisory codebase evidence portfolio report via the CLI."""
+
+    line_refs = _load_portfolio_line_bundle(line_bundle_path)
+    request = CodebaseEvidencePortfolioRequest(
+        instance_root=instance_root,
+        date=yyyymmdd,
+        line_refs=line_refs,
+        current_head_short=current_head_short,
+    )
+    report = build_codebase_evidence_portfolio_report(request=request)
+    written = write_codebase_evidence_portfolio_report(
+        instance_root=instance_root, date=yyyymmdd, report=report
+    )
+    print(f"codebase-evidence-portfolio report: json={written['json_ref']}")
+    print(f"markdown: {written['markdown_ref']}")
+    print(f"source_line_count: {len(report.source_lines)}")
+    print(f"artifact_ref_count: {len(report.artifact_refs)}")
+    print(f"schema_id_count: {len(report.schema_ids)}")
+    print(f"quality_gate_ref_count: {len(report.quality_gate_refs)}")
+    print(f"implemented_surface_count: {report.implemented_surface_count}")
+    print(f"human_gated_surface_count: {report.human_gated_surface_count}")
+    print(f"unsafe_ref_count: {len(report.unsafe_refs)}")
+    print(f"unsafe_line_label_count: {len(report.unsafe_line_labels)}")
+    print("advisory_only: true")
+    print("requires_human_review: true")
+    print("external_call_made: false")
+    print("mutation_performed: false")
+    print("raw_source_content_persisted: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_evaluate_code_analysis_contract(
     *,
     instance_root: Path,
@@ -2494,6 +2558,27 @@ def _build_parser() -> argparse.ArgumentParser:
         help="optional explicit hisys.change_impact.v1 JSON report path",
     )
     architecture_candidates.add_argument(
+        "--current-head-short",
+        default=None,
+        help="optional caller-supplied git HEAD short hash recorded verbatim",
+    )
+
+    codebase_portfolio = sub.add_parser(
+        "codebase-evidence-portfolio",
+        help="write local advisory codebase evidence portfolio report artifacts",
+    )
+    codebase_portfolio.add_argument(
+        "--instance", required=True, help="Hisys instance root"
+    )
+    codebase_portfolio.add_argument(
+        "--date", required=True, help="YYYYMMDD report partition"
+    )
+    codebase_portfolio.add_argument(
+        "--line-bundle",
+        required=True,
+        help="explicit caller-supplied JSON bundle path with a 'line_refs' list",
+    )
+    codebase_portfolio.add_argument(
         "--current-head-short",
         default=None,
         help="optional caller-supplied git HEAD short hash recorded verbatim",
@@ -3906,6 +3991,13 @@ def main(argv: list[str] | None = None) -> int:
                 if args.change_impact_report
                 else None
             ),
+            current_head_short=args.current_head_short,
+        )
+    if args.command == "codebase-evidence-portfolio":
+        return _cmd_codebase_evidence_portfolio(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            line_bundle_path=Path(args.line_bundle),
             current_head_short=args.current_head_short,
         )
     if args.command == "evaluate-code-analysis-contract":

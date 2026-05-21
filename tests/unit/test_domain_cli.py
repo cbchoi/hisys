@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from hisys.cli.main import main
 from hisys.connectors.claim_coverage_gate import ClaimCoverageGateBuilder
 from hisys.connectors.claim_evidence_ledger import ClaimEvidenceLedgerBuilder
@@ -1571,3 +1573,210 @@ def test_investigate_domain_codebase_materializes_current_artifact_repo(
         f"runtime-boundary/codebase-analysis/20260521/{request_id}/scope-map.json",
         f"runtime-boundary/codebase-analysis/20260521/{request_id}/risk-scan.json",
     ]
+
+
+def _portfolio_bundle_payload() -> dict[str, object]:
+    return {
+        "line_refs": [
+            {
+                "line_label": "M21",
+                "artifact_refs": [
+                    "docs/plans/m21-1-traceability-coverage-report-implementation-tasks.md",
+                    "docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md",
+                ],
+                "schema_ids": [
+                    "hisys.traceability.coverage.v1",
+                    "hisys.change_impact.v1",
+                ],
+                "quality_gate_refs": [
+                    "tests/unit/test_traceability_coverage.py",
+                    "tests/unit/test_change_impact.py",
+                ],
+                "implemented_surface_count": 9,
+                "human_gated_surface_count": 2,
+            },
+            {
+                "line_label": "DARS_PANEL_LOCAL_COMPLETION",
+                "artifact_refs": [
+                    "docs/reports/dars-panel-local-completion-audit.md",
+                ],
+                "schema_ids": ["hisys.dars_panel_readiness.v1"],
+                "quality_gate_refs": [
+                    "tests/unit/test_dars_critic_panel_runtime.py",
+                ],
+                "implemented_surface_count": 5,
+                "human_gated_surface_count": 0,
+            },
+        ]
+    }
+
+
+def test_codebase_evidence_portfolio_cli_writes_report(tmp_path: Path, capsys) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(
+        json.dumps(_portfolio_bundle_payload()), encoding="utf-8"
+    )
+
+    result = main(
+        [
+            "codebase-evidence-portfolio",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260521",
+            "--line-bundle",
+            str(bundle_path),
+            "--current-head-short",
+            "86684f4",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "codebase-evidence-portfolio report" in captured.out
+    assert "advisory_only: true" in captured.out
+    assert "requires_human_review: true" in captured.out
+    assert "external_call_made: false" in captured.out
+    assert "mutation_performed: false" in captured.out
+    assert "raw_source_content_persisted: false" in captured.out
+    assert "allowed_actions: advisory_only" in captured.out
+    assert "source_line_count: 2" in captured.out
+    assert "implemented_surface_count: 14" in captured.out
+    assert "human_gated_surface_count: 2" in captured.out
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-evidence-portfolio"
+        / "20260521"
+        / "portfolio-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-evidence-portfolio"
+        / "20260521"
+        / "portfolio-report.md"
+    )
+    assert json_path.exists()
+    assert md_path.exists()
+
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["schema_id"] == "hisys.codebase_evidence_portfolio.v1"
+    assert data["current_head_short"] == "86684f4"
+    assert data["source_lines"] == ["DARS_PANEL_LOCAL_COMPLETION", "M21"]
+    assert data["implemented_surface_count"] == 14
+    assert data["human_gated_surface_count"] == 2
+    assert "hisys.change_impact.v1" in data["schema_ids"]
+    assert data["advisory_only"] is True
+
+
+def test_codebase_evidence_portfolio_cli_rejects_missing_line_refs(tmp_path: Path) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(json.dumps({"not_line_refs": []}), encoding="utf-8")
+    with pytest.raises(ValueError):
+        main(
+            [
+                "codebase-evidence-portfolio",
+                "--instance",
+                str(instance_root),
+                "--date",
+                "20260521",
+                "--line-bundle",
+                str(bundle_path),
+            ]
+        )
+
+
+def test_codebase_evidence_portfolio_cli_rejects_bad_date(tmp_path: Path) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "line_refs": [
+                    {
+                        "line_label": "M21",
+                        "artifact_refs": [
+                            "docs/plans/m21-1-traceability-coverage-report-implementation-tasks.md"
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError):
+        main(
+            [
+                "codebase-evidence-portfolio",
+                "--instance",
+                str(instance_root),
+                "--date",
+                "2026-05-21",
+                "--line-bundle",
+                str(bundle_path),
+            ]
+        )
+
+
+def test_codebase_evidence_portfolio_cli_records_unsafe_inputs(
+    tmp_path: Path, capsys
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "line_refs": [
+                    {
+                        "line_label": "M21",
+                        "artifact_refs": [
+                            "/etc/passwd",
+                            "../escape.md",
+                            "docs/plans/m21-1-traceability-coverage-report-implementation-tasks.md",
+                        ],
+                        "schema_ids": ["hisys.traceability.coverage.v1"],
+                    },
+                    {
+                        "line_label": "lowercase-not-allowed",
+                        "artifact_refs": ["docs/should-not-leak.md"],
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = main(
+        [
+            "codebase-evidence-portfolio",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260521",
+            "--line-bundle",
+            str(bundle_path),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "unsafe_ref_count: 2" in captured.out
+    assert "unsafe_line_label_count: 1" in captured.out
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-evidence-portfolio"
+        / "20260521"
+        / "portfolio-report.json"
+    )
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert "/etc/passwd" in data["unsafe_refs"]
+    assert "../escape.md" in data["unsafe_refs"]
+    assert "lowercase-not-allowed" in data["unsafe_line_labels"]
+    assert "docs/should-not-leak.md" not in data["artifact_refs"]
