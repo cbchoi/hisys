@@ -452,6 +452,103 @@ def test_evaluate_code_analysis_contract_cli_records_blockers_and_approval(
     assert data["human_approval_ref"] == "APPROVAL-TEST-001"
 
 
+def _subagent_evidence_task_payload() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.subagent_evidence.task.v1",
+        "task_id": "SUBEVID-TASK-CLI-001",
+        "parent_request_id": "REQ-CLI-001",
+        "objective": "Inspect bounded code-analysis refs for missing traceability anchors.",
+        "repo_ref": "repos/hisys",
+        "include_refs": ["src/hisys/contracts"],
+        "exclude_refs": ["runtime-boundary/"],
+        "allowed_read_only_tools": ["read_file", "search_files"],
+        "expected_artifact_schema": "hisys.subagent_evidence.result.v1",
+        "what_not_to_do": ["do not mutate files", "do not call network tools"],
+        "advisory_only": True,
+        "requires_human_review": True,
+    }
+
+
+def _subagent_evidence_result_payload() -> dict[str, object]:
+    return {
+        "schema_id": "hisys.subagent_evidence.result.v1",
+        "task_id": "SUBEVID-TASK-CLI-001",
+        "summary": "Two bounded refs inspected; no mutation performed.",
+        "artifact_refs": ["runtime-boundary/subagent-evidence/20260521/result.json"],
+        "source_refs": ["src/hisys/contracts/pass_registry.py"],
+        "validation_suggestions": [
+            "PYTHONPATH=src pytest tests/unit/test_pass_contract_evaluator.py -q"
+        ],
+        "blockers": [],
+        "external_call_made": False,
+        "mutation_performed": False,
+        "raw_source_content_persisted": False,
+        "parent_verification_required": True,
+    }
+
+
+def test_validate_subagent_evidence_packet_cli_accepts_task_and_result(
+    tmp_path: Path, capsys
+) -> None:
+    task_path = tmp_path / "task.json"
+    task_path.write_text(
+        json.dumps(_subagent_evidence_task_payload()), encoding="utf-8"
+    )
+    result_path = tmp_path / "result.json"
+    result_path.write_text(
+        json.dumps(_subagent_evidence_result_payload()), encoding="utf-8"
+    )
+
+    exit_code = main(
+        [
+            "validate-subagent-evidence-packet",
+            "--task",
+            str(task_path),
+            "--result",
+            str(result_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "validate-subagent-evidence-packet: ok" in captured.out
+    assert "task_id: SUBEVID-TASK-CLI-001" in captured.out
+    assert "result_supplied: true" in captured.out
+    assert "artifact_ref_count: 1" in captured.out
+    assert "source_ref_count: 1" in captured.out
+    assert "advisory_only: true" in captured.out
+    assert "requires_human_review: true" in captured.out
+    assert "external_call_made: false" in captured.out
+    assert "mutation_performed: false" in captured.out
+    assert "raw_source_content_persisted: false" in captured.out
+    assert "allowed_actions: advisory_only" in captured.out
+
+
+def test_validate_subagent_evidence_packet_cli_accepts_task_only(
+    tmp_path: Path, capsys
+) -> None:
+    task_path = tmp_path / "task.json"
+    task_path.write_text(
+        json.dumps(_subagent_evidence_task_payload()), encoding="utf-8"
+    )
+
+    exit_code = main(
+        [
+            "validate-subagent-evidence-packet",
+            "--task",
+            str(task_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "validate-subagent-evidence-packet: ok" in captured.out
+    assert "task_id: SUBEVID-TASK-CLI-001" in captured.out
+    assert "result_supplied: false" in captured.out
+    assert "artifact_ref_count: 0" in captured.out
+    assert "source_ref_count: 0" in captured.out
+
+
 def test_runtime_boundary_check_cli_writes_consistency_report(tmp_path: Path, capsys) -> None:
     instance_root = tmp_path / "instance"
     instance_root.mkdir()

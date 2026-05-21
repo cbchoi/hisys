@@ -161,6 +161,10 @@ from ..operations.code_analysis_pass_contract import (
     build_code_analysis_evidence_summary,
     write_code_analysis_pass_contract_evaluation,
 )
+from ..contracts.subagent_evidence_collector import (
+    validate_subagent_evidence_result_packet,
+    validate_subagent_evidence_task_packet,
+)
 from ..investigator import (
     ClaimRecord,
     CollectionReport,
@@ -1658,6 +1662,41 @@ def _cmd_evaluate_code_analysis_contract(
     return 0
 
 
+def _cmd_validate_subagent_evidence_packet(
+    *,
+    task_path: Path,
+    result_path: Path | None,
+) -> int:
+    """Validate caller-supplied subagent evidence task and optional result packet."""
+
+    task_payload = _load_json_report(task_path)
+    if task_payload is None:
+        raise ValueError(f"expected JSON object task packet at {task_path}")
+    task = validate_subagent_evidence_task_packet(task_payload)
+
+    result = None
+    if result_path is not None:
+        result_payload = _load_json_report(result_path)
+        if result_payload is None:
+            raise ValueError(f"expected JSON object result packet at {result_path}")
+        result = validate_subagent_evidence_result_packet(result_payload, task=task)
+
+    artifact_ref_count = len(result.artifact_refs) if result is not None else 0
+    source_ref_count = len(result.source_refs) if result is not None else 0
+    print("validate-subagent-evidence-packet: ok")
+    print(f"task_id: {task.task_id}")
+    print(f"result_supplied: {'true' if result is not None else 'false'}")
+    print(f"artifact_ref_count: {artifact_ref_count}")
+    print(f"source_ref_count: {source_ref_count}")
+    print("advisory_only: true")
+    print("requires_human_review: true")
+    print("external_call_made: false")
+    print("mutation_performed: false")
+    print("raw_source_content_persisted: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_codebase_map_freshness_review(
     *,
     instance_root: Path,
@@ -2343,6 +2382,21 @@ def _build_parser() -> argparse.ArgumentParser:
         "--human-approval-ref",
         default=None,
         help="optional caller-supplied human-approval token recorded verbatim",
+    )
+
+    validate_subagent_evidence_packet = sub.add_parser(
+        "validate-subagent-evidence-packet",
+        help="validate caller-supplied subagent evidence task and optional result packet",
+    )
+    validate_subagent_evidence_packet.add_argument(
+        "--task",
+        required=True,
+        help="explicit caller-supplied subagent task packet JSON path",
+    )
+    validate_subagent_evidence_packet.add_argument(
+        "--result",
+        default=None,
+        help="optional explicit caller-supplied subagent result packet JSON path",
     )
 
     codebase_map_freshness_review = sub.add_parser(
@@ -3656,6 +3710,11 @@ def main(argv: list[str] | None = None) -> int:
                 else None
             ),
             human_approval_ref=args.human_approval_ref,
+        )
+    if args.command == "validate-subagent-evidence-packet":
+        return _cmd_validate_subagent_evidence_packet(
+            task_path=Path(args.task),
+            result_path=Path(args.result) if args.result else None,
         )
     if args.command == "codebase-map-freshness-review":
         return _cmd_codebase_map_freshness_review(
