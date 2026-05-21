@@ -1946,6 +1946,28 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — DARS panel remote subscription dispatch guard (RED -> GREEN)
+
+- Phase completed: RED/GREEN for the DARS critic-panel remote subscription dispatch guard after the M-DARS-BE-5 policy packet was synchronized to `origin/dars`. This closes the panel-side A boundary: remote subscription metadata can exist, but the panel registry still cannot dispatch an external adapter.
+- Controlled anchors checked: `docs/contracts/dars-remote-subscription-backend-policy.md`; `docs/traceability/dars-critic-panel-runtime-traceability.md`; `src/hisys/agents/dars_panel.py`; `tests/unit/test_dars_critic_panel_adapters.py`; prior M-DARS-BE-5 reflection entry.
+- Baseline observed: branch `dars`, HEAD `09549d7 feat: add remote dars subscription policy packet`, working tree clean before this RED test was authored.
+- RED observed: `PYTHONPATH=src:. pytest tests/unit/test_dars_critic_panel_adapters.py::test_critic_adapter_registry_blocks_external_dispatch_even_with_policy_approval -q` failed as expected with `Failed: DID NOT RAISE <class 'PermissionError'>`.
+- Implementation: updated `CriticAdapterRegistry.resolve(...)` so `external_dispatch_allowed=True` plus `approval_ref` remains only a precondition marker. External adapters now raise `PermissionError("remote subscription dispatch is not implemented; external adapter approval_ref is a precondition marker only")` after the existing disabled/missing-approval checks pass.
+- GREEN observed: focused `PYTHONPATH=src:. pytest tests/unit/test_dars_critic_panel_adapters.py::test_critic_adapter_registry_blocks_external_dispatch_even_with_policy_approval -q` -> 1 passed; related DARS panel/policy regression `PYTHONPATH=src:. pytest tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_remote_subscription_policy.py -q` -> 29 passed.
+- Documentation/traceability: added an M-CP-LIVE-5 / M-DARS-BE-5 section to `docs/traceability/dars-critic-panel-runtime-traceability.md` and prepended a summary row to `docs/traceability/README.md`.
+- Stop condition: panel-side remote subscription dispatch remains fail-closed. No HTTP request, remote API call, credential lookup, provider account use, live model call, mutation, publication, deployment, or new authority was performed.
+- Commit pending: `fix: keep dars panel remote dispatch fail closed`.
+
+Resume checkpoint:
+- Current HEAD: 09549d7 feat: add remote dars subscription policy packet
+- Working tree: DARS panel guard test/runtime/docs/traceability/ralph modified until commit
+- Last completed milestone/task: DARS panel remote subscription dispatch guard (RED -> GREEN)
+- RED observed: external adapter with allow flag and approval did not raise before guard
+- GREEN observed: focused 1 passed; related 29 passed; project `PYTHONPATH=src:. pytest -q` -> 954 passed.
+- Quality gate status: pass — traceability OK; secret scan `scanned_files=675 skipped_files=0 hit_count=0`; `git diff --check` clean
+- Next command to run: project quality gate, then stage and commit `fix: keep dars panel remote dispatch fail closed`
+- Stop condition: remote dispatch implementation still not authorized; no live/remote/credential action
+
 ### 2026-05-21 — M-DARS-BE-5 remote subscription policy packet (RED -> GREEN, fail-closed)
 
 - Phase completed: RED/GREEN/Gate for the M-DARS-BE-5 Codex/Claude remote subscription policy packet, fail-closed only. The new module is `src/hisys/agents/dars_remote_subscription_policy.py`, the new test file is `tests/unit/test_dars_remote_subscription_policy.py`, and the new contract is `docs/contracts/dars-remote-subscription-backend-policy.md`. Even a fully valid packet emits a deterministic `remote_dispatch_not_implemented` **warning** so the validator never authorizes live remote dispatch.

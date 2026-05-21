@@ -122,9 +122,11 @@ class CriticAdapterRegistry:
     """Explicit critic adapter registry (M-CP-EXT-1).
 
     The registry rejects duplicate ``(critic_role, backend_id)`` registrations
-    and blocks external adapter dispatch unless ``external_dispatch_allowed``
-    is True *and* the resolver receives a truthy ``approval_ref``. There is no
-    fallback to backend-name heuristics: every adapter must be registered.
+    and keeps external adapter dispatch fail-closed. ``external_dispatch_allowed``
+    and ``approval_ref`` are retained only as precondition markers for a later
+    separately approved implementation; they do not authorize remote dispatch in
+    this runtime. There is no fallback to backend-name heuristics: every adapter
+    must be registered.
     """
 
     def __init__(self, *, external_dispatch_allowed: bool = False) -> None:
@@ -162,6 +164,10 @@ class CriticAdapterRegistry:
                 raise PermissionError(
                     "external adapter dispatch requires approval_ref"
                 )
+            raise PermissionError(
+                "remote subscription dispatch is not implemented; external adapter "
+                "approval_ref is a precondition marker only"
+            )
         return adapter
 
 

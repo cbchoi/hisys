@@ -52,6 +52,34 @@ def test_critic_adapter_registry_blocks_external_without_explicit_allow_flag():
         )
 
 
+def test_critic_adapter_registry_blocks_external_dispatch_even_with_policy_approval():
+    """M-CP-LIVE-5 / M-DARS-BE-5: panel remote dispatch stays fail-closed.
+
+    A valid remote subscription policy packet can document future Codex/Claude
+    subscription access, but it must not make the critic-panel adapter registry
+    dispatch an external backend. Remote subscription execution needs a later
+    separately approved implementation.
+    """
+
+    from hisys.agents.dars_panel import CriticAdapterRegistry, FixtureCriticAdapter
+
+    registry = CriticAdapterRegistry(external_dispatch_allowed=True)
+    registry.register(
+        FixtureCriticAdapter(
+            critic_role="logical_devil",
+            backend_id="external-claude-subscription",
+            adapter_class="external",
+        )
+    )
+
+    with pytest.raises(PermissionError, match="remote subscription dispatch is not implemented"):
+        registry.resolve(
+            critic_role="logical_devil",
+            backend_id="external-claude-subscription",
+            approval_ref="APPROVAL-DARS-RS-20260521-001",
+        )
+
+
 def test_critic_adapter_registry_rejects_duplicate_role_backend_pair():
     from hisys.agents.dars_panel import CriticAdapterRegistry, FixtureCriticAdapter
 
