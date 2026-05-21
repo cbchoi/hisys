@@ -1946,6 +1946,31 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M-DARS-BE-6 remote subscription dispatch harness (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for the first remote subscription dispatch implementation increment. This starts implementation beyond the M-DARS-BE-5 policy packet by adding an injected-executor dispatch harness, not by embedding credentials or directly calling a provider.
+- Controlled anchors checked: `docs/plans/dars-live-backend-implementation-plan.md` M-DARS-BE-5/6 sections; `docs/contracts/dars-remote-subscription-backend-policy.md`; `src/hisys/agents/dars_remote_subscription_policy.py`; `src/hisys/agents/dars_backend_activation.py`; prior DARS panel fail-closed guard at `src/hisys/agents/dars_panel.py`.
+- Baseline observed: branch `dars`, HEAD `00e11a2 fix: keep dars panel remote dispatch fail closed`, working tree clean before the M-DARS-BE-6 RED test was authored.
+- RED observed: `PYTHONPATH=src:. pytest tests/unit/test_dars_remote_subscription_dispatch.py -q` failed as expected with `ModuleNotFoundError: No module named 'hisys.agents.dars_remote_subscription_dispatch'`.
+- Implementation: added `src/hisys/agents/dars_remote_subscription_dispatch.py` with `RemoteSubscriptionDispatchRequest`, `RemoteSubscriptionDispatchResult`, and `run_dars_remote_subscription_dispatch(instance, request, *, executor=None)`. The harness validates the M-DARS-BE-1 backend activation packet, validates the M-DARS-BE-5 Codex/Claude subscription policy packet, verifies matching `approval_ref`, `backend_id`, `backend_kind`, `endpoint_scope=external_api`, and `remote_policy_packet_ref`, and blocks before executor contact on activation/policy mismatch. Missing executor fails closed with `remote_subscription_executor_required`.
+- Boundary records: successful injected-executor dispatch writes `runtime-boundary/dars-remote-subscriptions/<YYYYMMDD>/<REQUEST_ID>/<BACKEND_ID>.json/.md` with schema `hisys.dars.remote_subscription_dispatch`, `external_call_made=true`, `model_boundary_crossed=true`, `local_model_call_made=false`, `mutation_performed=false`, `publication_performed=false`, `allowed_actions=advisory_only`, and `transport_kind=injected_subscription_executor`.
+- Tests: `tests/unit/test_dars_remote_subscription_dispatch.py` covers successful injected executor dispatch + boundary record writing and activation/policy approval mismatch blocking before executor contact.
+- GREEN observed: focused `PYTHONPATH=src:. pytest tests/unit/test_dars_remote_subscription_dispatch.py -q` -> 2 passed; related DARS remote/policy/activation/panel regression `PYTHONPATH=src:. pytest tests/unit/test_dars_remote_subscription_dispatch.py tests/unit/test_dars_remote_subscription_policy.py tests/unit/test_dars_backend_activation.py tests/unit/test_dars_critic_panel_adapters.py -q` -> 30 passed; project `PYTHONPATH=src:. pytest -q` -> 956 passed.
+- Documentation/traceability: updated `docs/plans/dars-live-backend-implementation-plan.md` with M-DARS-BE-6 acceptance; updated `docs/contracts/dars-remote-subscription-backend-policy.md` to document the dispatch harness boundary; prepended an M-DARS-BE-6 traceability row to `docs/traceability/README.md`.
+- Quality gate result: pass — `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=677 skipped_files=0 hit_count=0`; `git diff --check` clean; full pytest 956 passed.
+- Stop condition: no real provider execution was performed by Hermes during validation. The only dispatch crossing in tests used an injected fake executor. No credential lookup/resolution, raw secret handling, provider account configuration, publication, deployment, vault mutation, or side-effect authority was introduced.
+- Commit pending: `feat: add dars remote subscription dispatch harness`.
+
+Resume checkpoint:
+- Current HEAD: 00e11a2 fix: keep dars panel remote dispatch fail closed
+- Working tree: M-DARS-BE-6 module/tests/docs/traceability/ralph modified until commit
+- Last completed milestone/task: M-DARS-BE-6 remote subscription dispatch harness (RED -> GREEN)
+- RED observed: missing module `hisys.agents.dars_remote_subscription_dispatch`
+- GREEN observed: focused 2 passed; related 30 passed; project 956 passed
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M-DARS-BE-6 files and commit `feat: add dars remote subscription dispatch harness`
+- Stop condition: real remote provider run still requires separately approved operator scope and explicit executor wiring; no credentials or live provider call performed
+
 ### 2026-05-21 — DARS panel remote subscription dispatch guard (RED -> GREEN)
 
 - Phase completed: RED/GREEN for the DARS critic-panel remote subscription dispatch guard after the M-DARS-BE-5 policy packet was synchronized to `origin/dars`. This closes the panel-side A boundary: remote subscription metadata can exist, but the panel registry still cannot dispatch an external adapter.

@@ -1,9 +1,11 @@
-# DARS remote subscription backend policy (M-DARS-BE-5)
+# DARS remote subscription backend policy and dispatch harness (M-DARS-BE-5/6)
 
-> **Status:** fail-closed preparation only. This contract defines the schema
-> and default-blocking validator for future Codex/Claude subscription-backed
-> DARS providers. It does **not** authorize remote dispatch. Remote dispatch
-> remains blocked until a later separately approved implementation lands.
+> **Status:** policy packet plus first injected-executor dispatch harness. This
+> contract defines the schema and validator for Codex/Claude subscription-backed
+> DARS providers. M-DARS-BE-6 adds a runtime harness that can call only an
+> explicitly supplied subscription executor after activation/policy checks pass.
+> Hisys still does not resolve credentials, store raw secrets, or call a real
+> provider by default.
 
 ## Scope
 
@@ -99,13 +101,36 @@ And the deterministic warning:
   approval consumes the M-DARS-BE-5 policy.
 - M-DARS-BE-3 `write_dars_backend_boundary_record(...)` rejects any
   `endpoint_scope` other than `localhost_only`. Remote dispatch records
-  will require a different writer surface in a later increment.
+  are written through the M-DARS-BE-6 surface below.
+- M-DARS-BE-6 `run_dars_remote_subscription_dispatch(...)` composes the
+  backend activation packet and this policy packet, blocks mismatches before
+  executor contact, calls only an explicitly injected subscription executor,
+  and writes `runtime-boundary/dars-remote-subscriptions/<YYYYMMDD>/<REQUEST_ID>/<BACKEND_ID>.{json,md}`.
+
+## Dispatch harness boundary (M-DARS-BE-6)
+
+The dispatch harness requires:
+
+- activation packet: `endpoint_scope=external_api`, `allowed_actions=advisory_only`,
+  matching `approval_ref`, `backend_id`, `backend_kind`, and
+  `remote_policy_packet_ref`;
+- policy packet: valid Codex/Claude subscription policy with matching
+  `approval_ref`, `access_mode=subscription`, and `audit_required=true`;
+- executor: explicit caller-supplied subscription executor. If absent, the
+  harness raises `remote_subscription_executor_required`.
+
+Successful harness execution writes a boundary record with
+`external_call_made=true`, `model_boundary_crossed=true`,
+`local_model_call_made=false`, `mutation_performed=false`,
+`publication_performed=false`, `allowed_actions=advisory_only`, and
+`transport_kind=injected_subscription_executor`.
 
 ## Stop conditions
 
 The validator and any future consumer must stop before any of:
 
-- real remote API/subscription call
+- real remote API/subscription call without an explicit injected executor and
+  separately approved operator run scope
 - credential/vault resolution
 - provider account configuration
 - adapter execution against a real subscription

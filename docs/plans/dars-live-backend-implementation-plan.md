@@ -418,6 +418,42 @@ git add src/hisys/agents/dars_remote_subscription_policy.py tests/unit/test_dars
 git commit -m "feat: add remote dars subscription policy packet"
 ```
 
+### Task M-DARS-BE-6: Remote subscription dispatch harness with injected executor
+
+**Objective:** start remote subscription dispatch implementation by composing the
+M-DARS-BE-1 backend activation packet and M-DARS-BE-5 Codex/Claude subscription
+policy packet, then crossing the subscription boundary only through an explicit
+caller-supplied executor.
+
+**Files:**
+- Create: `src/hisys/agents/dars_remote_subscription_dispatch.py`
+- Create: `tests/unit/test_dars_remote_subscription_dispatch.py`
+- Modify: `docs/contracts/dars-remote-subscription-backend-policy.md`
+- Modify: `docs/traceability/README.md`
+- Modify: `ralph.md`
+
+**Acceptance:**
+
+- valid activation + valid policy + matching `approval_ref`, `backend_id`,
+  `backend_kind`, `endpoint_scope=external_api`, and `remote_policy_packet_ref`
+  may call only the explicitly injected subscription executor;
+- missing executor fails closed with `remote_subscription_executor_required`;
+- activation/policy mismatch fails before executor contact;
+- success writes JSON/Markdown records under
+  `runtime-boundary/dars-remote-subscriptions/<YYYYMMDD>/<REQUEST_ID>/<BACKEND_ID>.{json,md}`;
+- boundary records set `external_call_made=true`, `model_boundary_crossed=true`,
+  `local_model_call_made=false`, `mutation_performed=false`,
+  `publication_performed=false`, and `allowed_actions=advisory_only`;
+- Hisys still performs no credential lookup, raw secret handling, provider SDK
+  call, deployment, publication, or mutation by default.
+
+**Validation:**
+
+```bash
+PYTHONPATH=src:. pytest tests/unit/test_dars_remote_subscription_dispatch.py -q
+python3 scripts/scan_secrets.py
+```
+
 ## Quality gate for each implementation increment
 
 Run focused tests first, then the DARS cohort, then repository gates. For M-DARS-BE-2, include tests proving the CLI cannot bypass runtime enforcement and direct Python calls cannot bypass CLI checks:
