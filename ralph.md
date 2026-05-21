@@ -302,6 +302,12 @@ Human approval is required only for authority-boundary crossings:
 9. success likelihood below the configured threshold after local-safe recovery;
 10. no safe next task can be derived from existing controlled anchors.
 
+### Approval minimization rule
+
+Do not ask for human approval merely because the next step is a GREEN implementation after an accepted RED test, documentation/control work, queue-refill PREP, milestone PREP/GATE bookkeeping, local validation, local commit, or a normal push that the repository policy already permits. Treat an explicit user request to run, continue, execute RLOO/Ralph, resolve blockers, or proceed with the current milestone as authorization for the local-safe envelope above unless the user states a narrower limit. If controlled anchors already define the behavior and the action stays inside local files, fixture/local-only implementation, local tests, local commits, and permitted repository synchronization, continue without another approval prompt.
+
+When scope is uncertain, first narrow the work to the safest local documentation/control or fixture-local PREP/RED/GREEN slice and continue. Ask the user only when the next required action actually crosses one of the authority boundaries listed above, when controlled anchors conflict, when unrelated dirty state would be overwritten, when required human-only evidence/attestation is needed, or when queue-refill finds no safe local continuation.
+
 Queue-end is not sufficient reason to stop. If the current queue is empty, RLOO must run a queue-refill checkpoint before stopping. The refill checkpoint must inspect milestones, requirements, RTM, STD, design docs, blockers, evidence summaries, current code/tests, Git state, and reflection log, then either add the next safe PREP/RED/GREEN/GATE rows or record why no safe local continuation exists.
 
 ## 6. Prepare Stage
@@ -354,7 +360,7 @@ Prepare result:
 - Proceed to Do: yes/no + reason
 ```
 
-If Prepare finds missing prerequisite tasks or inconsistency, update Section 14 task queue before coding. If the update changes scope materially, stop for user confirmation.
+If Prepare finds missing prerequisite tasks or inconsistency, update Section 14 task queue before coding. Continue through safe local PREP/specification/fixture-local rows derived from controlled anchors; stop only when the update would change product scope or target behavior, create a new authority boundary, or conflict with controlled anchors.
 
 ## 7. Do Stage
 
@@ -606,7 +612,7 @@ Stop the Ralph loop and report to the user if any condition occurs:
 - `git diff --check` fails.
 - A code path enables live external call, mutation, publication, credential use, order execution, or browser/access-control bypass without explicit controlled approval.
 - Investment governance regresses from advisory-only, no autonomous execution, human approval required.
-- New task groups are discovered that require user confirmation before continuing.
+- New task groups cannot be reduced to a safe local PREP/specification/fixture-local slice and therefore require a true authority-boundary decision before continuing.
 - Working tree contains unrelated user changes that could be overwritten or mixed into a commit.
 - Success likelihood after Reflection is below 75%.
 - Runtime limit is reached.
@@ -6197,14 +6203,14 @@ Done: M23-LIVE-LSP-SMOKE-AUTH — installed/verified ruff, pyright, eslint and c
 Done: M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP — authored docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md with exact M23_OSS_ADAPTER and M23_LSP_ADAPTER portfolio line refs, RED command, and validation gates.
 Done: M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN — added the four-line portfolio golden fixture and byte-equality test for M23 OSS/LSP adapter evidence lines by refs/counts only.
 Done: M23-LIVE-LSP-SMOKE-GATE — preserved the existing ruff/pyright/eslint smoke evidence as a controlled docs/control gate without new live LSP execution.
-Done: QUEUE-REFILL-PREP — classified remaining post-M23 candidates; no safe local row remains under current authorization.
-Next: QUEUE-REFILL-PREP-STOP — stop and ask for explicit authorization before real OSS/license work, additional live LSP execution/allowlist expansion, live-provider DARS execution, or a new milestone.
+Done: QUEUE-REFILL-PREP — classified remaining post-M23 candidates and confirmed that the listed live/OSS/provider candidates cross authority boundaries unless narrowed into a local docs/control or fixture-local slice.
+Next: QUEUE-REFILL-PREP — re-run queue refill and seed any safe local PREP/RED/GREEN slice that can be derived from existing controlled anchors; stop only for real OSS/license work, additional live LSP execution/allowlist expansion, live-provider DARS execution, a new product-scope milestone, or another authority-boundary crossing.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-QUEUE-REFILL-PREP-STOP — no further task is authorized. Stop and ask the user which candidate to open next, if any: real OSS comparison/license workflow, additional live LSP execution or allowlist changes, live-provider DARS execution, or a new milestone.
+QUEUE-REFILL-PREP — first try to derive a safe local docs/control or fixture-local next row from existing controlled anchors. Stop and ask only if every candidate requires real OSS comparison/license workflow, additional live LSP execution or allowlist changes, live-provider DARS execution, a new product-scope milestone, or another authority-boundary crossing.
 ```
 
 Follow-up boundary:
