@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.26
-focus: M23-OSS-ADAPTER-GATE closed the approved-OSS comparison adapter line at local_fixture_advisory_complete; next safe row is M23-LSP-ADAPTER-PREP
+version: v0.0.27
+focus: M23-LSP-ADAPTER-PREP packet authored; next safe row is the pure-runner RED/GREEN under the governed subprocess boundary
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M23-LSP-ADAPTER-PREP
+next_safe_task: M23-LSP-ADAPTER-RED-GREEN
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "M23-OSS-ADAPTER-GATE"
-bootstrap_inference: "Ran the full focused + full repo-level gate sweep after the M23-OSS-ADAPTER-GOLDEN commit at 9963ccc and declared the OSS comparison adapter line closed at local_fixture_advisory_complete. Full repo pytest passed (999 passed), DARS critic-panel focused regression passed (55 passed), traceability validator OK, secret scan hit_count=0, git diff --check clean. Next safe Ralph row is the M23-LSP-ADAPTER-PREP docs/control PREP packet that authors the local LSP adapter subprocess boundary (command allowlist, timeout, workspace-root restriction, output schema, and kill policy) before any product code."
+bootstrap_arguments: "M23-LSP-ADAPTER-PREP"
+bootstrap_inference: "Authored docs/plans/m23-lsp-adapter-implementation-tasks.md so the next safe Ralph row implements the pure governed local LSP adapter runner under the M23 authorization boundary. The PREP packet pins the subprocess safety contract (caller-supplied command allowlist, timeout cap of 120s, 4 MiB output truncation, workspace-root containment, no shell, no environment inheritance beyond PATH, no raw message persistence, no LSP server installation) before any product code."
 roadmap_ref: docs/plans/m23-advanced-codebase-adapter-integration-plan.md
-next_artifact_ref: docs/plans/m23-lsp-adapter-implementation-tasks.md
-planning_baseline_head: "9963ccc test: pin oss comparison adapter golden fixture"
-current_head_at_plan_creation: "9963ccc test: pin oss comparison adapter golden fixture"
-previous_bootstrap_version: v0.0.25
+next_artifact_ref: src/hisys/operations/lsp_adapter.py
+planning_baseline_head: "0a172d3 docs: close m23 oss comparison adapter milestone"
+current_head_at_plan_creation: "0a172d3 docs: close m23 oss comparison adapter milestone"
+previous_bootstrap_version: v0.0.26
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false
