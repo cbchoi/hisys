@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.14.0
+version: 0.15.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-21
@@ -24,6 +24,28 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 | HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis, adapter-outcome-driven isolation (M-CP-EXT-1), per-task boundary record on failed/blocked branches (M-CP-EXT-2), typed adapter-missing isolation (M-CP-EXT-4), CLI preserves typed advisory exit-code semantics (M-CP-EXT-6), non-negative `duration_ms` clamp preserves record stability under backward clocks (M-CP-EXT-9), local-model response failure isolation (M-CP-LIVE-2), local-model CLI fail-closed activation guard (M-CP-LIVE-3), human-gated local smoke stop conditions (M-CP-LIVE-4) | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence`, `test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role`, `test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch`, `test_panel_runtime_clamps_negative_duration_ms_to_zero`, `test_live_panel_adapter_isolates_local_model_failure_as_failed_task`, `test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode`, `test_live_panel_local_smoke_runbook_preserves_stop_conditions_and_boundaries`, `test_critic_adapter_registry_blocks_external_dispatch_even_with_policy_approval` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4 + M-CP-EXT-6 + M-CP-EXT-9 + M-CP-LIVE-2 + M-CP-LIVE-3 + M-CP-LIVE-4 + M-CP-LIVE-5) |
 | HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate, slug validation on date/request_id/task_id (M-CP-EXT-2), naive-datetime clock rejection (M-CP-EXT-5), live activation raw-secret rejection and local-model request slug validation (M-CP-LIVE-1/M-CP-LIVE-2), smoke runbook secret/no-credential guardrails (M-CP-LIVE-4) | HISYS-T-DARS-CP-010 | changed-file secret scan, `test_write_execution_boundary_record_rejects_invalid_slug`, `test_write_execution_boundary_record_rejects_traversal_in_task_id`, `test_panel_runtime_rejects_invalid_slug`, `test_panel_runtime_rejects_naive_clock`, `test_live_panel_activation_rejects_raw_secret_fields`, `test_live_panel_adapter_calls_fake_local_model_and_records_model_boundary`, `test_live_panel_local_smoke_runbook_preserves_stop_conditions_and_boundaries` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-5 + M-CP-LIVE-1 + M-CP-LIVE-2 + M-CP-LIVE-4) |
 
+
+## DARS-PANEL-RLOOP-OPT-1 — Local completion audit (2026-05-21)
+
+- Scope: ran the fixture-local `hisys run-dars-panel-golden` and
+  `hisys dars-panel-readiness --write-report` surfaces against a private
+  `mktemp` instance root and recorded the deterministic JSON/Markdown
+  evidence and the field-level mapping of the readiness surface to the
+  four required completion boundaries (fixture complete; localhost
+  rehearsal human-gated; remote subscription injected-executor-only;
+  live provider execution not smoked).
+- Audit artifact: `docs/reports/dars-panel-local-completion-audit.md`.
+  This is the controlled local-completion audit produced before the
+  Ralph queue returns to `MB-CODEBASE-M21-6-PREP`.
+- Result: no additional safe local DARS panel completion candidate
+  remains. The DARS panel productization line is closed for
+  `local_fixture_localhost_controlled_advisory_complete`. Live external
+  provider execution remains unimplemented and unproven and is not
+  authorized by this audit.
+- Boundary: no live model call, real remote provider call, credential
+  lookup, raw secret capture, browser/search/tool execution, publication,
+  deployment, schema/data migration against non-fixture data, force
+  push, new remote configuration, or destructive operation is introduced.
 
 ## DARS-CLOSE-1/2/3 — Productization closure increments (2026-05-21)
 

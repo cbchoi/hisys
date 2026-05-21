@@ -1958,6 +1958,36 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — DARS-PANEL-RLOOP-OPT-1 local completion audit (docs/control)
+
+- Phase completed: continuous-completion stop-preflight / final local evidence audit for the DARS panel productization line per Section 5.1.2.1 and the Section 16 acceptance contract.
+- Request context: tmux Ralph loop resumed against `08e479a docs: optimize rloo dars panel completion`; Section 16 required a final local completion audit before returning to `MB-CODEBASE-M21-6-PREP`.
+- Controlled anchors checked: `ralph.md` Section 5.1.2.1, Section 16; `docs/plans/dars-panel-completion-before-codebase-return.md`; `docs/traceability/dars-critic-panel-runtime-traceability.md`; `src/hisys/cli/main.py` `run-dars-panel-golden` and `dars-panel-readiness` subcommands; `src/hisys/operations/dars_panel_readiness.py`; `tests/fixtures/dars_panel/golden_basic/`; `tests/unit/test_dars_critic_panel_cli.py`; `tests/unit/test_dars_panel_readiness.py`; existing audit-time test count 978 in the project test suite.
+- Baseline observed: branch `dars`, HEAD `08e479a`, working tree clean, upstream `origin/dars` synced (0 commits ahead / behind) before audit edits.
+- Audit evidence captured (against a private `mktemp` instance root):
+  - `hisys run-dars-panel-golden --instance <tmp> --date 20260521 --request-id REQ-DARS-AUDIT-001 --format json` returned JSON with `report_ref="reports/run-summaries/20260521/dars-panel-round-report.json"` and `task_statuses={"TASK-REQ-DARS-AUDIT-001-00-logical-devil": "completed"}`; the persisted operator report carried `schema_id="hisys.dars_panel.round_report"`, `advisory_only=true`, `requires_human_review=true`, `external_call_made=false`, `mutation_performed=false`, `publication_performed=false`, `live_external_action_authorized=false`.
+  - `hisys dars-panel-readiness --instance <tmp> --date 20260521 --format json --write-report` returned JSON with `schema_id="hisys.dars_panel.readiness_status"`, `fixture_panel_complete=true`, `golden_fixture_available=true`, `operator_report_available=true`, `localhost_rehearsal_available=true`, `localhost_rehearsal_human_gated=true`, `remote_subscription_policy_exists=true`, `remote_subscription_injected_executor_harness_available=true`, `live_provider_execution_smoked=false`, `live_external_action_authorized=false`, `completion_claim="local_fixture_localhost_controlled_advisory_complete"`, `next_queue_after_closure="MB-CODEBASE-M21-6-PREP"`, plus a persisted `dars-panel-readiness-status.json` snapshot under `reports/run-summaries/20260521/`.
+- Four-boundary coverage decision: confirmed against the readiness payload — (1) fixture/local panel complete, (2) localhost rehearsal available but human-gated, (3) remote subscription dispatch only through injected-executor / fake tests, (4) live provider execution not proven. Each boundary maps to explicit readiness fields and is corroborated by the existing pytest anchors.
+- Remaining-candidate decision: explicit search performed under the Section 5.1.2.1 contract (additional fixture variants, additional wrapper, additional remote-dispatch mismatch rows, multi-critic fixture round). No additional safe local DARS panel completion candidate identified; further DARS panel work would require live external provider authorization which is not in scope for this audit.
+- Implementation: no production code change. Added the local completion audit document `docs/reports/dars-panel-local-completion-audit.md`, added a DARS-PANEL-RLOOP-OPT-1 section to `docs/traceability/dars-critic-panel-runtime-traceability.md` (bumped version to `0.15.0`), prepended a DARS-PANEL-RLOOP-OPT-1 row to `docs/traceability/README.md`, and rewrote `ralph.md` Section 16 so the next safe Ralph queue row is `MB-CODEBASE-M21-6-PREP` instead of DARS-PANEL-RLOOP-OPT-1.
+- Tests: no test source change. Existing DARS-CLOSE-3 and DARS-CLOSE-2 / DARS-CLOSE-1 pytest anchors continue to pin the readiness JSON and golden wrapper contract (`tests/unit/test_dars_panel_readiness.py`, `tests/unit/test_dars_critic_panel_cli.py`).
+- GREEN observed: focused DARS panel cohort `PYTHONPATH=src:. pytest tests/unit/test_dars_critic_panel_cli.py tests/unit/test_dars_panel_readiness.py tests/unit/test_dars_critic_panel_adapters.py tests/unit/test_dars_critic_panel_runtime.py tests/unit/test_dars_remote_subscription_dispatch.py -q` -> 43 passed; governance current-state `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q` -> 1 passed; full project `PYTHONPATH=src:. pytest -q` -> 978 passed.
+- Quality gate result: pass — `python3 scripts/validate_traceability.py` -> `OK: schemas, trace test, and Hermes boundary convention pass traceability checks`; `python3 scripts/scan_secrets.py` -> `secret_scan: scanned_files=686 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) the audit document was generated from a private `mktemp` instance root, so the exact instance path is not reproducible across machines; the JSON contents reproduced in the audit are deterministic across runs because the readiness surface is constant and the golden wrapper inputs are fixed by the checked-in fixture. (b) The DARS panel completion claim remains explicitly `local_fixture_localhost_controlled_advisory_complete`; opening a live-provider line is outside this audit's authorization. (c) `MB-CODEBASE-M21-6-PREP` is recorded as the next safe queue row, but M21.6 (change-impact analyzer) is already implemented in the repository; the Prepare row should therefore behave as a verification + queue-roll-forward step rather than authoring a new plan that duplicates existing implementation.
+- Continue decision: after committing this increment and pushing to existing `origin/dars`, the next safe Ralph queue row is `MB-CODEBASE-M21-6-PREP`. The DARS panel productization closure is final under the local-completion boundary; the next iteration of `/rloo` should run MB-CODEBASE-M21-6-PREP as a verification + queue-roll-forward Prepare row.
+- Stop condition: DARS-PANEL-RLOOP-OPT-1 reached its GREEN boundary; no live model call, no remote API call, no credential lookup, no provider account use, no deployment/publication/vault mutation, no force push, no schema/data migration against non-fixture data, no new authority. The next safe row (`MB-CODEBASE-M21-6-PREP`) is a docs/control Prepare with no live action.
+- Commit pending: `docs: audit dars panel local completion`.
+
+Resume checkpoint:
+- Current HEAD: 08e479a docs: optimize rloo dars panel completion
+- Working tree: DARS-PANEL-RLOOP-OPT-1 audit doc + traceability + ralph.md modified; final commit pending
+- Last completed milestone/task: DARS-PANEL-RLOOP-OPT-1 local completion audit (docs/control)
+- RED observed: n/a, docs/control audit increment
+- GREEN observed: focused 43 passed; governance current-state 1 passed; full suite 978 passed
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage and commit `docs/reports/dars-panel-local-completion-audit.md`, `docs/traceability/dars-critic-panel-runtime-traceability.md`, `docs/traceability/README.md`, and `ralph.md`; then push to existing `origin/dars`; then run MB-CODEBASE-M21-6-PREP on the next iteration
+- Stop condition: DARS panel productization line closed for `local_fixture_localhost_controlled_advisory_complete`; live provider execution still requires a separately approved governed plan
+
 ### 2026-05-21 — M-DARS-BE-6.2 remote subscription dispatch harness mismatch-coverage matrix (RED-equivalent -> GREEN)
 
 - Phase completed: regression-coverage matrix follow-on to M-DARS-BE-6.1. The harness implementation is unchanged; this increment pins the remaining activation/policy mismatch code paths in `_enforce_activation_packet` and `_enforce_policy_packet` so removing or weakening any guard produces a deterministic test failure with a 1:1 code-to-invariant mapping.
@@ -5530,7 +5560,7 @@ Resume checkpoint:
 
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. The user observed that RLOO ended too early and authorized optimization so the DARS panel completion line is not treated as finished merely because a clean checkpoint or queue-return note exists. The DARS panel productization line is **closed only provisionally** for `local_fixture_localhost_controlled_advisory_complete`; live external provider execution remains unimplemented and unproven. Before returning to `MB-CODEBASE-M21-6-PREP`, Ralph must execute one final DARS panel stop-preflight/audit row that proves the local completion claim against runnable fixture commands and records whether any additional safe local DARS completion work remains.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. DARS-PANEL-RLOOP-OPT-1 ran the fixture-local audit and confirmed no remaining safe local DARS panel completion candidate. The DARS panel productization line is **closed for `local_fixture_localhost_controlled_advisory_complete`**; live external provider execution remains unimplemented and unproven and requires a separately approved governed plan. The next safe Ralph queue row is `MB-CODEBASE-M21-6-PREP` under the original codebase-analysis line.
 
 DARS panel productization closure status:
 
@@ -5540,23 +5570,25 @@ Done: DARS-CLOSE-1 — Golden fixture scenario for operator report (0c9582f)
 Done: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run (38c22f2)
 Done: DARS-CLOSE-3 — DARS panel completion/readiness status surface (249797c)
 Done: DARS-CLOSE-4 — Closure gate and provisional queue return to M21.6 (a38e04e)
-Next: DARS-PANEL-RLOOP-OPT-1 — Continuous-completion stop-preflight and final local evidence audit
-Pending after audit: MB-CODEBASE-M21-6-PREP — create docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md
+Done: DARS-PANEL-RLOOP-OPT-1 — Continuous-completion stop-preflight and final local evidence audit (see docs/reports/dars-panel-local-completion-audit.md)
+Next: MB-CODEBASE-M21-6-PREP — create docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md
 ```
 
 Next safe Ralph queue target:
 
 ```text
-DARS-PANEL-RLOOP-OPT-1 — create/update a final local DARS panel completion audit package by running the fixture-local golden wrapper and readiness status command, recording report refs and validation results, and explicitly deciding whether any safe local DARS panel candidate remains before returning to M21.6.
+MB-CODEBASE-M21-6-PREP — create docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md as a docs/control HOW-level Prepare artifact before any RED implementation test or product code under the M21.6 change-impact analyzer candidate.
 ```
 
-Acceptance for DARS-PANEL-RLOOP-OPT-1:
+Acceptance for MB-CODEBASE-M21-6-PREP (planning-only, docs/control):
 
-1. Run or test the existing local-safe surfaces without live provider calls: `hisys run-dars-panel-golden` and `hisys dars-panel-readiness` under a temporary explicit instance root.
-2. Record generated JSON/Markdown report refs or test-backed equivalent evidence in a docs/control artifact such as `docs/reports/dars-panel-local-completion-audit.md`.
-3. Confirm the readiness surface distinguishes fixture complete, localhost rehearsal human-gated, remote subscription injected-executor-only, and live provider execution not smoked.
-4. Run focused DARS panel tests, governance current-state test, traceability validation, secret scan, and diff check.
-5. Commit and push the audit/control increment to existing `origin/dars`; then, and only then, set the next row back to `MB-CODEBASE-M21-6-PREP` if no safe local DARS completion candidate remains.
+1. Read `docs/milestone-bootstrap/profile.yaml`, the M21 backlog summary in this file's Section 14 / Milestone M21, and the existing M21.1..M21.5 plan tasks under `docs/plans/`.
+2. Create `docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md` with the standard Hisys plan structure: Goal, Architecture, Tech Stack, Context Packet, Boundary Record, Decision table, Completion criteria, and ordered Task rows. Mark the plan strictly as docs/control; do not implement any code in this row.
+3. Pin the M21.6 boundary: pure local read-only analyzer, no live access, no `subprocess`, no `.git/` read, no raw source body open, no credential lookup, no artifact repair or deletion, advisory-only output.
+4. Run focused docs/control validation (`PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q`), `python3 scripts/validate_traceability.py`, `python3 scripts/scan_secrets.py`, and `git diff --check`.
+5. Commit the plan and push to existing `origin/dars`. Then RED implementation rows for M21.6 are queued separately.
+
+Note: M21.6 was previously implemented as the change-impact analyzer (commits under `src/hisys/operations/change_impact.py`). The MB-CODEBASE-M21-6-PREP row was originally created before that work; if the M21.6 analyzer is already complete in the repository at the time of Prepare, treat MB-CODEBASE-M21-6-PREP as a verification + queue-roll-forward row that confirms M21.6 acceptance against the existing tests and selects the next M21 backlog candidate (e.g. M21.7 or another candidate under Section 14 Milestone M21) without expanding scope.
 
 Runtime boundary for this queue:
 
