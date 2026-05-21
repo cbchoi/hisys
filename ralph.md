@@ -1958,6 +1958,34 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — QUEUE-REFILL-PREP-2026-05-21B after DARS-PANEL-RLOOP-OPT-1 close → MB-CODEBASE-M21-6-PREP verified as queue roll-forward; remaining M21 candidates remain human-gated; stop and ask
+
+- Phase completed: QUEUE-REFILL-PREP checkpoint after the DARS-PANEL-RLOOP-OPT-1 increment closed at `fad02ef docs: audit dars panel local completion`. This iteration verified the MB-CODEBASE-M21-6-PREP row by treating it as a verification + queue-roll-forward task per the Section 16 note and re-triages the M21 backlog now that M21.9 (subagent evidence collector protocol) is complete.
+- Request context: tmux Ralph loop continued from `fad02ef`; Section 16 listed `MB-CODEBASE-M21-6-PREP` as the next safe row but explicitly authorized treating it as a verification step if M21.6 was already implemented. M21.6 (change-impact analyzer in `src/hisys/operations/change_impact.py`) and all M21.7..M21.9 downstream rows are already implemented and green; authoring a new Prepare plan would duplicate completed work.
+- Controlled anchors checked: `ralph.md` Section 14 Milestone M21 backlog list (line 1953) and stop condition (line 1955); Section 16 MB-CODEBASE-M21-6-PREP roll-forward note; `docs/plans/m21-roadmap-implementation-plan.md` candidate sequencing table (lines 26..39) and deferred-candidates section (lines 145..151); `docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md` (exists); `docs/plans/m21-6-cli-change-impact-cli-wrapper-implementation-tasks.md` (exists); `docs/plans/m21-7-architecture-candidate-generator-implementation-tasks.md` (exists); `docs/plans/m21-7-cli-architecture-candidates-cli-wrapper-implementation-tasks.md` (exists); `docs/plans/m21-8-code-analysis-pass-contract-loop-implementation-tasks.md` (exists); `docs/plans/m21-8-cli-evaluate-code-analysis-contract-implementation-tasks.md` (exists); `docs/plans/m21-9-subagent-evidence-collector-protocol-implementation-tasks.md` (exists); `docs/plans/m21-9-cli-subagent-evidence-packet-validator-implementation-tasks.md` (exists); `docs/milestone-bootstrap/profile.yaml` (`next_safe_task=MB-CODEBASE-M21-6-PREP`, unchanged); Reflection Log entries 2026-05-21 "QUEUE-REFILL-PREP after M21.8 close" (line 2450) and 2026-05-21 "M21.9 subagent evidence collector protocol Prepare" (line 2405); Git state.
+- Baseline observed: branch `dars`, HEAD `fad02ef docs: audit dars panel local completion`, upstream `origin/dars` synced (0 commits ahead/behind), working tree dirty only on this ralph.md edit. Pre-edit focused `PYTHONPATH=src:. pytest tests/unit/test_change_impact.py -q` -> 5 passed (M21.6). Pre-edit extended focused `PYTHONPATH=src:. pytest tests/unit/test_change_impact.py tests/unit/test_architecture_candidates.py tests/unit/test_code_analysis_pass_contract.py tests/unit/test_subagent_evidence_collector_protocol.py tests/unit/test_codebase_map_freshness.py tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py -q` -> 60 passed (M21.1..M21.9 line).
+- Verification of MB-CODEBASE-M21-6-PREP (queue-roll-forward path): M21.6 change-impact analyzer is fully implemented and green; `docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md` exists and matches the actual production module. Section 16's roll-forward authorization explicitly applies. No new Prepare plan was authored; doing so would duplicate completed work and expand scope without product value. The MB-CODEBASE-M21-6-PREP row is therefore satisfied by verification.
+- M21 backlog triage after M21.9 close (re-applied against the M21 stop condition: no live external access, no credential/security authority, no publication, no remote push, no raw source archival, no process-spawning runtime):
+  - **Approved OSS comparison adapter** — Human gate per `docs/plans/m21-roadmap-implementation-plan.md` line 37: even a docs-only PREP authoring the approved-source/fixture contract requires defining "approved OSS", a product-scope governance decision that is non-delegable.
+  - **Optional local LSP adapter** — Human gate per `docs/plans/m21-roadmap-implementation-plan.md` line 38: any opt-in `subprocess`-spawning runtime is explicitly listed in `ralph.md` Section 2.2 as a non-delegable safety boundary.
+  - **Subagent evidence collector protocol** — Implemented in M21.9 (`tests/unit/test_subagent_evidence_collector_protocol.py` 13 passed; `tests/unit/test_validate_subagent_evidence_packet_cli.py`); no longer a backlog candidate.
+- Search for other safe local/fixture/docs-control candidates outside M21 (defense-in-depth and small-surface hardening): (a) DARS panel productization line — closed at `fad02ef` with no remaining safe candidate per the DARS-PANEL-RLOOP-OPT-1 audit (`docs/reports/dars-panel-local-completion-audit.md` §6). (b) DARS remote subscription dispatch harness — already fully pinned at the code-by-code level by M-DARS-BE-6/6.1/6.2 (17 focused tests). (c) Traceability/RTM/README — already roll-forward synced through `fad02ef`. (d) Governance / current-state — already green and the profile contract is satisfied. (e) Live external provider line — out of scope and human-gated. No safe local candidate is available without explicit user authorization.
+- Implementation: no production code change. Updated `ralph.md` Section 16 to mark MB-CODEBASE-M21-6-PREP as Done (verification + roll-forward) and to declare the next safe row as `QUEUE-REFILL-PREP-STOP` until a user authorization arrives. Added this Reflection Log entry.
+- Boundary: docs/control only. No live model call, real remote provider call, credential lookup, secret capture, browser/search/tool execution, publication, deployment, schema/data migration, force push, new remote configuration, destructive Git/history action, system/runtime configuration change, or non-delegable operation is introduced.
+- Quality gate result: pass — `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q` -> 1 passed; `PYTHONPATH=src:. pytest tests/unit/test_change_impact.py tests/unit/test_architecture_candidates.py tests/unit/test_code_analysis_pass_contract.py tests/unit/test_subagent_evidence_collector_protocol.py tests/unit/test_codebase_map_freshness.py tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py -q` -> 60 passed; `python3 scripts/validate_traceability.py` -> `OK`; `python3 scripts/scan_secrets.py` -> `scanned_files=686 skipped_files=0 hit_count=0`; `git diff --check` -> clean.
+- Continue decision: **stop and ask**. Per the Ralph-loop stop condition "Stop and report if … a non-delegable safety boundary remains after applying the repository synchronization rule and default autonomy rule", every remaining backlog candidate requires explicit user authorization. The default autonomy rule does not extend to product-scope governance decisions (what counts as "approved OSS") or to new process-spawning runtimes.
+- Stop condition: non-delegable human-gate authority required for every remaining M21 backlog candidate (approved OSS comparison adapter; optional local LSP adapter). The local DARS panel productization line is fully closed. No further safe local row is available without user input.
+- Potential issues / open items: (a) `docs/milestone-bootstrap/profile.yaml` still records `next_safe_task=MB-CODEBASE-M21-6-PREP`; the governance current-state test continues to pass under that contract, so no profile rewrite was performed. A future controlled-document amendment may refresh the profile to declare `QUEUE-REFILL-PREP-STOP` or another explicit state, but that change requires explicit user direction because changing the profile semantics affects governance tooling expectations. (b) `ralph.md` Section 10.3 (Automatic Milestone Push Checkpoint) still references `feat/domain-adaptive-requirements-analysis` rather than `dars`; today the branch is fully synced with `origin/dars`, so this issue is dormant, but it remains a controlled-document gap that should be addressed if a future automatic push procedure is needed for `dars`.
+- Commit pending: `docs: queue-refill-prep verifies m21-6 roll-forward and stops on human-gated backlog`.
+
+Resume checkpoint:
+- Current HEAD before this entry's commit: `fad02ef docs: audit dars panel local completion`.
+- Working tree before this entry's commit: `ralph.md` Section 16 + Reflection Log modifications pending; gates green.
+- Last completed milestone/task: MB-CODEBASE-M21-6-PREP verification + queue roll-forward (this entry).
+- Next safe Ralph queue target: none under current authorization. Both remaining M21 candidates (approved OSS comparison adapter, optional local LSP adapter) require explicit user authorization. The DARS panel productization line is closed.
+- Next command to run: validate, commit this ralph.md edit, push to existing `origin/dars`, then stop and ask the user which (if any) human-gated candidate to open next.
+- Stop condition: non-delegable human-gate authority required. No safe local row remains without explicit user input.
+
 ### 2026-05-21 — DARS-PANEL-RLOOP-OPT-1 local completion audit (docs/control)
 
 - Phase completed: continuous-completion stop-preflight / final local evidence audit for the DARS panel productization line per Section 5.1.2.1 and the Section 16 acceptance contract.
@@ -5570,25 +5598,30 @@ Done: DARS-CLOSE-1 — Golden fixture scenario for operator report (0c9582f)
 Done: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run (38c22f2)
 Done: DARS-CLOSE-3 — DARS panel completion/readiness status surface (249797c)
 Done: DARS-CLOSE-4 — Closure gate and provisional queue return to M21.6 (a38e04e)
-Done: DARS-PANEL-RLOOP-OPT-1 — Continuous-completion stop-preflight and final local evidence audit (see docs/reports/dars-panel-local-completion-audit.md)
-Next: MB-CODEBASE-M21-6-PREP — create docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md
+Done: DARS-PANEL-RLOOP-OPT-1 — Continuous-completion stop-preflight and final local evidence audit (fad02ef; see docs/reports/dars-panel-local-completion-audit.md)
+Done: MB-CODEBASE-M21-6-PREP — verified M21.6 acceptance via existing tests (no roll-forward plan author needed) and rolled the queue forward; see QUEUE-REFILL-PREP-2026-05-21B Reflection Log entry.
+Next: QUEUE-REFILL-PREP-STOP — every remaining M21 backlog candidate is human-gated; ask the user for explicit authorization before the next Ralph row.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-MB-CODEBASE-M21-6-PREP — create docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md as a docs/control HOW-level Prepare artifact before any RED implementation test or product code under the M21.6 change-impact analyzer candidate.
+QUEUE-REFILL-PREP-STOP — no safe local Ralph row remains under the current authorizations. Stop and ask the user which (if any) human-gated M21 candidate to open, or whether to schedule a separate live-provider DARS line. Do not synthesize a new safe row without explicit user input.
 ```
 
-Acceptance for MB-CODEBASE-M21-6-PREP (planning-only, docs/control):
+Verification of M21.6 acceptance (MB-CODEBASE-M21-6-PREP, treated as a roll-forward row per the original note):
 
-1. Read `docs/milestone-bootstrap/profile.yaml`, the M21 backlog summary in this file's Section 14 / Milestone M21, and the existing M21.1..M21.5 plan tasks under `docs/plans/`.
-2. Create `docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md` with the standard Hisys plan structure: Goal, Architecture, Tech Stack, Context Packet, Boundary Record, Decision table, Completion criteria, and ordered Task rows. Mark the plan strictly as docs/control; do not implement any code in this row.
-3. Pin the M21.6 boundary: pure local read-only analyzer, no live access, no `subprocess`, no `.git/` read, no raw source body open, no credential lookup, no artifact repair or deletion, advisory-only output.
-4. Run focused docs/control validation (`PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q`), `python3 scripts/validate_traceability.py`, `python3 scripts/scan_secrets.py`, and `git diff --check`.
-5. Commit the plan and push to existing `origin/dars`. Then RED implementation rows for M21.6 are queued separately.
+1. `PYTHONPATH=src:. pytest tests/unit/test_change_impact.py -q` -> `5 passed`. M21.6 change-impact analyzer surface in `src/hisys/operations/change_impact.py` is complete and green.
+2. `PYTHONPATH=src:. pytest tests/unit/test_change_impact.py tests/unit/test_architecture_candidates.py tests/unit/test_code_analysis_pass_contract.py tests/unit/test_subagent_evidence_collector_protocol.py tests/unit/test_codebase_map_freshness.py tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py -q` -> `60 passed`. The entire M21.1..M21.9 line is green at the current HEAD.
+3. The change-impact CLI wrapper plan `docs/plans/m21-6-cli-change-impact-cli-wrapper-implementation-tasks.md` and downstream M21.7..M21.9 plans already exist in `docs/plans/`; authoring a new Prepare plan would duplicate completed work.
+4. Therefore MB-CODEBASE-M21-6-PREP is satisfied by verification rather than by authoring a new plan. The queue rolls forward without expanding scope, exactly as the original Section 16 note authorized.
 
-Note: M21.6 was previously implemented as the change-impact analyzer (commits under `src/hisys/operations/change_impact.py`). The MB-CODEBASE-M21-6-PREP row was originally created before that work; if the M21.6 analyzer is already complete in the repository at the time of Prepare, treat MB-CODEBASE-M21-6-PREP as a verification + queue-roll-forward row that confirms M21.6 acceptance against the existing tests and selects the next M21 backlog candidate (e.g. M21.7 or another candidate under Section 14 Milestone M21) without expanding scope.
+Remaining M21 backlog status (re-classified after M21.9 close):
+
+- **Approved OSS comparison adapter** — Human gate per `docs/plans/m21-roadmap-implementation-plan.md` line 37. Even a docs-only PREP requires defining "approved OSS" — a product-scope governance decision that is non-delegable.
+- **Optional local LSP adapter** — Human gate per `docs/plans/m21-roadmap-implementation-plan.md` line 38. Any opt-in `subprocess`-spawning runtime is explicitly listed in `ralph.md` Section 2.2 as a non-delegable safety boundary unless explicitly approved.
+
+No other M21 candidate exists; the original ten-candidate backlog is reduced to these two human-gated rows. The subagent evidence collector protocol from the prior backlog was implemented in M21.9 (`subagent_evidence_collector` contract + `evaluate-code-analysis-contract` CLI wrapper).
 
 Runtime boundary for this queue:
 
