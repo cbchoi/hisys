@@ -1,0 +1,28 @@
+{
+  "schema_id": "hisys.pass_contract.registry",
+  "schema_version": "0.1.0",
+  "contracts": [
+    {
+      "contract_id": "code_analysis_codebase_map_freshness_review_v0_1_candidate",
+      "domain": "code_analysis",
+      "question_type": "codebase_map_freshness_review",
+      "status": "candidate",
+      "active": false,
+      "version": "0.1.0",
+      "minimum_evidence": {
+        "artifact_refs_required": true,
+        "claim_coverage_required": true
+      },
+      "blocked_if": [
+        "no_traceable_artifact_refs",
+        "claim_coverage_incomplete",
+        "boundary_violation_detected"
+      ],
+      "promotion_gate": "human_reviewed_traceable_change",
+      "automatic_promotion_allowed": false,
+      "external_call_made": false,
+      "mutation_performed": false,
+      "publication_or_live_action_approved": false
+    }
+  ]
+}
