@@ -29,6 +29,8 @@ from .dars_remote_subscription_policy import (
 
 DARS_REMOTE_SUBSCRIPTION_DISPATCH_SCHEMA_ID = "hisys.dars.remote_subscription_dispatch"
 DARS_REMOTE_SUBSCRIPTION_DISPATCH_SCHEMA_VERSION = "0.1.0"
+DARS_REMOTE_SUBSCRIPTION_PANEL_DISPATCH_SCHEMA_ID = "hisys.dars.remote_subscription_panel_dispatch"
+DARS_REMOTE_SUBSCRIPTION_PANEL_DISPATCH_SCHEMA_VERSION = "0.1.0"
 
 _DATE_RE = re.compile(r"^\d{8}$")
 _SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -58,6 +60,17 @@ class RemoteSubscriptionDispatchResult:
     critique_text: str
     provider_id: str
     adapter_class: str
+    external_call_made: bool
+
+
+@dataclass(frozen=True)
+class RemoteSubscriptionPanelDispatchResult:
+    status: Literal["completed"]
+    panel_id: str
+    request_id: str
+    panel_boundary_ref: str
+    boundary_refs: list[str]
+    critic_results: list[RemoteSubscriptionDispatchResult]
     external_call_made: bool
 
 
@@ -120,6 +133,138 @@ def run_dars_remote_subscription_dispatch(
         adapter_class=adapter_class,
         external_call_made=True,
     )
+
+
+def run_dars_remote_subscription_panel_dispatch(
+    instance: InstanceRoot,
+    *,
+    yyyymmdd: str,
+    request_id: str,
+    panel_id: str,
+    requests: list[RemoteSubscriptionDispatchRequest],
+    executor: RemoteSubscriptionExecutor | None = None,
+) -> RemoteSubscriptionPanelDispatchResult:
+    """Run a multi-critic remote-subscription DARS panel through an injected executor.
+
+    This function is the panel-level composition seam for the existing governed
+    dispatch harness. It does not resolve credentials or provider SDKs; every
+    critic request still passes the activation/policy checks in
+    ``run_dars_remote_subscription_dispatch`` before the injected executor can be
+    contacted. Panel-shape mismatches are rejected before any executor contact.
+    """
+
+    _validate_panel_shape(
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        panel_id=panel_id,
+        requests=requests,
+    )
+    critic_results: list[RemoteSubscriptionDispatchResult] = []
+    for request in requests:
+        critic_results.append(
+            run_dars_remote_subscription_dispatch(
+                instance,
+                request,
+                executor=executor,
+            )
+        )
+    panel_boundary_ref = _write_remote_subscription_panel_boundary(
+        instance,
+        yyyymmdd=yyyymmdd,
+        request_id=request_id,
+        panel_id=panel_id,
+        critic_results=critic_results,
+    )
+    return RemoteSubscriptionPanelDispatchResult(
+        status="completed",
+        panel_id=panel_id,
+        request_id=request_id,
+        panel_boundary_ref=panel_boundary_ref,
+        boundary_refs=[result.boundary_ref for result in critic_results],
+        critic_results=critic_results,
+        external_call_made=True,
+    )
+
+
+def _validate_panel_shape(
+    *,
+    yyyymmdd: str,
+    request_id: str,
+    panel_id: str,
+    requests: list[RemoteSubscriptionDispatchRequest],
+) -> None:
+    if not _DATE_RE.fullmatch(yyyymmdd):
+        raise ValueError("invalid_date_partition")
+    for field_name, value in (("request_id", request_id), ("panel_id", panel_id)):
+        if not isinstance(value, str) or not _SLUG_RE.fullmatch(value):
+            raise ValueError(f"invalid_{field_name}")
+    if len(requests) < 2:
+        raise ValueError("multi_critic_panel_requires_at_least_two_requests")
+    seen_source_execution_ids: set[str] = set()
+    for request in requests:
+        _validate_request_shape(request)
+        if request.yyyymmdd != yyyymmdd:
+            raise ValueError("panel_date_partition_mismatch")
+        if request.request_id != request_id:
+            raise ValueError("panel_request_id_mismatch")
+        if request.source_execution_id in seen_source_execution_ids:
+            raise ValueError("duplicate_panel_source_execution_id")
+        seen_source_execution_ids.add(request.source_execution_id)
+
+
+def _write_remote_subscription_panel_boundary(
+    instance: InstanceRoot,
+    *,
+    yyyymmdd: str,
+    request_id: str,
+    panel_id: str,
+    critic_results: list[RemoteSubscriptionDispatchResult],
+) -> str:
+    output_dir = (
+        instance.runtime_boundary_dir
+        / "dars-remote-subscription-panels"
+        / yyyymmdd
+        / request_id
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    provider_ids = sorted({result.provider_id for result in critic_results})
+    adapter_classes = sorted({result.adapter_class for result in critic_results})
+    boundary_refs = [result.boundary_ref for result in critic_results]
+    payload = {
+        "schema_id": DARS_REMOTE_SUBSCRIPTION_PANEL_DISPATCH_SCHEMA_ID,
+        "schema_version": DARS_REMOTE_SUBSCRIPTION_PANEL_DISPATCH_SCHEMA_VERSION,
+        "panel_id": panel_id,
+        "request_id": request_id,
+        "critic_count": len(critic_results),
+        "completed_critic_count": len([result for result in critic_results if result.status == "completed"]),
+        "provider_ids": provider_ids,
+        "adapter_classes": adapter_classes,
+        "boundary_refs": boundary_refs,
+        "external_call_made": True,
+        "model_boundary_crossed": True,
+        "local_model_call_made": False,
+        "mutation_performed": False,
+        "publication_performed": False,
+        "allowed_actions": _ALLOWED_ACTIONS,
+        "requires_human_review": True,
+        "transport_kind": "injected_subscription_executor_panel",
+        "policy_refs": [
+            "HISYS-FR-AGT-001",
+            "HISYS-FR-AGT-003",
+            "HISYS-CON-010",
+            "HISYS-CON-012",
+            "M-DARS-BE-6",
+            "M24",
+        ],
+    }
+    json_path = output_dir / f"{panel_id}.json"
+    md_path = output_dir / f"{panel_id}.md"
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_path.write_text(_render_panel_markdown(payload), encoding="utf-8")
+    return str(json_path.relative_to(instance.root))
 
 
 def _validate_request_shape(request: RemoteSubscriptionDispatchRequest) -> None:
@@ -248,8 +393,8 @@ def _write_remote_subscription_boundary(
             "M-DARS-BE-6",
         ],
     }
-    json_path = output_dir / f"{request.backend_id}.json"
-    md_path = output_dir / f"{request.backend_id}.md"
+    json_path = output_dir / f"{request.backend_id}-{request.source_execution_id}.json"
+    md_path = output_dir / f"{request.backend_id}-{request.source_execution_id}.md"
     json_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -288,10 +433,40 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     )
 
 
+def _render_panel_markdown(payload: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            f"# DARS remote subscription panel dispatch — {payload['panel_id']}",
+            "",
+            f"- schema_id: {payload['schema_id']}",
+            f"- schema_version: {payload['schema_version']}",
+            f"- panel_id: {payload['panel_id']}",
+            f"- request_id: {payload['request_id']}",
+            f"- critic_count: {payload['critic_count']}",
+            f"- completed_critic_count: {payload['completed_critic_count']}",
+            f"- provider_ids: {', '.join(payload['provider_ids'])}",
+            f"- adapter_classes: {', '.join(payload['adapter_classes'])}",
+            f"- external_call_made: {str(payload['external_call_made']).lower()}",
+            f"- model_boundary_crossed: {str(payload['model_boundary_crossed']).lower()}",
+            f"- local_model_call_made: {str(payload['local_model_call_made']).lower()}",
+            f"- mutation_performed: {str(payload['mutation_performed']).lower()}",
+            f"- publication_performed: {str(payload['publication_performed']).lower()}",
+            f"- allowed_actions: {payload['allowed_actions']}",
+            f"- requires_human_review: {str(payload['requires_human_review']).lower()}",
+            f"- transport_kind: {payload['transport_kind']}",
+            "",
+        ]
+    )
+
+
 __all__ = [
     "DARS_REMOTE_SUBSCRIPTION_DISPATCH_SCHEMA_ID",
     "DARS_REMOTE_SUBSCRIPTION_DISPATCH_SCHEMA_VERSION",
+    "DARS_REMOTE_SUBSCRIPTION_PANEL_DISPATCH_SCHEMA_ID",
+    "DARS_REMOTE_SUBSCRIPTION_PANEL_DISPATCH_SCHEMA_VERSION",
     "RemoteSubscriptionDispatchRequest",
     "RemoteSubscriptionDispatchResult",
+    "RemoteSubscriptionPanelDispatchResult",
     "run_dars_remote_subscription_dispatch",
+    "run_dars_remote_subscription_panel_dispatch",
 ]

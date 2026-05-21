@@ -105,7 +105,11 @@ And the deterministic warning:
 - M-DARS-BE-6 `run_dars_remote_subscription_dispatch(...)` composes the
   backend activation packet and this policy packet, blocks mismatches before
   executor contact, calls only an explicitly injected subscription executor,
-  and writes `runtime-boundary/dars-remote-subscriptions/<YYYYMMDD>/<REQUEST_ID>/<BACKEND_ID>.{json,md}`.
+  and writes `runtime-boundary/dars-remote-subscriptions/<YYYYMMDD>/<REQUEST_ID>/<BACKEND_ID>-<SOURCE_EXECUTION_ID>.{json,md}`.
+- M24 `run_dars_remote_subscription_panel_dispatch(...)` composes multiple
+  remote subscription critic requests into one governed panel boundary record
+  after each critic passes the same M-DARS-BE-6 activation/policy/executor
+  checks. It writes `runtime-boundary/dars-remote-subscription-panels/<YYYYMMDD>/<REQUEST_ID>/<PANEL_ID>.{json,md}`.
 
 ## Dispatch harness boundary (M-DARS-BE-6)
 

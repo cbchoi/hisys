@@ -595,3 +595,147 @@ def test_remote_subscription_dispatch_rejects_activation_remote_policy_ref_misma
 
     boundary_dir = tmp_path / "runtime-boundary" / "dars-remote-subscriptions"
     assert not boundary_dir.exists()
+
+
+
+def test_remote_subscription_multi_critic_panel_dispatch_writes_aggregate_boundary(tmp_path: Path):
+    """M24: a governed remote-subscription DARS panel can run multiple critics via injected executors."""
+
+    from hisys.agents.dars_remote_subscription_dispatch import (
+        RemoteSubscriptionDispatchRequest,
+        run_dars_remote_subscription_panel_dispatch,
+    )
+
+    policy_ref = _write_json(
+        tmp_path / "codex-policy.json",
+        _valid_policy_data(
+            provider_id="codex",
+            adapter_class="codex_subscription",
+            subscription_account_ref="vault://dars/codex/subscription-001",
+        ),
+    )
+    activation_ref = _write_json(
+        tmp_path / "codex-activation.json",
+        _valid_activation_data(
+            backend_id="codex_subscription_dars",
+            remote_policy_packet_ref=str(policy_ref),
+        ),
+    )
+    requests = [
+        RemoteSubscriptionDispatchRequest(
+            yyyymmdd="20260521",
+            request_id="REQ-DARS-MULTI-001",
+            backend_id="codex_subscription_dars",
+            backend_kind="remote_subscription",
+            source_execution_id="EXEC-DARS-MULTI-LOGICAL",
+            approval_ref="APPROVAL-DARS-RS-20260521-001",
+            activation_packet_ref=str(activation_ref),
+            policy_packet_ref=str(policy_ref),
+            prompt="Critique candidate as logical_devil with provenance.",
+        ),
+        RemoteSubscriptionDispatchRequest(
+            yyyymmdd="20260521",
+            request_id="REQ-DARS-MULTI-001",
+            backend_id="codex_subscription_dars",
+            backend_kind="remote_subscription",
+            source_execution_id="EXEC-DARS-MULTI-EVIDENCE",
+            approval_ref="APPROVAL-DARS-RS-20260521-001",
+            activation_packet_ref=str(activation_ref),
+            policy_packet_ref=str(policy_ref),
+            prompt="Critique candidate as evidence_governance_devil with provenance.",
+        ),
+    ]
+    calls: list[dict] = []
+
+    def fake_codex_executor(payload):
+        calls.append(payload)
+        return f"{payload['source_execution_id']} critique from injected Codex subscription executor"
+
+    result = run_dars_remote_subscription_panel_dispatch(
+        InstanceRoot(tmp_path),
+        yyyymmdd="20260521",
+        request_id="REQ-DARS-MULTI-001",
+        panel_id="PANEL-DARS-REMOTE-MULTI-001",
+        requests=requests,
+        executor=fake_codex_executor,
+    )
+
+    assert result.status == "completed"
+    assert result.panel_id == "PANEL-DARS-REMOTE-MULTI-001"
+    assert result.request_id == "REQ-DARS-MULTI-001"
+    assert len(result.critic_results) == 2
+    assert len(result.boundary_refs) == 2
+    assert result.external_call_made is True
+    assert [call["source_execution_id"] for call in calls] == [
+        "EXEC-DARS-MULTI-LOGICAL",
+        "EXEC-DARS-MULTI-EVIDENCE",
+    ]
+
+    aggregate = json.loads((tmp_path / result.panel_boundary_ref).read_text(encoding="utf-8"))
+    assert aggregate["schema_id"] == "hisys.dars.remote_subscription_panel_dispatch"
+    assert aggregate["panel_id"] == "PANEL-DARS-REMOTE-MULTI-001"
+    assert aggregate["request_id"] == "REQ-DARS-MULTI-001"
+    assert aggregate["critic_count"] == 2
+    assert aggregate["completed_critic_count"] == 2
+    assert aggregate["provider_ids"] == ["codex"]
+    assert aggregate["adapter_classes"] == ["codex_subscription"]
+    assert aggregate["boundary_refs"] == result.boundary_refs
+    assert aggregate["external_call_made"] is True
+    assert aggregate["model_boundary_crossed"] is True
+    assert aggregate["local_model_call_made"] is False
+    assert aggregate["mutation_performed"] is False
+    assert aggregate["publication_performed"] is False
+    assert aggregate["allowed_actions"] == "advisory_only"
+    assert aggregate["requires_human_review"] is True
+
+
+def test_remote_subscription_multi_critic_panel_rejects_mixed_request_ids_before_executor(tmp_path: Path):
+    """Panel-level dispatch must fail closed before executor contact if critic requests do not share request_id."""
+
+    from hisys.agents.dars_remote_subscription_dispatch import (
+        RemoteSubscriptionDispatchRequest,
+        run_dars_remote_subscription_panel_dispatch,
+    )
+
+    policy_ref = _write_json(tmp_path / "remote-policy.json", _valid_policy_data())
+    activation_ref = _write_json(
+        tmp_path / "activation.json",
+        _valid_activation_data(remote_policy_packet_ref=str(policy_ref)),
+    )
+    base = dict(
+        yyyymmdd="20260521",
+        backend_id="claude_subscription_dars",
+        backend_kind="remote_subscription",
+        approval_ref="APPROVAL-DARS-RS-20260521-001",
+        activation_packet_ref=str(activation_ref),
+        policy_packet_ref=str(policy_ref),
+        prompt="Critique with provenance.",
+    )
+    requests = [
+        RemoteSubscriptionDispatchRequest(
+            **base,
+            request_id="REQ-DARS-MULTI-001",
+            source_execution_id="EXEC-DARS-MULTI-001",
+        ),
+        RemoteSubscriptionDispatchRequest(
+            **base,
+            request_id="REQ-DARS-MULTI-OTHER",
+            source_execution_id="EXEC-DARS-MULTI-002",
+        ),
+    ]
+
+    def fail_if_called(_payload):
+        raise AssertionError("executor must not be reached for mismatched panel request ids")
+
+    with pytest.raises(ValueError, match="panel_request_id_mismatch"):
+        run_dars_remote_subscription_panel_dispatch(
+            InstanceRoot(tmp_path),
+            yyyymmdd="20260521",
+            request_id="REQ-DARS-MULTI-001",
+            panel_id="PANEL-DARS-REMOTE-MULTI-001",
+            requests=requests,
+            executor=fail_if_called,
+        )
+
+    boundary_dir = tmp_path / "runtime-boundary" / "dars-remote-subscription-panels"
+    assert not boundary_dir.exists()
