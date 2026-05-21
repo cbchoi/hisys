@@ -9,6 +9,19 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from hisys.operations.codebase_analysis import (
+    build_codebase_inventory,
+    build_codebase_scope_map,
+    build_codebase_validation_plan,
+    build_python_symbol_index,
+    review_codebase_source_inspection,
+    scan_codebase_risk_boundaries,
+    write_codebase_inventory,
+    write_codebase_risk_scan,
+    write_codebase_scope_map,
+    write_codebase_source_inspection_decision,
+    write_python_symbol_index,
+)
 from hisys.schemas.domain_investigation import DomainInvestigationRequest
 
 from .layers import (
@@ -122,6 +135,131 @@ def _classify_codebase_bundle_gate(refs: list[str]) -> tuple[str, list[str]]:
     return "candidate_complete", []
 
 
+def _extract_current_artifact_repo_roots(request: DomainInvestigationRequest) -> list[Path]:
+    """Extract ordered, deduplicated local repository roots from current artifacts."""
+
+    seen: set[Path] = set()
+    repo_roots: list[Path] = []
+    for source in request.sources:
+        if source.source_type != "current_artifact":
+            continue
+        # `current_artifact` is also used for non-codebase local context such as
+        # the me vault. Only bridge artifacts that are explicitly labelled as a
+        # repository/codebase/source input, so legacy me-vault requests keep the
+        # original lightweight investigation behavior.
+        source_hint = f"{source.source_id} {source.ref}".lower()
+        if not any(token in source_hint for token in ("repo", "codebase", "source")):
+            continue
+        candidate = Path(source.ref).expanduser()
+        if not candidate.is_dir():
+            continue
+        resolved = candidate.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        repo_roots.append(resolved)
+    return repo_roots
+
+
+def _write_codebase_validation_plan_artifact(
+    *,
+    instance_root: Path,
+    date: str,
+    request_id: str,
+    validation_plan: object,
+) -> str:
+    """Persist validation-plan.json next to source-inspection artifacts."""
+
+    rel = f"runtime-boundary/codebase-analysis/{date}/{request_id}/validation-plan.json"
+    path = instance_root / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    model_dump_json = getattr(validation_plan, "model_dump_json")
+    path.write_text(model_dump_json(indent=2) + "\n", encoding="utf-8")
+    return rel
+
+
+def _materialize_codebase_source_inspection_bundle(
+    *,
+    repo_root: Path,
+    request_id: str,
+    context: DomainUseCaseContext,
+) -> list[str]:
+    """Run the deterministic local codebase source-inspection pipeline.
+
+    The pipeline reads a local current-artifact repository and writes bounded
+    runtime-boundary evidence: inventory, Python symbol index, scope map,
+    validation plan, risk scan, and source-inspection decision. It does not run
+    validation commands, make network calls, use credentials, persist raw source
+    content, or authorize live action.
+    """
+
+    inventory = build_codebase_inventory(repo_root=repo_root)
+    inventory_ref = write_codebase_inventory(
+        instance_root=context.instance_root,
+        date=context.yyyymmdd,
+        request_id=request_id,
+        inventory=inventory,
+    )["json_ref"]
+
+    symbol_index = build_python_symbol_index(repo_root=repo_root)
+    symbol_index_ref = write_python_symbol_index(
+        instance_root=context.instance_root,
+        date=context.yyyymmdd,
+        request_id=request_id,
+        symbol_index=symbol_index,
+    )["json_ref"]
+
+    scope_map = build_codebase_scope_map(
+        inventory=inventory,
+        symbol_index=symbol_index,
+    )
+    validation_plan = build_codebase_validation_plan(scope_map)
+    scope_map_ref = write_codebase_scope_map(
+        instance_root=context.instance_root,
+        date=context.yyyymmdd,
+        request_id=request_id,
+        scope_map=scope_map,
+        validation_plan=validation_plan,
+    )["json_ref"]
+    validation_plan_ref = _write_codebase_validation_plan_artifact(
+        instance_root=context.instance_root,
+        date=context.yyyymmdd,
+        request_id=request_id,
+        validation_plan=validation_plan,
+    )
+
+    risk_scan = scan_codebase_risk_boundaries(repo_root=repo_root)
+    risk_scan_ref = write_codebase_risk_scan(
+        instance_root=context.instance_root,
+        date=context.yyyymmdd,
+        request_id=request_id,
+        scan=risk_scan,
+    )["json_ref"]
+
+    source_inspection_decision = review_codebase_source_inspection(
+        inventory=inventory,
+        symbol_index=symbol_index,
+        scope_map=scope_map,
+        validation_plan=validation_plan,
+        risk_scan=risk_scan,
+    )
+    decision_ref = write_codebase_source_inspection_decision(
+        instance_root=context.instance_root,
+        date=context.yyyymmdd,
+        request_id=request_id,
+        decision=source_inspection_decision,
+    )["json_ref"]
+
+    return [
+        str(inventory_ref),
+        str(symbol_index_ref),
+        str(scope_map_ref),
+        validation_plan_ref,
+        str(risk_scan_ref),
+        str(decision_ref),
+    ]
+
+
 class CodeInvestigationLayer:
     """Investigate code evidence from local memos and requirements folders."""
 
@@ -146,15 +284,32 @@ class CodeInvestigationLayer:
             else "local-code-and-requirements-memos"
         )
         codebase_artifact_refs = _extract_codebase_artifact_refs(request)
+        current_artifact_repo_roots = _extract_current_artifact_repo_roots(request)
+        materialized_artifact_refs: list[str] = []
+        if not codebase_artifact_refs and current_artifact_repo_roots:
+            materialized_artifact_refs = _materialize_codebase_source_inspection_bundle(
+                repo_root=current_artifact_repo_roots[0],
+                request_id=request.request_id,
+                context=context,
+            )
+            codebase_artifact_refs = materialized_artifact_refs
         codebase_bundle_gate, codebase_missing_evidence = _classify_codebase_bundle_gate(
             codebase_artifact_refs
         )
         codebase_artifact_ref_set = set(codebase_artifact_refs)
+        local_search_targets = [
+            self._me_vault_root,
+            self._requirements_root,
+            *[str(repo_root) for repo_root in current_artifact_repo_roots],
+        ]
+        data_source_targets = ["local_requirements_folder"]
+        if materialized_artifact_refs:
+            data_source_targets.append("local_codebase_source_inspection")
         return InvestigationWorkProduct(
             work_product_id=f"INVEST-{request.request_id}-{suffix}",
             scope=scope,
-            local_search_targets=[self._me_vault_root, self._requirements_root],
-            data_source_targets=["local_requirements_folder"],
+            local_search_targets=local_search_targets,
+            data_source_targets=data_source_targets,
             memo_refs=[f"memo://{request.request_id}/{memo_kind}"],
             evidence_refs=[
                 *[

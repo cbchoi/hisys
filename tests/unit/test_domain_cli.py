@@ -1469,3 +1469,105 @@ def test_investigate_domain_codebase_smokes_local_bundle(
     assert report["request_id"] == "HISYS-REQ-M20-4-SMOKE"
     assert report["domain"] == "codebase"
     assert report["tool_result_ref"] == str(result_artifact.relative_to(instance_root))
+
+
+def test_investigate_domain_codebase_materializes_current_artifact_repo(
+    tmp_path: Path, capsys
+) -> None:
+    """M21: codebase domain request should run local source-inspection pipeline."""
+
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_codebase_smoke_repo(repo)
+    request_id = "HISYS-REQ-M21-CURRENT-ARTIFACT"
+
+    request_path = instance_root / "codebase-current-artifact-request.json"
+    request_path.write_text(
+        json.dumps(
+            {
+                "producer_id": "hermes",
+                "status": "submitted",
+                "request_id": request_id,
+                "domain": "codebase",
+                "objective": "codebase: inspect current artifact repo",
+                "sources": [
+                    {
+                        "source_id": "SRC-REPO",
+                        "source_type": "current_artifact",
+                        "ref": str(repo),
+                        "access_mode": "read_only",
+                        "sensitivity": "public",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "investigate-domain",
+            "--instance",
+            str(instance_root),
+            "--request",
+            str(request_path),
+            "--date",
+            "20260521",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "domain: codebase" in captured.out
+
+    bundle_dir = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-analysis"
+        / "20260521"
+        / request_id
+    )
+    for filename in (
+        "inventory.json",
+        "symbol-index.json",
+        "scope-map.json",
+        "validation-plan.json",
+        "risk-scan.json",
+        "source-inspection-decision.json",
+    ):
+        assert (bundle_dir / filename).exists()
+
+    boundary_dir = (
+        instance_root
+        / "runtime-boundary"
+        / "domain-investigation"
+        / "codebase"
+        / "20260521"
+    )
+    tool_result = json.loads(
+        (boundary_dir / f"hisys-tool-result-{request_id}.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert tool_result["quality_gate"] == "passed"
+
+    domain_result_artifacts = list(boundary_dir.glob("domain-investigation-result-*.json"))
+    assert len(domain_result_artifacts) == 1
+    domain_payload = json.loads(domain_result_artifacts[0].read_text(encoding="utf-8"))
+    codebase_packages = [
+        pkg
+        for pkg in domain_payload["investigation_data"]["evidence_packages"]
+        if pkg["evidence_type"] == "codebase_analysis_bundle"
+    ]
+    assert len(codebase_packages) == 1
+    assert codebase_packages[0]["evidence_refs"] == [
+        f"runtime-boundary/codebase-analysis/20260521/{request_id}/inventory.json",
+        f"runtime-boundary/codebase-analysis/20260521/{request_id}/symbol-index.json",
+        f"runtime-boundary/codebase-analysis/20260521/{request_id}/scope-map.json",
+        f"runtime-boundary/codebase-analysis/20260521/{request_id}/risk-scan.json",
+    ]
