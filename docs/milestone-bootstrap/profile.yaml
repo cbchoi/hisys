@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.27
-focus: M23-LSP-ADAPTER-PREP packet authored; next safe row is the pure-runner RED/GREEN under the governed subprocess boundary
+version: v0.0.28
+focus: M23-LSP-ADAPTER-RED-GREEN landed the pure governed local LSP adapter runner; next safe row is the thin CLI wrapper plan under the M23 authorization boundary
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M23-LSP-ADAPTER-RED-GREEN
+next_safe_task: M23-LSP-ADAPTER-CLI
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "M23-LSP-ADAPTER-PREP"
-bootstrap_inference: "Authored docs/plans/m23-lsp-adapter-implementation-tasks.md so the next safe Ralph row implements the pure governed local LSP adapter runner under the M23 authorization boundary. The PREP packet pins the subprocess safety contract (caller-supplied command allowlist, timeout cap of 120s, 4 MiB output truncation, workspace-root containment, no shell, no environment inheritance beyond PATH, no raw message persistence, no LSP server installation) before any product code."
+bootstrap_arguments: "M23-LSP-ADAPTER-RED-GREEN"
+bootstrap_inference: "Implemented src/hisys/operations/lsp_adapter.py and tests/unit/test_lsp_adapter.py per docs/plans/m23-lsp-adapter-implementation-tasks.md. The runner enforces the caller-supplied command allowlist, 120s timeout cap, 4 MiB output truncation, workspace-root containment under instance_root, no-shell invocation, env={'PATH': PATH}, and converts FileNotFoundError to ValueError('lsp_command_not_found'). Diagnostics persist only message_digest (SHA-256 first-16-hex), never raw message text. The writer lands JSON and Markdown only under runtime-boundary/lsp-adapter/<YYYYMMDD>/<command_id>/lsp-report.{json,md} through resolve_instance_runtime_ref. Thirteen focused tests pin the safety contract end-to-end via monkey-patched subprocess.run; no real LSP server is invoked. The next safe Ralph row authors docs/plans/m23-cli-lsp-adapter-implementation-tasks.md."
 roadmap_ref: docs/plans/m23-advanced-codebase-adapter-integration-plan.md
-next_artifact_ref: src/hisys/operations/lsp_adapter.py
-planning_baseline_head: "0a172d3 docs: close m23 oss comparison adapter milestone"
-current_head_at_plan_creation: "0a172d3 docs: close m23 oss comparison adapter milestone"
-previous_bootstrap_version: v0.0.26
+next_artifact_ref: docs/plans/m23-cli-lsp-adapter-implementation-tasks.md
+planning_baseline_head: "090de67 docs: prepare m23 lsp adapter"
+current_head_at_plan_creation: "090de67 docs: prepare m23 lsp adapter"
+previous_bootstrap_version: v0.0.27
 tmux_or_background_agent_spawned: false
-production_code_created: false
-tests_created: false
+production_code_created: true
+tests_created: true

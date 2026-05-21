@@ -1,0 +1,23 @@
+[
+  {
+    "code": "F401",
+    "message": "`os` imported but unused",
+    "filename": "src/a.py",
+    "location": {"row": 1, "column": 1},
+    "end_location": {"row": 1, "column": 10}
+  },
+  {
+    "code": "E501",
+    "message": "Line too long (95 > 88)",
+    "filename": "src/a.py",
+    "location": {"row": 5, "column": 1},
+    "end_location": {"row": 5, "column": 96}
+  },
+  {
+    "code": "W292",
+    "message": "No newline at end of file",
+    "filename": "src/b.py",
+    "location": {"row": 12, "column": 1},
+    "end_location": {"row": 12, "column": 1}
+  }
+]
