@@ -105,6 +105,84 @@ def test_run_dars_panel_cli_persists_fixture_round_and_prints_json(tmp_path: Pat
         assert (tmp_path / ref).exists()
 
 
+def test_run_dars_panel_cli_writes_operator_report_without_live_actions(tmp_path: Path, capsys):
+    """DARS productization: persist an operator-facing advisory report."""
+
+    from hisys.cli.main import main
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    config_path = tmp_path / "panel-config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "panel_id": "PANEL-DARS-PRODUCT-REPORT",
+                "max_parallel_critics": 1,
+                "critics": [
+                    {
+                        "critic_id": "logical-devil",
+                        "critic_role": "logical_devil",
+                        "backend_id": "fixture-logical-report-001",
+                        "rubric_ref": rubric_ref,
+                        "critique_dimensions": ["logical_validity"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "run-dars-panel",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260520",
+            "--request-id",
+            "REQ-DARS-PRODUCT-REPORT",
+            "--panel-config",
+            str(config_path),
+            "--candidate-ref",
+            candidate_ref,
+            "--evidence-ref",
+            evidence_refs[0],
+            "--write-report",
+            "--format",
+            "json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["report_ref"] == "reports/run-summaries/20260520/dars-panel-round-report.json"
+
+    report_path = tmp_path / payload["report_ref"]
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["schema_id"] == "hisys.dars_panel.round_report"
+    assert report["request_id"] == "REQ-DARS-PRODUCT-REPORT"
+    assert report["panel_id"] == "PANEL-DARS-PRODUCT-REPORT"
+    assert report["execution_mode"] == "serial"
+    assert report["task_statuses"] == {
+        "TASK-REQ-DARS-PRODUCT-REPORT-00-logical-devil": "completed"
+    }
+    assert len(report["critique_refs"]) == 1
+    assert report["synthesis_ref"].endswith("SYNTH-REQ-DARS-PRODUCT-REPORT.json")
+    assert report["round_trace_ref"].endswith("TRACE-REQ-DARS-PRODUCT-REPORT.json")
+    assert len(report["execution_boundary_refs"]) == 1
+    assert report["advisory_only"] is True
+    assert report["requires_human_review"] is True
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False
+    assert report["publication_performed"] is False
+    assert report["live_external_action_authorized"] is False
+
+    report_md = report_path.with_suffix(".md").read_text(encoding="utf-8")
+    assert "# DARS panel round report" in report_md
+    assert "REQ-DARS-PRODUCT-REPORT" in report_md
+    assert "live_external_action_authorized: false" in report_md
+
+
+
 def test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch(
     tmp_path: Path, capsys
 ):

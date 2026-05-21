@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.12.0
+version: 0.13.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-21
@@ -13,7 +13,7 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 
 | Requirement ID | SDD element | STD testcase | Pytest anchor | Status |
 |---|---|---|---|---|
-| HISYS-FR-DARS-CP-001 | `DarsCriticPanelConfig`, config validator, `CriticAdapterRegistry` (M-CP-EXT-1), read-only `hisys run-dars-panel` CLI wrapper (M-CP-EXT-6), activation-packet-gated local-model CLI rehearsal (M-CP-LIVE-3), human-gated localhost smoke runbook (M-CP-LIVE-4) | HISYS-T-DARS-CP-001 | `test_dars_critic_panel_config_validates_two_advisory_roles`, `test_critic_adapter_registry_rejects_duplicate_role_backend_pair`, `test_run_dars_panel_cli_persists_fixture_round_and_prints_json`, `test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode`, `test_run_dars_panel_cli_rehearses_local_model_with_activation_packet`, `test_live_panel_local_smoke_runbook_requires_operator_supplied_localhost_endpoint` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-6 + M-CP-LIVE-3 + M-CP-LIVE-4 + M-CP-LIVE-5) |
+| HISYS-FR-DARS-CP-001 | `DarsCriticPanelConfig`, config validator, `CriticAdapterRegistry` (M-CP-EXT-1), read-only `hisys run-dars-panel` CLI wrapper (M-CP-EXT-6), activation-packet-gated local-model CLI rehearsal (M-CP-LIVE-3), human-gated localhost smoke runbook (M-CP-LIVE-4), operator-facing advisory round report writer (M-CP-PROD-REPORT-1) | HISYS-T-DARS-CP-001 | `test_dars_critic_panel_config_validates_two_advisory_roles`, `test_critic_adapter_registry_rejects_duplicate_role_backend_pair`, `test_run_dars_panel_cli_persists_fixture_round_and_prints_json`, `test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode`, `test_run_dars_panel_cli_rehearses_local_model_with_activation_packet`, `test_live_panel_local_smoke_runbook_requires_operator_supplied_localhost_endpoint`, `test_run_dars_panel_cli_writes_operator_report_without_live_actions` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-6 + M-CP-LIVE-3 + M-CP-LIVE-4 + M-CP-LIVE-5 + M-CP-PROD-REPORT-1) |
 | HISYS-FR-DARS-CP-002 | `DarsRoundPlan`, `DarsCriticTask`, edges | HISYS-T-DARS-CP-002 | `test_dars_round_plan_creates_independent_critic_tasks_before_synthesis` | GREEN (MB-DARS-CP-T001) |
 | HISYS-FR-DARS-CP-003 | fixture critic executor, critique writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2), injectable clock seam (M-CP-EXT-5), read-only `hisys run-dars-panel` CLI wrapper (M-CP-EXT-6), per-task distinct `started_at`/`completed_at` (M-CP-EXT-8), derived per-task `duration_ms` (M-CP-EXT-9) | HISYS-T-DARS-CP-003 | `test_dars_panel_runtime_writes_advisory_critique_artifacts`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_with_injected_clock_yields_byte_identical_boundary_records`, `test_panel_runtime_rejects_naive_clock`, `test_run_dars_panel_cli_persists_fixture_round_and_prints_json`, `test_panel_runtime_records_distinct_started_and_completed_per_task`, `test_panel_runtime_records_duration_ms_per_task`, `test_panel_runtime_clamps_negative_duration_ms_to_zero` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-5 + M-CP-EXT-6 + M-CP-EXT-8 + M-CP-EXT-9) |
 | HISYS-FR-DARS-CP-004 | `DarsRoundTrace` writer, `ExecutionBoundaryRecord` per-task writer (M-CP-EXT-2), per-task distinct `started_at`/`completed_at` lineage (M-CP-EXT-8), derived per-task `duration_ms` lineage (M-CP-EXT-9) | HISYS-T-DARS-CP-004 | `test_dars_panel_runtime_persists_round_trace_lineage`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_records_distinct_started_and_completed_per_task`, `test_panel_runtime_records_duration_ms_per_task` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-8 + M-CP-EXT-9) |
@@ -24,6 +24,26 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 | HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis, adapter-outcome-driven isolation (M-CP-EXT-1), per-task boundary record on failed/blocked branches (M-CP-EXT-2), typed adapter-missing isolation (M-CP-EXT-4), CLI preserves typed advisory exit-code semantics (M-CP-EXT-6), non-negative `duration_ms` clamp preserves record stability under backward clocks (M-CP-EXT-9), local-model response failure isolation (M-CP-LIVE-2), local-model CLI fail-closed activation guard (M-CP-LIVE-3), human-gated local smoke stop conditions (M-CP-LIVE-4) | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence`, `test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role`, `test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch`, `test_panel_runtime_clamps_negative_duration_ms_to_zero`, `test_live_panel_adapter_isolates_local_model_failure_as_failed_task`, `test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode`, `test_live_panel_local_smoke_runbook_preserves_stop_conditions_and_boundaries`, `test_critic_adapter_registry_blocks_external_dispatch_even_with_policy_approval` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4 + M-CP-EXT-6 + M-CP-EXT-9 + M-CP-LIVE-2 + M-CP-LIVE-3 + M-CP-LIVE-4 + M-CP-LIVE-5) |
 | HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate, slug validation on date/request_id/task_id (M-CP-EXT-2), naive-datetime clock rejection (M-CP-EXT-5), live activation raw-secret rejection and local-model request slug validation (M-CP-LIVE-1/M-CP-LIVE-2), smoke runbook secret/no-credential guardrails (M-CP-LIVE-4) | HISYS-T-DARS-CP-010 | changed-file secret scan, `test_write_execution_boundary_record_rejects_invalid_slug`, `test_write_execution_boundary_record_rejects_traversal_in_task_id`, `test_panel_runtime_rejects_invalid_slug`, `test_panel_runtime_rejects_naive_clock`, `test_live_panel_activation_rejects_raw_secret_fields`, `test_live_panel_adapter_calls_fake_local_model_and_records_model_boundary`, `test_live_panel_local_smoke_runbook_preserves_stop_conditions_and_boundaries` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-5 + M-CP-LIVE-1 + M-CP-LIVE-2 + M-CP-LIVE-4) |
 
+
+## M-CP-PROD-REPORT-1 — Operator-facing advisory round report (2026-05-21)
+
+- Scope: productized the read-only `hisys run-dars-panel` surface with an optional
+  `--write-report` flag. When supplied, the command writes
+  `reports/run-summaries/<YYYYMMDD>/dars-panel-round-report.json` and a Markdown
+  companion report while preserving the existing stdout summary contract.
+- Report semantics: the report carries `schema_id="hisys.dars_panel.round_report"`,
+  request/panel/execution metadata, task statuses, critique/synthesis/trace and
+  boundary refs, plus explicit advisory safety fields: `advisory_only=true`,
+  `requires_human_review=true`, `external_call_made=false` for fixture mode,
+  `mutation_performed=false`, `publication_performed=false`, and
+  `live_external_action_authorized=false`.
+- Test anchor: `tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_writes_operator_report_without_live_actions`
+  observes RED on the missing `--write-report` CLI flag and GREEN after the JSON
+  and Markdown report writer are connected.
+- Boundary: no live model call, no remote/external API, no credential lookup, no
+  browser/search/tool authorization, no publication/deployment, no repository
+  mutation beyond local runtime report files for the selected Hisys instance, and
+  no remote push authority is introduced.
 
 ## M-CP-LIVE-5 / M-DARS-BE-5 — Remote subscription dispatch fail-closed completion guard (2026-05-21)
 

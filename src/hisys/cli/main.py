@@ -1880,6 +1880,67 @@ def _run_dars_panel_local_model_rehearsal(
     }
 
 
+def _render_dars_panel_round_report_md(report: dict[str, object]) -> str:
+    lines = [
+        "# DARS panel round report",
+        "",
+        f"request_id: {report['request_id']}",
+        f"panel_id: {report['panel_id']}",
+        f"execution_mode: {report['execution_mode']}",
+        f"advisory_only: {_bool_text(bool(report['advisory_only']))}",
+        f"requires_human_review: {_bool_text(bool(report['requires_human_review']))}",
+        f"external_call_made: {_bool_text(bool(report['external_call_made']))}",
+        f"mutation_performed: {_bool_text(bool(report['mutation_performed']))}",
+        f"publication_performed: {_bool_text(bool(report['publication_performed']))}",
+        f"live_external_action_authorized: {_bool_text(bool(report['live_external_action_authorized']))}",
+        "",
+        "## Task statuses",
+    ]
+    task_statuses = report.get("task_statuses", {})
+    if isinstance(task_statuses, dict):
+        for task_id, status in task_statuses.items():
+            lines.append(f"- {task_id}: {status}")
+    lines.extend(["", "## Artifact refs"])
+    for key in (
+        "critique_refs",
+        "local_model_boundary_refs",
+        "execution_boundary_refs",
+    ):
+        refs = report.get(key, [])
+        if refs:
+            lines.append(f"- {key}:")
+            if isinstance(refs, list):
+                for ref in refs:
+                    lines.append(f"  - {ref}")
+    for key in ("synthesis_ref", "round_trace_ref"):
+        if report.get(key):
+            lines.append(f"- {key}: {report[key]}")
+    return "\n".join(lines) + "\n"
+
+
+def _write_dars_panel_round_report(
+    *,
+    instance: InstanceRoot,
+    yyyymmdd: str,
+    summary: dict[str, object],
+) -> str:
+    report = {
+        "schema_id": "hisys.dars_panel.round_report",
+        "schema_version": "0.1.0",
+        **summary,
+        "advisory_only": True,
+        "requires_human_review": True,
+        "external_call_made": bool(summary.get("external_call_made", False)),
+        "mutation_performed": bool(summary.get("mutation_performed", False)),
+        "publication_performed": bool(summary.get("publication_performed", False)),
+        "live_external_action_authorized": False,
+    }
+    report_path = instance.reports_dir / "run-summaries" / yyyymmdd / "dars-panel-round-report.json"
+    _write_json(report_path, report)
+    report_path.with_suffix(".md").write_text(_render_dars_panel_round_report_md(report), encoding="utf-8")
+    return _safe_relative_ref(Path(instance.root), report_path)
+
+
 def _cmd_run_dars_panel(
     *,
     instance_root: Path,
@@ -1892,6 +1953,7 @@ def _cmd_run_dars_panel(
     local_model_endpoint: str | None = None,
     local_model: str = "local-dars-panel",
     activation_packet_path: Path | None = None,
+    write_report: bool = False,
 ) -> int:
     """Run the fixture-local DARS critic panel and print a bounded summary.
 
@@ -1916,6 +1978,12 @@ def _cmd_run_dars_panel(
             local_model=local_model,
             activation_packet_path=activation_packet_path,
         )
+        if write_report:
+            summary["report_ref"] = _write_dars_panel_round_report(
+                instance=instance,
+                yyyymmdd=yyyymmdd,
+                summary=summary,
+            )
         if output_format == "json":
             print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
         else:
@@ -1951,6 +2019,12 @@ def _cmd_run_dars_panel(
         "round_trace_ref": result.round_trace_ref,
         "execution_boundary_refs": list(result.execution_boundary_refs),
     }
+    if write_report:
+        summary["report_ref"] = _write_dars_panel_round_report(
+            instance=instance,
+            yyyymmdd=yyyymmdd,
+            summary=summary,
+        )
     if output_format == "json":
         print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
     else:
@@ -2479,6 +2553,11 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="M-CP-LIVE-1 activation packet JSON required for local model rehearsal",
+    )
+    run_dars_panel.add_argument(
+        "--write-report",
+        action="store_true",
+        help="write an operator-facing advisory round report under reports/run-summaries/<date>",
     )
 
     spec_packet = sub.add_parser("build-spec-first-packet", help="write a spec-first run packet before governed agent work")
@@ -3761,6 +3840,7 @@ def main(argv: list[str] | None = None) -> int:
             local_model_endpoint=args.local_model_endpoint,
             local_model=args.local_model,
             activation_packet_path=args.activation_packet,
+            write_report=args.write_report,
         )
     if args.command == "build-spec-first-packet":
         return _cmd_build_spec_first_packet(

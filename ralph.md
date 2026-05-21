@@ -5371,6 +5371,27 @@ Resume checkpoint:
 - Next command to run: local commit for v0.0.14 bootstrap refresh
 - Stop condition: after local commit and post-commit validation; M21.6 Prepare requires separate go-ahead
 
+### 2026-05-21 — M-CP-PROD-REPORT-1 DARS panel operator report
+
+- Phase completed: TDD implementation for a safe productization/reporting increment on the read-only `hisys run-dars-panel` CLI.
+- Request context: user asked to continue productization with the next safe increment, explicitly limited to no live action and one of golden scenario/UX/reporting. Selected reporting as the smallest safe increment.
+- Scope: added `--write-report` to `hisys run-dars-panel`; connected a JSON/Markdown operator report writer under `reports/run-summaries/<YYYYMMDD>/dars-panel-round-report.{json,md}`; added CLI regression coverage; updated DARS traceability.
+- RED observed: `PYTHONPATH=src:. pytest tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_writes_operator_report_without_live_actions -q` failed with argparse `unrecognized arguments: --write-report`.
+- GREEN observed: focused operator-report test passed; related DARS critic panel CLI test file passed (`5 passed`).
+- Boundary: fixture-local reporting only for this increment. No live model call, remote/external API, credential lookup, browser/search/tool execution, publication/deployment, destructive action, or remote push authority is introduced. Report writes are confined to the selected Hisys instance runtime reports directory.
+- Quality gate result: pass — focused operator-report test `1 passed in 0.18s`; related CLI file `5 passed in 1.18s`; DARS focused cohort `118 passed in 9.99s`; full suite `972 passed in 21.89s`; traceability OK; secret scan hit_count=0; diff-check clean.
+
+Resume checkpoint:
+- Current HEAD: d46cccf test: pin dars dispatch harness mismatch matrix
+- Working tree: DARS panel operator-report implementation and traceability/Ralph docs modified; final gates and local commit pending
+- Last completed milestone/task: M-CP-PROD-REPORT-1 focused RED/GREEN
+- Current in-progress task: final validation and local commit for M-CP-PROD-REPORT-1
+- RED observed: missing `--write-report` CLI flag
+- GREEN observed: `tests/unit/test_dars_critic_panel_cli.py` passes
+- Quality gate status: pass — focused operator-report test, related CLI file, DARS focused cohort, full suite, traceability, secret scan, and diff-check all green
+- Next command to run: final validation gates, then `git add src/hisys/cli/main.py tests/unit/test_dars_critic_panel_cli.py docs/traceability/dars-critic-panel-runtime-traceability.md ralph.md && git commit -m "feat: add dars panel operator report"`
+- Stop condition: after local commit, push to already-configured `origin/dars` if validation remains green and working tree is clean
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The codebase-analysis foundation has advanced through M18; the next implementation milestone is M19.
