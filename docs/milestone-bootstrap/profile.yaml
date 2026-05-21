@@ -1,8 +1,8 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.37
-focus: M23 follow-up queue refill complete; stop on human-gated remaining candidates
+version: v0.0.38
+focus: QUEUE-REFILL-PREP re-run under approval-minimization rule; classification unchanged; resume checkpoint advanced to 1884aa1
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
 next_safe_task: QUEUE-REFILL-PREP-STOP
@@ -10,12 +10,12 @@ remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: "1번은 진행하고 2번, LSP 서버 설치 및 실행해. ruff, pyright, eslint면 될 것 같아."
-bootstrap_inference: "User authorized M23 adapter portfolio integration plus local LSP/lint executable installation and execution for ruff, pyright, and eslint. Preserve no-credential/no-real-OSS-clone/no-publication/no-destructive/no-unbounded-live-provider boundaries."
+bootstrap_inference: "User authorized M23 adapter portfolio integration plus local LSP/lint executable installation and execution for ruff, pyright, and eslint. Preserve no-credential/no-real-OSS-clone/no-publication/no-destructive/no-unbounded-live-provider boundaries. Post-M23 queue refill iterations are docs/control-only bookkeeping under the approval-minimization rule until the user authorizes another candidate."
 roadmap_ref: docs/plans/m23-adapter-portfolio-integration-followup-plan.md
 next_artifact_ref: docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md
 planning_baseline_head: "5a633dd docs: close m23 advanced codebase adapter milestone"
-current_head_at_plan_creation: "64677c0 docs: gate m23 live lsp smoke evidence"
-previous_bootstrap_version: v0.0.36
+current_head_at_plan_creation: "1884aa1 docs: minimize rloo approval stops"
+previous_bootstrap_version: v0.0.37
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false
