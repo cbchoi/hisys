@@ -1780,3 +1780,245 @@ def test_codebase_evidence_portfolio_cli_records_unsafe_inputs(
     assert "../escape.md" in data["unsafe_refs"]
     assert "lowercase-not-allowed" in data["unsafe_line_labels"]
     assert "docs/should-not-leak.md" not in data["artifact_refs"]
+
+
+def _oss_comparison_bundle_payload() -> dict[str, object]:
+    return {
+        "local_line": {
+            "line_label": "M21",
+            "category_refs": [
+                "architecture_candidates",
+                "change_impact",
+                "traceability_coverage",
+            ],
+            "portfolio_refs": [
+                "docs/plans/m21-1-traceability-coverage-report-implementation-tasks.md",
+            ],
+            "implemented_surface_count": 9,
+            "human_gated_surface_count": 2,
+        },
+        "approved_sources": [
+            {
+                "source_id": "understand-static-analysis",
+                "source_name": "Approved static-analysis reference",
+                "license_tag": "n/a",
+                "category_refs": [
+                    "architecture_candidates",
+                    "change_impact",
+                    "traceability_coverage",
+                ],
+                "approved_refs": [
+                    "docs/plans/m23-advanced-codebase-adapter-integration-plan.md",
+                ],
+                "local_fixture_refs": [
+                    "tests/fixtures/oss/approved/understand-static-analysis.json",
+                ],
+                "notes": "Local fixture descriptor only.",
+            },
+            {
+                "source_id": "pylint-style-rules",
+                "source_name": "Approved style/lint reference",
+                "license_tag": "GPL-2.0-or-later",
+                "category_refs": [
+                    "code_analysis_pass_contract",
+                    "style_conventions",
+                ],
+                "approved_refs": [
+                    "docs/plans/m23-advanced-codebase-adapter-integration-plan.md",
+                ],
+                "local_fixture_refs": [
+                    "tests/fixtures/oss/approved/pylint-style-rules.json",
+                ],
+                "notes": "Local fixture descriptor only.",
+            },
+        ],
+    }
+
+
+def test_oss_comparison_adapter_cli_writes_report(
+    tmp_path: Path, capsys
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(
+        json.dumps(_oss_comparison_bundle_payload()), encoding="utf-8"
+    )
+
+    result = main(
+        [
+            "oss-comparison-adapter",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260522",
+            "--bundle",
+            str(bundle_path),
+            "--current-head-short",
+            "d610c53",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "oss-comparison-adapter report" in captured.out
+    assert "compared_source_count: 2" in captured.out
+    assert "advisory_only: true" in captured.out
+    assert "requires_human_review: true" in captured.out
+    assert "external_call_made: false" in captured.out
+    assert "mutation_performed: false" in captured.out
+    assert "raw_source_content_persisted: false" in captured.out
+    assert "live_external_action_authorized: false" in captured.out
+    assert "allowed_actions: advisory_only" in captured.out
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "oss-comparison"
+        / "20260522"
+        / "comparison-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "oss-comparison"
+        / "20260522"
+        / "comparison-report.md"
+    )
+    assert json_path.exists()
+    assert md_path.exists()
+
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["schema_id"] == "hisys.oss_comparison_adapter.v1"
+    assert data["current_head_short"] == "d610c53"
+    assert data["local_line_label"] == "M21"
+    assert data["compared_source_ids"] == [
+        "pylint-style-rules",
+        "understand-static-analysis",
+    ]
+    assert "traceability_coverage" in data["intersection_category_refs"]
+    assert "style_conventions" in data["oss_only_category_refs"]
+    assert data["advisory_only"] is True
+
+
+def test_oss_comparison_adapter_cli_rejects_missing_local_line(
+    tmp_path: Path,
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(
+        json.dumps({"approved_sources": []}), encoding="utf-8"
+    )
+    with pytest.raises(ValueError):
+        main(
+            [
+                "oss-comparison-adapter",
+                "--instance",
+                str(instance_root),
+                "--date",
+                "20260522",
+                "--bundle",
+                str(bundle_path),
+            ]
+        )
+
+
+def test_oss_comparison_adapter_cli_rejects_bad_date(tmp_path: Path) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(
+        json.dumps(_oss_comparison_bundle_payload()), encoding="utf-8"
+    )
+    with pytest.raises(ValueError):
+        main(
+            [
+                "oss-comparison-adapter",
+                "--instance",
+                str(instance_root),
+                "--date",
+                "2026-05-22",
+                "--bundle",
+                str(bundle_path),
+            ]
+        )
+
+
+def test_oss_comparison_adapter_cli_records_unsafe_inputs(
+    tmp_path: Path, capsys
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "local_line": {
+                    "line_label": "M21",
+                    "category_refs": ["traceability_coverage"],
+                    "portfolio_refs": [
+                        "/etc/passwd",
+                        "../escape.md",
+                        "docs/plans/m21-1-traceability-coverage-report-implementation-tasks.md",
+                    ],
+                    "implemented_surface_count": 1,
+                },
+                "approved_sources": [
+                    {
+                        "source_id": "UPPERCASE_SOURCE",
+                        "category_refs": ["foo"],
+                    },
+                    {
+                        "source_id": "approved-fixture",
+                        "category_refs": [
+                            "traceability_coverage",
+                            "extra_topic",
+                        ],
+                        "approved_refs": ["../bad.md"],
+                        "notes": "ok",
+                    },
+                    {
+                        "source_id": "malformed-notes",
+                        "category_refs": ["traceability_coverage"],
+                        "notes": "\x00binary",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "oss-comparison-adapter",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260522",
+            "--bundle",
+            str(bundle_path),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "compared_source_count: 1" in captured.out
+    assert "unsafe_ref_count: 3" in captured.out
+    assert "unsafe_source_id_count: 2" in captured.out
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "oss-comparison"
+        / "20260522"
+        / "comparison-report.json"
+    )
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert "/etc/passwd" in data["unsafe_refs"]
+    assert "../escape.md" in data["unsafe_refs"]
+    assert "../bad.md" in data["unsafe_refs"]
+    assert "UPPERCASE_SOURCE" in data["unsafe_source_ids"]
+    assert "malformed-notes" in data["unsafe_source_ids"]
+    assert "approved-fixture" in data["compared_source_ids"]
+    assert "extra_topic" in data["oss_only_category_refs"]
+    assert "foo" not in data["oss_only_category_refs"]

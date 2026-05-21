@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.23
-focus: M23-OSS-ADAPTER-RED-GREEN landed pure fixture-local OSS comparison adapter; next safe row is the thin CLI wrapper
+version: v0.0.24
+focus: M23-OSS-ADAPTER-CLI landed thin argparse pass-through; next safe row is the deterministic golden-fixture round-trip
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M23-OSS-ADAPTER-CLI
+next_safe_task: M23-OSS-ADAPTER-GOLDEN
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "M23-OSS-ADAPTER-RED-GREEN"
-bootstrap_inference: "Implemented src/hisys/operations/oss_comparison_adapter.py and tests/unit/test_oss_comparison_adapter.py under the M23 OSS adapter PREP plan; the pure builder/writer aggregates caller-supplied local + approved-OSS descriptors into a set-based advisory report and rejects unsafe refs/ids/labels/notes/dates while never touching the network, Git, subprocess, system clock, or raw upstream source. The next safe Ralph row is the thin CLI wrapper."
+bootstrap_arguments: "M23-OSS-ADAPTER-CLI"
+bootstrap_inference: "Added hisys oss-comparison-adapter subparser and dispatcher in src/hisys/cli/main.py plus four focused CLI tests in tests/unit/test_domain_cli.py. The CLI is a thin JSON-bundle pass-through over the M23 builder/writer; no network, Git, subprocess, system clock, runtime-boundary crawl, or auto-discovery is added. Next safe Ralph row is the deterministic golden-fixture round-trip."
 roadmap_ref: docs/plans/m23-advanced-codebase-adapter-integration-plan.md
-next_artifact_ref: docs/plans/m23-cli-oss-comparison-adapter-implementation-tasks.md
-planning_baseline_head: "70ae484 docs: prepare m23 oss comparison adapter"
-current_head_at_plan_creation: "70ae484 docs: prepare m23 oss comparison adapter"
-previous_bootstrap_version: v0.0.22
+next_artifact_ref: docs/plans/m23-golden-oss-comparison-adapter-implementation-tasks.md
+planning_baseline_head: "d610c53 feat: add oss comparison adapter"
+current_head_at_plan_creation: "d610c53 feat: add oss comparison adapter"
+previous_bootstrap_version: v0.0.23
 tmux_or_background_agent_spawned: false
 production_code_created: true
 tests_created: true

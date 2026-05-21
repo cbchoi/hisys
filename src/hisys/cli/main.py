@@ -162,6 +162,13 @@ from ..operations.codebase_evidence_portfolio import (
     build_codebase_evidence_portfolio_report,
     write_codebase_evidence_portfolio_report,
 )
+from ..operations.oss_comparison_adapter import (
+    ApprovedOssSource,
+    LocalCodebaseLine,
+    OssComparisonRequest,
+    build_oss_comparison_report,
+    write_oss_comparison_report,
+)
 from ..operations.code_analysis_pass_contract import (
     _SUPPORTED_QUESTION_TYPES as CODE_ANALYSIS_SUPPORTED_QUESTION_TYPES,
     build_code_analysis_evidence_summary,
@@ -1669,6 +1676,79 @@ def _cmd_codebase_evidence_portfolio(
     return 0
 
 
+def _load_oss_comparison_bundle(
+    path: Path,
+) -> tuple[LocalCodebaseLine, tuple[ApprovedOssSource, ...]]:
+    """Load a caller-supplied OSS comparison bundle JSON."""
+
+    payload = _load_json_report(path)
+    if payload is None:
+        raise ValueError(f"oss comparison bundle is required at {path}")
+    local_line_raw = payload.get("local_line")
+    if not isinstance(local_line_raw, dict):
+        raise ValueError(
+            "oss comparison bundle must contain a 'local_line' object"
+        )
+    sources_raw = payload.get("approved_sources", [])
+    if not isinstance(sources_raw, list):
+        raise ValueError(
+            "oss comparison bundle 'approved_sources' must be a list"
+        )
+    sources: list[ApprovedOssSource] = []
+    for raw in sources_raw:
+        if not isinstance(raw, dict):
+            raise ValueError(
+                "each oss comparison bundle approved source must be an object"
+            )
+        sources.append(ApprovedOssSource(**raw))
+    return LocalCodebaseLine(**local_line_raw), tuple(sources)
+
+
+def _cmd_oss_comparison_adapter(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    bundle_path: Path,
+    current_head_short: str | None,
+) -> int:
+    """Write a local advisory OSS comparison adapter report via the CLI."""
+
+    local_line, approved_sources = _load_oss_comparison_bundle(bundle_path)
+    request = OssComparisonRequest(
+        instance_root=instance_root,
+        date=yyyymmdd,
+        local_line=local_line,
+        approved_sources=approved_sources,
+        current_head_short=current_head_short,
+    )
+    report = build_oss_comparison_report(request=request)
+    written = write_oss_comparison_report(
+        instance_root=instance_root, date=yyyymmdd, report=report
+    )
+    print(f"oss-comparison-adapter report: json={written['json_ref']}")
+    print(f"markdown: {written['markdown_ref']}")
+    print(f"compared_source_count: {report.compared_source_count}")
+    print(f"union_category_count: {report.union_category_count}")
+    print(
+        f"intersection_category_count: {report.intersection_category_count}"
+    )
+    print(
+        f"local_only_category_count: {report.local_only_category_count}"
+    )
+    print(f"oss_only_category_count: {report.oss_only_category_count}")
+    print(f"unsafe_ref_count: {len(report.unsafe_refs)}")
+    print(f"unsafe_source_id_count: {len(report.unsafe_source_ids)}")
+    print(f"unsafe_line_label_count: {len(report.unsafe_line_labels)}")
+    print("advisory_only: true")
+    print("requires_human_review: true")
+    print("external_call_made: false")
+    print("mutation_performed: false")
+    print("raw_source_content_persisted: false")
+    print("live_external_action_authorized: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_evaluate_code_analysis_contract(
     *,
     instance_root: Path,
@@ -2579,6 +2659,27 @@ def _build_parser() -> argparse.ArgumentParser:
         help="explicit caller-supplied JSON bundle path with a 'line_refs' list",
     )
     codebase_portfolio.add_argument(
+        "--current-head-short",
+        default=None,
+        help="optional caller-supplied git HEAD short hash recorded verbatim",
+    )
+
+    oss_comparison_adapter = sub.add_parser(
+        "oss-comparison-adapter",
+        help="write local advisory approved-OSS comparison adapter report artifacts",
+    )
+    oss_comparison_adapter.add_argument(
+        "--instance", required=True, help="Hisys instance root"
+    )
+    oss_comparison_adapter.add_argument(
+        "--date", required=True, help="YYYYMMDD report partition"
+    )
+    oss_comparison_adapter.add_argument(
+        "--bundle",
+        required=True,
+        help="explicit caller-supplied JSON bundle path with 'local_line' and 'approved_sources'",
+    )
+    oss_comparison_adapter.add_argument(
         "--current-head-short",
         default=None,
         help="optional caller-supplied git HEAD short hash recorded verbatim",
@@ -3998,6 +4099,13 @@ def main(argv: list[str] | None = None) -> int:
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             line_bundle_path=Path(args.line_bundle),
+            current_head_short=args.current_head_short,
+        )
+    if args.command == "oss-comparison-adapter":
+        return _cmd_oss_comparison_adapter(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            bundle_path=Path(args.bundle),
             current_head_short=args.current_head_short,
         )
     if args.command == "evaluate-code-analysis-contract":
