@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.24
-focus: M23-OSS-ADAPTER-CLI landed thin argparse pass-through; next safe row is the deterministic golden-fixture round-trip
+version: v0.0.25
+focus: M23-OSS-ADAPTER-GOLDEN deterministic byte-equality round-trip landed; next safe row is the M23-OSS-ADAPTER-GATE closure
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M23-OSS-ADAPTER-GOLDEN
+next_safe_task: M23-OSS-ADAPTER-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "M23-OSS-ADAPTER-CLI"
-bootstrap_inference: "Added hisys oss-comparison-adapter subparser and dispatcher in src/hisys/cli/main.py plus four focused CLI tests in tests/unit/test_domain_cli.py. The CLI is a thin JSON-bundle pass-through over the M23 builder/writer; no network, Git, subprocess, system clock, runtime-boundary crawl, or auto-discovery is added. Next safe Ralph row is the deterministic golden-fixture round-trip."
+bootstrap_arguments: "M23-OSS-ADAPTER-GOLDEN"
+bootstrap_inference: "Pinned the deterministic OSS comparison adapter golden round-trip with tests/fixtures/oss-comparison/m23_local_oss_bundle.json plus checked-in expected JSON/Markdown under tests/fixtures/oss-comparison/expected/. The round-trip test asserts byte-equality with the writer chokepoint and depends on no system clock, .git/, network, or subprocess. Next safe Ralph row is M23-OSS-ADAPTER-GATE closure."
 roadmap_ref: docs/plans/m23-advanced-codebase-adapter-integration-plan.md
-next_artifact_ref: docs/plans/m23-golden-oss-comparison-adapter-implementation-tasks.md
-planning_baseline_head: "d610c53 feat: add oss comparison adapter"
-current_head_at_plan_creation: "d610c53 feat: add oss comparison adapter"
-previous_bootstrap_version: v0.0.23
+next_artifact_ref: docs/plans/m23-gate-oss-comparison-adapter-implementation-tasks.md
+planning_baseline_head: "d6023b4 feat: add oss comparison adapter cli wrapper"
+current_head_at_plan_creation: "d6023b4 feat: add oss comparison adapter cli wrapper"
+previous_bootstrap_version: v0.0.24
 tmux_or_background_agent_spawned: false
 production_code_created: true
 tests_created: true

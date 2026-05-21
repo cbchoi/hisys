@@ -1,0 +1,62 @@
+{
+  "advisory_only": true,
+  "allowed_actions": "advisory_only",
+  "compared_source_count": 2,
+  "compared_source_ids": [
+    "pylint-style-rules",
+    "understand-static-analysis"
+  ],
+  "compared_source_license_tags": [
+    "GPL-2.0-or-later",
+    "n/a"
+  ],
+  "current_head_short": "d6023b4",
+  "date": "20260522",
+  "external_call_made": false,
+  "intersection_category_count": 5,
+  "intersection_category_refs": [
+    "architecture_candidates",
+    "change_impact",
+    "code_analysis_pass_contract",
+    "runtime_boundary_consistency",
+    "traceability_coverage"
+  ],
+  "live_external_action_authorized": false,
+  "local_category_refs": [
+    "architecture_candidates",
+    "change_impact",
+    "code_analysis_pass_contract",
+    "codebase_map_freshness",
+    "runtime_boundary_consistency",
+    "subagent_evidence_collector_protocol",
+    "traceability_coverage"
+  ],
+  "local_line_label": "M21",
+  "local_only_category_count": 2,
+  "local_only_category_refs": [
+    "codebase_map_freshness",
+    "subagent_evidence_collector_protocol"
+  ],
+  "mutation_performed": false,
+  "oss_only_category_count": 1,
+  "oss_only_category_refs": [
+    "style_conventions"
+  ],
+  "raw_source_content_persisted": false,
+  "requires_human_review": true,
+  "schema_id": "hisys.oss_comparison_adapter.v1",
+  "union_category_count": 8,
+  "union_category_refs": [
+    "architecture_candidates",
+    "change_impact",
+    "code_analysis_pass_contract",
+    "codebase_map_freshness",
+    "runtime_boundary_consistency",
+    "style_conventions",
+    "subagent_evidence_collector_protocol",
+    "traceability_coverage"
+  ],
+  "unsafe_line_labels": [],
+  "unsafe_refs": [],
+  "unsafe_source_ids": []
+}

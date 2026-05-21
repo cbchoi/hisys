@@ -6,6 +6,7 @@ no subprocess, no `.git/` access, no system clock, no raw OSS source bodies.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -253,3 +254,64 @@ def test_write_oss_comparison_rejects_bad_date(tmp_path: Path) -> None:
             date="2026-05-22",
             report=report,
         )
+
+
+_FIXTURE_DIR = (
+    Path(__file__).resolve().parents[1] / "fixtures" / "oss-comparison"
+)
+
+
+def _load_golden_bundle() -> dict[str, object]:
+    return json.loads(
+        (_FIXTURE_DIR / "m23_local_oss_bundle.json").read_text(encoding="utf-8")
+    )
+
+
+def _expected_golden_json() -> str:
+    return (_FIXTURE_DIR / "expected" / "comparison-report.json").read_text(
+        encoding="utf-8"
+    )
+
+
+def _expected_golden_markdown() -> str:
+    return (_FIXTURE_DIR / "expected" / "comparison-report.md").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_oss_comparison_adapter_golden_round_trip(tmp_path: Path) -> None:
+    bundle = _load_golden_bundle()
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    local_line = LocalCodebaseLine(**bundle["local_line"])
+    approved_sources = tuple(
+        ApprovedOssSource(**raw) for raw in bundle["approved_sources"]
+    )
+    request = OssComparisonRequest(
+        instance_root=instance_root,
+        date=bundle["date"],
+        local_line=local_line,
+        approved_sources=approved_sources,
+        current_head_short=bundle["current_head_short"],
+    )
+    report = build_oss_comparison_report(request=request)
+    write_oss_comparison_report(
+        instance_root=instance_root, date=bundle["date"], report=report
+    )
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "oss-comparison"
+        / bundle["date"]
+        / "comparison-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "oss-comparison"
+        / bundle["date"]
+        / "comparison-report.md"
+    )
+    assert json_path.read_text(encoding="utf-8") == _expected_golden_json()
+    assert md_path.read_text(encoding="utf-8") == _expected_golden_markdown()
