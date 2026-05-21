@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — DARS remote sync and live backend Prepare plan
+
+- Phase completed: user authorized `dars` remote push and requested live DARS backend implementation planning. Remote synchronization completed first, then a docs/control Prepare plan was started for the next DARS backend line.
+- Remote sync evidence: `git push origin dars` succeeded and updated `origin/dars` from `c4c7b96` to `ee90674`; post-push `git status --short --branch` showed `## dars...origin/dars` and `git log -1` showed `ee90674 (HEAD -> dars, origin/dars) feat: bridge codebase current artifacts to source inspection`.
+- Controlled anchors checked: existing plan `docs/plans/dars-live-panel-configuration-implementation-tasks.md`; local/live backend surfaces `src/hisys/agents/dars.py`, `src/hisys/agents/dars_config.py`, `src/hisys/agents/dars_dispatch.py`, `src/hisys/agents/dars_panel_live_config.py`, `src/hisys/agents/dars_panel_live_adapter.py`; existing tests `tests/unit/test_dars_critic_panel_live_{config,adapter,runbook}.py`; runbook `docs/runbooks/dars-live-panel-localhost-smoke.md`; traceability `docs/traceability/README.md`.
+- Decision: because the prior live-panel line already implements localhost activation, fake-server adapter, CLI rehearsal, and localhost smoke runbook, the new backend plan starts at backend-level activation and audit semantics rather than duplicating panel work. The first executable line is localhost-only `openai_compatible` backend hardening with fake/local tests. Remote provider/API DARS remains a separate fail-closed policy packet and is not authorized for dispatch.
+- Document-RED artifact: created `docs/plans/dars-live-backend-implementation-plan.md`. Planned next RED is `PYTHONPATH=src:. pytest tests/unit/test_dars_backend_activation.py::test_backend_activation_rejects_external_provider_without_policy_packet -q`, expected first failure `ModuleNotFoundError: No module named 'hisys.agents.dars_backend_activation'`.
+- Documentation/traceability: prepended `DARS live backend implementation plan (M-DARS-BE-PREP)` to `docs/traceability/README.md` and linked the plan, current DARS backend/panel surfaces, and no-live-action boundary.
+- Boundary: this Prepare increment is docs/control only after the authorized remote sync. It performs no real local model call, no remote API call, no credential lookup/resolution, no provider account use, no browser/search/tool execution, no deployment/publication/vault mutation, and no additional remote push authority.
+- Quality gate result: pass — `PYTHONPATH=src:. pytest tests/unit/test_dars_critic_panel_live_config.py tests/unit/test_dars_critic_panel_live_adapter.py tests/unit/test_dars_critic_panel_live_runbook.py -q` -> 12 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=665 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Continue decision: after validation and local commit, the next safe action is M-DARS-BE-1 RED/GREEN for the backend activation packet validator. Any real model smoke, external provider backend, credential reference resolution, deployment, tag/release, or additional remote push requires a fresh explicit decision.
+- Stop condition: Prepare/document-RED boundary reached for live DARS backend planning.
+
+Resume checkpoint:
+- Current HEAD: ee90674
+- Working tree: live backend Prepare plan, traceability, and `ralph.md` modified until commit
+- Last completed milestone/task: DARS remote push + live backend Prepare planning
+- RED observed: not yet; next command is the planned backend activation validator RED after committing Prepare
+- GREEN observed: n/a for implementation; DARS live-panel regression 12 passed
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage files and commit `docs: prepare live dars backend implementation plan`
+- Stop condition: no live model call, no remote API call, no credential lookup, no deployment/publication, and no additional remote push without explicit authorization
+
 ### 2026-05-21 — M21.CA codebase current-artifact source-inspection bridge (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for the user-identified codebase-domain bridge gap: `codebase-analysis` source-inspection functions existed, but `investigate-domain --domain codebase` did not materialize a source-inspection bundle from a `current_artifact` repository source when no prebuilt `runtime_record` bundle refs were supplied.
