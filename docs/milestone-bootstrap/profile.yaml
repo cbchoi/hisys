@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.29
-focus: M23-LSP-ADAPTER-CLI landed a thin hisys lsp-adapter argparse pass-through over the M23-RED-GREEN runner; next safe row pins a deterministic golden-fixture round-trip
+version: v0.0.30
+focus: M23-LSP-ADAPTER-GOLDEN pinned a deterministic byte-equality round-trip against checked-in expected JSON/Markdown fixtures; next safe row closes the LSP adapter milestone
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M23-LSP-ADAPTER-GOLDEN
+next_safe_task: M23-LSP-ADAPTER-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "M23-LSP-ADAPTER-CLI"
-bootstrap_inference: "Authored docs/plans/m23-cli-lsp-adapter-implementation-tasks.md and added a thin `hisys lsp-adapter --instance <root> --date <YYYYMMDD> --bundle <path> [--current-head-short <hash>]` argparse subparser + `_load_lsp_adapter_bundle` + `_cmd_lsp_adapter` dispatcher inside src/hisys/cli/main.py. The CLI re-imports the M23-RED-GREEN Pydantic models (LspAdapterCommand, LspAdapterRequest) so it does not duplicate shape definitions; the pure runner re-validates every safety invariant. Four focused CLI tests in tests/unit/test_domain_cli.py pin the happy path (monkey-patched subprocess.run returning canned ruff JSON), missing-command rejection, bad-date rejection, and command-not-in-allowlist rejection. No real LSP server is invoked. Next safe row pins a deterministic golden-fixture round-trip against checked-in expected JSON/Markdown."
+bootstrap_arguments: "M23-LSP-ADAPTER-GOLDEN"
+bootstrap_inference: "Authored docs/plans/m23-golden-lsp-adapter-implementation-tasks.md, committed tests/fixtures/lsp-adapter/m23_lsp_bundle.json (canonical caller-authored input bundle pinning date, current_head_short, command_id, argv, timeout_seconds, expected_exit_codes, output_format, target_refs, command_allowlist, human_approval_ref, and canned_stdout_ref), generated tests/fixtures/lsp-adapter/expected/lsp-report.{json,md} deterministically through the same writer chokepoint the test exercises, and added a focused test_lsp_adapter_golden_round_trip in tests/unit/test_lsp_adapter.py that monkey-patches subprocess.run to return the canned ruff JSON, runs the pure runner + writer, and asserts byte-equality against the checked-in expected files. 14 focused LSP adapter tests pass. No real LSP server is invoked. The next safe row authors docs/plans/m23-lsp-adapter-gate-implementation-tasks.md (or runs the closure gate directly as a docs/control increment)."
 roadmap_ref: docs/plans/m23-advanced-codebase-adapter-integration-plan.md
-next_artifact_ref: docs/plans/m23-golden-lsp-adapter-implementation-tasks.md
-planning_baseline_head: "1874ad5 feat: add local lsp adapter"
-current_head_at_plan_creation: "1874ad5 feat: add local lsp adapter"
-previous_bootstrap_version: v0.0.28
+next_artifact_ref: docs/plans/m23-lsp-adapter-gate-implementation-tasks.md
+planning_baseline_head: "e54bbf3 feat: add lsp adapter cli wrapper"
+current_head_at_plan_creation: "e54bbf3 feat: add lsp adapter cli wrapper"
+previous_bootstrap_version: v0.0.29
 tmux_or_background_agent_spawned: false
-production_code_created: true
+production_code_created: false
 tests_created: true

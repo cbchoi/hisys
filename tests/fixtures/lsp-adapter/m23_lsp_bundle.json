@@ -1,0 +1,15 @@
+{
+  "date": "20260522",
+  "current_head_short": "e54bbf3",
+  "command": {
+    "command_id": "ruff-check",
+    "argv": ["ruff", "check", "--output-format=json", "src/"],
+    "timeout_seconds": 30,
+    "expected_exit_codes": [0, 1],
+    "output_format": "ruff_json"
+  },
+  "target_refs": ["src/a.py", "src/b.py"],
+  "command_allowlist": ["ruff"],
+  "human_approval_ref": "docs/approvals/lsp-adapter-2026-05-22.md",
+  "canned_stdout_ref": "tests/fixtures/lsp-adapter/ruff/canned_ruff_output.json"
+}

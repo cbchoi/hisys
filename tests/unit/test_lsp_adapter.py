@@ -424,6 +424,81 @@ def test_write_lsp_adapter_persists_safe_refs(
         assert raw not in md_body
 
 
+def _load_golden_bundle() -> dict[str, object]:
+    return json.loads(
+        (_FIXTURE_DIR / "m23_lsp_bundle.json").read_text(encoding="utf-8")
+    )
+
+
+def _expected_golden_json() -> str:
+    return (_FIXTURE_DIR / "expected" / "lsp-report.json").read_text(
+        encoding="utf-8"
+    )
+
+
+def _expected_golden_markdown() -> str:
+    return (_FIXTURE_DIR / "expected" / "lsp-report.md").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_lsp_adapter_golden_round_trip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bundle = _load_golden_bundle()
+    canned_ref = bundle["canned_stdout_ref"]
+    canned = (
+        Path(__file__).resolve().parents[2] / canned_ref
+    ).read_text(encoding="utf-8")
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    workspace_root = instance_root / "workspace"
+    workspace_root.mkdir()
+    (workspace_root / "src").mkdir()
+    (workspace_root / "src" / "a.py").write_text("", encoding="utf-8")
+    (workspace_root / "src" / "b.py").write_text("", encoding="utf-8")
+    command = LspAdapterCommand(**bundle["command"])
+    request = LspAdapterRequest(
+        instance_root=instance_root,
+        date=bundle["date"],
+        workspace_root=workspace_root,
+        command=command,
+        target_refs=tuple(bundle["target_refs"]),
+        command_allowlist=tuple(bundle["command_allowlist"]),
+        human_approval_ref=bundle["human_approval_ref"],
+        current_head_short=bundle["current_head_short"],
+    )
+    fake_run = MagicMock()
+    fake_run.return_value = subprocess.CompletedProcess(
+        args=list(command.argv), returncode=1, stdout=canned, stderr=""
+    )
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    report = run_lsp_adapter(request=request)
+    write_lsp_adapter_report(
+        instance_root=instance_root, date=bundle["date"], report=report
+    )
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "lsp-adapter"
+        / bundle["date"]
+        / command.command_id
+        / "lsp-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "lsp-adapter"
+        / bundle["date"]
+        / command.command_id
+        / "lsp-report.md"
+    )
+    assert json_path.read_text(encoding="utf-8") == _expected_golden_json()
+    assert md_path.read_text(encoding="utf-8") == _expected_golden_markdown()
+
+
 def test_write_lsp_adapter_rejects_bad_date(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

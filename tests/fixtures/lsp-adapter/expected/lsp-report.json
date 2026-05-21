@@ -1,0 +1,63 @@
+{
+  "advisory_only": true,
+  "allowed_actions": "advisory_only",
+  "category_ref_summary": [
+    "style",
+    "style_warning",
+    "unused"
+  ],
+  "command_id": "ruff-check",
+  "current_head_short": "e54bbf3",
+  "date": "20260522",
+  "diagnostic_count": 3,
+  "diagnostics": [
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 1,
+      "file_ref": "src/a.py",
+      "line": 1,
+      "message_digest": "46324d685ce86d2e",
+      "severity": "error"
+    },
+    {
+      "category_ref": "style",
+      "code": "E501",
+      "column": 1,
+      "file_ref": "src/a.py",
+      "line": 5,
+      "message_digest": "913467c303f6df39",
+      "severity": "error"
+    },
+    {
+      "category_ref": "style_warning",
+      "code": "W292",
+      "column": 1,
+      "file_ref": "src/b.py",
+      "line": 12,
+      "message_digest": "d310a320e365bd5d",
+      "severity": "warning"
+    }
+  ],
+  "error_count": 2,
+  "external_call_made": false,
+  "info_count": 0,
+  "live_external_action_authorized": false,
+  "mutation_performed": false,
+  "output_bytes": 562,
+  "output_format": "ruff_json",
+  "output_truncated": false,
+  "raw_source_content_persisted": false,
+  "requires_human_review": true,
+  "schema_id": "hisys.lsp_adapter.v1",
+  "subprocess_exit_code": 1,
+  "subprocess_killed": false,
+  "subprocess_timed_out": false,
+  "target_refs": [
+    "src/a.py",
+    "src/b.py"
+  ],
+  "unsafe_refs": [],
+  "warning_count": 1,
+  "workspace_root_ref": "workspace"
+}
