@@ -6223,9 +6223,32 @@ Resume checkpoint:
 - Next command to run: re-run governance current-state focused test plus traceability validator plus secret scan plus `git diff --check`; commit `docs: queue-refill recheck under approval-min rule`; push to existing `origin/dars`; then stop and ask the user which post-M23 candidate to authorize next (additional live LSP execution / executable / allowlist; real OSS clone/license workflow; live-provider DARS execution; M24 or new milestone; Section 10.3 branch alignment).
 - Stop condition: bookkeeping increment commits cleanly and pushes to existing `origin/dars`; no further safe local row remains without explicit user authorization.
 
+### 2026-05-22 — M24 authorization checkpoint for real OSS comparison/license workflow PREP
+
+- Phase completed: controlled authorization/planning checkpoint for opening M24 under the latest user instruction `go for m24`.
+- Request context: direct-exec fallback after the tmux RLOO Codex wrapper hit sandbox bootstrap failure. The authoritative local queue was `QUEUE-REFILL-PREP-STOP`; the latest user authorization explicitly opens M24/new product-scope work but does not authorize credentials, arbitrary network search/clone/fetch, real OSS clone, license-text capture, license adjudication, raw source archival, live-provider DARS execution, publication/deployment/release, remote configuration changes, destructive Git/history actions, non-fixture/live data mutation, or unbounded live external provider execution.
+- Controlled anchors checked: branch/upstream state (`dars` tracking `origin/dars`); latest git log at `164f3fc docs: queue-refill recheck under approval-min rule`; `ralph.md` Section 16 current queue (`QUEUE-REFILL-PREP-STOP`); latest Reflection Log `QUEUE-REFILL-PREP-2026-05-22B`; `docs/milestone-bootstrap/profile.yaml` v0.0.38; `tests/unit/test_governance_docs_current_state.py`; `docs/traceability/README.md`; `roadmap.md` real OSS comparison and license adjudication section; M23 OSS comparison adapter plans and implementation anchors.
+- Baseline observed: branch `dars`, upstream `origin/dars`, working tree clean before this iteration's edits, HEAD `164f3fc`, and no untracked files.
+- Implementation: no production code, no test behavior change, no fixture content, no runtime report content. Created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.39.md` to record the M24 authorization and non-claims. Created `docs/plans/m24-real-oss-comparison-license-workflow-plan.md` to define the M24 boundary and initial queue. Prepended an M24 authorization row to `docs/traceability/README.md`. Bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.39` with `next_safe_task=M24-REAL-OSS-LICENSE-WORKFLOW-PREP`, `roadmap_ref` pointing at the M24 plan, and `current_head_at_plan_creation` set to `164f3fc docs: queue-refill recheck under approval-min rule`. Updated `tests/unit/test_governance_docs_current_state.py` to assert v0.0.39 and the M24 PREP row. Rewrote Section 16 to make `M24-REAL-OSS-LICENSE-WORKFLOW-PREP` the next queue target.
+- Boundary: docs/control only. No live model call, real remote provider call, credential lookup, secret capture, browser/search/tool execution, network search/fetch/clone, real OSS repository clone, package install, license-text capture, license adjudication, raw upstream source archival, raw diagnostic-message archival, publication, deployment, release, force push, new or changed remote configuration, destructive Git/history action, subagent execution, mutation of non-fixture/live user data, or live-provider DARS completion claim is introduced.
+- Continue decision: continue after validation/commit/push to `M24-REAL-OSS-LICENSE-WORKFLOW-PREP`, because Section 16 and the new M24 plan now authorize a docs/control PREP packet only. The PREP packet must not perform real network/license/source ingestion.
+- Stop condition: stop if validation fails, the branch/upstream is not `dars` / `origin/dars`, the push fails, or the next row requires repository fetch/clone/search, license-text capture, license adjudication, credential action, or raw source archival.
+- Commit pending: `docs: open m24 oss license workflow prep`.
+
+Resume checkpoint:
+- Current HEAD: 164f3fc docs: queue-refill recheck under approval-min rule
+- Working tree: M24 readiness record, M24 plan, traceability, profile, governance-test, and Ralph Section 16/Reflection edits pending validation/commit/push
+- Last completed milestone/task: M24-AUTH controlled opening checkpoint (this entry)
+- Current in-progress task: M24 opening docs/control validation and commit
+- RED observed: n/a (authorization/planning checkpoint)
+- GREEN observed: n/a (PREP row is next)
+- Quality gate status: pass — `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q` -> 1 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `hit_count=0`; `git diff --check` clean; `git status --short --branch` confirmed `dars...origin/dars` with only this M24 docs/control increment modified/untracked.
+- Next command to run: commit `docs: open m24 oss license workflow prep`, push to existing `origin/dars`, then run `M24-REAL-OSS-LICENSE-WORKFLOW-PREP`.
+- Stop condition: M24 is opened only at docs/control PREP; all live/network/license/source-ingestion actions remain human-gated.
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone is closed at `local_fixture_advisory_complete` (`5a633dd`). The user has now authorized candidate 1, the adapter portfolio integration follow-up, and candidate 2, local LSP/lint executable installation and execution for ruff, pyright, and eslint.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone and the authorized M23 adapter portfolio / live LSP smoke follow-up are closed at local/advisory boundaries. The user has now authorized opening M24 with `go for m24`.
 
 Current queue status:
 
@@ -6237,17 +6260,18 @@ Done: M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN — added the four-line portfo
 Done: M23-LIVE-LSP-SMOKE-GATE — preserved the existing ruff/pyright/eslint smoke evidence as a controlled docs/control gate without new live LSP execution.
 Done: QUEUE-REFILL-PREP — classified remaining post-M23 candidates and confirmed that the listed live/OSS/provider candidates cross authority boundaries unless narrowed into a local docs/control or fixture-local slice.
 Done: QUEUE-REFILL-PREP-2026-05-22B — re-ran queue refill under the approval-minimization rule landed at `1884aa1`; reaffirmed previous classification; only the bookkeeping advance of the resume checkpoint to `1884aa1` qualified as a safe local docs/control row; no further safe local row remains.
-Next: QUEUE-REFILL-PREP-STOP — every remaining candidate (additional live LSP execution / executable / allowlist; real OSS clone/license workflow; live-provider DARS execution; M24 or new milestone; Section 10.3 branch alignment) requires fresh explicit user authorization. Stop and ask.
+Done: M24-AUTH — recorded `go for m24` in readiness decision v0.0.39 and opened the M24 docs/control plan for a real OSS comparison/license workflow boundary.
+Next: M24-REAL-OSS-LICENSE-WORKFLOW-PREP — author the detailed docs/control task packet for approved-repository declarations, provenance, retention/cleanup policy, license-adjudication handoff, fixture-only RED/GREEN surfaces, and user-executable runbooks.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-QUEUE-REFILL-PREP-STOP — verified twice under the approval-minimization rule that no safe local product/control PREP/RED/GREEN row remains. Stop and ask the user which candidate to open next: additional live LSP execution or allowlist expansion, real OSS comparison/license workflow, live-provider DARS execution, M24 or another new product-scope milestone, or the Section 10.3 branch alignment from `feat/domain-adaptive-requirements-analysis` to `dars`.
+M24-REAL-OSS-LICENSE-WORKFLOW-PREP — docs/control only. Create `docs/plans/m24-real-oss-comparison-license-workflow-prep-tasks.md` with the exact fixture-only RED/GREEN plan and decision/runbook boundaries. Do not search, fetch, clone, inspect, or archive real external repositories; do not capture license text; do not adjudicate licenses.
 ```
 
 Follow-up boundary:
 
-- allowed: local repository reads, docs/traceability edits, local fixture files, local portfolio fixture/test updates, generated LSP adapter runtime reports under an explicit instance root, local commits after green gates, normal push to existing `origin/dars` after validation, and local subprocess execution only through the governed LSP adapter boundary for ruff/pyright/eslint;
-- not allowed without separate explicit approval: credential changes/lookups, secret capture, arbitrary network search/clone/fetch, real OSS repository clone, license-text capture, license adjudication, new or changed remote configuration, force push, destructive Git/history actions, publication/release/deploy beyond normal branch push, mutation of non-fixture user/live data, unbounded live external provider execution, or raw source-content/raw diagnostic-message archival beyond bounded redacted reports;
+- allowed: local repository reads, docs/traceability edits, local fixture design, user-executable runbook drafting, local validation, local commits after green gates, and normal push to existing `origin/dars` after validation;
+- not allowed without separate explicit approval: credential changes/lookups, secret capture, arbitrary network search/clone/fetch, real OSS repository clone/fetch, live OSS API access, package installation, license-text capture, license adjudication, raw upstream source archival, new or changed remote configuration, force push, destructive Git/history actions, publication/release/deploy beyond normal branch push, mutation of non-fixture user/live data, unbounded live external provider execution, or raw source-content/raw diagnostic-message archival;
 - DARS completion claim must remain `local_fixture_localhost_controlled_advisory_complete`; do not claim live provider execution has been smoked from this follow-up.
