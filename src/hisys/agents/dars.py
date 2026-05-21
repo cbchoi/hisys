@@ -31,6 +31,7 @@ from ..config.instance import InstanceRoot
 from ..provenance.source_weighting import is_byesys_source, source_evidence_weight
 from ..schemas import AgentHandoffPackage
 from .dars_backend_activation import validate_dars_backend_activation_packet
+from .dars_backend_boundary import write_dars_backend_boundary_record
 from .dars_config import (
     DarsBackendConfig,
     _classify_local_endpoint,
@@ -283,6 +284,19 @@ class DarsRuntime:
                     "external_call_made": False,
                     "backend_activation_packet_ref": backend_activation_packet_ref,
                 },
+            )
+            # M-DARS-BE-3: persist a backend-level decision record separate
+            # from the legacy local-llm boundary record and the dispatch
+            # decision record. The advisory boundary stays unchanged.
+            write_dars_backend_boundary_record(
+                self.instance,
+                yyyymmdd=yyyymmdd,
+                request_id=source_execution_id,
+                backend_id=backend_id,
+                backend_kind=backend.kind,
+                endpoint_scope=endpoint_scope,
+                approval_ref=str(approval_ref) if approval_ref is not None else "",
+                activation_ref=backend_activation_packet_ref or "",
             )
             return report
         raise ValueError(f"unsupported DARS backend kind: {backend.kind}")
