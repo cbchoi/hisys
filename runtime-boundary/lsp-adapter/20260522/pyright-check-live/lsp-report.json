@@ -1,0 +1,51 @@
+{
+  "advisory_only": true,
+  "allowed_actions": "advisory_only",
+  "category_ref_summary": [
+    "type_check"
+  ],
+  "command_id": "pyright-check-live",
+  "current_head_short": "5a633dd",
+  "date": "20260522",
+  "diagnostic_count": 2,
+  "diagnostics": [
+    {
+      "category_ref": "type_check",
+      "code": "reportArgumentType",
+      "column": 22,
+      "file_ref": "src/hisys/operations/lsp_adapter.py",
+      "line": 290,
+      "message_digest": "9395e25da9055952",
+      "severity": "error"
+    },
+    {
+      "category_ref": "type_check",
+      "code": "reportArgumentType",
+      "column": 24,
+      "file_ref": "src/hisys/operations/lsp_adapter.py",
+      "line": 291,
+      "message_digest": "85ba7a7c52a51adb",
+      "severity": "error"
+    }
+  ],
+  "error_count": 2,
+  "external_call_made": false,
+  "info_count": 0,
+  "live_external_action_authorized": false,
+  "mutation_performed": false,
+  "output_bytes": 1761,
+  "output_format": "pyright_json",
+  "output_truncated": false,
+  "raw_source_content_persisted": false,
+  "requires_human_review": true,
+  "schema_id": "hisys.lsp_adapter.v1",
+  "subprocess_exit_code": 1,
+  "subprocess_killed": false,
+  "subprocess_timed_out": false,
+  "target_refs": [
+    "src/hisys/operations/lsp_adapter.py"
+  ],
+  "unsafe_refs": [],
+  "warning_count": 0,
+  "workspace_root_ref": "."
+}
