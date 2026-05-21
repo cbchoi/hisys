@@ -1,0 +1,10 @@
+{
+  "activation_id": "DARS-BE-ACT-20260521-LOCALHOST-EXAMPLE",
+  "backend_id": "local_llm_dars",
+  "backend_kind": "openai_compatible",
+  "endpoint_scope": "localhost_only",
+  "allowed_actions": "advisory_only",
+  "human_approved": true,
+  "approval_ref": "APPROVAL-DARS-BE-LOCALHOST-EXAMPLE",
+  "expires_at": "2026-05-22T00:00:00Z"
+}

@@ -1946,6 +1946,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M-DARS-BE-4 local backend operator smoke packet (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for the M-DARS-BE-4 operator-facing local backend smoke packet. New files are `docs/examples/dars/backend-activation-localhost.example.json` (copy-editable, secret-free starter packet), `docs/runbooks/dars-live-backend-localhost-smoke.md` (human-gated rehearsal runbook), and `tests/unit/test_dars_live_backend_runbook.py` (documentation smoke tests).
+- Controlled anchors checked: `docs/plans/dars-live-backend-implementation-plan.md` M-DARS-BE-4 section; existing live-panel example at `docs/examples/dars/live-panel-localhost-config.example.json`; existing live-panel runbook test at `tests/unit/test_dars_critic_panel_live_runbook.py`; M-DARS-BE-1/2/3 modules committed at `280dc74`, `c6dfedb`, `a76414e`.
+- Baseline observed: branch `dars`, HEAD `a76414e feat: record dars backend boundary decisions`, working tree clean before the RED tests/example/runbook were authored.
+- RED observed: `PYTHONPATH=src:. pytest tests/unit/test_dars_live_backend_runbook.py -q` failed with `FileNotFoundError` on `docs/runbooks/dars-live-backend-localhost-smoke.md` (4 failures).
+- Implementation: added a secret-free localhost activation packet example covering `activation_id`, `backend_id`, `backend_kind=openai_compatible`, `endpoint_scope=localhost_only`, `allowed_actions=advisory_only`, `human_approved=true`, `approval_ref`, and `expires_at`. Added a runbook that pins the M-DARS-BE-4 contract: operator-supplied localhost endpoint, no model runner installed/started by Hisys, no Authorization header, no credential lookup, no remote API, no tool/search/browser permission, no mutation request, no publication, and explicit stop conditions for non-loopback endpoint, missing activation packet, credential requirement, tool/search/browser permission, mutation request, failed secret scan, and human uncertainty. The runbook documents the M-DARS-BE-3 record location and references the M-DARS-BE-1/2/3 test surfaces. The runbook keeps real local-model calls human-gated and does not authorize starting a model runner.
+- Tests: 4 documentation smoke tests cover (a) the example's secret-free, localhost-only shape; (b) the runbook's operator/HISYS_DARS_LOCAL_ENDPOINT/loopback URL/`--backend-activation-packet` contract; (c) all stop-condition and no-action phrases from the plan; (d) traceability to the M-DARS-BE-1/2/3/4 implementation increments and test files. None of the tests start a model runner, open a network boundary, or invoke credentials.
+- GREEN observed: `PYTHONPATH=src:. pytest tests/unit/test_dars_live_backend_runbook.py -q` -> 4 passed; project-level `PYTHONPATH=src:. pytest -q` -> 939 passed (was 935 before this increment; +4 from M-DARS-BE-4).
+- Documentation/traceability: prepended an `M-DARS-BE-4` row to `docs/traceability/README.md` linking the plan, runbook, example, smoke tests, and the no-live-action / no-credential / human-gated invariants. The prior M-DARS-BE-1/2/3 rows are preserved unchanged.
+- Quality gate result: pass — `PYTHONPATH=src:. pytest -q` -> 939 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=672 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The runbook example uses a placeholder `approval_ref`; operators must update it for each rehearsal. (b) The runbook documents the rehearsal contract but does not include a script that runs the full smoke automatically — full smoke remains human-gated by design. (c) Remote subscription scope remains fail-closed preparation only and waits for M-DARS-BE-5.
+- Continue decision: after committing this increment, the next safe row is M-DARS-BE-5 (Codex/Claude subscription policy packet, fail-closed only). M-DARS-BE-5 defines schema + default-blocking tests for future remote subscription-backed DARS providers without implementing remote dispatch; it remains a docs/control + schema-only increment with no live credentials, no provider call, no remote push.
+- Stop condition: M-DARS-BE-4 GREEN boundary reached; no live model call, no remote API call, no credential lookup, no provider account use, no deployment/publication/vault mutation, no remote push authority change.
+- Commit pending: `docs: add local dars backend smoke packet`.
+
+Resume checkpoint:
+- Current HEAD: a76414e feat: record dars backend boundary decisions
+- Working tree: M-DARS-BE-4 example/runbook/tests/docs/traceability/ralph modified until commit
+- Last completed milestone/task: M-DARS-BE-4 local backend operator smoke packet (RED -> GREEN)
+- RED observed: missing runbook `docs/runbooks/dars-live-backend-localhost-smoke.md`
+- GREEN observed: focused 4 passed; project 939 passed
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M-DARS-BE-4 files and commit `docs: add local dars backend smoke packet`
+- Stop condition: no model call, no remote API call, no credential lookup, no provider use, no deployment/publication, no remote push authority change
+
 ### 2026-05-21 — M-DARS-BE-3 backend-boundary decision record (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for the M-DARS-BE-3 backend-boundary decision record. The new module is `src/hisys/agents/dars_backend_boundary.py` and the new test file is `tests/unit/test_dars_backend_boundary.py`. `DarsRuntime.run_configured_critique(...)` now persists a backend-level record after a successful `openai_compatible` model-boundary crossing, separately from the legacy `_write_local_llm_boundary(...)` record and from the dispatch-decision record.
