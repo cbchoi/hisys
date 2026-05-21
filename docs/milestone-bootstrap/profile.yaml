@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.31
-focus: M23-LSP-ADAPTER-GATE closed the M23 local LSP adapter line at local_fixture_advisory_complete; next safe row continues to the advanced adapter closure gate
+version: v0.0.32
+focus: M23-ADVANCED-ADAPTER-GATE closed the entire M23 advanced codebase adapter milestone at local_fixture_advisory_complete; next safe row is QUEUE-REFILL-PREP-STOP until the user authorizes a new milestone
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M23-ADVANCED-ADAPTER-GATE
+next_safe_task: QUEUE-REFILL-PREP-STOP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "M23-LSP-ADAPTER-GATE"
-bootstrap_inference: "Closed M23-LSP-ADAPTER line at local_fixture_advisory_complete: PREP (090de67), pure governed runner + 13 focused safety tests (1874ad5), thin CLI + 4 focused CLI tests (e54bbf3), deterministic golden byte-equality round-trip (ca0420f). Full repo PYTHONPATH=src:. pytest -q -> 1017 passed; combined M21+M22+M23+LSP+CLI+golden+governance focused gate -> 119 passed; DARS critic-panel + remote subscription + readiness focused -> 75 passed; governance current-state -> 1 passed; traceability OK; secret scan hit_count=0; git diff --check clean. QUEUE-REFILL-PREP classification: the LSP adapter line is end-to-end complete with the pure runner, CLI wrapper, and deterministic golden fixture all pinned by focused tests. M23-ADAPTER-PORTFOLIO-INTEGRATION is an optional additive evidence-line row for M22 portfolio (not strictly required for M23 closure). The next safe Ralph row is M23-ADVANCED-ADAPTER-GATE — a docs/control closure that records the entire M23 advanced codebase adapter line (OSS adapter + LSP adapter) as closed at local_fixture_advisory_complete and runs the final QUEUE-REFILL-PREP across post-M23 backlog candidates."
+bootstrap_arguments: "M23-ADVANCED-ADAPTER-GATE"
+bootstrap_inference: "Consolidated the M23 advanced codebase adapter milestone closure: the OSS comparison adapter line closed at 0a172d3 (full repo 999 passed, OSS focused 7 passed including golden round-trip), and the LSP adapter line closed at 3ca9b22 (full repo 1017 passed, LSP focused 14 passed including golden round-trip, DARS panel + remote subscription + readiness focused 75 passed, governance 1 passed, traceability OK, secret scan hit_count=0). Both sub-lines reached local_fixture_advisory_complete under the M23 authorization recorded in docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.21.md. QUEUE-REFILL-PREP classification: M23-ADAPTER-PORTFOLIO-INTEGRATION remains an optional additive evidence-line for M22 portfolio (not strictly required for M23 closure and not requested by the user); post-M23 work (live provider execution, remote LSP adapter, additional M22 portfolio variants, M23 portfolio integration if user requests it) all require fresh explicit authorization. Next safe Ralph row is QUEUE-REFILL-PREP-STOP until the user authorizes a new milestone."
 roadmap_ref: docs/plans/m23-advanced-codebase-adapter-integration-plan.md
-next_artifact_ref: docs/plans/m23-advanced-adapter-gate-implementation-tasks.md
-planning_baseline_head: "ca0420f test: pin lsp adapter golden fixture"
-current_head_at_plan_creation: "ca0420f test: pin lsp adapter golden fixture"
-previous_bootstrap_version: v0.0.30
+next_artifact_ref: ralph.md
+planning_baseline_head: "3ca9b22 docs: close m23 lsp adapter milestone"
+current_head_at_plan_creation: "3ca9b22 docs: close m23 lsp adapter milestone"
+previous_bootstrap_version: v0.0.31
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false
