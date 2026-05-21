@@ -446,3 +446,152 @@ def test_remote_subscription_dispatch_rejects_activation_endpoint_scope_mismatch
             request,
             executor=fail_if_called,
         )
+
+
+# M-DARS-BE-6.2 — parametrized activation/policy mismatch coverage matrix.
+# Each row pins one (mutation, expected ValueError code) pair so removing or
+# weakening any single guard in `_enforce_activation_packet` or
+# `_enforce_policy_packet` produces a deterministic test failure with a code
+# that maps 1:1 to the harness invariant. No production code is modified.
+
+
+_ACTIVATION_MISMATCH_CASES = [
+    pytest.param(
+        {"approval_ref": "APPROVAL-DARS-RS-OTHER"},
+        {},
+        "activation_approval_ref_mismatch",
+        id="activation_approval_ref_mismatch",
+    ),
+    pytest.param(
+        {"backend_id": "some_other_backend_id"},
+        {},
+        "activation_backend_id_mismatch",
+        id="activation_backend_id_mismatch",
+    ),
+    pytest.param(
+        {"backend_kind": "other_remote_kind"},
+        {},
+        "activation_backend_kind_mismatch",
+        id="activation_backend_kind_mismatch",
+    ),
+    pytest.param(
+        {"allowed_actions": "execute"},
+        {},
+        # The activation validator rejects allowed_actions=execute first with
+        # `invalid_allowed_actions`; the dispatch harness re-raises that code
+        # through `_raise_first_error` so the deterministic invariant is the
+        # same code regardless of where the rejection happens.
+        "invalid_allowed_actions",
+        id="invalid_allowed_actions_in_activation",
+    ),
+]
+
+_POLICY_MISMATCH_CASES = [
+    pytest.param(
+        {},
+        {"access_mode": "api_key"},
+        "invalid_access_mode",
+        id="invalid_access_mode_in_policy",
+    ),
+    pytest.param(
+        {},
+        {"audit_required": False},
+        "audit_required_must_be_true",
+        id="audit_required_must_be_true_in_policy",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "activation_overrides,policy_overrides,expected_code",
+    _ACTIVATION_MISMATCH_CASES + _POLICY_MISMATCH_CASES,
+)
+def test_remote_subscription_dispatch_rejects_activation_policy_mismatches(
+    tmp_path: Path,
+    activation_overrides: dict,
+    policy_overrides: dict,
+    expected_code: str,
+):
+    """Each activation/policy mismatch must fail closed with the deterministic code."""
+
+    from hisys.agents.dars_remote_subscription_dispatch import (
+        RemoteSubscriptionDispatchRequest,
+        run_dars_remote_subscription_dispatch,
+    )
+
+    policy_data = _valid_policy_data(**policy_overrides)
+    policy_ref = _write_json(tmp_path / "remote-policy.json", policy_data)
+    activation_overrides_with_policy = {
+        "remote_policy_packet_ref": str(policy_ref),
+        **activation_overrides,
+    }
+    activation_data = _valid_activation_data(**activation_overrides_with_policy)
+    activation_ref = _write_json(tmp_path / "activation.json", activation_data)
+
+    request = RemoteSubscriptionDispatchRequest(
+        yyyymmdd="20260521",
+        request_id="REQ-DARS-REMOTE-MATRIX-001",
+        backend_id="claude_subscription_dars",
+        backend_kind="remote_subscription",
+        source_execution_id="EXEC-DARS-REMOTE-MATRIX-001",
+        approval_ref="APPROVAL-DARS-RS-20260521-001",
+        activation_packet_ref=str(activation_ref),
+        policy_packet_ref=str(policy_ref),
+        prompt="Critique EXEC-DARS-REMOTE-MATRIX-001 with provenance.",
+    )
+
+    def fail_if_called(_payload):
+        raise AssertionError(
+            f"executor must not be reached for mismatch case {expected_code}"
+        )
+
+    with pytest.raises(ValueError, match=expected_code):
+        run_dars_remote_subscription_dispatch(
+            InstanceRoot(tmp_path),
+            request,
+            executor=fail_if_called,
+        )
+
+    boundary_dir = tmp_path / "runtime-boundary" / "dars-remote-subscriptions"
+    assert not boundary_dir.exists()
+
+
+def test_remote_subscription_dispatch_rejects_activation_remote_policy_ref_mismatch(tmp_path: Path):
+    """Activation packet whose remote_policy_packet_ref does not match the request's policy_packet_ref must fail closed."""
+
+    from hisys.agents.dars_remote_subscription_dispatch import (
+        RemoteSubscriptionDispatchRequest,
+        run_dars_remote_subscription_dispatch,
+    )
+
+    policy_ref = _write_json(tmp_path / "remote-policy.json", _valid_policy_data())
+    # Activation references a *different* policy path than the request supplies.
+    activation_data = _valid_activation_data(
+        remote_policy_packet_ref=str(tmp_path / "other-policy.json"),
+    )
+    activation_ref = _write_json(tmp_path / "activation.json", activation_data)
+
+    request = RemoteSubscriptionDispatchRequest(
+        yyyymmdd="20260521",
+        request_id="REQ-DARS-REMOTE-MATRIX-002",
+        backend_id="claude_subscription_dars",
+        backend_kind="remote_subscription",
+        source_execution_id="EXEC-DARS-REMOTE-MATRIX-002",
+        approval_ref="APPROVAL-DARS-RS-20260521-001",
+        activation_packet_ref=str(activation_ref),
+        policy_packet_ref=str(policy_ref),
+        prompt="Critique EXEC-DARS-REMOTE-MATRIX-002 with provenance.",
+    )
+
+    def fail_if_called(_payload):
+        raise AssertionError("executor must not be reached when activation_remote_policy_ref mismatches")
+
+    with pytest.raises(ValueError, match="activation_remote_policy_ref_mismatch"):
+        run_dars_remote_subscription_dispatch(
+            InstanceRoot(tmp_path),
+            request,
+            executor=fail_if_called,
+        )
+
+    boundary_dir = tmp_path / "runtime-boundary" / "dars-remote-subscriptions"
+    assert not boundary_dir.exists()
