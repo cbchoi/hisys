@@ -1946,6 +1946,25 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — Remote DARS scope decision: subscription Codex/Claude only
+
+- Phase completed: incorporated user decision that remote DARS access should be subscription-style and limited to Codex and Claude.
+- Decision captured: future remote DARS policy is `access_mode=subscription`; provider allowlist is `codex` and `claude`; adapter classes are `codex_subscription` and `claude_subscription`; raw API-key/provider-token integration, arbitrary OpenAI/Anthropic-compatible endpoints, generic HTTP/local proxy providers, Gemini/Grok/other vendors, and pay-per-call provider API paths are out of scope unless a later human decision changes the allowlist.
+- Files updated: `docs/plans/dars-live-backend-implementation-plan.md` and `docs/traceability/README.md`.
+- Boundary: docs/control update only. No remote subscription call, no provider account use, no credential lookup/resolution, no model invocation, no deployment/publication/vault mutation, and no runtime state mutation.
+- Quality gate result: pass — `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=665 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Continue decision: validate, commit, and push this scope correction; next executable RED remains the local/backend activation validator unless the user explicitly chooses to implement the remote subscription policy packet first.
+- Stop condition: scope decision recorded; implementation remains blocked behind TDD and approval gates.
+
+Resume checkpoint:
+- Current HEAD: a64599c before this scope correction
+- Working tree: remote subscription scope docs modified until commit
+- Last completed milestone/task: remote DARS scope decision capture
+- RED observed: not applicable; docs/control correction
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage files, commit, and push
+- Stop condition: no Codex/Claude subscription call or credential/provider setup in this increment
+
 ### 2026-05-21 — DARS remote sync and live backend Prepare plan
 
 - Phase completed: user authorized `dars` remote push and requested live DARS backend implementation planning. Remote synchronization completed first, then a docs/control Prepare plan was started for the next DARS backend line.

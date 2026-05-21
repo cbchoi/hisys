@@ -4,7 +4,7 @@
 
 **Goal:** make DARS backend execution operational through a governed backend boundary while preserving advisory-only semantics and fail-closed behavior.
 
-**Architecture:** separate backend activation policy, credential-reference policy, adapter execution, runtime-boundary records, and smoke/runbook evidence. The first executable target remains localhost-only `openai_compatible` backend hardening and fake/local rehearsal; remote external providers are deferred to a separate high-impact approval packet.
+**Architecture:** separate backend activation policy, subscription-access policy, adapter execution, runtime-boundary records, and smoke/runbook evidence. The first executable target remains localhost-only `openai_compatible` backend hardening and fake/local rehearsal; remote subscription providers are deferred to a separate high-impact approval packet and are limited to Codex and Claude only.
 
 **Tech Stack:** Python, Pydantic schemas, existing Hisys DARS modules (`dars.py`, `dars_config.py`, `dars_dispatch.py`, `dars_panel_live_config.py`, `dars_panel_live_adapter.py`), pytest, runtime-boundary JSON/Markdown artifacts.
 
@@ -25,7 +25,8 @@
 **Boundary Record:**
 - Allowed in this plan increment: local docs, tests, validators, runtime-boundary schemas, fake-server tests, local commit after validation.
 - Not authorized: real model call, remote API call, credential lookup/resolution, provider account use, browser/search/tool execution by DARS, deployment, publication, vault write, tag/release, or another remote push.
-- External/remote DARS backend requires a later decision packet with explicit approval, egress scope, credential-ref policy, redaction policy, operator identity, expiry, and rollback/disable controls.
+- External/remote DARS backend requires a later decision packet with explicit approval, egress scope, subscription-access policy, redaction policy, operator identity, expiry, and rollback/disable controls.
+- Remote provider scope is restricted to subscription-style access for Codex and Claude only. Raw API-key/provider-token integration, pay-per-call provider APIs, arbitrary OpenAI/Anthropic-compatible endpoints, and additional vendors are out of scope unless a later human decision explicitly changes this provider allowlist.
 
 ---
 
@@ -36,15 +37,15 @@ The previous live-panel line has already implemented the safe localhost class: a
 Therefore this plan treats **live backend** as a two-level roadmap:
 
 1. **Local live backend hardening:** make the existing `openai_compatible` localhost backend easier to validate, rehearse, and audit without real model access in CI.
-2. **External provider backend preparation:** define a separate policy packet and fail-closed schemas for remote providers, without implementing remote dispatch yet.
+2. **Remote subscription backend preparation:** define a separate policy packet and fail-closed schemas for Codex/Claude subscription access, without implementing remote dispatch yet.
 
 ## Design candidates
 
 | Candidate | Description | Benefit | Risk | Decision |
 |---|---|---|---|---|
 | A. Extend current local OpenAI-compatible backend only | Harden config/reporting around `DarsRuntime.run_configured_critique` and localhost fake-server smoke. | Lowest risk; reuses existing code; aligns with current tests. | Does not satisfy future remote-provider needs alone. | **Accepted for first implementation line.** |
-| B. Add remote provider backend now | Implement external OpenAI/Anthropic/etc. DARS adapter. | Directly enables remote DARS. | Credential, egress, privacy, cost, and governance risk; requires high-impact approval. | **Rejected for this plan.** Defer to M-DARS-BE-5. |
-| C. Create provider-neutral backend policy packet first | Define schema and fail-closed validator before adapter code. | Creates safe path for future remote providers. | More planning overhead before execution. | **Accepted as preparation after local hardening.** |
+| B. Add remote provider backend now | Implement direct remote API adapters. | Directly enables remote DARS. | Credential, egress, privacy, cost, and governance risk; violates subscription-only scope. | **Rejected for this plan.** Defer to M-DARS-BE-5 as fail-closed policy only. |
+| C. Create Codex/Claude subscription policy packet first | Define schema and fail-closed validator before adapter code, with provider allowlist limited to `codex` and `claude`. | Creates a safe path for future remote subscription access while excluding raw API-key and arbitrary provider paths. | More planning overhead before execution. | **Accepted as preparation after local hardening.** |
 
 ## Implementation sequence
 
@@ -251,36 +252,39 @@ git add docs/examples/dars/backend-activation-localhost.example.json docs/runboo
 git commit -m "docs: add local dars backend smoke packet"
 ```
 
-### Task M-DARS-BE-5: Remote provider policy packet, fail-closed only
+### Task M-DARS-BE-5: Remote subscription provider policy packet, fail-closed only
 
-**Objective:** define the schema and default-blocking tests for future external DARS providers without implementing remote dispatch.
+**Objective:** define the schema and default-blocking tests for future Codex/Claude subscription-backed DARS providers without implementing remote dispatch.
 
 **Files:**
-- Create: `src/hisys/agents/dars_remote_backend_policy.py`
-- Create: `tests/unit/test_dars_remote_backend_policy.py`
-- Create: `docs/contracts/dars-remote-backend-policy.md`
+- Create: `src/hisys/agents/dars_remote_subscription_policy.py`
+- Create: `tests/unit/test_dars_remote_subscription_policy.py`
+- Create: `docs/contracts/dars-remote-subscription-backend-policy.md`
 
 **Acceptance:**
 
 The policy packet must include:
 
-- `approval_ref`, `operator_id`, `provider_id`, `endpoint_allowlist`, `credential_ref_policy`, `redaction_policy_ref`, `egress_scope`, `max_cost_or_token_budget`, `expires_at`, `revocation_ref`, and `audit_required=true`;
-- no raw token/API-key/password fields;
+- `approval_ref`, `operator_id`, `provider_id`, `access_mode="subscription"`, `subscription_account_ref`, `adapter_class`, `redaction_policy_ref`, `egress_scope`, `max_session_or_token_budget`, `expires_at`, `revocation_ref`, and `audit_required=true`;
+- `provider_id` is restricted to `codex` or `claude`;
+- `adapter_class` is restricted to the matching subscription adapter class, e.g. `codex_subscription` or `claude_subscription`;
+- no raw token/API-key/password fields and no endpoint URL fields that would convert subscription access into an arbitrary API/backend path;
+- no provider outside Codex/Claude, including generic OpenAI-compatible, generic Anthropic-compatible, Gemini, Grok, local proxy, custom HTTP, or arbitrary URL providers;
 - no mutation/publication/tool/browser/search authority;
 - remote dispatch remains blocked unless a later separately approved implementation consumes this policy.
 
 **Validation:**
 
 ```bash
-PYTHONPATH=src:. pytest tests/unit/test_dars_remote_backend_policy.py -q
+PYTHONPATH=src:. pytest tests/unit/test_dars_remote_subscription_policy.py -q
 python3 scripts/scan_secrets.py
 ```
 
 **Commit:**
 
 ```bash
-git add src/hisys/agents/dars_remote_backend_policy.py tests/unit/test_dars_remote_backend_policy.py docs/contracts/dars-remote-backend-policy.md docs/traceability/README.md ralph.md
-git commit -m "feat: add remote dars backend policy packet"
+git add src/hisys/agents/dars_remote_subscription_policy.py tests/unit/test_dars_remote_subscription_policy.py docs/contracts/dars-remote-subscription-backend-policy.md docs/traceability/README.md ralph.md
+git commit -m "feat: add remote dars subscription policy packet"
 ```
 
 ## Quality gate for each implementation increment
@@ -306,7 +310,7 @@ PYTHONPATH=src:. pytest -q
 Stop and request a new explicit decision before any of these:
 
 - real local model call against an operator endpoint;
-- any remote provider/API call;
+- any remote provider/API/subscription call;
 - credential reference resolution or environment-variable secret lookup;
 - provider account configuration;
 - deployment, release, tag, publication, or runtime operation beyond fixture/fake-server tests;
