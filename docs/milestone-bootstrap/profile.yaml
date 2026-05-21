@@ -1,11 +1,11 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.15
-focus: M22 codebase evidence portfolio local-safe planning
+version: v0.0.16
+focus: M22 codebase evidence portfolio implementation-tasks plan committed; next is M22-PORTFOLIO-RED-GREEN
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M22-PORTFOLIO-PREP
+next_safe_task: M22-PORTFOLIO-RED-GREEN
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
@@ -13,9 +13,9 @@ bootstrap_arguments: "m22 수행"
 bootstrap_inference: "User authorized a new M22 local-safe milestone after the M21 queue-end stop; do not open human-gated OSS/LSP/live-provider lines without separate approval."
 roadmap_ref: docs/plans/m22-codebase-evidence-portfolio-implementation-plan.md
 next_artifact_ref: docs/plans/m22-codebase-evidence-portfolio-implementation-tasks.md
-planning_baseline_head: "f5b63fb docs: queue-refill-prep verifies m21-6 roll-forward and stops on human-gated backlog"
-current_head_at_plan_creation: "f5b63fb docs: queue-refill-prep verifies m21-6 roll-forward and stops on human-gated backlog"
-previous_bootstrap_version: v0.0.14
+planning_baseline_head: "50173ba docs: open m22 evidence portfolio queue"
+current_head_at_plan_creation: "50173ba docs: open m22 evidence portfolio queue"
+previous_bootstrap_version: v0.0.15
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false

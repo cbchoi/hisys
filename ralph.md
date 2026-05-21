@@ -5602,9 +5602,25 @@ Resume checkpoint:
 - Next command to run: validate docs/control gates, commit this checkpoint, push to existing `origin/dars`, then start `/rloo` for `M22-PORTFOLIO-PREP`.
 - Stop condition: none if the checkpoint validates; continue to M22-PORTFOLIO-PREP under the local-safe boundary.
 
+### 2026-05-21 — M22-PORTFOLIO-PREP implementation-tasks plan authored
+
+- Phase completed: docs/control PREP packet for M22 turning the parent `docs/plans/m22-codebase-evidence-portfolio-implementation-plan.md` into a precise RED/GREEN/regression/commit task plan before any production code.
+- Request context: continuation of the M22 authorization commit `50173ba docs: open m22 evidence portfolio queue`; `/rloo` is now executing the M22-PORTFOLIO-PREP row from Section 16.
+- Scope: created `docs/plans/m22-codebase-evidence-portfolio-implementation-tasks.md` with Task 0 baseline, Task 1 RED, Task 2 GREEN, Task 3 regression, Task 4 docs/commit, M22-PORTFOLIO-CLI/GOLDEN/GATE deferral notes, stop conditions, out-of-scope list, and the next executable RED command. Bumped `docs/milestone-bootstrap/profile.yaml` to v0.0.16 with `next_safe_task: M22-PORTFOLIO-RED-GREEN` and refreshed `planning_baseline_head` / `current_head_at_plan_creation` to the M22 authorization commit. Updated `tests/unit/test_governance_docs_current_state.py` to assert `v0.0.16` and `M22-PORTFOLIO-RED-GREEN`. Rewrote Section 16 so the next safe Ralph row is `M22-PORTFOLIO-RED-GREEN` with the RED command quoted verbatim.
+- Boundary: docs/control planning only for this increment. No production code, no new tests for the portfolio module yet, no live model call, no real remote provider call, no network clone/fetch/search, no credential lookup, no local LSP subprocess, no subagent execution, no publication/deployment, no schema/data migration against non-fixture data, no force push, no new remote configuration, no destructive operation, and no raw source-content archival.
+- Quality gate expectation: M22 plan markers check (`M22-PORTFOLIO-PREP`, `raw_source_content_persisted`, `live external provider calls` strings), `tests/unit/test_governance_docs_current_state.py` updated assertions, `python3 scripts/validate_traceability.py` OK, `python3 scripts/scan_secrets.py` `hit_count=0`, and `git diff --check` clean before committing.
+
+Resume checkpoint:
+- Current HEAD: 50173ba docs: open m22 evidence portfolio queue
+- Working tree: new M22-PORTFOLIO-PREP implementation-tasks plan; profile/test version bumps; Ralph Section 16 + Reflection Log edits pending validation/commit/push
+- Last completed milestone/task: M22 local-safe codebase evidence portfolio authorization (`50173ba`)
+- Current in-progress task: M22-PORTFOLIO-PREP docs/control checkpoint
+- Next command to run: after this commit lands, start the RED — `PYTHONPATH=src pytest tests/unit/test_codebase_evidence_portfolio.py::test_build_codebase_evidence_portfolio_aggregates_m21_and_dars -q` (expected `ModuleNotFoundError: No module named 'hisys.operations.codebase_evidence_portfolio'`).
+- Stop condition: none if PREP commits cleanly; continue to `M22-PORTFOLIO-RED-GREEN` under the local-safe boundary.
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. DARS-PANEL-RLOOP-OPT-1 ran the fixture-local audit and confirmed no remaining safe local DARS panel completion candidate. The DARS panel productization line is **closed for `local_fixture_localhost_controlled_advisory_complete`**; live external provider execution remains unimplemented and unproven and requires a separately approved governed plan. The user explicitly authorized M22 execution after the M21 queue-end stop. The next safe Ralph queue row is `M22-PORTFOLIO-PREP`, a local-safe docs/control checkpoint that turns completed M21/DARS evidence into a bounded codebase evidence portfolio plan before any product code.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. DARS-PANEL-RLOOP-OPT-1 ran the fixture-local audit and confirmed no remaining safe local DARS panel completion candidate. The DARS panel productization line is **closed for `local_fixture_localhost_controlled_advisory_complete`**; live external provider execution remains unimplemented and unproven and requires a separately approved governed plan. M22-PORTFOLIO-PREP has authored `docs/plans/m22-codebase-evidence-portfolio-implementation-tasks.md`; the next safe Ralph queue row is `M22-PORTFOLIO-RED-GREEN`, a fixture-local RED -> GREEN implementation increment that ships a pure `src/hisys/operations/codebase_evidence_portfolio.py` builder and writer under the no-live / no-credential / no-raw-source boundary.
 
 DARS panel productization closure status:
 
@@ -5617,14 +5633,18 @@ Done: DARS-CLOSE-4 — Closure gate and provisional queue return to M21.6 (a38e0
 Done: DARS-PANEL-RLOOP-OPT-1 — Continuous-completion stop-preflight and final local evidence audit (fad02ef; see docs/reports/dars-panel-local-completion-audit.md)
 Done: MB-CODEBASE-M21-6-PREP — verified M21.6 acceptance via existing tests (no roll-forward plan author needed) and rolled the queue forward; see QUEUE-REFILL-PREP-2026-05-21B Reflection Log entry.
 Done: QUEUE-REFILL-PREP-STOP — every remaining M21 backlog candidate is human-gated; user chose a new M22 local-safe milestone instead of opening the human-gated M21 backlog.
-Next: M22-PORTFOLIO-PREP — define the local codebase evidence portfolio implementation task packet.
-Pending after PREP: M22-PORTFOLIO-RED-GREEN, M22-PORTFOLIO-CLI, M22-PORTFOLIO-GOLDEN, M22-PORTFOLIO-GATE.
+Done: M22-PORTFOLIO-AUTHORIZE — authorization checkpoint at 50173ba opened the M22 local-safe queue and parent plan.
+Done: M22-PORTFOLIO-PREP — authored `docs/plans/m22-codebase-evidence-portfolio-implementation-tasks.md` with RED/GREEN/regression/commit tasks plus CLI/GOLDEN/GATE deferral notes; refreshed governance profile to v0.0.16 and pointed next safe task at M22-PORTFOLIO-RED-GREEN.
+Next: M22-PORTFOLIO-RED-GREEN — author the RED test under `tests/unit/test_codebase_evidence_portfolio.py`, implement minimal `src/hisys/operations/codebase_evidence_portfolio.py`, run focused gates, update traceability, commit, and push to existing `origin/dars`.
+Pending after RED/GREEN: M22-PORTFOLIO-CLI, M22-PORTFOLIO-GOLDEN, M22-PORTFOLIO-GATE.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-M22-PORTFOLIO-PREP — create `docs/plans/m22-codebase-evidence-portfolio-implementation-tasks.md` from `docs/plans/m22-codebase-evidence-portfolio-implementation-plan.md`, define the first RED test for a pure local portfolio builder, preserve the no-live/no-credential/no-raw-source boundary, validate docs/control gates, commit, push to existing `origin/dars`, and continue to the RED/GREEN implementation row if validation remains green.
+M22-PORTFOLIO-RED-GREEN — follow `docs/plans/m22-codebase-evidence-portfolio-implementation-tasks.md`. Start with the RED:
+  PYTHONPATH=src pytest tests/unit/test_codebase_evidence_portfolio.py::test_build_codebase_evidence_portfolio_aggregates_m21_and_dars -q
+Expected RED: `ModuleNotFoundError: No module named 'hisys.operations.codebase_evidence_portfolio'`. Then implement the minimal pure builder + writer under `src/hisys/operations/codebase_evidence_portfolio.py`, add the supplemental regression (writer round-trip + unsafe-ref/label rejection + bad-date rejection), append an `M22` row to `docs/traceability/README.md`, append a Reflection Log entry + Resume checkpoint to `ralph.md`, bump `docs/milestone-bootstrap/profile.yaml` and `tests/unit/test_governance_docs_current_state.py` for the new `next_safe_task: M22-PORTFOLIO-CLI`, run focused + governance + traceability + secret + diff gates, commit `feat: add codebase evidence portfolio`, and push to existing `origin/dars`.
 ```
 
 Verification of M21.6 acceptance (MB-CODEBASE-M21-6-PREP, treated as a roll-forward row per the original note):
