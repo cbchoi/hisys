@@ -5392,26 +5392,48 @@ Resume checkpoint:
 - Next command to run: final validation gates, then `git add src/hisys/cli/main.py tests/unit/test_dars_critic_panel_cli.py docs/traceability/dars-critic-panel-runtime-traceability.md ralph.md && git commit -m "feat: add dars panel operator report"`
 - Stop condition: after local commit, push to already-configured `origin/dars` if validation remains green and working tree is clean
 
+### 2026-05-21 — DARS panel completion-before-return plan
+
+- Phase completed: docs/control planning for finishing the DARS panel productization line before returning to the original codebase-analysis queue.
+- Request context: user stated that the DARS panel should be fully finished before going back to the original queue and asked for a plan.
+- Scope: created `docs/plans/dars-panel-completion-before-codebase-return.md` with four ordered local-safe tasks: golden fixture scenario, operator UX wrapper, readiness/completion status surface, and closure gate returning to `MB-CODEBASE-M21-6-PREP`.
+- Boundary: planning/docs only. No production code, tests, fixture data, live model call, remote provider dispatch, credential lookup, browser/search/tool execution, publication/deployment, or destructive action is authorized by this plan entry.
+- Completion claim boundary: planned DARS closure means `local/fixture/localhost-controlled advisory complete`; live external provider execution remains unimplemented/unproven unless a separate operator-approved governed line is opened.
+- Quality gate result: pass — docs-control checks clean; `tests/unit/test_dars_critic_panel_cli.py tests/unit/test_governance_docs_current_state.py` -> `6 passed in 1.21s`; traceability OK; secret scan hit_count=0; diff-check clean.
+
+Resume checkpoint:
+- Current HEAD: 5ea9620 feat: add dars panel operator report
+- Working tree: DARS panel completion plan and Ralph queue pointer modified; validation/commit pending
+- Last completed milestone/task: M-CP-PROD-REPORT-1 DARS panel operator report
+- Current in-progress task: docs/control commit for DARS completion-before-return plan
+- RED observed: n/a, planning-only increment
+- GREEN observed: n/a, planning-only increment
+- Quality gate status: pass — docs-control focused tests, traceability, secret scan, and diff-check all green
+- Next command to run: validate docs-control plan, then commit `docs/plans/dars-panel-completion-before-codebase-return.md ralph.md`
+- Stop condition: after local commit/push; next executable implementation task is DARS-CLOSE-1 golden fixture scenario
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The codebase-analysis foundation has advanced through M18; the next implementation milestone is M19.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`, and the DARS panel productization line is intentionally prioritized before returning to the original codebase-analysis queue.
 
-First, if the branch is ahead of upstream after a completed milestone and all Section 10.3 preconditions pass, run the automatic milestone push:
-
-```bash
-git push origin feat/domain-adaptive-requirements-analysis
-```
-
-Then start the next Ralph task:
+First execute the DARS panel closure plan:
 
 ```text
-Task M19.1 — RED/GREEN decision packet rejects incomplete artifact set.
+Plan: docs/plans/dars-panel-completion-before-codebase-return.md
+NEXT: DARS-CLOSE-1 — Golden fixture scenario for operator report
+Then: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run
+Then: DARS-CLOSE-3 — DARS panel completion/readiness status surface
+Then: DARS-CLOSE-4 — Closure gate and queue return to M21.6
 ```
 
-M19.1 must begin with a failing test in `tests/unit/test_codebase_source_inspection_decision.py` proving that a missing inventory/symbol/scope/risk artifact bundle yields `blocked_needs_more_evidence`. The allowed decision values remain only `complete_for_human_review` and `blocked_needs_more_evidence`; do not add `approved`, `safe_to_deploy`, or `ready_for_live_action`.
+After DARS-CLOSE-4 passes, restore the original next queue target:
+
+```text
+MB-CODEBASE-M21-6-PREP — create docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md
+```
 
 Runtime boundary for this queue:
 
-- allowed: local repository reads, tests, docs/traceability edits, runtime-boundary artifacts under an explicit instance root, local commits after green gates, and normal automatic milestone push under Section 10.3;
-- not allowed without explicit user-executed approval: force push, unexpected remote/branch push, publication/release/deploy beyond Git push, credential changes, external repository clone, live external network/browser/API actions, model calls, or raw source-content archival;
-- formal Hisys status must remain separate from Hermes advisory synthesis when `investigate-domain` reports `needs_more_evidence`.
+- allowed: local repository reads, tests, docs/traceability edits, local fixture files, runtime-boundary/report artifacts under an explicit instance root, local commits after green gates, and normal push to existing `origin/dars` after validation;
+- not allowed without explicit separate approval: live external provider calls, credential changes/lookups, new remote configuration, force push, publication/release/deploy beyond normal branch push, browser/search/tool execution by critics, schema/data migrations against non-fixture data, or raw source-content archival beyond existing bounded artifacts;
+- DARS completion claim must remain `local/fixture/localhost-controlled advisory complete`; do not claim live provider execution has been smoked.
