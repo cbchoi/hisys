@@ -5854,6 +5854,30 @@ Resume checkpoint:
 - Next command to run: re-run the combined M21+M22+M23+CLI+golden+governance focused gate, DARS panel regression, traceability validator, secret scan, and `git diff --check`; commit the increment; push to existing `origin/dars`; then run `/rloo` for `M23-OSS-ADAPTER-GATE`.
 - Stop condition: none if GOLDEN commits cleanly; continue to `M23-OSS-ADAPTER-GATE` under the local-safe boundary.
 
+### 2026-05-22 — M23-OSS-ADAPTER-GATE milestone closure at local_fixture_advisory_complete
+
+- Phase completed: docs/control closure increment for the M23 approved-OSS comparison adapter line. M23-OSS-ADAPTER-GATE ran the focused + full repo-level gate sweep, performed a QUEUE-REFILL-PREP classification, and declared the OSS adapter line closed at `local_fixture_advisory_complete`.
+- Request context: continuation of `M23-OSS-ADAPTER-GOLDEN` at `9963ccc test: pin oss comparison adapter golden fixture`. The OSS adapter task queue (PREP, RED-GREEN, CLI, GOLDEN, GATE) is now fully addressed; no further safe local OSS adapter task remains under the established boundary.
+- Scope: ran combined M21+M22+M23+CLI+golden+governance focused gate (`101 passed`), DARS critic-panel focused regression (`55 passed`), full repo-level gate `PYTHONPATH=src pytest -q` (`999 passed in 29.36s`), `python3 scripts/validate_traceability.py` OK, `python3 scripts/scan_secrets.py` `hit_count=0`, and `git diff --check` clean at HEAD `9963ccc`. Prepended an `M23-OSS-ADAPTER-GATE` row to `docs/traceability/README.md` recording the gate evidence and the QUEUE-REFILL-PREP classification. Bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.26` with `next_safe_task: M23-LSP-ADAPTER-PREP`, focus="M23-OSS-ADAPTER-GATE closed the approved-OSS comparison adapter line at local_fixture_advisory_complete; next safe row is M23-LSP-ADAPTER-PREP", and refreshed `planning_baseline_head` / `current_head_at_plan_creation` to `9963ccc`. Updated `tests/unit/test_governance_docs_current_state.py` to assert `v0.0.26` and `M23-LSP-ADAPTER-PREP`. Rewrote Section 16 so the next Ralph row is `M23-LSP-ADAPTER-PREP`.
+- QUEUE-REFILL-PREP classification (after M23-OSS-ADAPTER-GATE):
+  - M23-OSS-ADAPTER-PREP, M23-OSS-ADAPTER-RED-GREEN, M23-OSS-ADAPTER-CLI, M23-OSS-ADAPTER-GOLDEN, M23-OSS-ADAPTER-GATE — all done.
+  - No additional M23 OSS comparison adapter candidate remains in `docs/plans/m23-advanced-codebase-adapter-integration-plan.md` beyond the closed task queue.
+  - Remaining M23 backlog candidates classified by family:
+    - `M23-LSP-ADAPTER-PREP` — safe local docs/control. The PREP packet only authors a documentation plan that records the local LSP subprocess boundary (command allowlist, timeout, workspace-root restriction, output schema, kill policy) before any product code; no subprocess spawns from PREP itself. This is the next safe Ralph row under the existing M23 authorization recorded in `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.21.md`.
+    - `M23-LSP-ADAPTER-RED-GREEN` — separately governed. The subprocess spawn requires the boundary fields produced by the LSP PREP and remains gated by that PREP's review.
+    - `M23-ADAPTER-PORTFOLIO-INTEGRATION` — partially safe local docs/control. The integration row adds an `M23_OSS_ADAPTER` evidence-line to the M22 codebase evidence portfolio by ref/count only; it would not change the M22 schema and would not embed raw OSS content. However, it touches portfolio scope and is a useful but optional additive line; queue this after the LSP adapter PREP or with explicit user authorization.
+    - `M23-ADVANCED-ADAPTER-GATE` — closure gate; runs after the LSP and portfolio integration rows.
+  - Therefore: the next safe Ralph row is `M23-LSP-ADAPTER-PREP`. The Ralph queue continues, not stops, under the existing M23 authorization.
+- Boundary: docs/control closure only. No production code, no new tests, no live model call, no real remote provider call, no network clone/fetch/search, no credential lookup, no local LSP subprocess (the PREP packet that will define the LSP boundary has not yet been authored), no subagent execution, no publication/deployment, no schema/data migration against non-fixture data, no force push, no new remote configuration, no destructive operation, no raw source-content archival.
+
+Resume checkpoint:
+- Current HEAD: 9963ccc test: pin oss comparison adapter golden fixture
+- Working tree: traceability + profile + governance-test + ralph edits for M23-OSS-ADAPTER-GATE pending validation/commit/push
+- Last completed milestone/task: M23-OSS-ADAPTER-GOLDEN at `9963ccc`
+- Current in-progress task: M23-OSS-ADAPTER-GATE closure docs+commit
+- Next command to run: commit the GATE closure increment, push to existing `origin/dars`, then run `/rloo` for `M23-LSP-ADAPTER-PREP` to author the LSP subprocess boundary docs/control plan.
+- Stop condition: none if the GATE closure commits cleanly; continue to `M23-LSP-ADAPTER-PREP` under the governed M23 boundary (docs/control only; no subprocess in the PREP row itself).
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M22 codebase evidence portfolio milestone is closed at `local_fixture_advisory_complete` (`cd944cc`). The user has explicitly authorized M23 advanced codebase adapter integration, including approved OSS comparison adapter work and optional local LSP adapter work; the OSS comparison adapter, its CLI wrapper, and its deterministic golden round-trip have now landed under the governed M23 boundary recorded below. The `M23-OSS-ADAPTER-GOLDEN` row pinned `tests/fixtures/oss-comparison/m23_local_oss_bundle.json` plus checked-in expected JSON/Markdown so byte-equality drift fails one focused test. The next safe Ralph row is the OSS adapter closure gate.

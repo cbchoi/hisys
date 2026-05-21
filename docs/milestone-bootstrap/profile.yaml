@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.25
-focus: M23-OSS-ADAPTER-GOLDEN deterministic byte-equality round-trip landed; next safe row is the M23-OSS-ADAPTER-GATE closure
+version: v0.0.26
+focus: M23-OSS-ADAPTER-GATE closed the approved-OSS comparison adapter line at local_fixture_advisory_complete; next safe row is M23-LSP-ADAPTER-PREP
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M23-OSS-ADAPTER-GATE
+next_safe_task: M23-LSP-ADAPTER-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "M23-OSS-ADAPTER-GOLDEN"
-bootstrap_inference: "Pinned the deterministic OSS comparison adapter golden round-trip with tests/fixtures/oss-comparison/m23_local_oss_bundle.json plus checked-in expected JSON/Markdown under tests/fixtures/oss-comparison/expected/. The round-trip test asserts byte-equality with the writer chokepoint and depends on no system clock, .git/, network, or subprocess. Next safe Ralph row is M23-OSS-ADAPTER-GATE closure."
+bootstrap_arguments: "M23-OSS-ADAPTER-GATE"
+bootstrap_inference: "Ran the full focused + full repo-level gate sweep after the M23-OSS-ADAPTER-GOLDEN commit at 9963ccc and declared the OSS comparison adapter line closed at local_fixture_advisory_complete. Full repo pytest passed (999 passed), DARS critic-panel focused regression passed (55 passed), traceability validator OK, secret scan hit_count=0, git diff --check clean. Next safe Ralph row is the M23-LSP-ADAPTER-PREP docs/control PREP packet that authors the local LSP adapter subprocess boundary (command allowlist, timeout, workspace-root restriction, output schema, and kill policy) before any product code."
 roadmap_ref: docs/plans/m23-advanced-codebase-adapter-integration-plan.md
-next_artifact_ref: docs/plans/m23-gate-oss-comparison-adapter-implementation-tasks.md
-planning_baseline_head: "d6023b4 feat: add oss comparison adapter cli wrapper"
-current_head_at_plan_creation: "d6023b4 feat: add oss comparison adapter cli wrapper"
-previous_bootstrap_version: v0.0.24
+next_artifact_ref: docs/plans/m23-lsp-adapter-implementation-tasks.md
+planning_baseline_head: "9963ccc test: pin oss comparison adapter golden fixture"
+current_head_at_plan_creation: "9963ccc test: pin oss comparison adapter golden fixture"
+previous_bootstrap_version: v0.0.25
 tmux_or_background_agent_spawned: false
-production_code_created: true
-tests_created: true
+production_code_created: false
+tests_created: false
