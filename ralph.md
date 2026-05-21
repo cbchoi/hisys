@@ -6131,6 +6131,30 @@ Resume checkpoint:
 - Next command to run: run the validation matrix from the PREP packet, commit, push to existing `origin/dars`, then start `M23-LIVE-LSP-SMOKE-GATE`.
 - Stop condition: stop if any validation fails, push fails, or a requested next action expands beyond docs/control preservation of existing live LSP smoke evidence.
 
+### 2026-05-22 — M23 live LSP smoke gate
+
+- Phase completed: docs/control gate for `M23-LIVE-LSP-SMOKE-GATE`.
+- Request context: continued after `deb096d test: integrate m23 adapter lines into codebase evidence portfolio`; Section 16 allowed the smoke gate after portfolio integration. This gate preserves already captured evidence and does not perform new live LSP execution.
+- Controlled anchors checked: `docs/reports/m23-live-lsp-server-smoke.md`; `runtime-boundary/lsp-adapter/20260522/ruff-check-live/lsp-report.{json,md}`; `runtime-boundary/lsp-adapter/20260522/pyright-check-live/lsp-report.{json,md}`; `tests/fixtures/codebase-evidence-portfolio/m21_dars_m23_bundle.json`; `docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md`; traceability/profile/governance-current-state files.
+- Verification: the smoke report records the installed/verified executable versions (`ruff 0.15.10`, `pyright 1.1.409`, `eslint v10.4.0`), command ids (`ruff-check-live`, `pyright-check-live`, `eslint-check-live`), scopes, diagnostic counts, exit codes, and governed LSP adapter boundary flags. Repo-resident ruff and pyright JSON/Markdown reports exist under `runtime-boundary/lsp-adapter/20260522/`. The M23 portfolio bundle references the ruff/pyright JSON report refs. ESLint remains report-only from the temporary fixture instance and was not promoted into the repo.
+- Implementation: no production code, no test code, no fixture content, no runtime report content. Prepended an `M23-LIVE-LSP-SMOKE-GATE` traceability row, bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.36` with `next_safe_task=QUEUE-REFILL-PREP`, updated `tests/unit/test_governance_docs_current_state.py`, and rewrote Section 16 to make `QUEUE-REFILL-PREP` the next row.
+- Boundary: docs/control only. No new LSP execution, local subprocess execution, package install, package-manager command, network call, credential lookup, secret capture, browser/search/tool execution, real OSS clone, license-text capture, license adjudication, raw diagnostic-message archival, raw source-content archival, mutation of non-fixture/live user data, publication/deployment/release, new or changed remote configuration, force push, destructive Git/history action, subagent execution, or live-provider DARS completion claim was performed by this gate.
+- Quality gate status: pass — governance current-state 1 passed; focused portfolio/LSP/CLI regression 52 passed; traceability validator OK; secret scan hit_count=0; `git diff --check` clean.
+- Continue decision: after validation/commit/push, continue to `QUEUE-REFILL-PREP` to classify whether any safe local follow-on remains.
+- Stop condition: stop if validation fails, push fails, remote/branch is not `origin/dars`, or queue refill identifies only human-gated/non-local candidates.
+- Commit pending: `docs: gate m23 live lsp smoke evidence`.
+
+Resume checkpoint:
+- Current HEAD: deb096d test: integrate m23 adapter lines into codebase evidence portfolio
+- Working tree: smoke-gate traceability + profile + governance-test + Ralph Section 16/Reflection edits pending validation/commit/push
+- Last completed milestone/task: M23-LIVE-LSP-SMOKE-GATE (this entry)
+- Current in-progress task: smoke-gate validation and commit
+- RED observed: n/a (docs/control gate)
+- GREEN observed: n/a (no behavior change)
+- Quality gate status: pass — governance current-state 1 passed; focused portfolio/LSP/CLI regression 52 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: validate, commit, push to existing `origin/dars`, then run `QUEUE-REFILL-PREP`.
+- Stop condition: stop if validation fails, push fails, or queue refill requires new human authorization.
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone is closed at `local_fixture_advisory_complete` (`5a633dd`). The user has now authorized candidate 1, the adapter portfolio integration follow-up, and candidate 2, local LSP/lint executable installation and execution for ruff, pyright, and eslint.
@@ -6142,14 +6166,14 @@ Done: M23-ADVANCED-ADAPTER-GATE — closed OSS + LSP adapter milestone at local_
 Done: M23-LIVE-LSP-SMOKE-AUTH — installed/verified ruff, pyright, eslint and captured first smoke evidence through hisys lsp-adapter.
 Done: M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP — authored docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md with exact M23_OSS_ADAPTER and M23_LSP_ADAPTER portfolio line refs, RED command, and validation gates.
 Done: M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN — added the four-line portfolio golden fixture and byte-equality test for M23 OSS/LSP adapter evidence lines by refs/counts only.
-Next: M23-LIVE-LSP-SMOKE-GATE — preserve the existing ruff/pyright/eslint smoke evidence as a controlled docs/control gate without new live LSP execution.
-Pending after GATE: QUEUE-REFILL-PREP.
+Done: M23-LIVE-LSP-SMOKE-GATE — preserved the existing ruff/pyright/eslint smoke evidence as a controlled docs/control gate without new live LSP execution.
+Next: QUEUE-REFILL-PREP — classify remaining post-M23 candidates and either open the next safe local row or stop on human-gated work.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-M23-LIVE-LSP-SMOKE-GATE — follow docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md. Confirm docs/reports/m23-live-lsp-server-smoke.md plus runtime-boundary/lsp-adapter/20260522/ruff-check-live/ and pyright-check-live/ are referenced and preserved, record traceability/Ralph/profile updates, and do not perform new live LSP execution, installs, network calls, raw diagnostic-message archival, or DARS live-provider claims.
+QUEUE-REFILL-PREP — inspect the completed M23 follow-up state, classify remaining candidates under the current boundaries, and update Ralph/profile/traceability with the next safe row or an explicit stop. Do not start a new milestone, live provider execution, real OSS clone, credential action, remote config change, deployment/publication, force push, or new live LSP execution without fresh user authorization.
 ```
 
 Follow-up boundary:
