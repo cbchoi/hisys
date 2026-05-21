@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -191,3 +192,64 @@ def test_write_codebase_evidence_portfolio_rejects_bad_date(tmp_path: Path) -> N
         write_codebase_evidence_portfolio_report(
             instance_root=instance_root, date="2026-05-21", report=report
         )
+
+
+_FIXTURE_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "codebase-evidence-portfolio"
+)
+
+
+def _load_golden_bundle() -> dict[str, object]:
+    return json.loads(
+        (_FIXTURE_DIR / "m21_dars_bundle.json").read_text(encoding="utf-8")
+    )
+
+
+def _expected_golden_json() -> str:
+    return (_FIXTURE_DIR / "expected" / "portfolio-report.json").read_text(
+        encoding="utf-8"
+    )
+
+
+def _expected_golden_markdown() -> str:
+    return (_FIXTURE_DIR / "expected" / "portfolio-report.md").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_codebase_evidence_portfolio_golden_round_trip(tmp_path: Path) -> None:
+    bundle = _load_golden_bundle()
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    line_refs = tuple(
+        EvidenceLineRef(**raw) for raw in bundle["line_refs"]
+    )
+    request = CodebaseEvidencePortfolioRequest(
+        instance_root=instance_root,
+        date=bundle["date"],
+        line_refs=line_refs,
+        current_head_short=bundle["current_head_short"],
+    )
+    report = build_codebase_evidence_portfolio_report(request=request)
+    write_codebase_evidence_portfolio_report(
+        instance_root=instance_root, date=bundle["date"], report=report
+    )
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-evidence-portfolio"
+        / bundle["date"]
+        / "portfolio-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-evidence-portfolio"
+        / bundle["date"]
+        / "portfolio-report.md"
+    )
+    assert json_path.read_text(encoding="utf-8") == _expected_golden_json()
+    assert md_path.read_text(encoding="utf-8") == _expected_golden_markdown()
