@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.22
-focus: M23-OSS-ADAPTER-PREP packet authored; begin RED/GREEN for approved OSS comparison adapter
+version: v0.0.23
+focus: M23-OSS-ADAPTER-RED-GREEN landed pure fixture-local OSS comparison adapter; next safe row is the thin CLI wrapper
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M23-OSS-ADAPTER-RED-GREEN
+next_safe_task: M23-OSS-ADAPTER-CLI
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "M23-OSS-ADAPTER-PREP"
-bootstrap_inference: "Authored docs/plans/m23-oss-comparison-adapter-implementation-tasks.md so the next safe Ralph row implements the pure fixture-local OSS comparison adapter under the existing M23 authorization boundary."
+bootstrap_arguments: "M23-OSS-ADAPTER-RED-GREEN"
+bootstrap_inference: "Implemented src/hisys/operations/oss_comparison_adapter.py and tests/unit/test_oss_comparison_adapter.py under the M23 OSS adapter PREP plan; the pure builder/writer aggregates caller-supplied local + approved-OSS descriptors into a set-based advisory report and rejects unsafe refs/ids/labels/notes/dates while never touching the network, Git, subprocess, system clock, or raw upstream source. The next safe Ralph row is the thin CLI wrapper."
 roadmap_ref: docs/plans/m23-advanced-codebase-adapter-integration-plan.md
-next_artifact_ref: src/hisys/operations/oss_comparison_adapter.py
-planning_baseline_head: "9c095dd docs: open m23 advanced adapter queue"
-current_head_at_plan_creation: "9c095dd docs: open m23 advanced adapter queue"
-previous_bootstrap_version: v0.0.21
+next_artifact_ref: docs/plans/m23-cli-oss-comparison-adapter-implementation-tasks.md
+planning_baseline_head: "70ae484 docs: prepare m23 oss comparison adapter"
+current_head_at_plan_creation: "70ae484 docs: prepare m23 oss comparison adapter"
+previous_bootstrap_version: v0.0.22
 tmux_or_background_agent_spawned: false
-production_code_created: false
-tests_created: false
+production_code_created: true
+tests_created: true
