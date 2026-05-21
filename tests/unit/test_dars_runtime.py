@@ -353,7 +353,115 @@ def _read_local_llm_boundary(tmp_path: Path, source_execution_id: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _write_backend_activation_packet(
+    tmp_path: Path,
+    *,
+    approval_ref: str = "APPROVAL-DARS-LOCAL-LLM-001",
+    backend_id: str = "local_llm_dars",
+    backend_kind: str = "openai_compatible",
+    endpoint_scope: str = "localhost_only",
+) -> Path:
+    path = tmp_path / "backend-activation-packet.json"
+    path.write_text(
+        json.dumps(
+            {
+                "activation_id": "DARS-BE-ACT-20260521-LOCAL-001",
+                "backend_id": backend_id,
+                "backend_kind": backend_kind,
+                "endpoint_scope": endpoint_scope,
+                "allowed_actions": "advisory_only",
+                "human_approved": True,
+                "approval_ref": approval_ref,
+                "expires_at": "2026-05-22T00:00:00Z",
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_dars_runtime_requires_backend_activation_packet_before_local_model_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    contacted_adapter = False
+
+    def fail_if_called(*args, **kwargs):
+        nonlocal contacted_adapter
+        contacted_adapter = True
+        raise AssertionError("openai_compatible backend must not be contacted without backend activation")
+
+    with FakeOpenAIServer() as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        monkeypatch.setattr(DarsRuntime, "_run_openai_compatible_backend", fail_if_called)
+
+        with pytest.raises(ValueError) as exc_info:
+            DarsRuntime(instance=instance).run_configured_critique(
+                yyyymmdd="20260516",
+                source_execution_id=source_execution_id,
+                producer_id="dars-local-llm-missing-backend-activation",
+                approval_ref="APPROVAL-DARS-LOCAL-LLM-001",
+            )
+
+    assert "backend_activation_packet_required" in str(exc_info.value)
+    assert contacted_adapter is False
+    assert server.contacted is False
+
+
+def test_dars_runtime_rejects_backend_activation_approval_ref_mismatch(
+    tmp_path: Path,
+):
+    activation_packet = _write_backend_activation_packet(
+        tmp_path,
+        approval_ref="APPROVAL-DARS-BE-DIFFERENT",
+    )
+
+    with FakeOpenAIServer() as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        with pytest.raises(ValueError) as exc_info:
+            DarsRuntime(instance=instance).run_configured_critique(
+                yyyymmdd="20260516",
+                source_execution_id=source_execution_id,
+                producer_id="dars-local-llm-activation-mismatch",
+                approval_ref="APPROVAL-DARS-LOCAL-LLM-001",
+                backend_activation_packet_ref=str(activation_packet),
+            )
+
+    assert "activation_approval_ref_mismatch" in str(exc_info.value)
+    assert server.contacted is False
+
+
+def test_dars_runtime_records_authorized_backend_activation_boundary(
+    tmp_path: Path,
+):
+    activation_packet = _write_backend_activation_packet(
+        tmp_path,
+        approval_ref="APPROVAL-DARS-LOCAL-LLM-001",
+    )
+
+    with FakeOpenAIServer() as server:
+        instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
+        DarsRuntime(instance=instance).run_configured_critique(
+            yyyymmdd="20260516",
+            source_execution_id=source_execution_id,
+            producer_id="dars-local-llm-authorized-backend-activation",
+            approval_ref="APPROVAL-DARS-LOCAL-LLM-001",
+            backend_activation_packet_ref=str(activation_packet),
+        )
+
+    boundary = _read_local_llm_boundary(tmp_path, source_execution_id)
+    assert server.contacted is True
+    assert boundary["approval_ref"] == "APPROVAL-DARS-LOCAL-LLM-001"
+    assert boundary["backend_activation_packet_ref"] == str(activation_packet)
+    assert boundary["model_boundary_crossed"] is True
+    assert boundary["local_model_call_made"] is True
+    assert boundary["external_call_made"] is False
+
+
 def test_dars_runtime_calls_local_openai_compatible_backend(tmp_path: Path):
+    activation_packet = _write_backend_activation_packet(tmp_path)
     with FakeOpenAIServer() as server:
         instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
         report = DarsRuntime(instance=instance).run_configured_critique(
@@ -361,6 +469,7 @@ def test_dars_runtime_calls_local_openai_compatible_backend(tmp_path: Path):
             source_execution_id=source_execution_id,
             producer_id="dars-local-llm-test",
             approval_ref="APPROVAL-DARS-LOCAL-LLM-001",
+            backend_activation_packet_ref=str(activation_packet),
         )
 
     assert server.contacted is True
@@ -392,6 +501,10 @@ def test_dars_runtime_calls_local_openai_compatible_backend(tmp_path: Path):
 
 
 def test_dars_runtime_records_local_model_boundary_not_external_call(tmp_path: Path):
+    activation_packet = _write_backend_activation_packet(
+        tmp_path,
+        approval_ref="APPROVAL-DARS-LOCAL-LLM-002",
+    )
     with FakeOpenAIServer() as server:
         instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
         DarsRuntime(instance=instance).run_configured_critique(
@@ -399,6 +512,7 @@ def test_dars_runtime_records_local_model_boundary_not_external_call(tmp_path: P
             source_execution_id=source_execution_id,
             producer_id="dars-local-llm-boundary",
             approval_ref="APPROVAL-DARS-LOCAL-LLM-002",
+            backend_activation_packet_ref=str(activation_packet),
         )
 
     boundary = _read_local_llm_boundary(tmp_path, source_execution_id)
@@ -447,6 +561,10 @@ def test_dars_runtime_rejects_remote_endpoint_before_http_request(tmp_path: Path
 
 
 def test_dars_runtime_fails_closed_on_non_2xx_local_llm_response(tmp_path: Path):
+    activation_packet = _write_backend_activation_packet(
+        tmp_path,
+        approval_ref="APPROVAL-DARS-LOCAL-LLM-503",
+    )
     with FakeOpenAIServer(mode="non_2xx", non_2xx_status=503) as server:
         instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
         with pytest.raises(ValueError) as exc_info:
@@ -455,6 +573,7 @@ def test_dars_runtime_fails_closed_on_non_2xx_local_llm_response(tmp_path: Path)
                 source_execution_id=source_execution_id,
                 producer_id="dars-local-llm-non2xx",
                 approval_ref="APPROVAL-DARS-LOCAL-LLM-503",
+                backend_activation_packet_ref=str(activation_packet),
             )
 
     assert server.contacted is True
@@ -463,6 +582,10 @@ def test_dars_runtime_fails_closed_on_non_2xx_local_llm_response(tmp_path: Path)
 
 
 def test_dars_runtime_fails_closed_on_malformed_local_llm_response(tmp_path: Path):
+    activation_packet = _write_backend_activation_packet(
+        tmp_path,
+        approval_ref="APPROVAL-DARS-LOCAL-LLM-MALFORMED",
+    )
     with FakeOpenAIServer(mode="malformed_json") as server:
         instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
         with pytest.raises(ValueError) as exc_info:
@@ -471,6 +594,7 @@ def test_dars_runtime_fails_closed_on_malformed_local_llm_response(tmp_path: Pat
                 source_execution_id=source_execution_id,
                 producer_id="dars-local-llm-malformed",
                 approval_ref="APPROVAL-DARS-LOCAL-LLM-MALFORMED",
+                backend_activation_packet_ref=str(activation_packet),
             )
 
     assert server.contacted is True
@@ -478,6 +602,10 @@ def test_dars_runtime_fails_closed_on_malformed_local_llm_response(tmp_path: Pat
 
 
 def test_dars_runtime_fails_closed_on_missing_message_content(tmp_path: Path):
+    activation_packet = _write_backend_activation_packet(
+        tmp_path,
+        approval_ref="APPROVAL-DARS-LOCAL-LLM-MISSING",
+    )
     with FakeOpenAIServer(mode="missing_content") as server:
         instance, source_execution_id = _seed_local_llm_instance(tmp_path, endpoint=server.endpoint)
         with pytest.raises(ValueError) as exc_info:
@@ -486,6 +614,7 @@ def test_dars_runtime_fails_closed_on_missing_message_content(tmp_path: Path):
                 source_execution_id=source_execution_id,
                 producer_id="dars-local-llm-missing-content",
                 approval_ref="APPROVAL-DARS-LOCAL-LLM-MISSING",
+                backend_activation_packet_ref=str(activation_packet),
             )
 
     assert server.contacted is True
@@ -493,6 +622,10 @@ def test_dars_runtime_fails_closed_on_missing_message_content(tmp_path: Path):
 
 
 def test_dars_runtime_fails_closed_on_local_llm_timeout(tmp_path: Path):
+    activation_packet = _write_backend_activation_packet(
+        tmp_path,
+        approval_ref="APPROVAL-DARS-LOCAL-LLM-TIMEOUT",
+    )
     with FakeOpenAIServer(mode="timeout", timeout_delay_seconds=2.0) as server:
         instance, source_execution_id = _seed_local_llm_instance(
             tmp_path,
@@ -505,6 +638,7 @@ def test_dars_runtime_fails_closed_on_local_llm_timeout(tmp_path: Path):
                 source_execution_id=source_execution_id,
                 producer_id="dars-local-llm-timeout",
                 approval_ref="APPROVAL-DARS-LOCAL-LLM-TIMEOUT",
+                backend_activation_packet_ref=str(activation_packet),
             )
 
     assert server.contacted is True

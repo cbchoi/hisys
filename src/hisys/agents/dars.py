@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field, model_validator
 from ..config.instance import InstanceRoot
 from ..provenance.source_weighting import is_byesys_source, source_evidence_weight
 from ..schemas import AgentHandoffPackage
+from .dars_backend_activation import validate_dars_backend_activation_packet
 from .dars_config import (
     DarsBackendConfig,
     _classify_local_endpoint,
@@ -194,6 +195,7 @@ class DarsRuntime:
         source_execution_id: str,
         producer_id: str,
         approval_ref: str | None = None,
+        backend_activation_packet_ref: str | None = None,
     ) -> DarsCritiqueReport:
         config = load_dars_config(self.instance)
         backend_id = config.spec.default_backend
@@ -231,6 +233,15 @@ class DarsRuntime:
                 external_call_made=backend.external_call_allowed,
             )
         if backend.kind == "openai_compatible":
+            # M-DARS-BE-2: validate the backend activation packet immediately
+            # before any model/backend-boundary adapter call so missing or
+            # mismatched packets fail closed without contacting the endpoint.
+            _enforce_backend_activation_for_openai_compatible(
+                backend_id=backend_id,
+                backend=backend,
+                approval_ref=approval_ref,
+                backend_activation_packet_ref=backend_activation_packet_ref,
+            )
             critique_text = self._run_openai_compatible_backend(
                 yyyymmdd=yyyymmdd,
                 source_execution_id=source_execution_id,
@@ -270,6 +281,7 @@ class DarsRuntime:
                     "model_boundary_crossed": True,
                     "local_model_call_made": True,
                     "external_call_made": False,
+                    "backend_activation_packet_ref": backend_activation_packet_ref,
                 },
             )
             return report
@@ -516,6 +528,55 @@ def _build_openai_chat_payload(
     }
 
 
+def _enforce_backend_activation_for_openai_compatible(
+    *,
+    backend_id: str,
+    backend: DarsBackendConfig,
+    approval_ref: str | None,
+    backend_activation_packet_ref: str | None,
+) -> None:
+    """Validate the M-DARS-BE-1 activation packet before the model boundary call.
+
+    Raises ``ValueError`` with deterministic runtime reason codes if the packet
+    is missing or mismatched. The runtime is the chokepoint so direct Python
+    callers cannot bypass the gate.
+    """
+
+    if not backend_activation_packet_ref:
+        raise ValueError("backend_activation_packet_required")
+    try:
+        packet_text = Path(backend_activation_packet_ref).read_text(encoding="utf-8")
+    except OSError:
+        raise ValueError("backend_activation_packet_required") from None
+    try:
+        packet_data = json.loads(packet_text)
+    except json.JSONDecodeError:
+        raise ValueError("backend_activation_packet_required") from None
+    if not isinstance(packet_data, dict):
+        raise ValueError("backend_activation_packet_required")
+    report = validate_dars_backend_activation_packet(
+        packet_data,
+        config_ref=backend_activation_packet_ref,
+    )
+    if not report.valid:
+        codes = [issue.code for issue in report.issues if issue.severity == "error"]
+        raise ValueError(codes[0] if codes else "backend_activation_packet_required")
+    packet_approval_ref = packet_data.get("approval_ref")
+    if (
+        approval_ref is not None
+        and isinstance(packet_approval_ref, str)
+        and packet_approval_ref
+        and packet_approval_ref != approval_ref
+    ):
+        raise ValueError("activation_approval_ref_mismatch")
+    if packet_data.get("backend_id") != backend_id:
+        raise ValueError("activation_backend_id_mismatch")
+    if packet_data.get("backend_kind") != backend.kind:
+        raise ValueError("activation_backend_kind_mismatch")
+    if packet_data.get("endpoint_scope") != "localhost_only":
+        raise ValueError("activation_endpoint_scope_mismatch")
+
+
 def _write_local_llm_boundary(
     instance: InstanceRoot,
     *,
@@ -533,6 +594,9 @@ def _write_local_llm_boundary(
         "request_id": request_id,
         "backend_id": backend_id,
         "approval_ref": approval_ref,
+        "backend_activation_packet_ref": metadata.get(
+            "backend_activation_packet_ref"
+        ),
         "endpoint_scope": metadata.get("endpoint_scope", "localhost_only"),
         "model_boundary_crossed": bool(metadata.get("model_boundary_crossed", True)),
         "local_model_call_made": bool(metadata.get("local_model_call_made", True)),

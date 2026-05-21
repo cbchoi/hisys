@@ -3365,6 +3365,14 @@ def _build_parser() -> argparse.ArgumentParser:
     dars.add_argument("--producer-id", default="dars-fixture-cli", help="DARS fixture producer id")
     dars.add_argument("--backend", choices=["loopback", "configured"], default="loopback", help="DARS backend selection mode")
     dars.add_argument("--approval-ref", help="explicit approval ref required for external DARS backends")
+    dars.add_argument(
+        "--backend-activation-packet",
+        help=(
+            "JSON path to a DARS backend activation packet; required for"
+            " openai_compatible backends. The runtime is the enforcement"
+            " boundary and the CLI only passes the ref through."
+        ),
+    )
     browser_dars = sub.add_parser(
         "request-browser-dars-review",
         help="run advisory DARS/Devil review over a Chief Editor browser-investigation review artifact",
@@ -4357,6 +4365,7 @@ def main(argv: list[str] | None = None) -> int:
             producer_id=args.producer_id,
             backend=args.backend,
             approval_ref=args.approval_ref,
+            backend_activation_packet_ref=args.backend_activation_packet,
         )
     if args.command == "request-browser-dars-review":
         return _cmd_request_browser_dars_review(
@@ -10173,6 +10182,7 @@ def _cmd_request_dars_critique(
     producer_id: str,
     backend: str,
     approval_ref: str | None,
+    backend_activation_packet_ref: str | None = None,
 ) -> int:
     instance = InstanceRoot(instance_root)
     runtime = DarsRuntime(instance=instance)
@@ -10199,6 +10209,7 @@ def _cmd_request_dars_critique(
             source_execution_id=source_execution_id,
             producer_id=producer_id,
             approval_ref=approval_ref,
+            backend_activation_packet_ref=backend_activation_packet_ref,
         )
         config_path = instance.config_dir / "dars.json"
         config_data = json.loads(config_path.read_text(encoding="utf-8"))
