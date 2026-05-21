@@ -72,15 +72,13 @@ def _task_status(tasks_doc: dict[str, Any], task_id: str) -> str:
 
 
 def _latest_ralph_checkpoint_head(ralph_text: str) -> str:
-    marker = "### 2026-05-20 — Current code/document weakness analysis improvement plan"
-    section_start = ralph_text.rfind(marker)
-    if section_start == -1:
-        return "missing"
-    section = ralph_text[section_start:]
-    for line in section.splitlines():
+    """Return the most recent Ralph resume-checkpoint HEAD label."""
+
+    latest = "missing"
+    for line in ralph_text.splitlines():
         if line.startswith("- Current HEAD:"):
-            return line.split(":", 1)[1].strip()
-    return "missing"
+            latest = line.split(":", 1)[1].strip()
+    return latest
 
 
 def _is_ancestor(repo_root: Path, candidate: str) -> bool:

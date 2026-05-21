@@ -12,7 +12,7 @@
 | Default working directory | `/home/cbchoi/workspaces/sysailab/develop/repos/hisys` |
 | Target branch | `feat/domain-adaptive-requirements-analysis` |
 | Original baseline commit | `04d6b01 test: propagate src path to subprocess CLI tests` |
-| Current update baseline | `a38e04e` |
+| Current update baseline | `f5b63fb` |
 | Execution mode | `on-demand Discord Ralph loop unless explicitly scheduled` |
 | Default runtime limit | `5 hours` |
 | User-specified runtime limit | `<none unless stated in the invoking message>` |
@@ -5586,9 +5586,25 @@ Resume checkpoint:
 - Next command to run: validate `ralph.md`, commit this docs/control optimization, push to existing `origin/dars`, then start `/rloo` so `DARS-PANEL-RLOOP-OPT-1` executes.
 - Stop condition: none if the optimization commit validates; continue to DARS-PANEL-RLOOP-OPT-1 under the local-safe boundary.
 
+### 2026-05-21 — M22 local-safe codebase evidence portfolio authorization
+
+- Phase completed: docs/control planning checkpoint that opens M22 after the M21 queue-end stop.
+- Request context: user said `m22 수행`, authorizing a new M22 local-safe milestone rather than opening the human-gated M21 OSS/LSP backlog or the separately governed live-provider DARS line.
+- Scope: created `docs/plans/m22-codebase-evidence-portfolio-implementation-plan.md`; rewrote Section 16 so the next Ralph row is `M22-PORTFOLIO-PREP`; updated governance bootstrap profile to v0.0.15 for the new next-safe-task pointer.
+- Boundary: docs/control planning only for this increment. No production code, tests, live model call, real remote provider call, network clone/fetch/search, credential lookup, local LSP subprocess, subagent execution, publication/deployment, schema/data migration against non-fixture data, force push, new remote configuration, destructive operation, or raw source-content archival is introduced.
+- Quality gate expectation: M22 plan marker check, governance current-state test, traceability validation, secret scan, and diff-check must pass before committing this authorization checkpoint.
+
+Resume checkpoint:
+- Current HEAD: f5b63fb docs: queue-refill-prep verifies m21-6 roll-forward and stops on human-gated backlog
+- Working tree: M22 plan, governance profile/test, and Ralph queue edits pending validation/commit
+- Last completed milestone/task: QUEUE-REFILL-PREP-STOP after DARS local completion and M21 roll-forward verification
+- Current in-progress task: M22 local-safe planning/queue authorization checkpoint
+- Next command to run: validate docs/control gates, commit this checkpoint, push to existing `origin/dars`, then start `/rloo` for `M22-PORTFOLIO-PREP`.
+- Stop condition: none if the checkpoint validates; continue to M22-PORTFOLIO-PREP under the local-safe boundary.
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. DARS-PANEL-RLOOP-OPT-1 ran the fixture-local audit and confirmed no remaining safe local DARS panel completion candidate. The DARS panel productization line is **closed for `local_fixture_localhost_controlled_advisory_complete`**; live external provider execution remains unimplemented and unproven and requires a separately approved governed plan. The next safe Ralph queue row is `MB-CODEBASE-M21-6-PREP` under the original codebase-analysis line.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. DARS-PANEL-RLOOP-OPT-1 ran the fixture-local audit and confirmed no remaining safe local DARS panel completion candidate. The DARS panel productization line is **closed for `local_fixture_localhost_controlled_advisory_complete`**; live external provider execution remains unimplemented and unproven and requires a separately approved governed plan. The user explicitly authorized M22 execution after the M21 queue-end stop. The next safe Ralph queue row is `M22-PORTFOLIO-PREP`, a local-safe docs/control checkpoint that turns completed M21/DARS evidence into a bounded codebase evidence portfolio plan before any product code.
 
 DARS panel productization closure status:
 
@@ -5600,13 +5616,15 @@ Done: DARS-CLOSE-3 — DARS panel completion/readiness status surface (249797c)
 Done: DARS-CLOSE-4 — Closure gate and provisional queue return to M21.6 (a38e04e)
 Done: DARS-PANEL-RLOOP-OPT-1 — Continuous-completion stop-preflight and final local evidence audit (fad02ef; see docs/reports/dars-panel-local-completion-audit.md)
 Done: MB-CODEBASE-M21-6-PREP — verified M21.6 acceptance via existing tests (no roll-forward plan author needed) and rolled the queue forward; see QUEUE-REFILL-PREP-2026-05-21B Reflection Log entry.
-Next: QUEUE-REFILL-PREP-STOP — every remaining M21 backlog candidate is human-gated; ask the user for explicit authorization before the next Ralph row.
+Done: QUEUE-REFILL-PREP-STOP — every remaining M21 backlog candidate is human-gated; user chose a new M22 local-safe milestone instead of opening the human-gated M21 backlog.
+Next: M22-PORTFOLIO-PREP — define the local codebase evidence portfolio implementation task packet.
+Pending after PREP: M22-PORTFOLIO-RED-GREEN, M22-PORTFOLIO-CLI, M22-PORTFOLIO-GOLDEN, M22-PORTFOLIO-GATE.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-QUEUE-REFILL-PREP-STOP — no safe local Ralph row remains under the current authorizations. Stop and ask the user which (if any) human-gated M21 candidate to open, or whether to schedule a separate live-provider DARS line. Do not synthesize a new safe row without explicit user input.
+M22-PORTFOLIO-PREP — create `docs/plans/m22-codebase-evidence-portfolio-implementation-tasks.md` from `docs/plans/m22-codebase-evidence-portfolio-implementation-plan.md`, define the first RED test for a pure local portfolio builder, preserve the no-live/no-credential/no-raw-source boundary, validate docs/control gates, commit, push to existing `origin/dars`, and continue to the RED/GREEN implementation row if validation remains green.
 ```
 
 Verification of M21.6 acceptance (MB-CODEBASE-M21-6-PREP, treated as a roll-forward row per the original note):

@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.14
-focus: Current-session bootstrap refresh for codebase-analysis M21.6 Prepare
+version: v0.0.15
+focus: M22 codebase evidence portfolio local-safe planning
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: MB-CODEBASE-M21-6-PREP
+next_safe_task: M22-PORTFOLIO-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: ""
-bootstrap_inference: "Arguments omitted; Discord develop/Hisys thread and live git state identify /home/cbchoi/workspaces/develop/repos/hisys as develop target."
-roadmap_ref: docs/plans/m21-roadmap-implementation-plan.md
-next_artifact_ref: docs/plans/m21-6-change-impact-analyzer-implementation-tasks.md
-planning_baseline_head: "641e9a8 feat: add codebase regression benchmarks"
-current_head_at_plan_creation: "641e9a8 feat: add codebase regression benchmarks"
-previous_bootstrap_version: v0.0.13
+bootstrap_arguments: "m22 수행"
+bootstrap_inference: "User authorized a new M22 local-safe milestone after the M21 queue-end stop; do not open human-gated OSS/LSP/live-provider lines without separate approval."
+roadmap_ref: docs/plans/m22-codebase-evidence-portfolio-implementation-plan.md
+next_artifact_ref: docs/plans/m22-codebase-evidence-portfolio-implementation-tasks.md
+planning_baseline_head: "f5b63fb docs: queue-refill-prep verifies m21-6 roll-forward and stops on human-gated backlog"
+current_head_at_plan_creation: "f5b63fb docs: queue-refill-prep verifies m21-6 roll-forward and stops on human-gated backlog"
+previous_bootstrap_version: v0.0.14
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false
