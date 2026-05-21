@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.30
-focus: M23-LSP-ADAPTER-GOLDEN pinned a deterministic byte-equality round-trip against checked-in expected JSON/Markdown fixtures; next safe row closes the LSP adapter milestone
+version: v0.0.31
+focus: M23-LSP-ADAPTER-GATE closed the M23 local LSP adapter line at local_fixture_advisory_complete; next safe row continues to the advanced adapter closure gate
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M23-LSP-ADAPTER-GATE
+next_safe_task: M23-ADVANCED-ADAPTER-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "M23-LSP-ADAPTER-GOLDEN"
-bootstrap_inference: "Authored docs/plans/m23-golden-lsp-adapter-implementation-tasks.md, committed tests/fixtures/lsp-adapter/m23_lsp_bundle.json (canonical caller-authored input bundle pinning date, current_head_short, command_id, argv, timeout_seconds, expected_exit_codes, output_format, target_refs, command_allowlist, human_approval_ref, and canned_stdout_ref), generated tests/fixtures/lsp-adapter/expected/lsp-report.{json,md} deterministically through the same writer chokepoint the test exercises, and added a focused test_lsp_adapter_golden_round_trip in tests/unit/test_lsp_adapter.py that monkey-patches subprocess.run to return the canned ruff JSON, runs the pure runner + writer, and asserts byte-equality against the checked-in expected files. 14 focused LSP adapter tests pass. No real LSP server is invoked. The next safe row authors docs/plans/m23-lsp-adapter-gate-implementation-tasks.md (or runs the closure gate directly as a docs/control increment)."
+bootstrap_arguments: "M23-LSP-ADAPTER-GATE"
+bootstrap_inference: "Closed M23-LSP-ADAPTER line at local_fixture_advisory_complete: PREP (090de67), pure governed runner + 13 focused safety tests (1874ad5), thin CLI + 4 focused CLI tests (e54bbf3), deterministic golden byte-equality round-trip (ca0420f). Full repo PYTHONPATH=src:. pytest -q -> 1017 passed; combined M21+M22+M23+LSP+CLI+golden+governance focused gate -> 119 passed; DARS critic-panel + remote subscription + readiness focused -> 75 passed; governance current-state -> 1 passed; traceability OK; secret scan hit_count=0; git diff --check clean. QUEUE-REFILL-PREP classification: the LSP adapter line is end-to-end complete with the pure runner, CLI wrapper, and deterministic golden fixture all pinned by focused tests. M23-ADAPTER-PORTFOLIO-INTEGRATION is an optional additive evidence-line row for M22 portfolio (not strictly required for M23 closure). The next safe Ralph row is M23-ADVANCED-ADAPTER-GATE — a docs/control closure that records the entire M23 advanced codebase adapter line (OSS adapter + LSP adapter) as closed at local_fixture_advisory_complete and runs the final QUEUE-REFILL-PREP across post-M23 backlog candidates."
 roadmap_ref: docs/plans/m23-advanced-codebase-adapter-integration-plan.md
-next_artifact_ref: docs/plans/m23-lsp-adapter-gate-implementation-tasks.md
-planning_baseline_head: "e54bbf3 feat: add lsp adapter cli wrapper"
-current_head_at_plan_creation: "e54bbf3 feat: add lsp adapter cli wrapper"
-previous_bootstrap_version: v0.0.29
+next_artifact_ref: docs/plans/m23-advanced-adapter-gate-implementation-tasks.md
+planning_baseline_head: "ca0420f test: pin lsp adapter golden fixture"
+current_head_at_plan_creation: "ca0420f test: pin lsp adapter golden fixture"
+previous_bootstrap_version: v0.0.30
 tmux_or_background_agent_spawned: false
 production_code_created: false
-tests_created: true
+tests_created: false
