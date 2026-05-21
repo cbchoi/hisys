@@ -169,6 +169,12 @@ from ..operations.oss_comparison_adapter import (
     build_oss_comparison_report,
     write_oss_comparison_report,
 )
+from ..operations.lsp_adapter import (
+    LspAdapterCommand,
+    LspAdapterRequest,
+    run_lsp_adapter,
+    write_lsp_adapter_report,
+)
 from ..operations.code_analysis_pass_contract import (
     _SUPPORTED_QUESTION_TYPES as CODE_ANALYSIS_SUPPORTED_QUESTION_TYPES,
     build_code_analysis_evidence_summary,
@@ -1749,6 +1755,96 @@ def _cmd_oss_comparison_adapter(
     return 0
 
 
+def _load_lsp_adapter_bundle(
+    path: Path,
+) -> tuple[LspAdapterCommand, Path, tuple[str, ...], tuple[str, ...], str]:
+    """Load a caller-supplied LSP adapter bundle JSON."""
+
+    payload = _load_json_report(path)
+    if payload is None:
+        raise ValueError(f"lsp adapter bundle is required at {path}")
+    command_raw = payload.get("command")
+    if not isinstance(command_raw, dict):
+        raise ValueError("lsp adapter bundle must contain a 'command' object")
+    workspace_raw = payload.get("workspace_root")
+    if not isinstance(workspace_raw, str) or not workspace_raw:
+        raise ValueError(
+            "lsp adapter bundle must contain a non-empty 'workspace_root' string"
+        )
+    target_refs_raw = payload.get("target_refs", [])
+    if not isinstance(target_refs_raw, list) or not all(
+        isinstance(ref, str) for ref in target_refs_raw
+    ):
+        raise ValueError("lsp adapter bundle 'target_refs' must be a list of strings")
+    allowlist_raw = payload.get("command_allowlist", [])
+    if not isinstance(allowlist_raw, list) or not all(
+        isinstance(value, str) for value in allowlist_raw
+    ):
+        raise ValueError(
+            "lsp adapter bundle 'command_allowlist' must be a list of strings"
+        )
+    approval_raw = payload.get("human_approval_ref", "")
+    if not isinstance(approval_raw, str):
+        raise ValueError("lsp adapter bundle 'human_approval_ref' must be a string")
+    return (
+        LspAdapterCommand(**command_raw),
+        Path(workspace_raw),
+        tuple(target_refs_raw),
+        tuple(allowlist_raw),
+        approval_raw,
+    )
+
+
+def _cmd_lsp_adapter(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    bundle_path: Path,
+    current_head_short: str | None,
+) -> int:
+    """Run the governed local LSP adapter via the CLI."""
+
+    command, workspace_root, target_refs, allowlist, approval_ref = (
+        _load_lsp_adapter_bundle(bundle_path)
+    )
+    request = LspAdapterRequest(
+        instance_root=instance_root,
+        date=yyyymmdd,
+        workspace_root=workspace_root,
+        command=command,
+        target_refs=target_refs,
+        command_allowlist=allowlist,
+        human_approval_ref=approval_ref,
+        current_head_short=current_head_short,
+    )
+    report = run_lsp_adapter(request=request)
+    written = write_lsp_adapter_report(
+        instance_root=instance_root, date=yyyymmdd, report=report
+    )
+    print(f"lsp-adapter report: json={written['json_ref']}")
+    print(f"markdown: {written['markdown_ref']}")
+    print(f"command_id: {report.command_id}")
+    print(f"output_format: {report.output_format}")
+    print(f"diagnostic_count: {report.diagnostic_count}")
+    print(f"error_count: {report.error_count}")
+    print(f"warning_count: {report.warning_count}")
+    print(f"info_count: {report.info_count}")
+    print(f"subprocess_exit_code: {report.subprocess_exit_code}")
+    print(f"subprocess_timed_out: {report.subprocess_timed_out}")
+    print(f"subprocess_killed: {report.subprocess_killed}")
+    print(f"output_truncated: {report.output_truncated}")
+    print(f"output_bytes: {report.output_bytes}")
+    print(f"unsafe_ref_count: {len(report.unsafe_refs)}")
+    print("advisory_only: true")
+    print("requires_human_review: true")
+    print("external_call_made: false")
+    print("mutation_performed: false")
+    print("raw_source_content_persisted: false")
+    print("live_external_action_authorized: false")
+    print("allowed_actions: advisory_only")
+    return 0
+
+
 def _cmd_evaluate_code_analysis_contract(
     *,
     instance_root: Path,
@@ -2680,6 +2776,27 @@ def _build_parser() -> argparse.ArgumentParser:
         help="explicit caller-supplied JSON bundle path with 'local_line' and 'approved_sources'",
     )
     oss_comparison_adapter.add_argument(
+        "--current-head-short",
+        default=None,
+        help="optional caller-supplied git HEAD short hash recorded verbatim",
+    )
+
+    lsp_adapter = sub.add_parser(
+        "lsp-adapter",
+        help="run the governed local LSP adapter and write advisory diagnostic report artifacts",
+    )
+    lsp_adapter.add_argument(
+        "--instance", required=True, help="Hisys instance root"
+    )
+    lsp_adapter.add_argument(
+        "--date", required=True, help="YYYYMMDD report partition"
+    )
+    lsp_adapter.add_argument(
+        "--bundle",
+        required=True,
+        help="explicit caller-supplied JSON bundle path with 'workspace_root', 'command', 'target_refs', 'command_allowlist', and 'human_approval_ref'",
+    )
+    lsp_adapter.add_argument(
         "--current-head-short",
         default=None,
         help="optional caller-supplied git HEAD short hash recorded verbatim",
@@ -4103,6 +4220,13 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.command == "oss-comparison-adapter":
         return _cmd_oss_comparison_adapter(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            bundle_path=Path(args.bundle),
+            current_head_short=args.current_head_short,
+        )
+    if args.command == "lsp-adapter":
+        return _cmd_lsp_adapter(
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             bundle_path=Path(args.bundle),

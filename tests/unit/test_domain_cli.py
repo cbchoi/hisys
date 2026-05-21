@@ -7,7 +7,9 @@ HISYS-CON-010..012.
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -2022,3 +2024,251 @@ def test_oss_comparison_adapter_cli_records_unsafe_inputs(
     assert "approved-fixture" in data["compared_source_ids"]
     assert "extra_topic" in data["oss_only_category_refs"]
     assert "foo" not in data["oss_only_category_refs"]
+
+
+_LSP_CANNED_RUFF_PAYLOAD = json.dumps(
+    [
+        {
+            "code": "F401",
+            "message": "`os` imported but unused",
+            "filename": "src/a.py",
+            "location": {"row": 1, "column": 1},
+            "end_location": {"row": 1, "column": 10},
+        },
+        {
+            "code": "E501",
+            "message": "Line too long (95 > 88)",
+            "filename": "src/a.py",
+            "location": {"row": 5, "column": 1},
+            "end_location": {"row": 5, "column": 96},
+        },
+        {
+            "code": "W292",
+            "message": "No newline at end of file",
+            "filename": "src/b.py",
+            "location": {"row": 12, "column": 1},
+            "end_location": {"row": 12, "column": 1},
+        },
+    ]
+)
+
+
+def _lsp_adapter_bundle_payload(workspace_root: Path) -> dict[str, object]:
+    return {
+        "workspace_root": str(workspace_root),
+        "command": {
+            "command_id": "ruff-check",
+            "argv": ["ruff", "check", "--output-format=json", "src/"],
+            "timeout_seconds": 30,
+            "expected_exit_codes": [0, 1],
+            "output_format": "ruff_json",
+        },
+        "target_refs": ["src/a.py", "src/b.py"],
+        "command_allowlist": ["ruff"],
+        "human_approval_ref": "docs/approvals/lsp-adapter-test.md",
+    }
+
+
+def test_lsp_adapter_cli_writes_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    workspace_root = instance_root / "workspace"
+    workspace_root.mkdir()
+    (workspace_root / "src").mkdir()
+    (workspace_root / "src" / "a.py").write_text("", encoding="utf-8")
+    (workspace_root / "src" / "b.py").write_text("", encoding="utf-8")
+    bundle_path = tmp_path / "lsp-bundle.json"
+    bundle_path.write_text(
+        json.dumps(_lsp_adapter_bundle_payload(workspace_root)),
+        encoding="utf-8",
+    )
+
+    fake_run = MagicMock()
+    fake_run.return_value = subprocess.CompletedProcess(
+        args=["ruff", "check", "--output-format=json", "src/"],
+        returncode=1,
+        stdout=_LSP_CANNED_RUFF_PAYLOAD,
+        stderr="",
+    )
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = main(
+        [
+            "lsp-adapter",
+            "--instance",
+            str(instance_root),
+            "--date",
+            "20260522",
+            "--bundle",
+            str(bundle_path),
+            "--current-head-short",
+            "1874ad5",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "lsp-adapter report" in captured.out
+    assert "command_id: ruff-check" in captured.out
+    assert "output_format: ruff_json" in captured.out
+    assert "subprocess_exit_code: 1" in captured.out
+    assert "subprocess_timed_out: False" in captured.out
+    assert "output_truncated: False" in captured.out
+    assert "advisory_only: true" in captured.out
+    assert "requires_human_review: true" in captured.out
+    assert "external_call_made: false" in captured.out
+    assert "mutation_performed: false" in captured.out
+    assert "raw_source_content_persisted: false" in captured.out
+    assert "live_external_action_authorized: false" in captured.out
+    assert "allowed_actions: advisory_only" in captured.out
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "lsp-adapter"
+        / "20260522"
+        / "ruff-check"
+        / "lsp-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "lsp-adapter"
+        / "20260522"
+        / "ruff-check"
+        / "lsp-report.md"
+    )
+    assert json_path.exists()
+    assert md_path.exists()
+
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["schema_id"] == "hisys.lsp_adapter.v1"
+    assert data["current_head_short"] == "1874ad5"
+    assert data["command_id"] == "ruff-check"
+    assert data["output_format"] == "ruff_json"
+    assert data["advisory_only"] is True
+    assert data["raw_source_content_persisted"] is False
+    assert data["live_external_action_authorized"] is False
+    assert data["allowed_actions"] == "advisory_only"
+    md_body = md_path.read_text(encoding="utf-8")
+    for raw_message in (
+        "`os` imported but unused",
+        "Line too long (95 > 88)",
+        "No newline at end of file",
+    ):
+        assert raw_message not in md_body
+    fake_run.assert_called_once()
+    called_kwargs = fake_run.call_args[1]
+    assert called_kwargs["shell"] is False
+    assert set(called_kwargs["env"].keys()) == {"PATH"}
+
+
+def test_lsp_adapter_cli_rejects_missing_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    workspace_root = instance_root / "workspace"
+    workspace_root.mkdir()
+    bundle_path = tmp_path / "lsp-bundle.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "workspace_root": str(workspace_root),
+                "command_allowlist": ["ruff"],
+                "human_approval_ref": "docs/approvals/lsp-adapter-test.md",
+            }
+        ),
+        encoding="utf-8",
+    )
+    fake_run = MagicMock()
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    with pytest.raises(ValueError):
+        main(
+            [
+                "lsp-adapter",
+                "--instance",
+                str(instance_root),
+                "--date",
+                "20260522",
+                "--bundle",
+                str(bundle_path),
+            ]
+        )
+    fake_run.assert_not_called()
+
+
+def test_lsp_adapter_cli_rejects_bad_date(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    workspace_root = instance_root / "workspace"
+    workspace_root.mkdir()
+    bundle_path = tmp_path / "lsp-bundle.json"
+    bundle_path.write_text(
+        json.dumps(_lsp_adapter_bundle_payload(workspace_root)),
+        encoding="utf-8",
+    )
+    fake_run = MagicMock()
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    with pytest.raises(ValueError):
+        main(
+            [
+                "lsp-adapter",
+                "--instance",
+                str(instance_root),
+                "--date",
+                "2026-05-22",
+                "--bundle",
+                str(bundle_path),
+            ]
+        )
+    fake_run.assert_not_called()
+
+
+def test_lsp_adapter_cli_rejects_command_not_in_allowlist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    workspace_root = instance_root / "workspace"
+    workspace_root.mkdir()
+    bundle_path = tmp_path / "lsp-bundle.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "workspace_root": str(workspace_root),
+                "command": {
+                    "command_id": "rm-rf",
+                    "argv": ["rm", "-rf", "/"],
+                    "timeout_seconds": 30,
+                    "output_format": "ruff_json",
+                },
+                "target_refs": [],
+                "command_allowlist": ["ruff"],
+                "human_approval_ref": "docs/approvals/lsp-adapter-test.md",
+            }
+        ),
+        encoding="utf-8",
+    )
+    fake_run = MagicMock()
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    with pytest.raises(ValueError, match="lsp_command_not_in_allowlist"):
+        main(
+            [
+                "lsp-adapter",
+                "--instance",
+                str(instance_root),
+                "--date",
+                "20260522",
+                "--bundle",
+                str(bundle_path),
+            ]
+        )
+    fake_run.assert_not_called()
