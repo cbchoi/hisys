@@ -21,8 +21,8 @@ def test_governance_profile_and_ralph_checkpoint_match_current_head() -> None:
     assert report.schema_id == "hisys.governance.current_state.v1"
     assert report.repository == "/home/cbchoi/workspaces/develop/repos/hisys"
     assert report.branch == "dars"
-    assert report.profile_version == "v0.0.33"
-    assert report.next_safe_task == "M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP"
+    assert report.profile_version == "v0.0.34"
+    assert report.next_safe_task == "M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN"
     assert report.current_head_short == current_head_short
     assert report.current_head_subject == current_head_subject
     assert report.ralph_checkpoint_head == report.current_head_at_plan_creation

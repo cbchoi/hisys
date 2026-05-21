@@ -6082,6 +6082,30 @@ Resume checkpoint:
 - Next command to run: after this checkpoint commits and pushes, start `/rloo` so `M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP` authors the precise integration task packet.
 - Stop condition: none if the authorization checkpoint validates; continue to `M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP` under the bounded follow-up authorization.
 
+### 2026-05-22 — M23 adapter portfolio integration PREP
+
+- Phase completed: docs/control PREP packet for `M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP`.
+- Request context: continuing under the local `ralph.md` queue after `78e226c docs: authorize m23 adapter portfolio follow-up` and `e9fbc12 docs: add oss roadmap boundary`; the user explicitly requested the M23 follow-on and named the intended next rows (`M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP`, `M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN`, `M23-LIVE-LSP-SMOKE-GATE`, `QUEUE-REFILL-PREP`).
+- Controlled anchors checked: Section 16 current queue; latest Reflection Log authorization checkpoint; `docs/plans/m23-adapter-portfolio-integration-followup-plan.md`; `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.33.md`; `docs/reports/m23-live-lsp-server-smoke.md`; repo-scoped live LSP reports under `runtime-boundary/lsp-adapter/20260522/`; `src/hisys/operations/codebase_evidence_portfolio.py`; existing portfolio, OSS adapter, LSP adapter, CLI, and governance tests.
+- Baseline observed: branch `dars`, HEAD `e9fbc12 docs: add oss roadmap boundary`, upstream `origin/dars`, working tree dirty only with the untracked PREP plan from the prior failed Codex run before this checkpoint. The plan was preserved and verified instead of discarded.
+- Implementation: no production code, no test code, no fixture content. Added `docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md`, a controlled task packet that defines the exact `M23_OSS_ADAPTER` and `M23_LSP_ADAPTER` portfolio line refs, counts, schema ids, quality-gate refs, RED command, GREEN bundle/expected-file procedure, validation gates, and stop conditions. Prepended the PREP row to `docs/traceability/README.md`, bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.34` with `next_safe_task=M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN`, updated `tests/unit/test_governance_docs_current_state.py`, and rewrote Section 16 to make RED/GREEN the next queue row.
+- Boundary: docs/control only. No live model call, real remote provider call, credential lookup, secret capture, browser/search/tool execution, network fetch/clone, real OSS clone, license-text capture, license adjudication, new or changed remote configuration, force push, destructive Git/history action, publication/deployment/release, LSP subprocess execution, package install, subagent execution, raw source-content archival, raw diagnostic-message archival, mutation of non-fixture/live user data, or live-provider DARS completion claim is introduced by this PREP increment.
+- Quality gate result: pass — pre-edit and post-edit focused gate `PYTHONPATH=src pytest tests/unit/test_codebase_evidence_portfolio.py tests/unit/test_oss_comparison_adapter.py tests/unit/test_lsp_adapter.py tests/unit/test_domain_cli.py tests/unit/test_governance_docs_current_state.py -q` -> 59 passed; post-edit governance current-state `PYTHONPATH=src pytest tests/unit/test_governance_docs_current_state.py -q` -> 1 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `hit_count=0`; `git diff --check` -> clean.
+- Continue decision: continue after commit/push to `M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN`, because Section 16 and the PREP packet now authorize a fixture-local TDD row.
+- Stop condition: none if PREP gates, commit, and normal push to existing `origin/dars` succeed.
+- Commit pending: `docs: prepare m23 adapter portfolio integration`.
+
+Resume checkpoint:
+- Current HEAD: e9fbc12 docs: add oss roadmap boundary
+- Working tree: PREP plan + traceability + profile + governance-test + Ralph Section 16/Reflection edits pending validation/commit/push
+- Last completed milestone/task: M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP (this entry)
+- Current in-progress task: PREP docs/control validation and commit
+- RED observed: n/a (document-RED/PREP packet only)
+- GREEN observed: n/a (RED/GREEN row is next)
+- Quality gate status: pass — focused M22/M23/governance 59 passed; governance current-state 1 passed; traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: validate PREP docs/control updates, commit, push to existing `origin/dars`, then run the RED command `PYTHONPATH=src pytest tests/unit/test_codebase_evidence_portfolio.py::test_codebase_evidence_portfolio_accepts_m23_adapter_lines -q`.
+- Stop condition: stop if any validation fails, push fails, remote/branch is not `origin/dars`, or the RED/GREEN row requires behavior outside the PREP packet.
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone is closed at `local_fixture_advisory_complete` (`5a633dd`). The user has now authorized candidate 1, the adapter portfolio integration follow-up, and candidate 2, local LSP/lint executable installation and execution for ruff, pyright, and eslint.
@@ -6091,14 +6115,15 @@ Current queue status:
 ```text
 Done: M23-ADVANCED-ADAPTER-GATE — closed OSS + LSP adapter milestone at local_fixture_advisory_complete (5a633dd).
 Done: M23-LIVE-LSP-SMOKE-AUTH — installed/verified ruff, pyright, eslint and captured first smoke evidence through hisys lsp-adapter.
-Next: M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP — create docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md with exact M23_OSS_ADAPTER and M23_LSP_ADAPTER portfolio line refs, RED command, and validation gates.
-Pending after PREP: M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN, M23-LIVE-LSP-SMOKE-GATE, QUEUE-REFILL-PREP.
+Done: M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP — authored docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md with exact M23_OSS_ADAPTER and M23_LSP_ADAPTER portfolio line refs, RED command, and validation gates.
+Next: M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN — add the failing golden round-trip test, observe RED, then add the new four-line bundle and expected JSON/Markdown files so the portfolio accepts M23 adapter evidence lines by refs/counts only.
+Pending after RED/GREEN: M23-LIVE-LSP-SMOKE-GATE, QUEUE-REFILL-PREP.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-M23-ADAPTER-PORTFOLIO-INTEGRATION-PREP — author the controlled implementation-task packet for adding M23_OSS_ADAPTER and M23_LSP_ADAPTER lines to the codebase evidence portfolio by refs/counts/schema ids/gate refs only. Include the live LSP smoke refs from docs/reports/m23-live-lsp-server-smoke.md and runtime-boundary/lsp-adapter/20260522/ while preserving raw_source_content_persisted=false.
+M23-ADAPTER-PORTFOLIO-INTEGRATION-RED-GREEN — follow docs/plans/m23-adapter-portfolio-integration-implementation-tasks.md. Add a failing byte-equality golden test for tests/fixtures/codebase-evidence-portfolio/m21_dars_m23_bundle.json and expected-m21-dars-m23/portfolio-report.{json,md}, observe the expected missing-file RED, then add only the caller-authored bundle and deterministic expected files. Preserve the existing M21+DARS golden unchanged and keep raw_source_content_persisted=false, external_call_made=false, mutation_performed=false.
 ```
 
 Follow-up boundary:
