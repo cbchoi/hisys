@@ -219,6 +219,24 @@ def _expected_golden_markdown() -> str:
     )
 
 
+def _load_m23_golden_bundle() -> dict[str, object]:
+    return json.loads(
+        (_FIXTURE_DIR / "m21_dars_m23_bundle.json").read_text(encoding="utf-8")
+    )
+
+
+def _expected_m23_golden_json() -> str:
+    return (
+        _FIXTURE_DIR / "expected-m21-dars-m23" / "portfolio-report.json"
+    ).read_text(encoding="utf-8")
+
+
+def _expected_m23_golden_markdown() -> str:
+    return (
+        _FIXTURE_DIR / "expected-m21-dars-m23" / "portfolio-report.md"
+    ).read_text(encoding="utf-8")
+
+
 def test_codebase_evidence_portfolio_golden_round_trip(tmp_path: Path) -> None:
     bundle = _load_golden_bundle()
     instance_root = tmp_path / "instance"
@@ -253,3 +271,57 @@ def test_codebase_evidence_portfolio_golden_round_trip(tmp_path: Path) -> None:
     )
     assert json_path.read_text(encoding="utf-8") == _expected_golden_json()
     assert md_path.read_text(encoding="utf-8") == _expected_golden_markdown()
+
+
+def test_codebase_evidence_portfolio_accepts_m23_adapter_lines(
+    tmp_path: Path,
+) -> None:
+    bundle = _load_m23_golden_bundle()
+    instance_root = tmp_path / "instance"
+    instance_root.mkdir()
+    line_refs = tuple(EvidenceLineRef(**raw) for raw in bundle["line_refs"])
+    request = CodebaseEvidencePortfolioRequest(
+        instance_root=instance_root,
+        date=bundle["date"],
+        line_refs=line_refs,
+        current_head_short=bundle["current_head_short"],
+    )
+    report = build_codebase_evidence_portfolio_report(request=request)
+    write_codebase_evidence_portfolio_report(
+        instance_root=instance_root, date=bundle["date"], report=report
+    )
+
+    json_path = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-evidence-portfolio"
+        / bundle["date"]
+        / "portfolio-report.json"
+    )
+    md_path = (
+        instance_root
+        / "runtime-boundary"
+        / "codebase-evidence-portfolio"
+        / bundle["date"]
+        / "portfolio-report.md"
+    )
+    assert json_path.read_text(encoding="utf-8") == _expected_m23_golden_json()
+    assert md_path.read_text(encoding="utf-8") == _expected_m23_golden_markdown()
+    assert "M23_LSP_ADAPTER" in report.source_lines
+    assert "M23_OSS_ADAPTER" in report.source_lines
+    assert "hisys.lsp_adapter.v1" in report.schema_ids
+    assert "hisys.oss_comparison_adapter.v1" in report.schema_ids
+    assert (
+        "runtime-boundary/lsp-adapter/20260522/ruff-check-live/lsp-report.json"
+        in report.artifact_refs
+    )
+    assert (
+        "runtime-boundary/lsp-adapter/20260522/pyright-check-live/lsp-report.json"
+        in report.artifact_refs
+    )
+    assert "tests/unit/test_lsp_adapter.py" in report.quality_gate_refs
+    assert "tests/unit/test_oss_comparison_adapter.py" in report.quality_gate_refs
+    assert report.unsafe_refs == ()
+    assert report.unsafe_line_labels == ()
+    assert report.raw_source_content_persisted is False
+    assert report.external_call_made is False
