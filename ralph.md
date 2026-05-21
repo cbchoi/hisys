@@ -1946,6 +1946,29 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M21.9-CLI subagent evidence packet validator CLI Prepare
+
+- Phase completed: Prepare/document-RED planning for a thin `hisys validate-subagent-evidence-packet` wrapper around the M21.9.1 pure validator committed at `dd28bbf feat: add subagent evidence collector protocol validator`.
+- Controlled anchors checked: `docs/plans/m21-9-subagent-evidence-collector-protocol-implementation-tasks.md`; `docs/contracts/subagent-evidence-collector-protocol.md`; `src/hisys/contracts/subagent_evidence_collector.py`; `tests/unit/test_subagent_evidence_collector_protocol.py`; existing `_load_json_report` and thin-wrapper precedents in `src/hisys/cli/main.py`.
+- Baseline observed: branch `dars`, HEAD `dd28bbf feat: add subagent evidence collector protocol validator`, working tree clean before Prepare write, 14 commits ahead of `origin/dars`.
+- Decision: add a CLI wrapper only for explicit JSON task/result packet validation. The wrapper will not execute a subagent, will not verify artifact existence, will not write runtime-boundary reports, and will not add approval/promotion authority.
+- Document-RED artifact: created `docs/plans/m21-9-cli-subagent-evidence-packet-validator-implementation-tasks.md`. Planned first RED is `PYTHONPATH=src pytest tests/unit/test_domain_cli.py::test_validate_subagent_evidence_packet_cli_accepts_task_and_result -q`, expected to fail with argparse `SystemExit: 2` because `validate-subagent-evidence-packet` is not registered yet.
+- Boundary: local docs/control preparation only. No production CLI code, no tests, no subagent execution, no process spawning, no external call, no credential lookup, no raw source archival, no runtime-boundary writer, no remote push, and no publication.
+- Quality gate result: pass — `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=664 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The first wrapper prints only; a persisted validation report would need a separate writer Prepare/RED. (b) Validation errors currently propagate rather than writing structured failure artifacts; this is acceptable for a smoke validator but can be refined later. (c) The CLI intentionally does not check whether result `artifact_refs` exist because parent verification is a separate boundary.
+- Continue decision: after committing this Prepare package, the next safe row is M21.9-CLI RED/GREEN for the thin parser/dispatcher.
+- Stop condition: Prepare/document-RED boundary reached; no remote push and no live/external/subagent/process action.
+- Commit pending: `docs: prepare subagent evidence packet validator cli`.
+
+Resume checkpoint:
+- Current HEAD: dd28bbf feat: add subagent evidence collector protocol validator
+- Working tree: M21.9-CLI Prepare doc and `ralph.md` modified until commit
+- Last completed milestone/task: M21.9-CLI Prepare/document-RED
+- RED observed: not yet; next command is the planned CLI RED test after adding it
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: validate, stage M21.9-CLI Prepare doc + `ralph.md`, commit, then start M21.9-CLI RED
+- Stop condition: no remote push and no live/external/subagent/process action
+
 ### 2026-05-21 — M21.9.1 subagent evidence collector protocol validator (RED -> GREEN)
 
 - Phase completed: RED/GREEN/Gate for `M21.9.1`, the pure local protocol validator authorized by the M21.9 PREP commit `547e6a1 docs: prepare subagent evidence collector protocol`.
