@@ -11,11 +11,24 @@ Traceability:
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 
 from helpers.fake_openai_server import FakeOpenAIServer
+
+
+# DARS-CLOSE-1: checked-in deterministic golden fixture for the operator-report
+# closure path. The directory and contents are loaded by
+# ``test_run_dars_panel_cli_golden_fixture_writes_stable_operator_report``;
+# changing the fixture files changes the golden contract.
+GOLDEN_FIXTURE_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "dars_panel"
+    / "golden_basic"
+)
 
 
 def _candidate_fixture(tmp_path: Path) -> tuple[str, list[str], str]:
@@ -181,6 +194,89 @@ def test_run_dars_panel_cli_writes_operator_report_without_live_actions(tmp_path
     assert "REQ-DARS-PRODUCT-REPORT" in report_md
     assert "live_external_action_authorized: false" in report_md
 
+
+def test_run_dars_panel_cli_golden_fixture_writes_stable_operator_report(
+    tmp_path: Path, capsys
+):
+    """DARS-CLOSE-1: deterministic golden scenario for the operator report.
+
+    The checked-in fixture under ``tests/fixtures/dars_panel/golden_basic``
+    pins the end-to-end operator-report contract for a fixture-local panel
+    round. The test fails if the golden fixture files are missing or if the
+    advisory safety fields, schema id, or task plan drift.
+    """
+
+    from hisys.cli.main import main
+
+    data_dir = tmp_path / "data" / "dars-panel-fixtures" / "20260521"
+    data_dir.mkdir(parents=True)
+    shutil.copy(GOLDEN_FIXTURE_DIR / "candidate-001.json", data_dir / "candidate-001.json")
+    shutil.copy(GOLDEN_FIXTURE_DIR / "evidence-001.json", data_dir / "evidence-001.json")
+    shutil.copy(GOLDEN_FIXTURE_DIR / "rubric-001.md", data_dir / "rubric-001.md")
+
+    config_path = tmp_path / "panel-config.json"
+    config_blueprint = json.loads(
+        (GOLDEN_FIXTURE_DIR / "panel-config.json").read_text(encoding="utf-8")
+    )
+    # Rewrite the rubric ref so the checked-in blueprint stays
+    # instance-relocatable; the rest of the config is the locked contract.
+    rubric_ref = "data/dars-panel-fixtures/20260521/rubric-001.md"
+    for critic in config_blueprint["critics"]:
+        critic["rubric_ref"] = rubric_ref
+    config_path.write_text(json.dumps(config_blueprint), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "run-dars-panel",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260521",
+            "--request-id",
+            "REQ-DARS-GOLDEN-BASIC",
+            "--panel-config",
+            str(config_path),
+            "--candidate-ref",
+            "data/dars-panel-fixtures/20260521/candidate-001.json",
+            "--evidence-ref",
+            "data/dars-panel-fixtures/20260521/evidence-001.json",
+            "--write-report",
+            "--format",
+            "json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert (
+        payload["report_ref"]
+        == "reports/run-summaries/20260521/dars-panel-round-report.json"
+    )
+
+    report_path = tmp_path / payload["report_ref"]
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["schema_id"] == "hisys.dars_panel.round_report"
+    assert report["request_id"] == "REQ-DARS-GOLDEN-BASIC"
+    assert report["panel_id"] == config_blueprint["panel_id"]
+    assert report["execution_mode"] == "serial"
+    assert report["task_statuses"] == {
+        f"TASK-REQ-DARS-GOLDEN-BASIC-00-{config_blueprint['critics'][0]['critic_id']}": "completed"
+    }
+    assert len(report["critique_refs"]) == 1
+    assert report["synthesis_ref"].endswith("SYNTH-REQ-DARS-GOLDEN-BASIC.json")
+    assert report["round_trace_ref"].endswith("TRACE-REQ-DARS-GOLDEN-BASIC.json")
+    assert len(report["execution_boundary_refs"]) == 1
+    assert report["advisory_only"] is True
+    assert report["requires_human_review"] is True
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False
+    assert report["publication_performed"] is False
+    assert report["live_external_action_authorized"] is False
+
+    report_md = report_path.with_suffix(".md").read_text(encoding="utf-8")
+    assert "# DARS panel round report" in report_md
+    assert "REQ-DARS-GOLDEN-BASIC" in report_md
+    assert "live_external_action_authorized: false" in report_md
 
 
 def test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch(

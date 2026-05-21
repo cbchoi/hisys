@@ -1,0 +1,11 @@
+{
+  "evidence_id": "evidence-001",
+  "evidence_kind": "dars_panel_golden_basic",
+  "summary": "Golden fixture evidence bundle for the DARS panel productization closure test. Local fixture only; no live sources or credentials.",
+  "items": [
+    {
+      "ref": "fixture://golden-basic/evidence-001/item-a",
+      "claim_support": "supports candidate claim 1 in fixture context only"
+    }
+  ]
+}

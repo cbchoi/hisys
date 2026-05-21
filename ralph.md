@@ -5412,6 +5412,27 @@ Resume checkpoint:
 - Next command to run: validate docs-control plan, then commit `docs/plans/dars-panel-completion-before-codebase-return.md ralph.md`
 - Stop condition: after local commit/push; next executable implementation task is DARS-CLOSE-1 golden fixture scenario
 
+### 2026-05-21 — DARS-CLOSE-1 golden fixture operator report
+
+- Phase completed: TDD implementation of the deterministic golden fixture scenario locking the `hisys run-dars-panel --write-report` operator-report contract under the DARS panel completion-before-return plan.
+- Request context: tmux Ralph loop resumed against `docs/plans/dars-panel-completion-before-codebase-return.md`; the previous `5ea9620` commit completed the operator-report writer and the next safe task per Section 16 was DARS-CLOSE-1.
+- Scope: added `tests/fixtures/dars_panel/golden_basic/{candidate-001.json,evidence-001.json,rubric-001.md,panel-config.json}` and `test_run_dars_panel_cli_golden_fixture_writes_stable_operator_report` in `tests/unit/test_dars_critic_panel_cli.py`. The test asserts `report_ref="reports/run-summaries/20260521/dars-panel-round-report.json"`, `schema_id="hisys.dars_panel.round_report"`, a single completed task plan, and `advisory_only/requires_human_review=true` with `external_call_made/mutation_performed/publication_performed/live_external_action_authorized=false`, plus a matching Markdown companion.
+- RED observed: `PYTHONPATH=src:. pytest tests/unit/test_dars_critic_panel_cli.py::test_run_dars_panel_cli_golden_fixture_writes_stable_operator_report -q` failed with `FileNotFoundError: tests/fixtures/dars_panel/golden_basic/candidate-001.json` before the fixture files were committed.
+- GREEN observed: same focused command → `1 passed in 0.14s`; DARS cohort (`test_dars_critic_panel_cli.py`, `test_dars_critic_panel_adapters.py`, `test_dars_critic_panel_runtime.py`, `test_dars_remote_subscription_dispatch.py`) → `38 passed in 1.25s`.
+- Boundary: fixture-local only. No live model call, remote provider dispatch, credential lookup, browser/search/tool execution, publication/deployment, schema/data migration, destructive action, or raw source archival is introduced. The golden fixture pins the existing operator-report contract; it does not enable a new code path.
+- Quality gate result: pass — focused golden-fixture test `1 passed`, DARS cohort `38 passed in 1.25s`, full suite `973 passed in 22.06s`, traceability OK, secret scan `hit_count=0`, `git diff --check` clean.
+
+Resume checkpoint:
+- Current HEAD: 62983ce docs: plan dars panel completion before codebase return
+- Working tree: DARS-CLOSE-1 fixture files and CLI test addition; final commit pending
+- Last completed milestone/task: M-CP-PROD-REPORT-1 DARS panel operator report
+- Current in-progress task: local commit for DARS-CLOSE-1 golden fixture operator report
+- RED observed: missing checked-in golden fixture caused `FileNotFoundError`
+- GREEN observed: focused golden-fixture test `1 passed`; DARS cohort `38 passed`; full suite `973 passed`
+- Quality gate status: pass — focused, DARS cohort, full suite, traceability, secret scan, and diff-check all green
+- Next command to run: commit DARS-CLOSE-1 increment, then push to existing `origin/dars`, then begin DARS-CLOSE-2 operator UX wrapper Prepare
+- Stop condition: continue to DARS-CLOSE-2 once the DARS-CLOSE-1 commit/push completes and validation remains green
+
 ## 16. Initial Next Action
 
 The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`, and the DARS panel productization line is intentionally prioritized before returning to the original codebase-analysis queue.
@@ -5420,8 +5441,8 @@ First execute the DARS panel closure plan:
 
 ```text
 Plan: docs/plans/dars-panel-completion-before-codebase-return.md
-NEXT: DARS-CLOSE-1 — Golden fixture scenario for operator report
-Then: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run
+Done: DARS-CLOSE-1 — Golden fixture scenario for operator report
+NEXT: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run
 Then: DARS-CLOSE-3 — DARS panel completion/readiness status surface
 Then: DARS-CLOSE-4 — Closure gate and queue return to M21.6
 ```

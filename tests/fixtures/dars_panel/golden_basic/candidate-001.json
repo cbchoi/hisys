@@ -1,0 +1,9 @@
+{
+  "candidate_id": "candidate-001",
+  "candidate_kind": "dars_panel_golden_basic",
+  "summary": "Golden fixture candidate for the DARS panel productization closure test. Local fixture only; no live actions, credentials, or external references.",
+  "claims": [
+    "The candidate restates a logical chain over fixture-local evidence.",
+    "The candidate stays advisory-only and does not request execution."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "panel_id": "PANEL-DARS-GOLDEN-BASIC",
+  "max_parallel_critics": 1,
+  "critics": [
+    {
+      "critic_id": "logical-devil",
+      "critic_role": "logical_devil",
+      "backend_id": "fixture-logical-golden-001",
+      "rubric_ref": "tests/fixtures/dars_panel/golden_basic/rubric-001.md",
+      "critique_dimensions": ["logical_validity"]
+    }
+  ]
+}
