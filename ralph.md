@@ -5740,52 +5740,43 @@ Resume checkpoint:
 - Next command to run: after commit lands, the Ralph queue stops at QUEUE-REFILL-PREP-STOP. Resume only when the user authorizes a new milestone (M23, M22 follow-on, or a previously human-gated row).
 - Stop condition: QUEUE-REFILL-PREP-STOP. M22 milestone is closed at `local_fixture_advisory_complete`; every remaining candidate is human-gated.
 
+### 2026-05-21 — M23 advanced codebase adapter authorization checkpoint
+
+- Phase completed: docs/control authorization checkpoint opening M23 after M22 closed at `local_fixture_advisory_complete`.
+- Request context: user first authorized `고급 기능 LSP 외부어댑터 통합까지 모두 승인`, then requested `M23 진행`.
+- Scope: created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.21.md` and `docs/plans/m23-advanced-codebase-adapter-integration-plan.md`; prepended an M23 authorization row to `docs/traceability/README.md`; bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.21` with `next_safe_task: M23-OSS-ADAPTER-PREP`; updated the governance current-state test; rewrote Section 16 to open the M23 queue.
+- Boundary: docs/control authorization only. This checkpoint authorizes governed OSS comparison adapter and local LSP adapter rows, including local subprocess spawning only inside a later LSP adapter contract with command allowlist, timeout, workspace-root restriction, output schema, and kill policy. It does not authorize credential lookup or mutation, secret capture, arbitrary network search/clone/fetch, new or changed remote configuration, publication/deployment/release, destructive Git/history actions, force push, mutation of non-fixture user/live data, unbounded live external provider execution, or live-provider DARS completion claims.
+- Quality gate expectation: M23 marker checks, governance current-state test, traceability validator, secret scan, and diff-check must pass before committing.
+
+Resume checkpoint:
+- Current HEAD: cd944cc docs: close m22 codebase evidence portfolio milestone
+- Working tree: M23 authorization decision, plan, traceability, profile, governance-test, and Ralph queue edits pending validation/commit/push
+- Last completed milestone/task: M22-PORTFOLIO-GATE at `cd944cc`
+- Current in-progress task: M23 authorization docs/control checkpoint
+- Next command to run: after this checkpoint commits and pushes, start `/rloo` so `M23-OSS-ADAPTER-PREP` authors the OSS comparison adapter implementation-task plan.
+- Stop condition: none if the authorization checkpoint validates; continue to `M23-OSS-ADAPTER-PREP` under the governed M23 boundary.
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. **M22 codebase evidence portfolio milestone is closed at `local_fixture_advisory_complete`** (commit `f4b4d44` for the GOLDEN fixture; this commit records M22-PORTFOLIO-GATE closure). The DARS panel productization line remains closed at `local_fixture_localhost_controlled_advisory_complete`. Every remaining queue candidate — approved OSS comparison adapter, optional local LSP adapter, live-provider DARS panel execution — is human-gated. The Ralph queue stops at QUEUE-REFILL-PREP-STOP and waits for the next milestone authorization from the user before opening any new row.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M22 codebase evidence portfolio milestone is closed at `local_fixture_advisory_complete` (`cd944cc`). The user has now explicitly authorized M23 advanced codebase adapter integration, including approved OSS comparison adapter work and optional local LSP adapter work, while preserving the remaining non-delegable boundaries recorded below.
 
-DARS panel productization closure status:
+Current queue status:
 
 ```text
-Plan: docs/plans/dars-panel-completion-before-codebase-return.md
-Done: DARS-CLOSE-1 — Golden fixture scenario for operator report (0c9582f)
-Done: DARS-CLOSE-2 — Operator UX wrapper for fixture-local panel run (38c22f2)
-Done: DARS-CLOSE-3 — DARS panel completion/readiness status surface (249797c)
-Done: DARS-CLOSE-4 — Closure gate and provisional queue return to M21.6 (a38e04e)
-Done: DARS-PANEL-RLOOP-OPT-1 — Continuous-completion stop-preflight and final local evidence audit (fad02ef; see docs/reports/dars-panel-local-completion-audit.md)
-Done: MB-CODEBASE-M21-6-PREP — verified M21.6 acceptance via existing tests (no roll-forward plan author needed) and rolled the queue forward; see QUEUE-REFILL-PREP-2026-05-21B Reflection Log entry.
-Done: QUEUE-REFILL-PREP-STOP — every remaining M21 backlog candidate is human-gated; user chose a new M22 local-safe milestone instead of opening the human-gated M21 backlog.
-Done: M22-PORTFOLIO-AUTHORIZE — authorization checkpoint at 50173ba opened the M22 local-safe queue and parent plan.
-Done: M22-PORTFOLIO-PREP — authored `docs/plans/m22-codebase-evidence-portfolio-implementation-tasks.md` with RED/GREEN/regression/commit tasks plus CLI/GOLDEN/GATE deferral notes; refreshed governance profile to v0.0.16 and pointed next safe task at M22-PORTFOLIO-RED-GREEN.
-Done: M22-PORTFOLIO-RED-GREEN — landed pure `src/hisys/operations/codebase_evidence_portfolio.py` builder + writer and `tests/unit/test_codebase_evidence_portfolio.py` (5 focused tests); appended an M22 row to `docs/traceability/README.md`; bumped governance profile to v0.0.17 / next-safe-task `M22-PORTFOLIO-CLI`.
-Done: M22-PORTFOLIO-CLI — authored `docs/plans/m22-cli-codebase-evidence-portfolio-implementation-tasks.md`; added `hisys codebase-evidence-portfolio --instance --date --line-bundle [--current-head-short]` subparser and `_cmd_codebase_evidence_portfolio` dispatcher in `src/hisys/cli/main.py`; added 4 focused CLI tests in `tests/unit/test_domain_cli.py` (happy-path + missing-line_refs + bad-date + unsafe-inputs rejection); appended an `M22-PORTFOLIO-CLI` row to `docs/traceability/README.md`; bumped governance profile to v0.0.18 / next-safe-task `M22-PORTFOLIO-GOLDEN`.
-Done: M22-PORTFOLIO-GOLDEN — authored `docs/plans/m22-golden-codebase-evidence-portfolio-implementation-tasks.md`; added `tests/fixtures/codebase-evidence-portfolio/m21_dars_bundle.json` plus `tests/fixtures/codebase-evidence-portfolio/expected/portfolio-report.{json,md}` (built deterministically by the same M22-PORTFOLIO-RED-GREEN builder/writer); added `test_codebase_evidence_portfolio_golden_round_trip` to `tests/unit/test_codebase_evidence_portfolio.py`; prepended an `M22-PORTFOLIO-GOLDEN` row to `docs/traceability/README.md`; bumped governance profile to v0.0.19 / next-safe-task `M22-PORTFOLIO-GATE`.
-Done: M22-PORTFOLIO-GATE — ran combined M21+M22+CLI+governance focused gate (90 passed), DARS critic-panel focused regression (55 passed), traceability validator OK, secret scan `hit_count=0`, `git diff --check` clean; performed QUEUE-REFILL-PREP and found no safe local M22 follow-on under the established no-live / no-credential / no-LSP / no-subagent / no-raw-source boundary; prepended an `M22-PORTFOLIO-GATE` closure row to `docs/traceability/README.md`; bumped governance profile to v0.0.20 / next-safe-task `QUEUE-REFILL-PREP-STOP`.
-Closure: M22 codebase evidence portfolio milestone closed at `local_fixture_advisory_complete`. Remaining queue candidates (approved OSS adapter, optional local LSP adapter, live-provider DARS execution) are human-gated and require explicit user authorization.
+Done: M22-PORTFOLIO-GATE — closed M22 at local_fixture_advisory_complete (cd944cc).
+Done: M23-AUTH — user authorization captured in docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.21.md and M23 parent plan created.
+Next: M23-OSS-ADAPTER-PREP — create docs/plans/m23-oss-comparison-adapter-implementation-tasks.md with the adapter contract, fixture shape, RED command, quality gates, and boundary rules before any product code.
+Pending after OSS PREP: M23-OSS-ADAPTER-RED-GREEN, M23-LSP-ADAPTER-PREP, M23-LSP-ADAPTER-RED-GREEN, M23-ADAPTER-PORTFOLIO-INTEGRATION, M23-ADVANCED-ADAPTER-GATE.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-QUEUE-REFILL-PREP-STOP — every remaining queue candidate is human-gated. The Ralph loop stops at M22 closure pending the next milestone authorization from the user (M23, M22 follow-on, or a previously human-gated row such as approved OSS comparison adapter, optional local LSP adapter, or live-provider DARS panel execution). Do not open any of these human-gated rows without an explicit `m23 수행` / `oss 수행` / `lsp 수행` / `live-provider 수행` (or equivalent) request from the user. Once authorized, the Ralph loop resumes with that milestone's first PREP row.
+M23-OSS-ADAPTER-PREP — author the controlled implementation-task packet for an approved OSS comparison adapter. The packet must define local fixture/config refs, deterministic output schema, the first RED test and expected failure, validation commands, traceability links, and the no-credential/no-secret/no-arbitrary-network/no-publication boundary. Do not implement product code until the PREP packet is committed.
 ```
 
-Verification of M21.6 acceptance (MB-CODEBASE-M21-6-PREP, treated as a roll-forward row per the original note):
+M23 authorization boundary:
 
-1. `PYTHONPATH=src:. pytest tests/unit/test_change_impact.py -q` -> `5 passed`. M21.6 change-impact analyzer surface in `src/hisys/operations/change_impact.py` is complete and green.
-2. `PYTHONPATH=src:. pytest tests/unit/test_change_impact.py tests/unit/test_architecture_candidates.py tests/unit/test_code_analysis_pass_contract.py tests/unit/test_subagent_evidence_collector_protocol.py tests/unit/test_codebase_map_freshness.py tests/unit/test_runtime_boundary_consistency.py tests/unit/test_traceability_coverage.py -q` -> `60 passed`. The entire M21.1..M21.9 line is green at the current HEAD.
-3. The change-impact CLI wrapper plan `docs/plans/m21-6-cli-change-impact-cli-wrapper-implementation-tasks.md` and downstream M21.7..M21.9 plans already exist in `docs/plans/`; authoring a new Prepare plan would duplicate completed work.
-4. Therefore MB-CODEBASE-M21-6-PREP is satisfied by verification rather than by authoring a new plan. The queue rolls forward without expanding scope, exactly as the original Section 16 note authorized.
-
-Remaining M21 backlog status (re-classified after M21.9 close):
-
-- **Approved OSS comparison adapter** — Human gate per `docs/plans/m21-roadmap-implementation-plan.md` line 37. Even a docs-only PREP requires defining "approved OSS" — a product-scope governance decision that is non-delegable.
-- **Optional local LSP adapter** — Human gate per `docs/plans/m21-roadmap-implementation-plan.md` line 38. Any opt-in `subprocess`-spawning runtime is explicitly listed in `ralph.md` Section 2.2 as a non-delegable safety boundary unless explicitly approved.
-
-No other M21 candidate exists; the original ten-candidate backlog is reduced to these two human-gated rows. The subagent evidence collector protocol from the prior backlog was implemented in M21.9 (`subagent_evidence_collector` contract + `evaluate-code-analysis-contract` CLI wrapper).
-
-Runtime boundary for this queue:
-
-- allowed: local repository reads, tests, docs/traceability edits, local fixture files, runtime-boundary/report artifacts under an explicit instance root, local commits after green gates, and normal push to existing `origin/dars` after validation;
-- not allowed without explicit separate approval: live external provider calls, credential changes/lookups, new remote configuration, force push, publication/release/deploy beyond normal branch push, browser/search/tool execution by critics, schema/data migrations against non-fixture data, or raw source-content archival beyond existing bounded artifacts;
-- DARS completion claim must remain `local/fixture/localhost-controlled advisory complete`; do not claim live provider execution has been smoked.
+- allowed: local repository reads, docs/traceability edits, local fixture files, local adapter interface code, local tests, runtime-boundary/report artifacts under an explicit instance root, local commits after green gates, normal push to existing `origin/dars` after validation, and local subprocess spawning only inside the later governed LSP adapter contract with command allowlist, timeout, workspace-root restriction, output schema, and kill policy;
+- not allowed without separate explicit approval: credential changes/lookups, secret capture, arbitrary network search/clone/fetch, new or changed remote configuration, force push, destructive Git/history actions, publication/release/deploy beyond normal branch push, mutation of non-fixture user/live data, unbounded live external provider execution, or raw source-content archival beyond bounded refs/counts/digests;
+- DARS completion claim must remain `local_fixture_localhost_controlled_advisory_complete`; do not claim live provider execution has been smoked from this M23 approval.
