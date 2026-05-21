@@ -1946,6 +1946,31 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — M21.9.1 subagent evidence collector protocol validator (RED -> GREEN)
+
+- Phase completed: RED/GREEN/Gate for `M21.9.1`, the pure local protocol validator authorized by the M21.9 PREP commit `547e6a1 docs: prepare subagent evidence collector protocol`.
+- Controlled anchors checked: `docs/plans/m21-9-subagent-evidence-collector-protocol-implementation-tasks.md`; `revision_plan_v004.md` Section 7.8; `docs/contracts/subagent-evidence-collector-protocol.md`; existing M21 advisory boundary vocabulary. The implementation remains a protocol/schema validator only and does not execute subagents.
+- Baseline observed: branch `dars`, HEAD `547e6a1 docs: prepare subagent evidence collector protocol`, working tree clean before RED test write.
+- RED observed: after adding `tests/unit/test_subagent_evidence_collector_protocol.py::test_subagent_task_packet_accepts_bounded_read_only_scope`, `PYTHONPATH=src pytest tests/unit/test_subagent_evidence_collector_protocol.py::test_subagent_task_packet_accepts_bounded_read_only_scope -q` failed during collection with `ModuleNotFoundError: No module named 'hisys.contracts.subagent_evidence_collector'`.
+- Implementation: added `src/hisys/contracts/subagent_evidence_collector.py` with frozen dataclasses `SubagentEvidenceTaskPacket` and `SubagentEvidenceResultPacket`, deterministic `SubagentEvidenceValidationError(code, message)`, and validators `validate_subagent_evidence_task_packet(payload)` and `validate_subagent_evidence_result_packet(payload, task=None)`. The task validator accepts schema `hisys.subagent_evidence.task.v1`, non-empty identifiers/objective, safe relative repo/include/exclude refs, read-only tools limited to `read_file` and `search_files`, `advisory_only=true`, and `requires_human_review=true`. It rejects absolute refs, `..` traversal, mutation/process tools such as `terminal`, external/agent tools such as `browser_navigate` and `delegate_task`, unknown tools, and non-advisory packets. The result validator accepts schema `hisys.subagent_evidence.result.v1`, matching task IDs when a task is supplied, safe artifact/source refs, bounded summary/suggestion/blocker lists, `external_call_made=false`, `mutation_performed=false`, `raw_source_content_persisted=false`, and `parent_verification_required=true`. It rejects side effects, raw-source persistence, unsafe refs, missing parent-verification requirement, and task mismatches.
+- Tests: added 13 focused tests covering accepted task packet shape, unsafe repo/include refs, mutation tool rejection, external/browser tool rejection, `advisory_only=false` rejection, accepted result packet shape, result side-effect flag rejection, parent-verification flag rejection, unsafe artifact refs, and task ID mismatch.
+- Documentation/traceability: created `docs/contracts/subagent-evidence-collector-protocol.md` and prepended an M21.9.1 row to `docs/traceability/README.md`. The contract states the protocol is advisory-only, parent-verification-required, local validator only, and does not alter pass-contract reason codes.
+- Quality gate result: pass — focused protocol tests 13 passed; extended focused gate `tests/unit/test_subagent_evidence_collector_protocol.py tests/unit/test_code_analysis_pass_contract.py tests/unit/test_code_analysis_pass_contract_fixtures.py tests/unit/test_domain_cli.py` -> 76 passed; DARS critic-panel focused regression -> 50 passed; `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=663 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Potential issues / open items: (a) The validator does not open or verify returned artifact refs; parent-side existence/ownership verification is explicitly deferred. (b) No CLI wrapper exists; `hisys validate-subagent-evidence-packet` would require a separate Prepare/RED. (c) No subagent execution is authorized or implemented. (d) No pass-contract integration exists; mapping protocol results into pass-contract evidence requires a separate Prepare/RED. (e) The allowed read-only tool set is intentionally small (`read_file`, `search_files`) and future additions require tests.
+- Continue decision: after committing this implementation, the next safe M21 rows are either `M21.9-CLI` Prepare for a pure packet-validation CLI, a parent-side artifact-verification PREP, or returning to the remaining human-gated candidates (approved OSS comparison adapter or optional local LSP adapter). Select the packet-validation CLI first only if continuing within the current subagent-protocol trajectory.
+- Stop condition: M21.9.1 GREEN boundary reached; no subagent/process/live/external action, no remote push, and no pass-contract authority change.
+- Commit pending: `feat: add subagent evidence collector protocol validator`.
+
+Resume checkpoint:
+- Current HEAD: 547e6a1 docs: prepare subagent evidence collector protocol
+- Working tree: M21.9.1 code/tests/docs/traceability/ralph modified until commit
+- Last completed milestone/task: M21.9.1 subagent evidence collector protocol validator
+- RED observed: missing module `hisys.contracts.subagent_evidence_collector`
+- GREEN observed: focused protocol tests 13 passed; extended focused gate 76 passed; DARS focused gate 50 passed
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage M21.9.1 files and commit
+- Stop condition: M21.9.1 complete; no remote push and no live/external/subagent/process action
+
 ### 2026-05-21 — M21.9 subagent evidence collector protocol Prepare
 
 - Phase completed: Prepare/document-RED planning for the human-gated M21 backlog candidate `Subagent evidence collector protocol`, following the explicit user authorization phrase `m21 go` in the Discord Hisys thread. This checkpoint interprets the authorization narrowly: local documentation/control and fixture-backed schema work only. It does not authorize live subagent execution, `delegate_task` calls, process spawning, external network/browser/model calls, credential access, remote push, raw source archival, or publication.
