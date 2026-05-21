@@ -4,7 +4,7 @@
 
 **Goal:** make DARS backend execution operational through a governed backend boundary while preserving advisory-only semantics and fail-closed behavior.
 
-**Architecture:** separate backend activation policy, subscription-access policy, adapter execution, runtime-boundary records, and smoke/runbook evidence. The first executable target remains localhost-only `openai_compatible` backend hardening and fake/local rehearsal; remote subscription providers are deferred to a separate high-impact approval packet and are limited to Codex and Claude only.
+**Architecture:** separate backend activation policy, subscription-access policy, adapter execution, runtime-boundary records, and smoke/runbook evidence. Backend activation is enforced in `DarsRuntime.run_configured_critique()` after `DarsDispatchGate.evaluate()` allows dispatch and immediately before any model-boundary adapter call; the dispatch gate stays focused on appraiser/dispatch policy and must not absorb packet validation. The first executable target remains localhost-only `openai_compatible` backend hardening and fake/local rehearsal; remote subscription providers are deferred to a separate high-impact approval packet and are limited to Codex and Claude only.
 
 **Tech Stack:** Python, Pydantic schemas, existing Hisys DARS modules (`dars.py`, `dars_config.py`, `dars_dispatch.py`, `dars_panel_live_config.py`, `dars_panel_live_adapter.py`), pytest, runtime-boundary JSON/Markdown artifacts.
 
@@ -46,6 +46,52 @@ Therefore this plan treats **live backend** as a two-level roadmap:
 | A. Extend current local OpenAI-compatible backend only | Harden config/reporting around `DarsRuntime.run_configured_critique` and localhost fake-server smoke. | Lowest risk; reuses existing code; aligns with current tests. | Does not satisfy future remote-provider needs alone. | **Accepted for first implementation line.** |
 | B. Add remote provider backend now | Implement direct remote API adapters. | Directly enables remote DARS. | Credential, egress, privacy, cost, and governance risk; violates subscription-only scope. | **Rejected for this plan.** Defer to M-DARS-BE-5 as fail-closed policy only. |
 | C. Create Codex/Claude subscription policy packet first | Define schema and fail-closed validator before adapter code, with provider allowlist limited to `codex` and `claude`. | Creates a safe path for future remote subscription access while excluding raw API-key and arbitrary provider paths. | More planning overhead before execution. | **Accepted as preparation after local hardening.** |
+| D. Enforce activation inside `DarsRuntime.run_configured_critique()` | Validate backend activation after `DarsDispatchGate.evaluate()` returns `allowed` and before any adapter that crosses a model/backend boundary is called. Keep `DarsDispatchGate` responsible only for dispatch/appraiser policy and decision-record emission. | Prevents CLI/Python API bypass, preserves separation between dispatch decisions and runtime activation, and gives one side-effect chokepoint. | Requires small runtime signature and CLI pass-through change. | **Accepted for M-DARS-BE-2.** |
+
+## Backend activation enforcement decision
+
+Activation packet enforcement belongs in `DarsRuntime.run_configured_critique()`, not only in the CLI and not inside `DarsDispatchGate`. The enforcement order is:
+
+```text
+load_dars_config()
+select default backend
+DarsDispatchGate.evaluate(... intent="advisory_critique" ...)
+if dispatch.decision != "allowed": block before any adapter call
+if selected backend crosses a model/backend boundary: load and validate backend activation packet
+if activation/config/approval metadata do not match: block before any adapter call
+call the selected backend adapter only after both gates pass
+```
+
+`DarsDispatchGate` remains the appraiser/dispatch policy gate: backend declared/enabled, advisory intent, external-call approval reference where applicable, and dispatch decision artifact. It must not become the activation-packet schema validator or remote subscription policy validator. `dars_backend_activation.py` owns packet validation; `dars_remote_subscription_policy.py` owns future Codex/Claude subscription policy validation; `DarsRuntime` is the runtime chokepoint that composes these gates immediately before side effects.
+
+Activation applicability rules:
+
+```text
+loopback backend
+  backend activation packet not required
+
+fixture_text / run_fixture_critique
+  backend activation packet not required
+
+fixture-local paths that do not cross a model boundary
+  backend activation packet not required
+
+openai_compatible + local_network_only
+  backend activation packet required
+  endpoint_scope must be localhost_only
+  approval_ref must match activation.approval_ref
+  external_call_made=false
+  local_model_call_made=true
+  model_boundary_crossed=true after successful call
+
+external_api / remote subscription candidate
+  backend activation packet required
+  remote_policy_packet_ref required
+  policy provider allowlist remains Codex/Claude subscription-only
+  actual remote dispatch remains blocked until a later explicit implementation approval
+```
+
+Initial integration should preserve existing callers by adding an optional `backend_activation_packet_ref` argument beside `approval_ref`, then making the packet authoritative for model-boundary execution. If both are supplied, mismatched approval references must fail closed with `activation_approval_ref_mismatch`.
 
 ## Implementation sequence
 
@@ -126,7 +172,7 @@ git commit -m "feat: add dars backend activation validator"
 
 ### Task M-DARS-BE-2: Local backend activation integration
 
-**Objective:** require the backend activation packet for local live backend rehearsal while keeping existing fixture/loopback behavior unchanged.
+**Objective:** require the backend activation packet in `DarsRuntime.run_configured_critique()` for local live backend rehearsal while keeping existing fixture/loopback behavior unchanged and keeping packet validation out of `DarsDispatchGate`.
 
 **Files:**
 - Modify: `src/hisys/agents/dars.py`
@@ -138,9 +184,11 @@ git commit -m "feat: add dars backend activation validator"
 
 Add tests that prove:
 
-- `openai_compatible` local backend rejects missing backend activation packet before endpoint contact;
-- loopback and fixture-local paths remain unchanged;
-- approved localhost activation records `model_boundary_crossed=true`, `local_model_call_made=true`, `external_call_made=false`.
+- `openai_compatible` + `local_network_only` rejects missing `backend_activation_packet_ref` before endpoint contact;
+- `DarsDispatchGate` is still called before activation validation and remains a dispatch/appraiser gate, not a packet validator;
+- loopback, fixture text, and fixture-local paths that do not cross a model boundary remain unchanged and do not require activation;
+- approved localhost activation requires `endpoint_scope=localhost_only`, matching `approval_ref`, `allowed_actions=advisory_only`, `human_approved=true`, and records `model_boundary_crossed=true`, `local_model_call_made=true`, `external_call_made=false`;
+- mismatched CLI/runtime `approval_ref` and activation packet `approval_ref` fails closed with `activation_approval_ref_mismatch`.
 
 **Step 2: Verify RED**
 
@@ -148,13 +196,14 @@ Add tests that prove:
 PYTHONPATH=src:. pytest tests/unit/test_dars_runtime.py::test_configured_local_backend_requires_backend_activation_packet -q
 ```
 
-Expected: fail because current configured critique only accepts `approval_ref`.
+Expected: fail because current configured critique only accepts `approval_ref` and does not require/load `backend_activation_packet_ref` before the local model adapter path.
 
 **Step 3: Minimal implementation**
 
-- Add optional backend activation packet loading to the configured DARS runtime or CLI wrapper.
-- Validate the packet before dispatching any `openai_compatible` backend.
-- Keep dispatch gate appraiser separation unchanged.
+- Add optional `backend_activation_packet_ref` pass-through to the CLI surface, but make `DarsRuntime.run_configured_critique()` the enforcement boundary.
+- In `DarsRuntime.run_configured_critique()`, run `DarsDispatchGate.evaluate()` first, then validate the activation packet immediately before dispatching any backend that crosses a model/backend boundary.
+- Keep `DarsDispatchGate` appraiser/dispatch separation unchanged; do not move packet schema validation or remote subscription policy validation into the gate.
+- For `openai_compatible` + `local_network_only`, require `endpoint_scope=localhost_only`, `activation.backend_id == backend_id`, `activation.backend_kind == backend.kind`, and `activation.approval_ref == approval_ref` when both are supplied.
 - Preserve no Authorization header and no credential lookup for localhost-only mode.
 
 **Step 4: Verify GREEN**
@@ -289,7 +338,7 @@ git commit -m "feat: add remote dars subscription policy packet"
 
 ## Quality gate for each implementation increment
 
-Run focused tests first, then the DARS cohort, then repository gates:
+Run focused tests first, then the DARS cohort, then repository gates. For M-DARS-BE-2, include tests proving the CLI cannot bypass runtime enforcement and direct Python calls cannot bypass CLI checks:
 
 ```bash
 PYTHONPATH=src:. pytest tests/unit/test_dars_runtime.py tests/unit/test_dars_config.py tests/unit/test_dars_dispatch.py tests/unit/test_dars_critic_panel_cli.py tests/unit/test_dars_critic_panel_live_config.py tests/unit/test_dars_critic_panel_live_adapter.py tests/unit/test_dars_critic_panel_live_runbook.py -q

@@ -1946,6 +1946,27 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-21 — DARS activation enforcement placement decision
+
+- Phase completed: incorporated user decision that backend activation packet enforcement must occur in runtime, while avoiding a monolithic `DarsDispatchGate` that owns all activation validation.
+- Decision captured: `DarsRuntime.run_configured_critique()` is the enforcement boundary. The runtime loads config, selects the backend, runs `DarsDispatchGate.evaluate()`, blocks if dispatch is not allowed, then validates `backend_activation_packet_ref` immediately before any model/backend-boundary adapter call.
+- Separation captured: `DarsDispatchGate` remains responsible for appraiser/dispatch policy and dispatch decision records only. `dars_backend_activation.py` owns activation packet schema validation; future `dars_remote_subscription_policy.py` owns Codex/Claude subscription policy validation; `DarsRuntime` composes the gates before side effects.
+- Applicability captured: loopback, fixture text, and fixture-local paths that do not cross a model boundary do not require activation; `openai_compatible` + `local_network_only` requires activation with `endpoint_scope=localhost_only`, matching backend/approval metadata, and advisory-only/no-mutation/no-publication flags; external/remote candidates require activation plus `remote_policy_packet_ref` but remain blocked until a later explicit implementation approval.
+- Files updated: `docs/plans/dars-live-backend-implementation-plan.md`, `docs/traceability/README.md`, and `ralph.md`.
+- Boundary: docs/control update only. No live model call, no remote subscription call, no provider account use, no credential lookup/resolution, no adapter execution, no deployment/publication/vault mutation, and no runtime state mutation.
+- Quality gate result: pass — `python3 scripts/validate_traceability.py` -> OK; `python3 scripts/scan_secrets.py` -> `scanned_files=665 skipped_files=0 hit_count=0`; `git diff --check` clean.
+- Continue decision: commit/sync this docs-control placement decision, then next executable RED remains M-DARS-BE-1 validator, followed by M-DARS-BE-2 runtime integration with direct runtime and CLI bypass tests.
+- Stop condition: implementation remains blocked behind TDD; any real local model smoke, remote subscription call, provider configuration, credential resolution, or boundary semantics change requires a fresh explicit decision.
+
+Resume checkpoint:
+- Current HEAD: d670656 before this placement decision
+- Working tree: docs/control files modified until validation and commit
+- Last completed milestone/task: DARS activation enforcement placement decision capture
+- RED observed: not applicable; docs/control decision update
+- Quality gate status: pass — traceability OK; secret scan hit_count=0; `git diff --check` clean
+- Next command to run: stage, commit, and push docs-control placement decision
+- Stop condition: no live backend execution or credential/provider action in this increment
+
 ### 2026-05-21 — Remote DARS scope decision: subscription Codex/Claude only
 
 - Phase completed: incorporated user decision that remote DARS access should be subscription-style and limited to Codex and Claude.
