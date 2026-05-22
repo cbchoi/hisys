@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.46
-focus: Local DARS readiness checked and found not ready; user conditional selected subscription path; next row is docs/control PREP for governed DARS remote subscription execution planning
+version: v0.0.47
+focus: DARS remote subscription path docs/control PREP authored; next row is the non-delegable stop-and-ask gate that waits for operator-supplied provider/operator/account/redaction/egress/expiry/policy-packet/activation-packet/subscription-executor prerequisites before any Codex/Claude subscription provider boundary is crossed
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-REMOTE-SUBSCRIPTION-AUTH-PREP
+next_safe_task: DARS-REMOTE-SUBSCRIPTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: "go for m24; oss 는 향후 roadmap으로 넘기자; live dars execution approve; local readiness check then C subscription if not ready"
-bootstrap_inference: "Local DARS execution prerequisites were checked and are not ready: HISYS_DARS_LOCAL_ENDPOINT unset, HISYS_INSTANCE unset, no operator-provided live instance root, and no fresh activation packet path. Per the user conditional instruction, open the subscription path as docs/control PREP. The next row must bind existing M-DARS-BE-5/6 Codex/Claude subscription policy and injected-executor harness to a concrete provider/operator/redaction/egress/expiry packet before any real subscription call. No live model/provider call, credential lookup, raw secret handling, publication, mutation, or OSS workflow execution is authorized by this checkpoint."
+bootstrap_inference: "DARS-REMOTE-SUBSCRIPTION-AUTH-PREP authored as docs/control packet that binds readiness decision v0.0.46 to the existing M-DARS-BE-5 remote subscription policy validator and the M-DARS-BE-6 injected-executor dispatch harness. The PREP pins the operator-supplied policy packet shape (hisys.dars.remote_subscription_policy with provider_id allowlist codex|claude, adapter_class allowlist codex_subscription|claude_subscription, access_mode=subscription, audit_required=true, vault-style subscription_account_ref, redaction/egress/expiry/revocation refs, forbidden raw-secret fields and forbidden arbitrary endpoint fields, forbidden mutation/publication/tool/browser/search authority flags, standing remote_dispatch_not_implemented warning); the operator-supplied activation packet shape (endpoint_scope=external_api, allowed_actions=advisory_only, human_approved=true, matching approval_ref, matching backend_id/backend_kind, remote_policy_packet_ref); the operator-supplied subscription executor surface (Callable[[dict], str], runs outside Hisys, no credential surface, no tool/search/browser/mutation authority); the full validator + runtime issue-code catalog (M-DARS-BE-5 validator codes, M-DARS-BE-1 activation codes, M-DARS-BE-6 dispatch and panel-dispatch codes); the runtime-boundary record partition runtime-boundary/dars-remote-subscriptions/<YYYYMMDD>/<REQUEST_ID>/<BACKEND_ID>-<SOURCE_EXECUTION_ID>.{json,md} and runtime-boundary/dars-remote-subscription-panels/<YYYYMMDD>/<REQUEST_ID>/<PANEL_ID>.{json,md} with the M-DARS-BE-6/M24 required fields; and a stop-condition matrix that maps every missing/invalid/expired/mismatched/raw-secret/arbitrary-endpoint/mutation-authority/executor-missing/executor-empty/panel-shape/credential-demand/tool-search-browser/mutation-request/secret-scan/operator-uncertainty/branch-misalignment/repair-exhausted/allowlist-expansion/raw-API-key/Gemini/Grok/local-proxy/pay-per-call signal to the existing validator/dispatch codes. Profile bumped to v0.0.47 with next_safe_task=DARS-REMOTE-SUBSCRIPTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES (a documented stop-and-ask gate, not an action Ralph can self-supply). No live model call, real remote provider call, credential lookup, vault resolution, raw token, Authorization header, browser/search/tool execution, network call, account configuration, allowlist expansion beyond codex/claude subscription, publication/deployment, mutation, force push, new or changed remote configuration, destructive Git/history action, OSS workflow execution, or DARS completion-claim upgrade beyond local_fixture_localhost_controlled_advisory_complete is authorized by this checkpoint."
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.46.md
-planning_baseline_head: "a64d2e2 docs: prepare dars live execution auth packet"
-current_head_at_plan_creation: "a64d2e2 docs: prepare dars live execution auth packet"
-previous_bootstrap_version: v0.0.45
-tmux_or_background_agent_spawned: false
+next_artifact_ref: docs/plans/dars-remote-subscription-auth-prep-tasks.md
+planning_baseline_head: "5683389 docs: switch dars execution to subscription prep"
+current_head_at_plan_creation: "5683389 docs: switch dars execution to subscription prep"
+previous_bootstrap_version: v0.0.46
+tmux_or_background_agent_spawned: true
 production_code_created: false
 tests_created: false
