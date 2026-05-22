@@ -12,6 +12,8 @@ import pytest
 
 from hisys.config.instance import InstanceRoot
 
+ROOT = Path(__file__).resolve().parents[2]
+
 
 def _valid_policy_data(**overrides):
     data = {
@@ -739,3 +741,86 @@ def test_remote_subscription_multi_critic_panel_rejects_mixed_request_ids_before
 
     boundary_dir = tmp_path / "runtime-boundary" / "dars-remote-subscription-panels"
     assert not boundary_dir.exists()
+
+
+def test_codex_cli_subprocess_multi_critic_panel_prep_packet_matches_dispatch_contract(tmp_path: Path):
+    """DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP defines a runnable bounded panel packet."""
+
+    from hisys.agents.dars_remote_subscription_dispatch import (
+        RemoteSubscriptionDispatchRequest,
+        run_dars_remote_subscription_panel_dispatch,
+    )
+
+    packet_path = ROOT / "docs/examples/dars/codex-cli-subprocess-multi-critic-panel.prepared.json"
+    packet = json.loads(packet_path.read_text(encoding="utf-8"))
+
+    assert packet["schema_id"] == "hisys.dars.codex_cli_subprocess_multi_critic_panel_prep"
+    assert packet["prepared_for_row"] == "DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP"
+    assert packet["future_smoke_row"] == "DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-SMOKE-GATE"
+    assert packet["live_execution_performed"] is False
+    assert packet["provider_id"] == "codex"
+    assert packet["adapter_class"] == "codex_subscription"
+    assert packet["critic_count"] >= 2
+
+    policy_ref = _write_json(tmp_path / "codex-policy.json", _valid_policy_data(
+        provider_id="codex",
+        adapter_class="codex_subscription",
+        subscription_account_ref="vault://existing-auth/codex-subscription",
+        approval_ref=packet["approval_ref"],
+    ))
+    activation_ref = _write_json(tmp_path / "codex-activation.json", _valid_activation_data(
+        backend_id=packet["backend_id"],
+        backend_kind=packet["backend_kind"],
+        approval_ref=packet["approval_ref"],
+        remote_policy_packet_ref=str(policy_ref),
+    ))
+
+    requests = []
+    for critic in packet["critics"]:
+        assert critic["transport_kind"] == "codex_cli_subprocess_prompt_mode"
+        assert critic["allowed_actions"] == "advisory_only"
+        assert critic["mutation_performed"] is False
+        assert critic["publication_performed"] is False
+        assert critic["requires_human_review"] is True
+        requests.append(RemoteSubscriptionDispatchRequest(
+            yyyymmdd=packet["yyyymmdd"],
+            request_id=packet["request_id"],
+            backend_id=packet["backend_id"],
+            backend_kind=packet["backend_kind"],
+            source_execution_id=critic["source_execution_id"],
+            approval_ref=packet["approval_ref"],
+            activation_packet_ref=str(activation_ref),
+            policy_packet_ref=str(policy_ref),
+            prompt=critic["prompt"],
+            transport_kind=critic["transport_kind"],
+        ))
+
+    calls: list[dict] = []
+
+    def fake_codex_cli_executor(payload: dict):
+        calls.append(payload)
+        assert payload["provider_id"] == "codex"
+        assert payload["adapter_class"] == "codex_subscription"
+        assert payload["transport_kind"] == "codex_cli_subprocess_prompt_mode"
+        assert payload["allowed_actions"] == "advisory_only"
+        return f"{payload['source_execution_id']} advisory critique; requires_human_review=true"
+
+    result = run_dars_remote_subscription_panel_dispatch(
+        InstanceRoot(tmp_path),
+        yyyymmdd=packet["yyyymmdd"],
+        request_id=packet["request_id"],
+        panel_id=packet["panel_id"],
+        requests=requests,
+        executor=fake_codex_cli_executor,
+    )
+
+    aggregate = json.loads((tmp_path / result.panel_boundary_ref).read_text(encoding="utf-8"))
+    assert len(calls) == packet["critic_count"]
+    assert aggregate["critic_count"] == packet["critic_count"]
+    assert aggregate["completed_critic_count"] == packet["critic_count"]
+    assert aggregate["transport_kind"] == "injected_subscription_executor_panel"
+    assert aggregate["external_call_made"] is True
+    assert aggregate["model_boundary_crossed"] is True
+    assert aggregate["mutation_performed"] is False
+    assert aggregate["publication_performed"] is False
+    assert aggregate["requires_human_review"] is True

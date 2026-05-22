@@ -6924,3 +6924,29 @@ Resume checkpoint:
 - Quality gate status: pass — focused `64 passed`; full project `1118 passed`; traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
 - Next command to run: commit `docs: authorize codex multi-critic panel prep`; push to existing `origin/dars`; then continue from `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP` if explicitly requested.
 - Stop condition: stop after committing/pushing this authorization checkpoint unless explicitly continuing into the PREP implementation row.
+
+### 2026-05-22 — DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP (RED -> GREEN)
+
+- Phase completed: prepared the exact bounded Codex CLI subprocess prompt-mode multi-critic panel packet and pinned it with a fixture/fake-executor contract test. No real Codex subprocess or live panel ran in this PREP row.
+- Request context: user selected `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP` after v0.0.57 opened the multi-critic panel line.
+- Baseline observed: branch `dars`, HEAD `2cc946a docs: authorize codex multi-critic panel prep`, upstream `origin/dars` synced, working tree clean before edits.
+- Controlled anchors checked: `docs/milestone-bootstrap/profile.yaml` v0.0.57; `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.57.md`; `docs/plans/dars-codex-cli-subprocess-multi-critic-panel-prep-tasks.md`; `src/hisys/agents/dars_remote_subscription_dispatch.py`; `src/hisys/agents/dars_codex_cli_subprocess.py`; existing dispatch/failure-mode tests.
+- RED observed: added `tests/unit/test_dars_remote_subscription_dispatch.py::test_codex_cli_subprocess_multi_critic_panel_prep_packet_matches_dispatch_contract`; first run failed with `FileNotFoundError` for `docs/examples/dars/codex-cli-subprocess-multi-critic-panel.prepared.json`.
+- GREEN observed: created `docs/examples/dars/codex-cli-subprocess-multi-critic-panel.prepared.json`; focused test passed with a fake Codex CLI executor through `run_dars_remote_subscription_panel_dispatch(...)`.
+- Prepared packet: request `REQ-DARS-CODEX-PANEL-SMOKE-20260522-001`; panel `PANEL-DARS-CODEX-SUBPROCESS-20260522-001`; two critic source execution IDs `EXEC-DARS-CODEX-PANEL-LOGICAL-20260522-001` and `EXEC-DARS-CODEX-PANEL-EVIDENCE-20260522-001`; per-critic `transport_kind=codex_cli_subprocess_prompt_mode`; aggregate panel `transport_kind=injected_subscription_executor_panel`; advisory-only, no-mutation, no-publication, human-review-required.
+- Implementation: added the prepared JSON packet, updated the PREP task doc with concrete values, created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.58.md`, bumped profile to v0.0.58 with next safe task `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-SMOKE-GATE`, updated governance current-state expectations, prepended traceability, and updated Section 16.
+- Boundary: no `/usr/bin/codex` launch, no SDK or raw provider API call, no credential/vault/provider account access, no web/search/browser/tool use, no workspace-write by Codex, no mutation/publication/deployment/PR/issue/release, no automatic DARS completion-claim upgrade.
+- Quality gate result: pass — focused governance/Codex/dispatch cohort `65 passed`; full project `1119 passed`; traceability OK; secret scan `hit_count=0` across 757 files; `git diff --check` clean; branch `dars` synced to `origin/dars` before commit.
+- Continue decision: next safe row is `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-SMOKE-GATE`, but it may run only the explicitly prepared bounded panel after immediate preflight.
+- Commit pending: `test: prepare codex multi-critic panel packet`.
+
+Resume checkpoint:
+- Current HEAD: 2cc946a docs: authorize codex multi-critic panel prep
+- Working tree: prepared packet/test/profile/decision/plan/traceability/Ralph edits pending validation and commit.
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP.
+- Current in-progress task: validation and commit for PREP row.
+- RED observed: prepared-packet contract test failed while packet was absent.
+- GREEN observed: prepared-packet contract test passed with fake executor.
+- Quality gate status: pass — focused `65 passed`; full project `1119 passed`; traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
+- Next command to run: commit `test: prepare codex multi-critic panel packet`; push to existing `origin/dars`; then stop unless explicitly continuing into the smoke gate.
+- Stop condition: stop after committing/pushing this PREP checkpoint unless explicitly continuing into the smoke gate.

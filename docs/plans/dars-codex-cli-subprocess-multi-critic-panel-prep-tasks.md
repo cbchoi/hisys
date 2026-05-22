@@ -62,6 +62,37 @@ Before any live multi-critic panel smoke, complete these local checks:
    invalid, prompt text contains raw-secret markers, or any requested authority
    exceeds advisory-only read-only critique.
 
+
+## Prepared packet
+
+The PREP row produced the concrete packet:
+
+```text
+docs/examples/dars/codex-cli-subprocess-multi-critic-panel.prepared.json
+```
+
+Prepared values:
+
+```text
+request_id = REQ-DARS-CODEX-PANEL-SMOKE-20260522-001
+panel_id = PANEL-DARS-CODEX-SUBPROCESS-20260522-001
+yyyymmdd = 20260522
+critic_count = 2
+source_execution_ids = EXEC-DARS-CODEX-PANEL-LOGICAL-20260522-001, EXEC-DARS-CODEX-PANEL-EVIDENCE-20260522-001
+provider_id = codex
+adapter_class = codex_subscription
+per_critic_transport_kind = codex_cli_subprocess_prompt_mode
+aggregate_transport_kind = injected_subscription_executor_panel
+```
+
+The packet is pinned by:
+
+```text
+tests/unit/test_dars_remote_subscription_dispatch.py::test_codex_cli_subprocess_multi_critic_panel_prep_packet_matches_dispatch_contract
+```
+
+The test uses a fake Codex CLI executor and does not launch `/usr/bin/codex`.
+
 ## Future live panel row boundary
 
 A later live row may be named:

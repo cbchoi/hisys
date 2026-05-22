@@ -1,0 +1,43 @@
+{
+  "adapter_class": "codex_subscription",
+  "allowed_actions": "advisory_only",
+  "approval_ref": "APPROVAL-DARS-REMOTE-SUB-20260522-CODEX-EXISTING-AUTH",
+  "backend_id": "codex_subscription_dars_critic",
+  "backend_kind": "codex_subscription",
+  "critic_count": 2,
+  "critics": [
+    {
+      "allowed_actions": "advisory_only",
+      "mutation_performed": false,
+      "prompt": "Critic role: logical consistency. Evaluate whether the DARS Codex CLI subprocess panel claim follows from the supplied runtime-boundary evidence. Return concise advisory findings only. Keep requires_human_review true and do not request tools, shell access, web access, repository mutation, publication, or claim upgrade.",
+      "publication_performed": false,
+      "requires_human_review": true,
+      "role_id": "logical_consistency_critic",
+      "source_execution_id": "EXEC-DARS-CODEX-PANEL-LOGICAL-20260522-001",
+      "transport_kind": "codex_cli_subprocess_prompt_mode"
+    },
+    {
+      "allowed_actions": "advisory_only",
+      "mutation_performed": false,
+      "prompt": "Critic role: evidence governance. Evaluate whether the DARS Codex CLI subprocess panel claim preserves advisory-only, no-mutation, no-publication, and human-review-required boundaries. Return concise advisory findings only. Do not request tools, shell access, web access, repository mutation, publication, or claim upgrade.",
+      "publication_performed": false,
+      "requires_human_review": true,
+      "role_id": "evidence_governance_critic",
+      "source_execution_id": "EXEC-DARS-CODEX-PANEL-EVIDENCE-20260522-001",
+      "transport_kind": "codex_cli_subprocess_prompt_mode"
+    }
+  ],
+  "future_smoke_row": "DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-SMOKE-GATE",
+  "instance_root_policy": "temporary-governed-instance-root",
+  "live_execution_performed": false,
+  "panel_boundary_dir": "runtime-boundary/dars-remote-subscription-panels/20260522/REQ-DARS-CODEX-PANEL-SMOKE-20260522-001",
+  "panel_id": "PANEL-DARS-CODEX-SUBPROCESS-20260522-001",
+  "prepared_at": "2026-05-22T14:44:00Z",
+  "prepared_for_row": "DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP",
+  "provider_id": "codex",
+  "request_id": "REQ-DARS-CODEX-PANEL-SMOKE-20260522-001",
+  "schema_id": "hisys.dars.codex_cli_subprocess_multi_critic_panel_prep",
+  "schema_version": "0.1.0",
+  "transport_kind": "codex_cli_subprocess_prompt_mode",
+  "yyyymmdd": "20260522"
+}

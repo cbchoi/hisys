@@ -1,15 +1,15 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.57
-focus: 'Queue refill planning reopened the stopped DARS line and selected the
-  Codex CLI subprocess multi-critic panel as the authorized next candidate. This
-  checkpoint records operator approval and seeds a PREP/docs-control row; it does
-  not run Codex again, execute a multi-critic panel, or upgrade the broader DARS
-  completion claim.'
-formal_hisys_result: queue_refill_multi_critic_panel_authorized
+version: v0.0.58
+focus: 'Codex CLI subprocess multi-critic panel PREP completed. The row created
+  a prepared panel packet with two critic roles, unique source execution IDs,
+  advisory-only/no-mutation/no-publication/human-review-required boundaries, and
+  a fixture-backed contract test that runs the packet through the existing
+  injected-executor panel dispatch harness without launching /usr/bin/codex.'
+formal_hisys_result: codex_cli_subprocess_multi_critic_panel_prep_complete
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP
+next_safe_task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-SMOKE-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
@@ -17,22 +17,22 @@ bootstrap_arguments: go for m24; oss 는 향후 roadmap으로 넘기자; live da
   local readiness check then C subscription if not ready; provider는 codex로; 기존 auth정보
   사용; 허가; subprocess를 만드는 방향으로 전면 수정; 진행; smoke 진행;
   DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE에서 이 evidence를 검토;
-  Queue refill planning and multi-critic panel 승인
-bootstrap_inference: The operator approved queue-refill planning and the multi-critic
-  panel line after the v0.0.56 stop at QUEUE-REFILL-PREP-STOP. This checkpoint
-  records the approval as authority to open a controlled PREP/docs-control row
-  for a Codex CLI subprocess prompt-mode multi-critic panel. The immediate next
-  row may define the exact panel request packet, critic count, source execution
-  identifiers, prompt boundaries, and validation gates while reusing the existing
-  `run_dars_remote_subscription_panel_dispatch(...)` harness and the prepared
-  Codex CLI subprocess executor. No repeated Codex call or multi-critic live
-  panel execution occurred in this checkpoint, and live_model_call_authorized
-  remains false until the later smoke gate begins.
+  Queue refill planning and multi-critic panel 승인; DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP
+bootstrap_inference: The PREP row authored `docs/examples/dars/codex-cli-subprocess-multi-critic-panel.prepared.json`
+  and pinned it with a new contract test. The packet defines request_id
+  REQ-DARS-CODEX-PANEL-SMOKE-20260522-001, panel_id PANEL-DARS-CODEX-SUBPROCESS-20260522-001,
+  date partition 20260522, two critic roles, unique source execution IDs, per-critic
+  transport_kind=codex_cli_subprocess_prompt_mode, allowed_actions=advisory_only,
+  mutation_performed=false, publication_performed=false, and requires_human_review=true.
+  The test first failed while the packet was absent, then passed using only a fake
+  Codex CLI executor through run_dars_remote_subscription_panel_dispatch(...). No
+  real Codex subprocess, multi-critic live panel, provider API, credential lookup,
+  web access, mutation, publication, or DARS completion-claim upgrade occurred.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.57.md
-planning_baseline_head: 'fb54581 feat: add codex cli subprocess failure-mode fixtures'
-current_head_at_plan_creation: 'fb54581 feat: add codex cli subprocess failure-mode fixtures'
-previous_bootstrap_version: v0.0.56
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.58.md
+planning_baseline_head: '2cc946a docs: authorize codex multi-critic panel prep'
+current_head_at_plan_creation: '2cc946a docs: authorize codex multi-critic panel prep'
+previous_bootstrap_version: v0.0.57
 tmux_or_background_agent_spawned: false
 production_code_created: false
-tests_created: false
+tests_created: true
