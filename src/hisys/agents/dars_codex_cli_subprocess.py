@@ -63,11 +63,11 @@ def build_codex_cli_prompt_mode_executor(
         prompt_packet = build_redacted_codex_dars_prompt_packet(payload, config=config)
         argv = [
             config.codex_executable,
+            "--ask-for-approval",
+            "never",
             "exec",
             "--sandbox",
             "read-only",
-            "--ask-for-approval",
-            "never",
             "--cd",
             str(config.workdir),
             "--",

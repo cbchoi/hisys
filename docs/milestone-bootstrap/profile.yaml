@@ -1,35 +1,35 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.53
-focus: 'Codex CLI subprocess prompt-mode PREP implemented without running Codex.
-  Added a fixture-tested executor wrapper that builds a read-only noninteractive
-  codex exec command, validates bounded/redacted prompt packets, fails closed on
-  bad provider/adapter/transport/action/mutation/publication/secret/output signals,
-  and lets the dispatch boundary record transport_kind=codex_cli_subprocess_prompt_mode.'
-formal_hisys_result: not_run_in_this_bootstrap
+version: v0.0.54
+focus: 'Codex CLI subprocess single-smoke evidence captured. The smoke used the
+  prepared remote-subscription dispatch harness with transport_kind=codex_cli_subprocess_prompt_mode,
+  wrote runtime-boundary evidence under /tmp/hisys-dars-codex-subscription, and
+  preserved advisory-only/no-mutation/no-publication boundaries.'
+formal_hisys_result: codex_cli_subprocess_single_smoke_evidence_captured
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE
+next_safe_task: DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: go for m24; oss 는 향후 roadmap으로 넘기자; live dars execution approve;
   local readiness check then C subscription if not ready; provider는 codex로; 기존 auth정보
-  사용; 허가; subprocess를 만드는 방향으로 전면 수정; 진행
-bootstrap_inference: Prepared the governed Codex CLI subprocess prompt-mode path
-  as fixture-tested code and dispatch-boundary plumbing. The prepared executor
-  constructs codex exec with --sandbox read-only and --ask-for-approval never,
-  uses a redacted bounded prompt packet, captures output under a finite timeout,
-  and fails closed on forbidden authority or blank/failed output. No real Codex
-  subprocess was run, no SDK/API call occurred, no credential lookup occurred,
-  and no runtime-boundary evidence was written. The next row is a human-gated
-  single-smoke gate that may run only after final command/workdir/instance/prompt/no-mutation/runtime-boundary
-  checks pass.
+  사용; 허가; subprocess를 만드는 방향으로 전면 수정; 진행; smoke 진행
+bootstrap_inference: The user authorized the single-smoke gate. Preflight confirmed
+  clean dars/origin-dars state, Codex CLI /usr/bin/codex version 0.128.0, valid
+  policy/activation packets, focused tests, traceability, secret scan, and diff
+  check. The first smoke-gate attempt found that --ask-for-approval is a top-level
+  Codex option for this CLI version; the wrapper/runbook/tests were corrected to
+  use codex --ask-for-approval never exec --sandbox read-only --cd <dir> -- <prompt>.
+  The corrected single smoke succeeded and wrote runtime-boundary JSON/Markdown
+  evidence. No SDK/API call from Hisys occurred, no credential lookup occurred,
+  no raw secret was stored, no mutation/publication was requested, and the DARS
+  completion claim remains pending review.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.53.md
-planning_baseline_head: '17135d0 docs: revise dars codex path to subprocess prompt mode'
-current_head_at_plan_creation: '17135d0 docs: revise dars codex path to subprocess prompt mode'
-previous_bootstrap_version: v0.0.52
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.54.md
+planning_baseline_head: '2746ada docs: re-verify stop-preflight at codex cli subprocess single smoke gate'
+current_head_at_plan_creation: '2746ada docs: re-verify stop-preflight at codex cli subprocess single smoke gate'
+previous_bootstrap_version: v0.0.53
 tmux_or_background_agent_spawned: false
 production_code_created: true
 tests_created: true

@@ -6646,15 +6646,14 @@ Next: DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE — human-gated single-smoke g
 Next safe Ralph queue target:
 
 ```text
-DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE — human-gated single-smoke gate.
+DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE — review/gate after single-smoke evidence.
 Scope for the gate:
-  - run at most one real Codex CLI subprocess through the prepared `build_codex_cli_prompt_mode_executor` surface;
-  - require `codex exec --sandbox read-only --ask-for-approval never --cd <controlled-workdir> -- <redacted bounded prompt>`;
-  - require request `transport_kind=codex_cli_subprocess_prompt_mode`, `provider_id=codex`, `adapter_class=codex_subscription`, and `allowed_actions=advisory_only`;
-  - require an explicit controlled workdir / `HISYS_INSTANCE`, redacted prompt packet, no-mutation guard, output capture, and runtime-boundary JSON/Markdown record path before execution;
-  - stop if Codex requests search, tool/browser/shell delegation, workspace-write, broader sandbox, account/credential action, mutation, publication, or completion-claim upgrade.
+  - inspect the runtime-boundary JSON/Markdown under `/tmp/hisys-dars-codex-subscription`;
+  - confirm post-smoke repository mutation status, focused tests, traceability, secret scan, and diff check;
+  - record whether the evidence remains advisory-only or supports a later narrow claim-update proposal;
+  - do not run another Codex subprocess, multi-critic panel, web search, broader sandbox, mutation, publication, deployment, or provider-account action in the review gate.
 Still requiring separate explicit authorization or operator packet values:
-  1) Any multi-critic panel or repeated Codex/Claude subscription call after the single-smoke gate.
+  1) Any repeated Codex/Claude subscription call or multi-critic panel after the single-smoke gate.
   2) Additional live LSP execution / executable / command allowlist expansion.
   3) M25 or new product-scope milestone authorization.
   4) Section 10.3 branch alignment between `feat/domain-adaptive-requirements-analysis` and the `dars` checkout.
@@ -6828,3 +6827,28 @@ Stop-preflight checkpoint (non-parseable resume checkpoint to preserve governanc
 - Quality gate status: pass.
 - Next command to run: commit `docs: re-verify stop-preflight at codex cli subprocess single smoke gate`; then stop at `DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE` until the operator supplies the runbook §3..§7 packet (controlled workdir, governed `HISYS_INSTANCE`, redacted prompt/evidence packet, no-mutation/no-search/no-tool/no-browser confirmations, output capture path, runtime-boundary JSON/Markdown record path, and explicit go-ahead per the executor runbook).
 - Stop condition: stop at `DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE` because the next named row would require running a real Codex CLI subprocess and committing operator-only packet values that Ralph cannot fabricate without crossing the Codex provider/credential/mutation/completion-claim authority boundary.
+
+### 2026-05-22 — DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE (live smoke -> evidence)
+
+- Phase completed: executed one governed Codex CLI subprocess smoke through the prepared remote-subscription dispatch harness after operator instruction `smoke 진행`.
+- Request context: profile `v0.0.53` and Section 16 named `DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE`; preflight confirmed clean `dars`/`origin/dars`, `/usr/bin/codex`, `codex-cli 0.128.0`, valid policy/activation packet expiry `2026-06-05T06:54:03Z`, focused governance/Codex/dispatch cohort `29 passed`, traceability OK, secret scan `hit_count=0`, and `git diff --check` clean.
+- First smoke-gate attempt: request shape initially used mismatched backend id/kind and failed before executor contact with `activation_backend_id_mismatch`. After matching the activation packet (`backend_id=codex_subscription_dars_critic`, `backend_kind=codex_subscription`), Codex CLI 0.128.0 rejected the prepared command ordering with `unexpected argument '--ask-for-approval'` because that option is top-level, not an `exec` subcommand option.
+- Implementation correction: updated `src/hisys/agents/dars_codex_cli_subprocess.py`, `tests/unit/test_dars_codex_cli_subprocess.py`, `docs/runbooks/dars-codex-subscription-executor-runbook.md`, and readiness decision v0.0.53 so the command shape is `codex --ask-for-approval never exec --sandbox read-only --cd <controlled-workdir> -- <redacted bounded prompt>`. Focused wrapper test after correction: `9 passed`.
+- Successful smoke evidence: runtime-boundary JSON `/tmp/hisys-dars-codex-subscription/runtime-boundary/dars-remote-subscriptions/20260522/REQ-DARS-CODEX-SMOKE-20260522-001/codex_subscription_dars_critic-EXEC-DARS-CODEX-SMOKE-20260522-001.json`; runtime-boundary Markdown sibling `.md`. The JSON records `external_call_made=true`, `model_boundary_crossed=true`, `local_model_call_made=false`, `mutation_performed=false`, `publication_performed=false`, `requires_human_review=true`, and `transport_kind=codex_cli_subprocess_prompt_mode`.
+- Codex advisory preview: `Risk: Prompt-mode behavior may still diverge under real subprocess edge cases such as timeout, partial output, or malformed advisory metadata.` Recommendation: `Run a human-reviewed dry-run fixture that simulates timeout and malformed-output cases while confirming requires_human_review stays true.`
+- Governance + traceability: created `docs/reports/dars-codex-cli-subprocess-single-smoke-2026-05-22.md`; created readiness decision record `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.54.md`; bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.54` with `next_safe_task=DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE`; updated governance current-state test expectation; prepended traceability; updated Section 16 queue status.
+- Boundary: one Codex CLI subprocess smoke occurred. No Codex SDK import, no raw provider API call from Hisys, no credential lookup by Hisys/Ralph, no vault resolution, no raw secret handling, no Authorization header/API key/token storage, no web search flag, no workspace-write, no danger-full-access, no sandbox bypass, no publication/deployment/PR/issue/release, no multi-critic panel, and no DARS completion-claim upgrade occurred.
+- Quality gate result: pass — focused governance/Codex/dispatch cohort `29 passed`; full project `1083 passed`; traceability OK; secret scan `hit_count=0` across 749 files; `git diff --check` clean; branch `dars` synced to `origin/dars` before commit.
+- Continue decision: next safe row is `DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE`, which reviews the single-smoke evidence and must not run another Codex subprocess without separate authorization.
+- Commit pending: `feat: capture codex cli subprocess smoke evidence`.
+
+Resume checkpoint:
+- Current HEAD: 2746ada docs: re-verify stop-preflight at codex cli subprocess single smoke gate
+- Working tree: smoke evidence report, readiness decision v0.0.54, command-contract correction, profile/test/traceability/Ralph edits pending final gates.
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE (this entry).
+- Current in-progress task: validation and commit for single-smoke evidence.
+- RED observed: command-contract mismatch for Codex CLI 0.128.0; corrected by moving `--ask-for-approval never` before `exec`.
+- GREEN observed: runtime-boundary evidence written for one Codex CLI subprocess smoke.
+- Quality gate status: pass — focused `29 passed`; full project `1083 passed`; traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
+- Next command to run: commit `feat: capture codex cli subprocess smoke evidence`; push to existing `origin/dars`; then stop at the review gate.
+- Stop condition: stop after committing/pushing the single-smoke evidence; do not run repeated or panel Codex calls before a separate review/gate decision.

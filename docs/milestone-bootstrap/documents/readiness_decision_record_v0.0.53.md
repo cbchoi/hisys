@@ -42,9 +42,8 @@ Callable[[dict[str, Any]], str]
 The prepared executor constructs a fixed noninteractive read-only command:
 
 ```bash
-codex exec \
+codex --ask-for-approval never exec \
   --sandbox read-only \
-  --ask-for-approval never \
   --cd <controlled-workdir> \
   -- "<redacted bounded DARS critic prompt packet>"
 ```

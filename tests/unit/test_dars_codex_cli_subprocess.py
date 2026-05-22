@@ -106,11 +106,11 @@ def test_codex_cli_prompt_mode_executor_uses_read_only_noninteractive_command(tm
     argv, kwargs = calls[0]
     assert argv[:7] == [
         "/usr/bin/codex",
+        "--ask-for-approval",
+        "never",
         "exec",
         "--sandbox",
         "read-only",
-        "--ask-for-approval",
-        "never",
         "--cd",
     ]
     assert argv[7] == str(workdir)

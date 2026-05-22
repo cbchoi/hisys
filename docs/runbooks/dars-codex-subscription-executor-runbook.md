@@ -179,9 +179,8 @@ Callable[[dict[str, Any]], str]
 The prepared command is fixed to:
 
 ```bash
-codex exec \
+codex --ask-for-approval never exec \
   --sandbox read-only \
-  --ask-for-approval never \
   --cd <controlled-workdir> \
   -- "<redacted bounded DARS critic prompt packet>"
 ```
