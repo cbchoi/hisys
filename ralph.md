@@ -6417,9 +6417,28 @@ Resume checkpoint:
 - Next command to run: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`; commit `docs: prepare dars live execution auth packet`; then stop at `DARS-LIVE-EXECUTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES` and ask the operator for the listed prerequisites.
 - Stop condition: stop if any validation fails, `git diff --check` is dirty, branch/upstream is not `dars`/`origin/dars`, or the next row would require operator prerequisites that have not yet landed.
 
+### 2026-05-22 — Local DARS not ready; switch to subscription PREP (docs/control)
+
+- Phase completed: local readiness check and conditional subscription-path decision.
+- Request context: user said `local은 아직 준비가 덜 되어 있지 않나? 확인하고 준비가 되어 있으면 A 안되어 있면 C. subscription으로 진행`.
+- Controlled anchors checked: `docs/plans/dars-live-execution-auth-prep-tasks.md`; `docs/contracts/dars-remote-subscription-backend-policy.md`; `src/hisys/agents/dars_remote_subscription_policy.py`; `src/hisys/agents/dars_remote_subscription_dispatch.py`; Git state at `a64d2e2 docs: prepare dars live execution auth packet`; environment variables; listening localhost ports; local DARS config/activation packet file inventory.
+- Local readiness result: not ready. `HISYS_DARS_LOCAL_ENDPOINT` is unset; `HISYS_INSTANCE` is unset; no operator-provided live instance root was present; only `examples/instance/config/dars.json` was found; only the example activation packet `docs/examples/dars/backend-activation-localhost.example.json` was found; no fresh operator activation packet path was supplied. No model runner was started and no local model call was made.
+- Implementation: created `docs/reports/dars-local-readiness-check-2026-05-22.md`; created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.46.md`; bumped `profile.yaml` to `v0.0.46` with `next_safe_task=DARS-REMOTE-SUBSCRIPTION-AUTH-PREP`; updated governance current-state test expectation; prepended traceability; updated Section 16 queue state.
+- Boundary: docs/control only. This checkpoint authorizes PREP for the governed Codex/Claude subscription path; it does not authorize a real subscription provider call, credential lookup, raw secret handling, arbitrary endpoint configuration, provider-account configuration, publication/deployment, mutation, tool/browser/search authority, or OSS workflow execution.
+- Continue decision: after validation/commit/push, start Ralph/RLOO on `DARS-REMOTE-SUBSCRIPTION-AUTH-PREP`. The PREP row must bind provider (`codex` or `claude`), operator identity, subscription account ref without raw credentials, redaction policy, egress scope, expiry/revocation refs, executor boundary, audit path, and advisory-only/no-tool/no-mutation confirmations before any real subscription execution can be considered.
+- Commit pending: `docs: switch dars execution to subscription prep`.
+
+Resume checkpoint:
+- Current HEAD: a64d2e2 docs: prepare dars live execution auth packet
+- Working tree: local readiness report + subscription decision/profile/test/traceability/Ralph edits pending validation/commit/push
+- Last completed milestone/task: DARS local readiness check and subscription path authorization
+- Current in-progress task: DARS-REMOTE-SUBSCRIPTION-AUTH docs/control validation and commit
+- Next safe Ralph queue target: DARS-REMOTE-SUBSCRIPTION-AUTH-PREP
+- Stop condition: do not run a real subscription provider until PREP records provider/operator/account-ref/redaction/egress/expiry/executor/audit/no-tool/no-mutation boundaries.
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone and the authorized M23 adapter portfolio / live LSP smoke follow-up are closed at local/advisory boundaries. M24 was authorized with `go for m24` (`readiness_decision_record_v0.0.39.md`); M24 PREP (1b053a7), RED/GREEN (01466fe), and GATE are now closed at `local_fixture_advisory_complete` for the planning surface. The user has moved OSS comparison/license execution to the future roadmap, so no OSS workflow row is active in Ralph. The user has authorized live DARS execution (`readiness_decision_record_v0.0.44.md`); `DARS-LIVE-EXECUTION-AUTH-PREP` has now been authored as a docs/control packet at `docs/plans/dars-live-execution-auth-prep-tasks.md`. The next safe row is a non-delegable stop-and-ask gate that waits for the operator to supply localhost endpoint, Hisys instance, fresh activation packet, and Section 7 precondition confirmations before any model/backend boundary crossing.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone and the authorized M23 adapter portfolio / live LSP smoke follow-up are closed at local/advisory boundaries. M24 was authorized with `go for m24` (`readiness_decision_record_v0.0.39.md`); M24 PREP (1b053a7), RED/GREEN (01466fe), and GATE are now closed at `local_fixture_advisory_complete` for the planning surface. The user has moved OSS comparison/license execution to the future roadmap, so no OSS workflow row is active in Ralph. Local DARS execution prerequisites were checked and are not ready; per the user's conditional decision, the next safe row is docs/control PREP for the governed Codex/Claude subscription path.
 
 Current queue status:
 
@@ -6438,36 +6457,33 @@ Done: M24-REAL-OSS-LICENSE-WORKFLOW-GATE — M24 line closed at `local_fixture_a
 Done: OSS-FUTURE-ROADMAP-2026-05-22 — user moved OSS comparison/license execution to the future roadmap; profile bumped to `v0.0.43`; no OSS workflow row is active in Ralph.
 Done: DARS-LIVE-EXECUTION-AUTH — user authorized the previously stopped live DARS execution candidate; profile bumped to `v0.0.44`; readiness decision record v0.0.44 created.
 Done: DARS-LIVE-EXECUTION-AUTH-PREP — authored docs/plans/dars-live-execution-auth-prep-tasks.md as a docs/control packet binding readiness decision v0.0.44 to the existing M-DARS-BE-1..4 surfaces. Pinned the exact activation packet shape; the full validator + runtime issue-code matrix; the operator-driven execution-row command surface (`request-dars-critique --backend configured --approval-ref … --backend-activation-packet …`); the runtime-boundary record partition `$HISYS_INSTANCE/runtime-boundary/dars-backends/<YYYYMMDD>/<SOURCE_EXECUTION_ID>/<BACKEND_ID>.{json,md}` with M-DARS-BE-3 required fields; and a stop-condition matrix mapping non-loopback / missing-packet / expired / mismatched / credential-demand / tool-search-browser / mutation / secret-scan / operator-uncertainty signals to the runbook stop list and validator/runtime codes. Profile bumped to `v0.0.45` with `next_safe_task=DARS-LIVE-EXECUTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES`; governance current-state test updated to match.
-Next: DARS-LIVE-EXECUTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES — non-delegable stop-and-ask gate. Operator must supply HISYS_DARS_LOCAL_ENDPOINT (loopback), HISYS_INSTANCE (matching `config/dars.json`), a fresh activation packet path, and explicit Section 7 precondition confirmations before any model boundary crossing.
+Done: DARS-LOCAL-READINESS-CHECK — local path A checked and not ready: `HISYS_DARS_LOCAL_ENDPOINT` unset, `HISYS_INSTANCE` unset, no operator live instance, no fresh activation packet.
+Done: DARS-REMOTE-SUBSCRIPTION-AUTH — per user conditional decision, opened option C as docs/control PREP; profile bumped to `v0.0.46`; readiness decision record v0.0.46 created.
+Next: DARS-REMOTE-SUBSCRIPTION-AUTH-PREP — docs/control PREP for governed Codex/Claude subscription path.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-DARS-LIVE-EXECUTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES — non-delegable stop-and-ask gate.
-The PREP packet at docs/plans/dars-live-execution-auth-prep-tasks.md pins the contract.
-The next row may advance only when the operator supplies, out of band, all of:
-  - HISYS_DARS_LOCAL_ENDPOINT  (loopback URL of the form http://127.0.0.1:<port>/v1/chat/completions);
-  - HISYS_INSTANCE             (Hisys instance root whose config/dars.json declares local_llm_dars as the default openai_compatible backend with mode=local_network_only and the matching endpoint);
-  - a fresh activation packet path (matching docs/examples/dars/backend-activation-localhost.example.json with current approval_ref + expires_at);
-  - explicit confirmation that the local model runner demands no Authorization header / API key / token / credential;
-  - explicit confirmation that the local model runner has no tool / search / browser permission and no mutation authority;
-  - explicit confirmation that the operator is decisive about every Section 7 precondition in the PREP packet.
-Until those land, Ralph stops at this gate. The PREP is otherwise complete.
-
-Still requiring separate explicit authorization:
-  1) Additional live LSP execution / executable / command allowlist expansion.
-  2) M25 or new product-scope milestone authorization.
-  3) Section 10.3 branch alignment between `feat/domain-adaptive-requirements-analysis` and the `dars` checkout (dormant; would change the automatic-push procedure).
-  4) Real Codex / Claude subscription provider execution beyond the existing M-DARS-BE-5/6 injected-executor fail-closed harness.
+DARS-REMOTE-SUBSCRIPTION-AUTH-PREP — docs/control PREP for governed Codex/Claude subscription path.
+Scope for PREP:
+  - bind readiness decision v0.0.46 to `docs/contracts/dars-remote-subscription-backend-policy.md`, `src/hisys/agents/dars_remote_subscription_policy.py`, and `src/hisys/agents/dars_remote_subscription_dispatch.py`;
+  - define the concrete provider packet fields and stop conditions for `provider_id=codex|claude`, operator identity, subscription account ref without raw credentials, redaction policy, egress scope, expiry/revocation refs, executor boundary, audit path, and advisory-only/no-tool/no-mutation confirmations;
+  - preserve the existing injected-executor boundary and stop before any real provider call if provider/operator/account/redaction/egress/expiry/executor/audit details are absent.
+Still requiring separate explicit authorization or operator packet values:
+  1) Actual real subscription call after PREP unless the PREP packet names all provider/operator/account/redaction/egress/expiry/executor/audit details.
+  2) Additional live LSP execution / executable / command allowlist expansion.
+  3) M25 or new product-scope milestone authorization.
+  4) Section 10.3 branch alignment between `feat/domain-adaptive-requirements-analysis` and the `dars` checkout.
 Future-roadmap only:
   - Real OSS comparison / license adjudication live execution.
-Do not cross any model/backend boundary until the operator prerequisites above land.
+Do not call Codex/Claude subscription until PREP records the checked subscription execution packet.
 ```
 
 Follow-up boundary:
 
-- allowed now: docs/control / stop-and-ask gate; await operator prerequisites for the live DARS execution row;
-- not yet allowed in this checkpoint: crossing a model/backend boundary before the operator supplies the loopback endpoint, the matching Hisys instance, a valid fresh activation packet, no-credential / no-tool / no-mutation confirmations, a passing secret scan, and Section 7 precondition decisions;
+- allowed now: docs/control PREP for the governed Codex/Claude subscription path under readiness decision v0.0.46;
+- not yet allowed in this checkpoint: real subscription provider call, credential lookup, raw secret handling, arbitrary endpoint configuration, provider account configuration, mutation, publication, browser/search/tool authority, or completion-claim upgrade;
+- local DARS execution remains paused until operator-supplied localhost prerequisites exist;
 - DARS completion claim must remain `local_fixture_localhost_controlled_advisory_complete` until a later GREEN/GATE row captures successful runtime-boundary evidence;
 - M24 planning surface is final at `local_fixture_advisory_complete`; OSS comparison/license execution is future-roadmap only and is not an active Ralph row.

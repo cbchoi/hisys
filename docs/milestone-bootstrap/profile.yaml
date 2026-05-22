@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.45
-focus: DARS-LIVE-EXECUTION-AUTH-PREP authored as docs/control packet binding readiness_decision v0.0.44 to the existing DARS live backend plan and localhost smoke runbook; next safe row stops and asks for operator-supplied localhost endpoint, Hisys instance, fresh activation packet, and Section 7 precondition confirmations before any model boundary crossing
+version: v0.0.46
+focus: Local DARS readiness checked and found not ready; user conditional selected subscription path; next row is docs/control PREP for governed DARS remote subscription execution planning
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-LIVE-EXECUTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES
+next_safe_task: DARS-REMOTE-SUBSCRIPTION-AUTH-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "go for m24; oss 는 향후 roadmap으로 넘기자; live dars execution approve"
-bootstrap_inference: "DARS-LIVE-EXECUTION-AUTH-PREP authored under the live DARS execution authorization recorded in readiness_decision_record_v0.0.44. The PREP binds the existing M-DARS-BE-1..4 local backend surfaces (validator, runtime enforcement, backend-boundary writer, CLI pass-through, runbook, and example activation packet) to the authorization envelope and pins the exact execution packet fields, validator/runtime issue codes, runtime-boundary record path, validation commands, and stop-condition matrix. No production code, no test source, no fixture content, no runtime artifact, no live model call, no remote provider call, no credential lookup, no publication, and no Git history mutation is introduced. The next safe Ralph row is a stop-and-ask gate that waits for the operator to supply HISYS_DARS_LOCAL_ENDPOINT, HISYS_INSTANCE, a fresh activation packet path, and explicit Section 7 precondition confirmations before any model boundary crossing. OSS comparison/license execution remains future-roadmap only. Remote subscription provider execution remains bounded by the existing M-DARS-BE-5/6 injected-executor harness."
+bootstrap_arguments: "go for m24; oss 는 향후 roadmap으로 넘기자; live dars execution approve; local readiness check then C subscription if not ready"
+bootstrap_inference: "Local DARS execution prerequisites were checked and are not ready: HISYS_DARS_LOCAL_ENDPOINT unset, HISYS_INSTANCE unset, no operator-provided live instance root, and no fresh activation packet path. Per the user conditional instruction, open the subscription path as docs/control PREP. The next row must bind existing M-DARS-BE-5/6 Codex/Claude subscription policy and injected-executor harness to a concrete provider/operator/redaction/egress/expiry packet before any real subscription call. No live model/provider call, credential lookup, raw secret handling, publication, mutation, or OSS workflow execution is authorized by this checkpoint."
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/plans/dars-live-execution-auth-prep-tasks.md
-planning_baseline_head: "1a039cd docs: authorize live dars execution"
-current_head_at_plan_creation: "1a039cd docs: authorize live dars execution"
-previous_bootstrap_version: v0.0.44
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.46.md
+planning_baseline_head: "a64d2e2 docs: prepare dars live execution auth packet"
+current_head_at_plan_creation: "a64d2e2 docs: prepare dars live execution auth packet"
+previous_bootstrap_version: v0.0.45
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false
