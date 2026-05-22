@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.40
-focus: M24 real OSS comparison/license workflow PREP packet authored; next safe row is M24-REAL-OSS-LICENSE-WORKFLOW-RED-GREEN (docs/control + fixture-local validator only)
+version: v0.0.41
+focus: M24 real OSS comparison/license workflow RED/GREEN landed; planning validator/builder/writer pinned at hisys.oss_license_workflow.v1; next safe row is M24-REAL-OSS-LICENSE-WORKFLOW-GATE (docs/control closure)
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: M24-REAL-OSS-LICENSE-WORKFLOW-RED-GREEN
+next_safe_task: M24-REAL-OSS-LICENSE-WORKFLOW-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: "go for m24"
-bootstrap_inference: "User authorized opening M24/new product-scope work. The M24 PREP packet at docs/plans/m24-real-oss-comparison-license-workflow-prep-tasks.md is now authored and pins a planning-only validator/builder/writer contract for the real-OSS comparison/license workflow line. The validator must always emit a standing live_workflow_not_implemented warning, reject real URL schemes and hosts, reject any live_workflow_authorized=true, reject license-text capture, reject license-adjudication claims, reject automated cleanup, reject automated source ingestion, and require a non-empty human-review handoff. The next safe row M24-REAL-OSS-LICENSE-WORKFLOW-RED-GREEN performs the fixture-local RED/GREEN under the same docs/control boundary; it does not authorize credential activity, arbitrary network search/clone/fetch, real OSS clone, license-text capture, license adjudication, raw source archival, new remote configuration, publication/deployment/release, destructive Git/history action, mutation of non-fixture/live data, unbounded live external provider execution, or live-provider DARS completion claims."
+bootstrap_inference: "User authorized opening M24/new product-scope work. The M24 RED/GREEN row at src/hisys/operations/real_oss_license_workflow.py with tests/unit/test_real_oss_license_workflow.py and docs/contracts/real-oss-license-workflow.md pins the planning-only validator/builder/writer for the real OSS comparison/license workflow line. Every valid packet emits a standing live_workflow_not_implemented warning. The validator rejects real URL schemes and known forge/registry hosts, rejects live_workflow_authorized=true, rejects license-text capture, rejects license-adjudication claims, rejects automated cleanup, rejects automated source ingestion, and requires a non-empty human-review handoff. The next safe row M24-REAL-OSS-LICENSE-WORKFLOW-GATE is a docs/control closure that records the planning surface as final under the local-fixture advisory boundary; it does not authorize credential activity, arbitrary network search/clone/fetch, real OSS clone, license-text capture, license adjudication, raw source archival, new remote configuration, publication/deployment/release, destructive Git/history action, mutation of non-fixture/live data, unbounded live external provider execution, or live-provider DARS completion claims."
 roadmap_ref: docs/plans/m24-real-oss-comparison-license-workflow-plan.md
-next_artifact_ref: src/hisys/operations/real_oss_license_workflow.py
-planning_baseline_head: "164f3fc docs: queue-refill recheck under approval-min rule"
-current_head_at_plan_creation: "f3b48ab feat: add remote subscription multi-critic dars panel dispatch"
-previous_bootstrap_version: v0.0.39
+next_artifact_ref: docs/plans/m24-real-oss-comparison-license-workflow-plan.md
+planning_baseline_head: "1b053a7 docs: prepare m24 real oss license workflow validator"
+current_head_at_plan_creation: "1b053a7 docs: prepare m24 real oss license workflow validator"
+previous_bootstrap_version: v0.0.40
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false
