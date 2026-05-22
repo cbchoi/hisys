@@ -1,6 +1,7 @@
 # DARS Codex CLI subprocess prompt-mode runbook (docs/control)
 
-> **Status:** human-gated, revised by readiness decision v0.0.52.
+> **Status:** human-gated, revised by readiness decision v0.0.52 and
+> prepared by readiness decision v0.0.53.
 > This runbook supersedes the earlier callable-only external executor wording.
 > The intended Codex path is now a governed **Codex CLI subprocess prompt-mode**
 > path: Hisys/Ralph may prepare and, only in a later execution row, invoke a
@@ -27,6 +28,7 @@ Codex.
 | Remote subscription PREP | `docs/plans/dars-remote-subscription-auth-prep-tasks.md` |
 | Codex live-smoke authorization | `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.51.md` |
 | Subprocess path revision | `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.52.md` |
+| Subprocess PREP implementation | `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.53.md`; `src/hisys/agents/dars_codex_cli_subprocess.py`; `tests/unit/test_dars_codex_cli_subprocess.py` |
 | Codex policy packet draft | `docs/examples/dars/codex-subscription-policy.recommended.json` |
 | Codex activation packet draft | `docs/examples/dars/codex-subscription-activation.recommended.json` |
 | Remote subscription dispatch harness (M-DARS-BE-6) | `src/hisys/agents/dars_remote_subscription_dispatch.py` |
@@ -164,7 +166,43 @@ Authorization headers, provider account identifiers, or unredacted secrets.
 | Working tree changes after a supposed read-only run | Stop; treat as mutation incident |
 | Runtime-boundary record cannot be written under `HISYS_INSTANCE` | Stop; no completion claim upgrade |
 
-## 7. Verification commands for this docs/control revision
+## 8. PREP implementation surface (v0.0.53)
+
+`src/hisys/agents/dars_codex_cli_subprocess.py` prepares the governed Codex CLI
+subprocess prompt-mode executor without running Codex in tests. The surface is
+still shaped as the M-DARS-BE-6 executor seam:
+
+```python
+Callable[[dict[str, Any]], str]
+```
+
+The prepared command is fixed to:
+
+```bash
+codex exec \
+  --sandbox read-only \
+  --ask-for-approval never \
+  --cd <controlled-workdir> \
+  -- "<redacted bounded DARS critic prompt packet>"
+```
+
+The wrapper validates `provider_id=codex`, `adapter_class=codex_subscription`,
+`transport_kind=codex_cli_subprocess_prompt_mode`, `allowed_actions=advisory_only`,
+false mutation/publication flags, a configured workdir, a bounded timeout, and a
+prompt packet that does not contain obvious raw-secret markers. It calls
+`subprocess.run(..., shell=False, capture_output=True, text=True, check=False,
+env={"PATH": ...})` only after those checks pass. Non-zero exit, blank stdout,
+and output carrying raw-secret markers fail closed.
+
+`src/hisys/agents/dars_remote_subscription_dispatch.py` now carries
+`transport_kind` through `RemoteSubscriptionDispatchRequest`, the executor
+payload, and the single-critic boundary record writer. The default remains
+`injected_subscription_executor`; the Codex CLI path must explicitly request
+`codex_cli_subprocess_prompt_mode`.
+
+The PREP tests use fake runners/executors. They do not invoke `/usr/bin/codex`.
+
+## 9. Verification commands for this docs/control revision
 
 ```bash
 PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q
@@ -177,16 +215,15 @@ git status --short --branch
 No Codex subprocess is run by this revision. The observed local tool fact
 `/usr/bin/codex` and `codex-cli 0.128.0` is readiness context only.
 
-## 8. Next safe Ralph row
+## 10. Next safe Ralph row
 
-The next safe row remains a prerequisite/implementation-prep gate, but its
-meaning is revised:
+The next safe row becomes a human-gated single-smoke gate:
 
 ```text
-DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP
+DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE
 ```
 
-That row may prepare the exact subprocess wrapper, prompt packet template,
-redaction hook, timeout/sandbox checks, and runtime-boundary schema amendment.
-It must still stop before an actual Codex smoke unless the final command line,
-prompt packet, instance root, redaction output, and no-mutation checks are ready.
+That row may run at most one real Codex CLI subprocess smoke only after the final
+command, workdir/instance root, redacted prompt packet, no-mutation guard, and
+runtime-boundary output path are confirmed. If Codex requires broader sandbox,
+search, tool, mutation, or account/credential authority, the row must stop.

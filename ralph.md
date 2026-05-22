@@ -2004,6 +2004,32 @@ These candidates are backlog-only until M20.5 completes and a queue-refill check
 
 Append one entry after each completed task, stop condition, or runtime limit.
 
+### 2026-05-22 — DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP (RED -> GREEN)
+
+- Phase completed: prepared the governed Codex CLI subprocess prompt-mode executor and dispatch transport-kind plumbing. No real Codex subprocess was run.
+- Request context: operator said `진행` while profile `v0.0.52` named `DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP` as the next safe row after the subprocess prompt-mode revision.
+- Controlled anchors checked: `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.52.md`; `docs/runbooks/dars-codex-subscription-executor-runbook.md`; `src/hisys/agents/dars_remote_subscription_dispatch.py`; existing M-DARS-BE-6 dispatch harness tests; `docs/milestone-bootstrap/profile.yaml`; `tests/unit/test_governance_docs_current_state.py`; previous HEAD `17135d0 docs: revise dars codex path to subprocess prompt mode`.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_dars_codex_cli_subprocess.py -q` -> 9 failed, with `ModuleNotFoundError: No module named 'hisys.agents.dars_codex_cli_subprocess'` and `TypeError: RemoteSubscriptionDispatchRequest.__init__() got an unexpected keyword argument 'transport_kind'`.
+- Implementation: added `src/hisys/agents/dars_codex_cli_subprocess.py` with `CodexCliSubprocessConfig`, `build_codex_cli_prompt_mode_executor(...)`, and bounded prompt-packet rendering. The prepared executor constructs `codex exec --sandbox read-only --ask-for-approval never --cd <controlled-workdir> -- <redacted bounded DARS critic prompt>`, validates provider/adapter/transport/action/mutation/publication/redaction constraints before runner contact, uses `shell=False`, captured stdout/stderr, finite timeout, and PATH-only environment, and fails closed on non-zero exit, blank stdout, or raw-secret markers. Updated `RemoteSubscriptionDispatchRequest` to carry `transport_kind` with default `injected_subscription_executor`, include that field in the executor payload, validate it against the known transport values, and write it into the single-critic boundary record.
+- Tests: added `tests/unit/test_dars_codex_cli_subprocess.py`. The tests inject fake subprocess runners and fake dispatch executors; no test invokes `/usr/bin/codex`.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_dars_codex_cli_subprocess.py tests/unit/test_dars_remote_subscription_dispatch.py -q` -> `28 passed in 0.10s`.
+- Governance + traceability: created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.53.md`; updated `docs/runbooks/dars-codex-subscription-executor-runbook.md`; bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.53` with `next_safe_task=DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE`; updated governance current-state test expectation; prepended traceability; updated Section 16 queue status.
+- Boundary: no live Codex subprocess, no Codex SDK import, no raw API call, no credential lookup, no vault resolution, no Authorization header, no API key, no provider account configuration, no web search, no browser action, no model-requested tool/shell delegation, no file/git mutation, no publication/deployment, no runtime-boundary write, no multi-critic panel execution, and no DARS completion-claim upgrade occurred.
+- Quality gate result: pending final governance current-state, traceability, secret scan, `git diff --check`, and repository status after this Reflection Log entry.
+- Continue decision: after validation/commit/push, the next safe row is `DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE`. That row may run at most one real Codex CLI subprocess only if final command/workdir/instance/prompt/no-mutation/runtime-boundary checks pass immediately before execution; otherwise stop.
+- Commit pending: `feat: prepare codex cli subprocess prompt mode`.
+
+Resume checkpoint:
+- Current HEAD before this entry's commit: `17135d0 docs: revise dars codex path to subprocess prompt mode`.
+- Working tree before this entry's commit: Codex subprocess PREP module, dispatch transport-kind plumbing, focused tests, readiness record, runbook, profile, governance test, traceability, and ralph.md modified; final gates pending.
+- Last completed milestone/task: `DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP` (this entry).
+- Current in-progress task: validation and commit for subprocess PREP.
+- RED observed: focused Codex PREP test failed with missing module and missing dispatch `transport_kind` field.
+- GREEN observed: Codex PREP + dispatch focused cohort `28 passed`.
+- Quality gate status: pending final governance/traceability/secret/diff/status gates.
+- Next command to run: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py tests/unit/test_dars_codex_cli_subprocess.py tests/unit/test_dars_remote_subscription_dispatch.py -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`; commit `feat: prepare codex cli subprocess prompt mode`; push to existing `origin/dars` if gates pass and no credential/security prompt appears.
+- Stop condition: stop if validation fails, secret scan reports hits, branch/upstream is not `dars`/`origin/dars`, or the next requested action would run Codex without the final single-smoke gate checks.
+
 ### 2026-05-22 — Stop-preflight verification at DARS-REMOTE-SUBSCRIPTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES gate (re-verification post-`허가`)
 
 - Phase completed: stop-preflight re-verification only — no Codex call, no SDK invocation, no credential lookup, no vault resolution, no runtime-boundary write, no completion-claim upgrade. tmux Ralph loop fired again on `dars` with HEAD `8833a69 docs: capture codex subscription live smoke authorization`. The previously committed `DARS-CODEX-SUBSCRIPTION-LIVE-SMOKE-AUTH-CAPTURE` row recorded the operator approval sentence `허가` as authorization to open a controlled future single Codex subscription smoke line; no operator-supplied prerequisites packet (§10 of `docs/plans/dars-remote-subscription-auth-prep-tasks.md`) has arrived since.
@@ -6612,28 +6638,28 @@ Done: DARS-CODEX-SUBSCRIPTION-PACKET-DRAFT — authored `docs/examples/dars/code
 Done: DARS-CODEX-SUBSCRIPTION-PACKET-VALIDATE-AND-EXECUTOR-PREP — rehearsed the draft packets against M-DARS-BE-5 and M-DARS-BE-1 with injected `now=2026-05-22T00:00:00Z` (policy `valid=True` + standing `remote_dispatch_not_implemented` warning; activation `valid=True`); authored `docs/runbooks/dars-codex-subscription-executor-runbook.md` as the operator-owned executor contract document; no Codex call, no Codex SDK import, no credential lookup, no runtime-boundary write.
 Done: DARS-CODEX-SUBSCRIPTION-LIVE-SMOKE-AUTH-CAPTURE — recorded operator approval sentence `허가` in `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.51.md` as authorization to open a controlled future single Codex subscription smoke line; no Codex call, no SDK invocation, no credential lookup, no runtime-boundary write, and no completion-claim upgrade.
 Done: DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-REVISION — recorded operator instruction `subprocess를 만드는 방향으로 전면 수정` in `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.52.md`; revised `docs/runbooks/dars-codex-subscription-executor-runbook.md` from callable-only external executor to governed Codex CLI subprocess prompt-mode; no Codex subprocess, SDK/API call, credential lookup, runtime-boundary write, mutation, publication, or completion-claim upgrade.
-Next: DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP — docs/control + implementation-prep gate for exact subprocess wrapper, bounded prompt packet, redaction hook, timeout/output capture, no-mutation guard, and runtime-boundary record amendment; still no actual Codex smoke.
+Done: DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP — added fixture-tested `src/hisys/agents/dars_codex_cli_subprocess.py`, `tests/unit/test_dars_codex_cli_subprocess.py`, and dispatch `transport_kind` plumbing so a future single-critic record can state `codex_cli_subprocess_prompt_mode`; no real Codex subprocess was run, no SDK/API call, no credential lookup, no runtime-boundary record was written, and no completion-claim upgrade occurred.
+Next: DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE — human-gated single-smoke gate for at most one real Codex CLI subprocess after final command/workdir/instance/prompt/no-mutation/runtime-boundary checks pass.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP — docs/control + implementation-prep gate.
+DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE — human-gated single-smoke gate.
 Scope for the gate:
-  - prepare the exact governed Codex CLI subprocess prompt-mode wrapper and command contract;
-  - keep `adapter_class=codex_subscription` for validator compatibility, but require runtime `transport_kind=codex_cli_subprocess_prompt_mode`;
-  - require read-only sandbox / no-search / no-yolo / no-full-auto / no sandbox-bypass / no workspace-write constraints;
-  - prepare bounded prompt packet generation, redaction hook, timeout/output capture, empty-output handling, and no-mutation guard;
-  - prepare runtime-boundary record fields that state `codex_sdk_invoked=false`, `raw_provider_api_invoked=false`, and `credential_lookup_by_hisys=false`;
-  - the gate does not run a Codex subprocess, does not call any Codex SDK/API, does not resolve credentials, does not write a runtime-boundary record, and does not upgrade the DARS completion claim.
+  - run at most one real Codex CLI subprocess through the prepared `build_codex_cli_prompt_mode_executor` surface;
+  - require `codex exec --sandbox read-only --ask-for-approval never --cd <controlled-workdir> -- <redacted bounded prompt>`;
+  - require request `transport_kind=codex_cli_subprocess_prompt_mode`, `provider_id=codex`, `adapter_class=codex_subscription`, and `allowed_actions=advisory_only`;
+  - require an explicit controlled workdir / `HISYS_INSTANCE`, redacted prompt packet, no-mutation guard, output capture, and runtime-boundary JSON/Markdown record path before execution;
+  - stop if Codex requests search, tool/browser/shell delegation, workspace-write, broader sandbox, account/credential action, mutation, publication, or completion-claim upgrade.
 Still requiring separate explicit authorization or operator packet values:
-  1) Actual Codex/Claude subscription call after the gate unless the operator supplies all §10 prerequisites.
+  1) Any multi-critic panel or repeated Codex/Claude subscription call after the single-smoke gate.
   2) Additional live LSP execution / executable / command allowlist expansion.
   3) M25 or new product-scope milestone authorization.
   4) Section 10.3 branch alignment between `feat/domain-adaptive-requirements-analysis` and the `dars` checkout.
 Future-roadmap only:
   - Real OSS comparison / license adjudication live execution.
-Do not run the Codex CLI subprocess smoke until the subprocess wrapper, redacted prompt packet, instance root, no-mutation guard, and runtime-boundary record path are prepared and separately gated.
+Do not run Codex if the final command, redacted prompt packet, no-mutation guard, and runtime-boundary record path cannot be checked immediately before execution.
 ```
 
 Follow-up boundary:
@@ -6755,3 +6781,25 @@ Resume checkpoint:
 - Quality gate status: pending — governance current-state + traceability + secret scan + `git diff --check`
 - Next command to run: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`; commit `docs: revise dars codex path to subprocess prompt mode`; then stop before any real Codex subprocess smoke.
 - Stop condition: stop if validation fails, secret scan reports hits, branch/upstream is not `dars`/`origin/dars`, or the next requested action would run Codex before subprocess wrapper and prompt/evidence boundaries are prepared.
+
+### 2026-05-22 — DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP (RED -> GREEN, parser checkpoint)
+
+- Phase completed: prepared the governed Codex CLI subprocess prompt-mode executor and dispatch `transport_kind` plumbing. No real Codex subprocess was run.
+- Request context: operator said `진행` while profile `v0.0.52` named `DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP` as the next safe row.
+- RED observed: `PYTHONPATH=src pytest tests/unit/test_dars_codex_cli_subprocess.py -q` -> 9 failed with missing module / missing dispatch `transport_kind`.
+- GREEN observed: `PYTHONPATH=src pytest tests/unit/test_dars_codex_cli_subprocess.py tests/unit/test_dars_remote_subscription_dispatch.py -q` -> `28 passed in 0.10s`.
+- Implementation: added `src/hisys/agents/dars_codex_cli_subprocess.py`, added `tests/unit/test_dars_codex_cli_subprocess.py`, and extended `src/hisys/agents/dars_remote_subscription_dispatch.py` so single-critic dispatch requests/payloads/boundary records can carry `transport_kind=codex_cli_subprocess_prompt_mode` while preserving default `injected_subscription_executor` behavior.
+- Boundary: no live Codex subprocess, no SDK/API call, no credential lookup, no runtime-boundary write, no mutation/publication, no multi-critic panel, and no completion-claim upgrade.
+- Continue decision: next safe row is `DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE`, a human-gated single-smoke row that must stop if final command/workdir/instance/prompt/no-mutation/runtime-boundary checks do not pass.
+- Commit pending: `feat: prepare codex cli subprocess prompt mode`.
+
+Resume checkpoint:
+- Current HEAD: 17135d0 docs: revise dars codex path to subprocess prompt mode
+- Working tree: Codex subprocess PREP module/tests/dispatch docs/governance/Ralph edits pending final gates.
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP (this entry).
+- Current in-progress task: validation and commit for subprocess PREP.
+- RED observed: focused Codex PREP RED failed as expected.
+- GREEN observed: Codex PREP + dispatch focused cohort `28 passed`; final focused governance/Codex/dispatch cohort `29 passed`; full project `1083 passed`.
+- Quality gate status: pass — traceability OK; secret scan `hit_count=0`; `git diff --check` clean; branch `dars` synced to `origin/dars` before commit.
+- Next command to run: commit `feat: prepare codex cli subprocess prompt mode`; push to existing `origin/dars` if safe.
+- Stop condition: stop if validation fails, secret scan reports hits, or the next requested action would run Codex without the final single-smoke gate checks.

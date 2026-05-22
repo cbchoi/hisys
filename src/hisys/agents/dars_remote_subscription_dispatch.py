@@ -51,6 +51,7 @@ class RemoteSubscriptionDispatchRequest:
     activation_packet_ref: str
     policy_packet_ref: str
     prompt: str
+    transport_kind: str = "injected_subscription_executor"
 
 
 @dataclass(frozen=True)
@@ -113,6 +114,7 @@ def run_dars_remote_subscription_dispatch(
         "external_call_made": True,
         "mutation_performed": False,
         "publication_performed": False,
+        "transport_kind": request.transport_kind,
     }
     critique_text = executor(executor_payload)
     if not isinstance(critique_text, str) or not critique_text.strip():
@@ -123,6 +125,7 @@ def run_dars_remote_subscription_dispatch(
         request=request,
         provider_id=provider_id,
         adapter_class=adapter_class,
+        transport_kind=request.transport_kind,
         critique_text=critique_text.strip(),
     )
     return RemoteSubscriptionDispatchResult(
@@ -284,6 +287,11 @@ def _validate_request_shape(request: RemoteSubscriptionDispatchRequest) -> None:
         value = getattr(request, field_name)
         if not isinstance(value, str) or not value:
             raise ValueError(f"missing_{field_name}")
+    if request.transport_kind not in {
+        "injected_subscription_executor",
+        "codex_cli_subprocess_prompt_mode",
+    }:
+        raise ValueError("invalid_transport_kind")
 
 
 def _load_json_object(path_ref: str, missing_code: str) -> dict[str, Any]:
@@ -354,6 +362,7 @@ def _write_remote_subscription_boundary(
     request: RemoteSubscriptionDispatchRequest,
     provider_id: str,
     adapter_class: str,
+    transport_kind: str,
     critique_text: str,
 ) -> str:
     output_dir = (
@@ -383,7 +392,7 @@ def _write_remote_subscription_boundary(
         "publication_performed": False,
         "allowed_actions": _ALLOWED_ACTIONS,
         "requires_human_review": True,
-        "transport_kind": "injected_subscription_executor",
+        "transport_kind": transport_kind,
         "critique_text_preview": critique_text[:500],
         "policy_refs": [
             "HISYS-FR-AGT-001",
