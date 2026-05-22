@@ -1,39 +1,36 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.51
-focus: Operator approval for controlled single Codex subscription smoke captured as
-  readiness decision v0.0.51; no provider call, SDK invocation, credential lookup,
-  vault resolution, runtime-boundary write, or completion-claim upgrade occurred.
-  The same prerequisite gate remains active until a wired external executor, concrete
-  redaction/egress binding, fresh packets, fresh expiry/revocation, HISYS_INSTANCE,
-  and no-tool/no-mutation confirmations are supplied.
+version: v0.0.52
+focus: 'Codex DARS path revised from callable-only external subscription executor
+  to governed Codex CLI subprocess prompt-mode. Docs/control only: no Codex subprocess
+  was run, no SDK/API call occurred, no credential lookup occurred, and no completion-claim
+  upgrade occurred. Next row prepares exact subprocess wrapper/prompt packet/redaction/runtime-boundary
+  controls.'
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-REMOTE-SUBSCRIPTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES
+next_safe_task: DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: go for m24; oss 는 향후 roadmap으로 넘기자; live dars execution approve;
   local readiness check then C subscription if not ready; provider는 codex로; 기존 auth정보
-  사용; 허가
-bootstrap_inference: Captured the operator approval sentence `허가` as authorization
-  to open a controlled future single Codex subscription smoke line, subject to the
-  already documented remote-subscription policy/activation/executor/redaction/egress/audit/runtime-boundary
-  controls. This checkpoint does not perform a Codex call, does not invoke a Codex
-  SDK, does not resolve credentials or vault entries, does not write runtime-boundary
-  evidence, and does not upgrade the DARS completion claim. The same non-delegable
-  prerequisite gate remains active until the wired operator-owned RemoteSubscriptionExecutor,
-  concrete redaction transform, egress audit binding, fresh policy and activation
-  packets, fresh expiry/revocation refs, governed HISYS_INSTANCE, and explicit no-tool/no-mutation
-  confirmations are supplied.
+  사용; 허가; subprocess를 만드는 방향으로 전면 수정
+bootstrap_inference: Revised the Codex DARS path to a governed Codex CLI subprocess
+  prompt-mode design. The future transport is transport_kind=codex_cli_subprocess_prompt_mode
+  while adapter_class=codex_subscription remains for the existing validator allowlist.
+  Hisys still must not import a Codex SDK, call a raw provider API, inspect credentials,
+  read API keys, send Authorization headers, configure provider accounts, or handle
+  raw secrets. The next row prepares the exact subprocess wrapper, read-only sandbox/approval
+  checks, redacted bounded prompt packet, timeout/output capture, no-mutation guard,
+  and runtime-boundary record amendment before any real Codex subprocess smoke.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.51.md
-planning_baseline_head: '6680f3b docs: record stop-preflight at dars remote subscription
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.52.md
+planning_baseline_head: 'b24a711 docs: re-verify stop-preflight at codex subscription
   operator gate'
-current_head_at_plan_creation: '6680f3b docs: record stop-preflight at dars remote
-  subscription operator gate'
-previous_bootstrap_version: v0.0.50
+current_head_at_plan_creation: 'b24a711 docs: re-verify stop-preflight at codex subscription
+  operator gate'
+previous_bootstrap_version: v0.0.51
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false

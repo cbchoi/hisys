@@ -6611,26 +6611,21 @@ Done: DARS-REMOTE-SUBSCRIPTION-CODEX-PREREQ-CAPTURE — captured operator select
 Done: DARS-CODEX-SUBSCRIPTION-PACKET-DRAFT — authored `docs/examples/dars/codex-subscription-policy.recommended.json`, `docs/examples/dars/codex-subscription-activation.recommended.json`, and `docs/plans/dars-codex-subscription-packet-draft-and-extension-notes.md` with recommended defaults and expansion points; no Codex call or credential lookup.
 Done: DARS-CODEX-SUBSCRIPTION-PACKET-VALIDATE-AND-EXECUTOR-PREP — rehearsed the draft packets against M-DARS-BE-5 and M-DARS-BE-1 with injected `now=2026-05-22T00:00:00Z` (policy `valid=True` + standing `remote_dispatch_not_implemented` warning; activation `valid=True`); authored `docs/runbooks/dars-codex-subscription-executor-runbook.md` as the operator-owned executor contract document; no Codex call, no Codex SDK import, no credential lookup, no runtime-boundary write.
 Done: DARS-CODEX-SUBSCRIPTION-LIVE-SMOKE-AUTH-CAPTURE — recorded operator approval sentence `허가` in `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.51.md` as authorization to open a controlled future single Codex subscription smoke line; no Codex call, no SDK invocation, no credential lookup, no runtime-boundary write, and no completion-claim upgrade.
-Next: DARS-REMOTE-SUBSCRIPTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES — non-delegable stop-and-ask gate; wait for the operator to supply the wired external executor, the concrete redaction policy implementation, the egress audit binding, fresh expiry/revocation refs, the fresh policy/activation packet paths, and `HISYS_INSTANCE` before any Codex subscription boundary crossing.
+Done: DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-REVISION — recorded operator instruction `subprocess를 만드는 방향으로 전면 수정` in `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.52.md`; revised `docs/runbooks/dars-codex-subscription-executor-runbook.md` from callable-only external executor to governed Codex CLI subprocess prompt-mode; no Codex subprocess, SDK/API call, credential lookup, runtime-boundary write, mutation, publication, or completion-claim upgrade.
+Next: DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP — docs/control + implementation-prep gate for exact subprocess wrapper, bounded prompt packet, redaction hook, timeout/output capture, no-mutation guard, and runtime-boundary record amendment; still no actual Codex smoke.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-DARS-REMOTE-SUBSCRIPTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES — non-delegable stop-and-ask gate.
+DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP — docs/control + implementation-prep gate.
 Scope for the gate:
-  - wait for the operator to supply, out of band, all prerequisites named in `docs/plans/dars-remote-subscription-auth-prep-tasks.md` §10:
-      provider_id ∈ {codex, claude}; operator identity and approval reference;
-      vault-style subscription_account_ref whose credentials resolve outside Hisys;
-      redaction_policy_ref; egress_scope; current expires_at window and revocation_ref;
-      fresh policy packet JSON path matching §4.1; fresh activation packet JSON path matching §4.2
-      with `remote_policy_packet_ref` pointing at the policy packet;
-      separately governed subscription executor function matching §4.3 supplied at dispatch time;
-      explicit confirmation that the executor has no tool/search/browser/mutation authority;
-      explicit confirmation that the operator is decisive about every §7 precondition;
-      HISYS_INSTANCE for the runtime-boundary record partition.
-  - the gate does not call any Codex or Claude SDK, does not resolve credentials, does not
-    write a runtime-boundary record, and does not upgrade the DARS completion claim.
+  - prepare the exact governed Codex CLI subprocess prompt-mode wrapper and command contract;
+  - keep `adapter_class=codex_subscription` for validator compatibility, but require runtime `transport_kind=codex_cli_subprocess_prompt_mode`;
+  - require read-only sandbox / no-search / no-yolo / no-full-auto / no sandbox-bypass / no workspace-write constraints;
+  - prepare bounded prompt packet generation, redaction hook, timeout/output capture, empty-output handling, and no-mutation guard;
+  - prepare runtime-boundary record fields that state `codex_sdk_invoked=false`, `raw_provider_api_invoked=false`, and `credential_lookup_by_hisys=false`;
+  - the gate does not run a Codex subprocess, does not call any Codex SDK/API, does not resolve credentials, does not write a runtime-boundary record, and does not upgrade the DARS completion claim.
 Still requiring separate explicit authorization or operator packet values:
   1) Actual Codex/Claude subscription call after the gate unless the operator supplies all §10 prerequisites.
   2) Additional live LSP execution / executable / command allowlist expansion.
@@ -6638,7 +6633,7 @@ Still requiring separate explicit authorization or operator packet values:
   4) Section 10.3 branch alignment between `feat/domain-adaptive-requirements-analysis` and the `dars` checkout.
 Future-roadmap only:
   - Real OSS comparison / license adjudication live execution.
-Do not call Codex/Claude subscription until the gate consumes a full operator prerequisites packet.
+Do not run the Codex CLI subprocess smoke until the subprocess wrapper, redacted prompt packet, instance root, no-mutation guard, and runtime-boundary record path are prepared and separately gated.
 ```
 
 Follow-up boundary:
@@ -6739,3 +6734,24 @@ Resume checkpoint:
 - Quality gate status: pending — governance current-state + traceability + secret scan + `git diff --check`
 - Next command to run: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`; commit `docs: capture codex subscription live smoke authorization`; then stop at `DARS-REMOTE-SUBSCRIPTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES` until the remaining operator-owned values are supplied.
 - Stop condition: stop if validation fails, secret scan reports hits, branch/upstream is not `dars`/`origin/dars`, or the next requested action would call Codex before the wired executor and full prerequisite packet are present.
+
+### 2026-05-22 — Codex CLI subprocess prompt-mode revision (docs/control)
+
+- Phase completed: docs/control revision of the Codex DARS execution plan from callable-only external subscription executor to governed Codex CLI subprocess prompt-mode.
+- Request context: operator said `subprocess를 만드는 방향으로 전면 수정` after asking whether SDK/API-free Codex prompt mode conflicted with the existing plan.
+- Controlled anchors checked: `docs/runbooks/dars-codex-subscription-executor-runbook.md`; `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.51.md`; `docs/plans/dars-remote-subscription-auth-prep-tasks.md`; local Codex CLI readiness observation `/usr/bin/codex`, `codex-cli 0.128.0`; previous HEAD `b24a711 docs: re-verify stop-preflight at codex subscription operator gate`.
+- Implementation: created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.52.md`; rewrote `docs/runbooks/dars-codex-subscription-executor-runbook.md` to define `transport_kind=codex_cli_subprocess_prompt_mode` while retaining `adapter_class=codex_subscription` for current validator compatibility; bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.52`; updated governance current-state test expectation; prepended traceability; updated Section 16 queue status.
+- Boundary: docs/control only. No Codex subprocess was run; no Codex SDK import, raw API call, credential lookup, vault resolution, Authorization header, API key, provider account configuration, web search, browser action, file mutation, git mutation, publication, deployment, runtime-boundary write, multi-critic panel, or DARS completion-claim upgrade occurred.
+- Continue decision: next safe row is `DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP`, which may prepare exact subprocess wrapper/command, bounded prompt packet, redaction hook, timeout/output capture, no-mutation guard, and runtime-boundary schema amendment, but must stop before an actual Codex subprocess smoke.
+- Commit pending: `docs: revise dars codex path to subprocess prompt mode`.
+
+Resume checkpoint:
+- Current HEAD: b24a711 docs: re-verify stop-preflight at codex subscription operator gate
+- Working tree: subprocess prompt-mode revision docs/profile/test/traceability/Ralph edits pending validation/commit/push
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-REVISION (this entry)
+- Current in-progress task: validation and commit for subprocess prompt-mode revision
+- RED observed: n/a (docs/control revision)
+- GREEN observed: n/a (no Codex subprocess and no production behavior change)
+- Quality gate status: pending — governance current-state + traceability + secret scan + `git diff --check`
+- Next command to run: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`; commit `docs: revise dars codex path to subprocess prompt mode`; then stop before any real Codex subprocess smoke.
+- Stop condition: stop if validation fails, secret scan reports hits, branch/upstream is not `dars`/`origin/dars`, or the next requested action would run Codex before subprocess wrapper and prompt/evidence boundaries are prepared.
