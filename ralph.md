@@ -6900,3 +6900,27 @@ Resume checkpoint:
 - Quality gate status: pending — `PYTHONPATH=src:. pytest tests/unit/test_dars_codex_cli_subprocess.py tests/unit/test_dars_remote_subscription_dispatch.py tests/unit/test_governance_docs_current_state.py -q && PYTHONPATH=src:. pytest -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`.
 - Next command to run: run validation gates; commit `feat: add codex cli subprocess failure-mode fixtures`; push to existing `origin/dars`; then stop at `QUEUE-REFILL-PREP-STOP`.
 - Stop condition: stop after committing/pushing this local-only PREP; do not run Codex, expand allowlists, or upgrade the DARS completion claim before fresh explicit operator authorization.
+
+### 2026-05-22 — Queue refill and Codex CLI subprocess multi-critic panel authorization (docs/control)
+
+- Phase completed: recorded explicit operator approval for queue-refill planning and the multi-critic panel line, converting the prior `QUEUE-REFILL-PREP-STOP` into a controlled next PREP row.
+- Request context: user said `Queue refill planning and multi-critic panel 승인` after v0.0.56 stopped at `QUEUE-REFILL-PREP-STOP` with repeated Codex calls / multi-critic panel still human-gated.
+- Baseline observed: branch `dars`, HEAD `fb54581 feat: add codex cli subprocess failure-mode fixtures`, upstream `origin/dars` synced, working tree clean before edits.
+- Controlled anchors checked: `docs/milestone-bootstrap/profile.yaml` v0.0.56; `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.56.md`; `docs/plans/dars-codex-cli-subprocess-failure-mode-fixture-prep-tasks.md`; `docs/reports/dars-codex-cli-subprocess-smoke-review-2026-05-22.md`; `src/hisys/agents/dars_codex_cli_subprocess.py`; `src/hisys/agents/dars_remote_subscription_dispatch.py`; `tests/unit/test_dars_codex_cli_subprocess.py`; `tests/unit/test_dars_remote_subscription_dispatch.py`.
+- Queue-refill decision: selected `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP` as the next safe docs/control row because the single smoke has reviewed evidence, the local failure-mode fixture cohort is complete, the panel dispatch harness exists, and the operator approved the multi-critic panel line.
+- Implementation: created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.57.md`; created `docs/plans/dars-codex-cli-subprocess-multi-critic-panel-prep-tasks.md`; bumped `docs/milestone-bootstrap/profile.yaml` to v0.0.57 with next safe task `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP`; updated governance current-state test expectation; prepended traceability; updated Section 16 queue text.
+- Boundary: docs/control authorization and queue seeding only. No Codex subprocess was run again, no multi-critic panel executed, no SDK or raw provider API was called, no credentials/vault/provider account configuration were inspected, and no web search, browser/tool use, workspace-write, mutation, publication, deployment, PR/issue creation, release, or DARS completion-claim upgrade occurred.
+- Quality gate result: pass — focused governance/Codex/dispatch cohort `64 passed`; full project `1118 passed`; traceability OK; secret scan `hit_count=0` across 755 files; `git diff --check` clean; branch `dars` synced to `origin/dars` before commit.
+- Continue decision: after validation and commit, proceed to `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP`; do not run a live panel until the PREP row defines the exact bounded panel packet and gates.
+- Commit pending: `docs: authorize codex multi-critic panel prep`.
+
+Resume checkpoint:
+- Current HEAD: fb54581 feat: add codex cli subprocess failure-mode fixtures
+- Working tree: v0.0.57 decision/profile/plan/traceability/ralph/test updates pending validation and commit.
+- Last completed milestone/task: Queue refill and multi-critic panel authorization checkpoint.
+- Current in-progress task: validation and commit for authorization checkpoint.
+- RED observed: none; docs/control authorization gate.
+- GREEN observed: next PREP row seeded; live execution still not performed.
+- Quality gate status: pass — focused `64 passed`; full project `1118 passed`; traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
+- Next command to run: commit `docs: authorize codex multi-critic panel prep`; push to existing `origin/dars`; then continue from `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP` if explicitly requested.
+- Stop condition: stop after committing/pushing this authorization checkpoint unless explicitly continuing into the PREP implementation row.
