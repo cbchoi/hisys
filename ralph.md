@@ -6374,9 +6374,27 @@ Resume checkpoint:
 - Next safe Ralph queue target: none from OSS; continue only on separately authorized non-OSS work or a new decision packet.
 - Stop condition: OSS remains future-roadmap only.
 
+### 2026-05-22 — Live DARS execution authorization (docs/control)
+
+- Phase completed: docs/control authorization record for the user's approval of live DARS execution.
+- Request context: user said `live dars execution approve`; this resolves the previously recorded `QUEUE-REFILL-PREP-STOP` candidate "Live-provider DARS execution" for the purpose of opening a governed DARS live-execution line.
+- Controlled anchors checked: `docs/plans/dars-live-backend-implementation-plan.md`; `docs/runbooks/dars-live-backend-localhost-smoke.md`; `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.44.md`; `docs/milestone-bootstrap/profile.yaml`; `docs/traceability/README.md`; `tests/unit/test_governance_docs_current_state.py`; current Git state at `6c94d33 docs: move oss workflow to future roadmap`.
+- Implementation: created `readiness_decision_record_v0.0.44.md`; bumped `profile.yaml` to `v0.0.44`; set `next_safe_task=DARS-LIVE-EXECUTION-AUTH-PREP`; updated governance current-state test expectation; prepended the traceability row; updated Section 16 queue state.
+- Boundary: authorization/PREP only. No live DARS execution has been run in this checkpoint. Actual execution remains gated by operator-supplied localhost-only endpoint, no credential requirement, valid backend activation packet, advisory-only scope, no tool/search/browser permission, no mutation request, passing secret scan, and runtime-boundary record capture. Remote subscription/provider execution remains bounded by Codex/Claude policy and dispatch-harness controls. OSS remains future-roadmap only.
+- Continue decision: after commit/push, run `DARS-LIVE-EXECUTION-AUTH-PREP` as the next Ralph row. The PREP row must define the exact execution packet and stop if the required operator endpoint/activation packet is absent.
+- Commit pending: `docs: authorize live dars execution`.
+
+Resume checkpoint:
+- Current HEAD: 6c94d33 docs: move oss workflow to future roadmap
+- Working tree: DARS live authorization docs/profile/test/traceability/Ralph edits pending validation/commit/push
+- Last completed milestone/task: DARS-LIVE-EXECUTION-AUTH docs/control authorization
+- Current in-progress task: DARS live authorization validation and commit
+- Next safe Ralph queue target: DARS-LIVE-EXECUTION-AUTH-PREP
+- Stop condition: do not cross a model/backend boundary until PREP verifies localhost-only endpoint, activation packet, no-credential/no-tool/no-mutation scope, secret scan, and boundary-record path.
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone and the authorized M23 adapter portfolio / live LSP smoke follow-up are closed at local/advisory boundaries. M24 was authorized with `go for m24` (`readiness_decision_record_v0.0.39.md`); M24 PREP (1b053a7), RED/GREEN (01466fe), and GATE are now closed at `local_fixture_advisory_complete` for the planning surface. The user has moved OSS comparison/license execution to the future roadmap, so no OSS workflow row is active in Ralph. No safe local row remains under the current authorization.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone and the authorized M23 adapter portfolio / live LSP smoke follow-up are closed at local/advisory boundaries. M24 was authorized with `go for m24` (`readiness_decision_record_v0.0.39.md`); M24 PREP (1b053a7), RED/GREEN (01466fe), and GATE are now closed at `local_fixture_advisory_complete` for the planning surface. The user has moved OSS comparison/license execution to the future roadmap, so no OSS workflow row is active in Ralph. The user has now authorized the live DARS execution candidate; the next safe row is docs/control PREP before any model/backend boundary crossing.
 
 Current queue status:
 
@@ -6393,24 +6411,30 @@ Done: M24-REAL-OSS-LICENSE-WORKFLOW-PREP — authored docs/plans/m24-real-oss-co
 Done: M24-REAL-OSS-LICENSE-WORKFLOW-RED-GREEN — added `src/hisys/operations/real_oss_license_workflow.py`, `tests/unit/test_real_oss_license_workflow.py` (54 focused tests), and `docs/contracts/real-oss-license-workflow.md`. Full project pytest 1074 passed; standing `live_workflow_not_implemented` warning emitted on every valid packet; real URL schemes / hosts / live workflow authority / license text capture / license adjudication / automated cleanup / automated source ingestion / empty human review handoff all rejected by deterministic issue codes.
 Done: M24-REAL-OSS-LICENSE-WORKFLOW-GATE — M24 line closed at `local_fixture_advisory_complete` for the planning surface. Profile bumped to `v0.0.42` with `next_safe_task=QUEUE-REFILL-PREP-STOP`; governance current-state test updated to match. QUEUE-REFILL-PREP classification: every remaining post-M24 candidate requires fresh explicit user authorization.
 Done: OSS-FUTURE-ROADMAP-2026-05-22 — user moved OSS comparison/license execution to the future roadmap; profile bumped to `v0.0.43`; no OSS workflow row is active in Ralph.
-Next: QUEUE-REFILL-PREP-STOP — stop and ask. No safe local Ralph row remains under the current authorization envelope.
+Done: DARS-LIVE-EXECUTION-AUTH — user authorized the previously stopped live DARS execution candidate; profile bumped to `v0.0.44`; readiness decision record v0.0.44 created.
+Next: DARS-LIVE-EXECUTION-AUTH-PREP — docs/control PREP for governed live DARS execution, using existing DARS live backend plan and localhost smoke runbook before any model/backend boundary crossing.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-QUEUE-REFILL-PREP-STOP — stop and ask. Hand off to the user for the next explicit authorization. Active candidates that require fresh user authorization:
+DARS-LIVE-EXECUTION-AUTH-PREP — docs/control PREP for governed live DARS execution.
+Scope for PREP:
+  - bind readiness decision v0.0.44 to the existing DARS live backend plan and localhost smoke runbook;
+  - define exact execution packet fields, validation commands, boundary-record path, and stop conditions;
+  - stop before execution if localhost-only endpoint, valid activation packet, no-credential/no-tool/no-mutation scope, passing secret scan, or operator certainty is missing.
+Still requiring separate explicit authorization:
   1) Additional live LSP execution / executable / command allowlist expansion.
-  2) Live-provider DARS execution (would change the DARS completion claim from `local_fixture_localhost_controlled_advisory_complete`).
-  3) M25 or new product-scope milestone authorization.
-  4) Section 10.3 branch alignment between `feat/domain-adaptive-requirements-analysis` and the `dars` checkout (dormant; would change the automatic-push procedure).
+  2) M25 or new product-scope milestone authorization.
+  3) Section 10.3 branch alignment between `feat/domain-adaptive-requirements-analysis` and the `dars` checkout (dormant; would change the automatic-push procedure).
 Future-roadmap only:
-  - Real OSS comparison / license adjudication live execution — approved repository URL set + credentials/network (clone/fetch/inspect) + license-text capture + license adjudication + raw source archival + new partition / live runtime. Do not treat this as an active Ralph candidate unless a future roadmap decision packet reopens it.
-Do not start any of these active candidates from within Ralph until the user explicitly authorizes the specific candidate.
+  - Real OSS comparison / license adjudication live execution.
+Do not cross any model/backend boundary until PREP records the checked execution packet.
 ```
 
 Follow-up boundary:
 
-- allowed: nothing further without explicit user authorization for the next active candidate above. The default autonomy rule does not extend to credential/network actions, new live executions, or new milestone authority;
-- DARS completion claim must remain `local_fixture_localhost_controlled_advisory_complete`; do not claim live provider execution has been smoked from this follow-up;
-- M24 planning surface is final at `local_fixture_advisory_complete` for the planning row; OSS comparison/license execution is future-roadmap only and is not an active Ralph row.
+- allowed now: docs/control PREP for governed live DARS execution under readiness decision v0.0.44;
+- not yet allowed in this checkpoint: crossing a model/backend boundary before PREP verifies localhost-only endpoint, valid activation packet, no credential requirement, no tool/search/browser permission, no mutation request, passing secret scan, and boundary-record path;
+- DARS completion claim must remain `local_fixture_localhost_controlled_advisory_complete` until a later GREEN/GATE row captures successful runtime-boundary evidence;
+- M24 planning surface is final at `local_fixture_advisory_complete`; OSS comparison/license execution is future-roadmap only and is not an active Ralph row.

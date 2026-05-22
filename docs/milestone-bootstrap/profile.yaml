@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.43
-focus: OSS comparison/license work is moved to future roadmap only; M24 planning surface remains closed and no OSS workflow row is active in Ralph
+version: v0.0.44
+focus: Live DARS execution authorization recorded; next row is docs/control PREP for governed live DARS execution while OSS remains future-roadmap only
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: QUEUE-REFILL-PREP-STOP
+next_safe_task: DARS-LIVE-EXECUTION-AUTH-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "go for m24; oss 는 향후 roadmap으로 넘기자"
-bootstrap_inference: "User explicitly moved OSS comparison/license execution to the future roadmap. M24 PREP (1b053a7), RED/GREEN (01466fe), and GATE (bee7779) remain preserved as a closed planning-only surface with fail-closed validators and tests. The active Ralph queue must not reopen OSS clone/fetch/license-text/license-adjudication/CLI/live workflow work without a separate future roadmap decision packet naming repositories and execution limits."
-roadmap_ref: docs/plans/m24-real-oss-comparison-license-workflow-plan.md
-next_artifact_ref: docs/plans/m24-real-oss-comparison-license-workflow-plan.md
-planning_baseline_head: "bee7779 docs: close m24 real oss license workflow milestone"
-current_head_at_plan_creation: "bee7779 docs: close m24 real oss license workflow milestone"
-previous_bootstrap_version: v0.0.42
+bootstrap_arguments: "go for m24; oss 는 향후 roadmap으로 넘기자; live dars execution approve"
+bootstrap_inference: "User explicitly authorized the previously stopped Live-provider DARS execution candidate. This authorization creates a controlled DARS live-execution line whose first row is docs/control PREP; actual live execution must still satisfy the DARS live backend plan and localhost smoke preconditions before crossing a model boundary. OSS comparison/license execution remains future-roadmap only."
+roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.44.md
+planning_baseline_head: "6c94d33 docs: move oss workflow to future roadmap"
+current_head_at_plan_creation: "6c94d33 docs: move oss workflow to future roadmap"
+previous_bootstrap_version: v0.0.43
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false
