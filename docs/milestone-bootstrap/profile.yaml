@@ -1,35 +1,37 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.54
-focus: 'Codex CLI subprocess single-smoke evidence captured. The smoke used the
-  prepared remote-subscription dispatch harness with transport_kind=codex_cli_subprocess_prompt_mode,
-  wrote runtime-boundary evidence under /tmp/hisys-dars-codex-subscription, and
-  preserved advisory-only/no-mutation/no-publication boundaries.'
-formal_hisys_result: codex_cli_subprocess_single_smoke_evidence_captured
+version: v0.0.55
+focus: 'Codex CLI subprocess smoke evidence reviewed and accepted only for a narrow
+  single-smoke claim. The runtime-boundary record proves one governed Codex CLI
+  subprocess prompt-mode boundary crossing with advisory-only/no-mutation/no-publication
+  fields preserved, but it does not upgrade the broader DARS completion claim.'
+formal_hisys_result: codex_cli_subprocess_single_smoke_review_accepted
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE
+next_safe_task: DARS-CODEX-CLI-SUBPROCESS-FAILURE-MODE-FIXTURE-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: go for m24; oss 는 향후 roadmap으로 넘기자; live dars execution approve;
   local readiness check then C subscription if not ready; provider는 codex로; 기존 auth정보
-  사용; 허가; subprocess를 만드는 방향으로 전면 수정; 진행; smoke 진행
-bootstrap_inference: The user authorized the single-smoke gate. Preflight confirmed
-  clean dars/origin-dars state, Codex CLI /usr/bin/codex version 0.128.0, valid
-  policy/activation packets, focused tests, traceability, secret scan, and diff
-  check. The first smoke-gate attempt found that --ask-for-approval is a top-level
-  Codex option for this CLI version; the wrapper/runbook/tests were corrected to
-  use codex --ask-for-approval never exec --sandbox read-only --cd <dir> -- <prompt>.
-  The corrected single smoke succeeded and wrote runtime-boundary JSON/Markdown
-  evidence. No SDK/API call from Hisys occurred, no credential lookup occurred,
-  no raw secret was stored, no mutation/publication was requested, and the DARS
-  completion claim remains pending review.
+  사용; 허가; subprocess를 만드는 방향으로 전면 수정; 진행; smoke 진행;
+  DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE에서 이 evidence를 검토
+bootstrap_inference: The review gate inspected the committed single-smoke report
+  and runtime-boundary JSON/Markdown evidence at HEAD 9e28704. The evidence is
+  accepted only for the narrow claim `codex_cli_subprocess_single_smoke_review_accepted`.
+  It shows one governed Codex CLI subprocess prompt-mode model-boundary crossing
+  through the remote-subscription dispatch harness, with mutation_performed=false,
+  publication_performed=false, requires_human_review=true, and transport_kind=codex_cli_subprocess_prompt_mode.
+  No additional Codex call occurred in the review gate. The broader DARS completion
+  claim remains unchanged except for the appended narrow single-smoke evidence
+  status. The next safe row is local-only fake-runner/failure-mode fixture prep
+  for timeout, non-zero exit, blank output, malformed advisory metadata, and
+  secret-like output rejection.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.54.md
-planning_baseline_head: '2746ada docs: re-verify stop-preflight at codex cli subprocess single smoke gate'
-current_head_at_plan_creation: '2746ada docs: re-verify stop-preflight at codex cli subprocess single smoke gate'
-previous_bootstrap_version: v0.0.53
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.55.md
+planning_baseline_head: '9e28704 feat: capture codex cli subprocess smoke evidence'
+current_head_at_plan_creation: '9e28704 feat: capture codex cli subprocess smoke evidence'
+previous_bootstrap_version: v0.0.54
 tmux_or_background_agent_spawned: false
-production_code_created: true
-tests_created: true
+production_code_created: false
+tests_created: false

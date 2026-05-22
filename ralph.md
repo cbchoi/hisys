@@ -6646,12 +6646,12 @@ Next: DARS-CODEX-CLI-SUBPROCESS-SINGLE-SMOKE-GATE — human-gated single-smoke g
 Next safe Ralph queue target:
 
 ```text
-DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE — review/gate after single-smoke evidence.
-Scope for the gate:
-  - inspect the runtime-boundary JSON/Markdown under `/tmp/hisys-dars-codex-subscription`;
-  - confirm post-smoke repository mutation status, focused tests, traceability, secret scan, and diff check;
-  - record whether the evidence remains advisory-only or supports a later narrow claim-update proposal;
-  - do not run another Codex subprocess, multi-critic panel, web search, broader sandbox, mutation, publication, deployment, or provider-account action in the review gate.
+DARS-CODEX-CLI-SUBPROCESS-FAILURE-MODE-FIXTURE-PREP — local-only fixture/failure-mode prep after smoke review.
+Scope for the row:
+  - add or extend fake-runner tests for Codex CLI subprocess timeout, non-zero exit, blank output, malformed advisory metadata, and secret-like output rejection;
+  - keep tests local-only and deterministic; do not invoke `/usr/bin/codex`;
+  - preserve `requires_human_review=true`, no-mutation, no-publication, and transport-kind traceability in any fixture boundary records;
+  - update docs/control surfaces and validation gates.
 Still requiring separate explicit authorization or operator packet values:
   1) Any repeated Codex/Claude subscription call or multi-critic panel after the single-smoke gate.
   2) Additional live LSP execution / executable / command allowlist expansion.
@@ -6852,3 +6852,28 @@ Resume checkpoint:
 - Quality gate status: pass — focused `29 passed`; full project `1083 passed`; traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
 - Next command to run: commit `feat: capture codex cli subprocess smoke evidence`; push to existing `origin/dars`; then stop at the review gate.
 - Stop condition: stop after committing/pushing the single-smoke evidence; do not run repeated or panel Codex calls before a separate review/gate decision.
+
+### 2026-05-22 — DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE (evidence review -> narrow claim accepted)
+
+- Phase completed: reviewed the single-smoke runtime-boundary evidence created by `REQ-DARS-CODEX-SMOKE-20260522-001` without running another Codex subprocess.
+- Request context: user asked `DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE에서 이 evidence를 검토`; active profile was `v0.0.54` with next row `DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE`; reviewed committed HEAD `9e28704 feat: capture codex cli subprocess smoke evidence`.
+- Evidence inspected: `docs/reports/dars-codex-cli-subprocess-single-smoke-2026-05-22.md`; runtime-boundary JSON `/tmp/hisys-dars-codex-subscription/runtime-boundary/dars-remote-subscriptions/20260522/REQ-DARS-CODEX-SMOKE-20260522-001/codex_subscription_dars_critic-EXEC-DARS-CODEX-SMOKE-20260522-001.json`; runtime-boundary Markdown sibling `.md`.
+- Accepted fields: `external_call_made=true`, `model_boundary_crossed=true`, `local_model_call_made=false`, `mutation_performed=false`, `publication_performed=false`, `requires_human_review=true`, `transport_kind=codex_cli_subprocess_prompt_mode`, `provider_id=codex`, `adapter_class=codex_subscription`, and `allowed_actions=advisory_only`.
+- Review decision: accepted only the narrow claim `codex_cli_subprocess_single_smoke_review_accepted`. The broader DARS completion claim is not upgraded; it remains `local_fixture_localhost_controlled_advisory_complete` plus the narrow reviewed single-smoke evidence status.
+- Follow-up direction: the smoke advisory identified prompt-mode edge-case risk. The next safe row is local-only `DARS-CODEX-CLI-SUBPROCESS-FAILURE-MODE-FIXTURE-PREP` for fake-runner timeout, non-zero exit, blank output, malformed advisory metadata, and secret-like output rejection coverage; this row must not run Codex again.
+- Governance + traceability: created `docs/reports/dars-codex-cli-subprocess-smoke-review-2026-05-22.md`; created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.55.md`; bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.55`; updated governance current-state test expectation; prepended traceability; updated Section 16 queue status.
+- Boundary: no additional Codex subprocess, SDK import, raw provider API call, credential lookup, vault resolution, raw token/key/header handling, provider account configuration, web search, workspace-write, danger-full-access, sandbox bypass, mutation, publication, deployment, PR/issue/release, or multi-critic panel occurred in this review gate.
+- Quality gate result: pass — focused governance/Codex/dispatch cohort `29 passed`; full project `1083 passed`; traceability OK; secret scan `hit_count=0` across 751 files; `git diff --check` clean; branch `dars` synced to `origin/dars` before commit.
+- Continue decision: next safe row is `DARS-CODEX-CLI-SUBPROCESS-FAILURE-MODE-FIXTURE-PREP`, local-only fake-runner failure-mode prep.
+- Commit pending: `docs: review codex cli subprocess smoke evidence`.
+
+Resume checkpoint:
+- Current HEAD: 9e28704 feat: capture codex cli subprocess smoke evidence
+- Working tree: smoke review report, readiness decision v0.0.55, profile/test/traceability/Ralph edits pending final gates.
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE (this entry).
+- Current in-progress task: validation and commit for smoke review gate.
+- RED observed: none; review-only docs/control gate.
+- GREEN observed: narrow claim accepted from existing runtime-boundary evidence.
+- Quality gate status: pass — focused `29 passed`; full project `1083 passed`; traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
+- Next command to run: commit `docs: review codex cli subprocess smoke evidence`; push to existing `origin/dars`; then stop at the local-only failure-mode fixture PREP row.
+- Stop condition: stop after committing/pushing the smoke review evidence; do not run repeated or panel Codex calls before a separate authorization.
