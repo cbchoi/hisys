@@ -1,14 +1,17 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.55
-focus: 'Codex CLI subprocess smoke evidence reviewed and accepted only for a narrow
-  single-smoke claim. The runtime-boundary record proves one governed Codex CLI
-  subprocess prompt-mode boundary crossing with advisory-only/no-mutation/no-publication
-  fields preserved, but it does not upgrade the broader DARS completion claim.'
-formal_hisys_result: codex_cli_subprocess_single_smoke_review_accepted
+version: v0.0.56
+focus: 'Codex CLI subprocess failure-mode fixture PREP extends the local-only
+  fake-runner cohort for the governed prompt-mode executor with deterministic
+  issue codes for subprocess timeout, non-zero exit with secret-aware stderr
+  redaction, blank/whitespace-only output, output exceeding the 32_000-character
+  critique bound, forbidden control characters, claimed unauthorized authority,
+  and secret-like output rejection. No real /usr/bin/codex subprocess was
+  launched and the broader DARS completion claim is not upgraded.'
+formal_hisys_result: codex_cli_subprocess_failure_mode_fixture_prep_complete
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-CODEX-CLI-SUBPROCESS-FAILURE-MODE-FIXTURE-PREP
+next_safe_task: QUEUE-REFILL-PREP-STOP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
@@ -16,22 +19,26 @@ bootstrap_arguments: go for m24; oss 는 향후 roadmap으로 넘기자; live da
   local readiness check then C subscription if not ready; provider는 codex로; 기존 auth정보
   사용; 허가; subprocess를 만드는 방향으로 전면 수정; 진행; smoke 진행;
   DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE에서 이 evidence를 검토
-bootstrap_inference: The review gate inspected the committed single-smoke report
-  and runtime-boundary JSON/Markdown evidence at HEAD 9e28704. The evidence is
-  accepted only for the narrow claim `codex_cli_subprocess_single_smoke_review_accepted`.
-  It shows one governed Codex CLI subprocess prompt-mode model-boundary crossing
-  through the remote-subscription dispatch harness, with mutation_performed=false,
-  publication_performed=false, requires_human_review=true, and transport_kind=codex_cli_subprocess_prompt_mode.
-  No additional Codex call occurred in the review gate. The broader DARS completion
-  claim remains unchanged except for the appended narrow single-smoke evidence
-  status. The next safe row is local-only fake-runner/failure-mode fixture prep
-  for timeout, non-zero exit, blank output, malformed advisory metadata, and
-  secret-like output rejection.
+bootstrap_inference: The PREP added a focused fake-runner cohort and deterministic
+  issue codes (codex_cli_subprocess_timeout, codex_cli_subprocess_failed with
+  secret-aware stderr redaction, codex_cli_subprocess_empty_output,
+  codex_cli_subprocess_output_too_long, codex_cli_subprocess_output_contains_control_chars,
+  codex_cli_subprocess_output_claims_unauthorized_authority, codex_cli_output_not_redacted)
+  to src/hisys/agents/dars_codex_cli_subprocess.py and
+  tests/unit/test_dars_codex_cli_subprocess.py without launching a real Codex
+  subprocess. The dispatch harness signature is unchanged; failure modes propagate
+  as ValueError before any runtime-boundary write. The smoke advisory's
+  recommendation for a human-reviewed dry-run fixture covering timeout and
+  malformed-output cases is satisfied locally. Next safe row is the documented
+  QUEUE-REFILL-PREP-STOP gate until fresh explicit operator authorization is
+  supplied for repeated Codex calls, multi-critic panels, live LSP execution /
+  allowlist expansion, M25 / new product-scope milestones, Section 10.3 branch
+  alignment, or real OSS comparison / license adjudication live execution.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.55.md
-planning_baseline_head: '9e28704 feat: capture codex cli subprocess smoke evidence'
-current_head_at_plan_creation: '9e28704 feat: capture codex cli subprocess smoke evidence'
-previous_bootstrap_version: v0.0.54
+next_artifact_ref: docs/plans/dars-codex-cli-subprocess-failure-mode-fixture-prep-tasks.md
+planning_baseline_head: 'a986edc docs: review codex cli subprocess smoke evidence'
+current_head_at_plan_creation: 'a986edc docs: review codex cli subprocess smoke evidence'
+previous_bootstrap_version: v0.0.55
 tmux_or_background_agent_spawned: false
-production_code_created: false
-tests_created: false
+production_code_created: true
+tests_created: true

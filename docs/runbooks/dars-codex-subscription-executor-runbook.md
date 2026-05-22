@@ -154,15 +154,20 @@ Authorization headers, provider account identifiers, or unredacted secrets.
 
 ## 6. Stop-condition matrix
 
-| Signal | Required action |
+| Signal | Required action / deterministic code |
 |---|---|
 | `codex` binary missing or version unknown | Stop before execution; record tool readiness only |
 | Codex CLI requires SDK/API key material from Hisys | Stop; Hisys must not handle credentials |
-| Prompt packet not redacted | Stop before subprocess |
-| Requested command uses `--search`, `--full-auto`, `--yolo`, `danger-full-access`, or sandbox bypass | Stop and ask |
+| Prompt packet not redacted | `codex_cli_prompt_not_redacted` (raised before subprocess spawn) |
+| Requested command uses `--search`, `--full-auto`, `--yolo`, `danger-full-access`, or sandbox bypass | Stop and ask; not authorized by this runbook |
 | Codex asks to run shell/tools, mutate files, search web, browse, publish, deploy, or create PR/issues | Stop and record blocked request |
-| Subprocess output is empty | Fail closed as `remote_subscription_executor_empty_output` or successor code |
-| Output contains raw-secret markers | Stop; do not write as critique evidence |
+| Subprocess timed out | `codex_cli_subprocess_timeout: timeout_seconds=<n>` |
+| Subprocess exited non-zero | `codex_cli_subprocess_failed: returncode=<n>: <stderr-preview>` (stderr preview is replaced with `<stderr-redacted-secret-detected len=N>` when it carries raw-secret markers) |
+| Subprocess output is empty / whitespace-only | `codex_cli_subprocess_empty_output` |
+| Subprocess output exceeds `_MAX_CRITIQUE_CHARS` (32_000) | `codex_cli_subprocess_output_too_long` |
+| Subprocess output contains forbidden control characters | `codex_cli_subprocess_output_contains_control_chars` |
+| Subprocess output claims unauthorized authority (`workspace_write`, `web_search`, `sandbox bypass`, `danger-full-access`, `mutation_performed`, `publication_performed`, `requires_human_review=false`, `<<executing shell>>`, `<<tool call>>`) | `codex_cli_subprocess_output_claims_unauthorized_authority` |
+| Output contains raw-secret markers | `codex_cli_output_not_redacted` (do not write as critique evidence) |
 | Working tree changes after a supposed read-only run | Stop; treat as mutation incident |
 | Runtime-boundary record cannot be written under `HISYS_INSTANCE` | Stop; no completion claim upgrade |
 
@@ -190,8 +195,21 @@ The wrapper validates `provider_id=codex`, `adapter_class=codex_subscription`,
 false mutation/publication flags, a configured workdir, a bounded timeout, and a
 prompt packet that does not contain obvious raw-secret markers. It calls
 `subprocess.run(..., shell=False, capture_output=True, text=True, check=False,
-env={"PATH": ...})` only after those checks pass. Non-zero exit, blank stdout,
-and output carrying raw-secret markers fail closed.
+env={"PATH": ...})` only after those checks pass. Subprocess timeout, non-zero
+exit, blank/whitespace-only output, output exceeding `_MAX_CRITIQUE_CHARS`,
+output containing forbidden control characters, output claiming unauthorized
+authority (tool/shell/search/mutation/publication or `requires_human_review=false`),
+and output carrying raw-secret markers each fail closed with the deterministic
+codes named in §6. The non-zero-exit message redacts secret-shaped stderr
+substrings via `<stderr-redacted-secret-detected len=N>` so focused error
+messages cannot leak the secret payload.
+
+The local-only failure-mode fixture cohort
+`DARS-CODEX-CLI-SUBPROCESS-FAILURE-MODE-FIXTURE-PREP` exercises each of these
+codes with injected fake runners under
+`tests/unit/test_dars_codex_cli_subprocess.py` so the implementation cannot
+regress without breaking the focused tests. No real `/usr/bin/codex` subprocess
+is launched by that cohort.
 
 `src/hisys/agents/dars_remote_subscription_dispatch.py` now carries
 `transport_kind` through `RemoteSubscriptionDispatchRequest`, the executor

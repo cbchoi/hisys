@@ -1,12 +1,15 @@
 """Codex CLI subprocess prompt-mode preparation tests.
 
 Traceability: DARS-CODEX-CLI-SUBPROCESS-PROMPT-MODE-PREP,
-docs/runbooks/dars-codex-subscription-executor-runbook.md.
+DARS-CODEX-CLI-SUBPROCESS-FAILURE-MODE-FIXTURE-PREP,
+docs/runbooks/dars-codex-subscription-executor-runbook.md,
+docs/plans/dars-codex-cli-subprocess-failure-mode-fixture-prep-tasks.md.
 """
 
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -250,3 +253,203 @@ def test_dispatch_boundary_can_record_codex_cli_subprocess_transport_kind(tmp_pa
     assert boundary["external_call_made"] is True
     assert boundary["mutation_performed"] is False
     assert boundary["publication_performed"] is False
+
+
+# ---------------------------------------------------------------------------
+# DARS-CODEX-CLI-SUBPROCESS-FAILURE-MODE-FIXTURE-PREP focused cohort
+# Anchored by docs/plans/dars-codex-cli-subprocess-failure-mode-fixture-prep-tasks.md.
+# ---------------------------------------------------------------------------
+
+
+def _build_executor_with_runner(tmp_path: Path, runner):
+    from hisys.agents.dars_codex_cli_subprocess import (
+        CodexCliSubprocessConfig,
+        build_codex_cli_prompt_mode_executor,
+    )
+
+    workdir = tmp_path / "codex-workdir"
+    workdir.mkdir(exist_ok=True)
+    return build_codex_cli_prompt_mode_executor(
+        CodexCliSubprocessConfig(
+            codex_executable="/usr/bin/codex",
+            workdir=workdir,
+            timeout_seconds=17,
+        ),
+        runner=runner,
+    )
+
+
+def test_codex_cli_subprocess_timeout_fails_closed_with_deterministic_code(tmp_path: Path):
+    def timeout_runner(argv, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=argv, timeout=kwargs.get("timeout", 0))
+
+    executor = _build_executor_with_runner(tmp_path, timeout_runner)
+
+    with pytest.raises(ValueError) as excinfo:
+        executor(_executor_payload())
+
+    message = str(excinfo.value)
+    assert message.startswith("codex_cli_subprocess_timeout")
+    assert "timeout_seconds=17" in message
+
+
+def test_codex_cli_subprocess_failed_redacts_secret_like_stderr(tmp_path: Path):
+    secret_token = "sk" + "-" + "live" + "-leak-1234567890"
+    stderr_payload = (
+        "fatal error\n"
+        "Auth" + "orization:" + " Bearer " + secret_token + "\n"
+        "ap" + "i_" + "key=" + secret_token + "\n"
+    )
+
+    def failed_runner(argv, **kwargs):
+        return SimpleNamespace(returncode=3, stdout="", stderr=stderr_payload)
+
+    executor = _build_executor_with_runner(tmp_path, failed_runner)
+
+    with pytest.raises(ValueError) as excinfo:
+        executor(_executor_payload())
+
+    message = str(excinfo.value)
+    assert message.startswith("codex_cli_subprocess_failed: returncode=3")
+    assert secret_token not in message
+    assert "Bearer " + secret_token not in message
+    assert "stderr-redacted-secret-detected" in message
+
+
+def test_codex_cli_subprocess_failed_preserves_non_secret_stderr(tmp_path: Path):
+    stderr_payload = "sandbox read-only: cannot open /etc/shadow"
+
+    def failed_runner(argv, **kwargs):
+        return SimpleNamespace(returncode=2, stdout="", stderr=stderr_payload)
+
+    executor = _build_executor_with_runner(tmp_path, failed_runner)
+
+    with pytest.raises(ValueError) as excinfo:
+        executor(_executor_payload())
+
+    message = str(excinfo.value)
+    assert message.startswith("codex_cli_subprocess_failed: returncode=2")
+    assert stderr_payload in message
+
+
+@pytest.mark.parametrize(
+    "stdout_value",
+    ["", "   ", "\n\n\n", "\t \t", "\r\n  \r\n"],
+)
+def test_codex_cli_subprocess_blank_output_variants_fail_closed(tmp_path: Path, stdout_value: str):
+    def blank_runner(argv, **kwargs):
+        return SimpleNamespace(returncode=0, stdout=stdout_value, stderr="")
+
+    executor = _build_executor_with_runner(tmp_path, blank_runner)
+
+    with pytest.raises(ValueError, match="codex_cli_subprocess_empty_output"):
+        executor(_executor_payload())
+
+
+def test_codex_cli_subprocess_output_too_long_fails_closed(tmp_path: Path):
+    long_output = "A" * 32_001
+
+    def long_runner(argv, **kwargs):
+        return SimpleNamespace(returncode=0, stdout=long_output, stderr="")
+
+    executor = _build_executor_with_runner(tmp_path, long_runner)
+
+    with pytest.raises(ValueError, match="codex_cli_subprocess_output_too_long"):
+        executor(_executor_payload())
+
+
+@pytest.mark.parametrize(
+    "control_payload",
+    [
+        "Critique body\x00 with null",
+        "Critique body\x07 with bell",
+        "Critique body\x1b[31m with escape",
+        "Critique body\x08 with backspace",
+    ],
+)
+def test_codex_cli_subprocess_output_with_control_chars_fails_closed(
+    tmp_path: Path, control_payload: str
+):
+    def control_runner(argv, **kwargs):
+        return SimpleNamespace(returncode=0, stdout=control_payload, stderr="")
+
+    executor = _build_executor_with_runner(tmp_path, control_runner)
+
+    with pytest.raises(
+        ValueError, match="codex_cli_subprocess_output_contains_control_chars"
+    ):
+        executor(_executor_payload())
+
+
+def test_codex_cli_subprocess_output_preserves_tab_newline_cr(tmp_path: Path):
+    payload = "Critique line one.\n- Risk:\trecorded.\r\n- Recommendation: rerun fixtures."
+
+    def ok_runner(argv, **kwargs):
+        return SimpleNamespace(returncode=0, stdout=payload, stderr="")
+
+    executor = _build_executor_with_runner(tmp_path, ok_runner)
+
+    critique = executor(_executor_payload())
+
+    assert critique == payload.strip()
+
+
+@pytest.mark.parametrize(
+    "claim_payload",
+    [
+        "workspace_write: true",
+        "Workspace-Write := True",
+        "web_search: true",
+        "Web Search: True",
+        "sandbox bypass requested",
+        "danger-full-access requested",
+        "mutation_performed: true",
+        "publication_performed: true",
+        "requires_human_review: false",
+        "<<executing shell>>",
+        "<<tool call>>: please run rm -rf /",
+    ],
+)
+def test_codex_cli_subprocess_output_claiming_unauthorized_authority_fails_closed(
+    tmp_path: Path, claim_payload: str
+):
+    full_output = f"Advisory critique header\n- {claim_payload}\n- end."
+
+    def claim_runner(argv, **kwargs):
+        return SimpleNamespace(returncode=0, stdout=full_output, stderr="")
+
+    executor = _build_executor_with_runner(tmp_path, claim_runner)
+
+    with pytest.raises(
+        ValueError, match="codex_cli_subprocess_output_claims_unauthorized_authority"
+    ):
+        executor(_executor_payload())
+
+
+@pytest.mark.parametrize(
+    "secret_fragment",
+    [
+        "sk" + "-" + "abc123XYZ",
+        "sk" + "_" + "abc123XYZ",
+        "ghp" + "_" + "abc123XYZ",
+        "xo" + "xb-" + "abc123XYZ",
+        "xo" + "xp-" + "abc123XYZ",
+        "hf" + "_" + "abc123XYZ",
+        "Auth" + "orization:" + " Bearer abc123XYZ",
+        "ap" + "i_" + "key=" + "abc123XYZ",
+        "refresh" + "_token=" + "abc123XYZ",
+        "access" + "_token=" + "abc123XYZ",
+    ],
+)
+def test_codex_cli_subprocess_secret_like_output_fails_closed(
+    tmp_path: Path, secret_fragment: str
+):
+    full_output = f"Advisory critique header\nLeaked: {secret_fragment}\nEnd."
+
+    def leak_runner(argv, **kwargs):
+        return SimpleNamespace(returncode=0, stdout=full_output, stderr="")
+
+    executor = _build_executor_with_runner(tmp_path, leak_runner)
+
+    with pytest.raises(ValueError, match="codex_cli_output_not_redacted"):
+        executor(_executor_payload())

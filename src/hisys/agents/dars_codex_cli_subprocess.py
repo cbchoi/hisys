@@ -23,10 +23,25 @@ _TRANSPORT_KIND = "codex_cli_subprocess_prompt_mode"
 _ALLOWED_ACTIONS = "advisory_only"
 _MAX_PROMPT_CHARS = 24_000
 _MAX_STDERR_PREVIEW_CHARS = 500
+_MAX_CRITIQUE_CHARS = 32_000
 _RAW_SECRET_MARKERS = re.compile(
     r"(?i)(api[_-]?key|auth[_-]?token|access[_-]?token|authorization\s*:|"
     r"refresh[_-]?token|secret|password|credential|sk-[A-Za-z0-9]|sk_[A-Za-z0-9]|"
     r"ghp_[A-Za-z0-9]|xoxb-|xoxp-|hf_[A-Za-z0-9])"
+)
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+_FORBIDDEN_AUTHORITY_MARKERS = re.compile(
+    r"(?i)("
+    r"workspace[_\-\s]?write\s*[:=]+\s*true|"
+    r"web[_\-\s]?search\s*[:=]+\s*true|"
+    r"sandbox[_\-\s]?bypass|"
+    r"danger[_\-\s]?full[_\-\s]?access|"
+    r"mutation[_\-\s]?performed\s*[:=]+\s*true|"
+    r"publication[_\-\s]?performed\s*[:=]+\s*true|"
+    r"requires[_\-\s]?human[_\-\s]?review\s*[:=]+\s*false|"
+    r"<<\s*executing\s+shell\s*>>|"
+    r"<<\s*tool\s+call\s*>>"
+    r")"
 )
 
 
@@ -73,22 +88,35 @@ def build_codex_cli_prompt_mode_executor(
             "--",
             prompt_packet,
         ]
-        completed = run(
-            argv,
-            cwd=config.workdir,
-            env={"PATH": os.environ.get("PATH", "")},
-            timeout=config.timeout_seconds,
-            capture_output=True,
-            text=True,
-            check=False,
-            shell=False,
-        )
+        try:
+            completed = run(
+                argv,
+                cwd=config.workdir,
+                env={"PATH": os.environ.get("PATH", "")},
+                timeout=config.timeout_seconds,
+                capture_output=True,
+                text=True,
+                check=False,
+                shell=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise ValueError(
+                f"codex_cli_subprocess_timeout: timeout_seconds={config.timeout_seconds}"
+            ) from exc
         if completed.returncode != 0:
-            stderr_preview = (completed.stderr or "")[:_MAX_STDERR_PREVIEW_CHARS]
+            stderr_preview = _redact_stderr_for_error_message(
+                (completed.stderr or "")[:_MAX_STDERR_PREVIEW_CHARS]
+            )
             raise ValueError(f"codex_cli_subprocess_failed: returncode={completed.returncode}: {stderr_preview}")
         critique_text = (completed.stdout or "").strip()
         if not critique_text:
             raise ValueError("codex_cli_subprocess_empty_output")
+        if len(critique_text) > _MAX_CRITIQUE_CHARS:
+            raise ValueError("codex_cli_subprocess_output_too_long")
+        if _CONTROL_CHAR_RE.search(critique_text):
+            raise ValueError("codex_cli_subprocess_output_contains_control_chars")
+        if _FORBIDDEN_AUTHORITY_MARKERS.search(critique_text):
+            raise ValueError("codex_cli_subprocess_output_claims_unauthorized_authority")
         if _RAW_SECRET_MARKERS.search(critique_text):
             raise ValueError("codex_cli_output_not_redacted")
         return critique_text
@@ -130,6 +158,12 @@ def build_redacted_codex_dars_prompt_packet(
         bounded_prompt,
     ]
     return "\n".join(packet_lines)
+
+
+def _redact_stderr_for_error_message(stderr_preview: str) -> str:
+    if stderr_preview and _RAW_SECRET_MARKERS.search(stderr_preview):
+        return f"<stderr-redacted-secret-detected len={len(stderr_preview)}>"
+    return stderr_preview
 
 
 def _validate_config(config: CodexCliSubprocessConfig) -> None:
