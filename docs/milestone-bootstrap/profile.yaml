@@ -1,17 +1,16 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.61
-focus: 'Codex CLI subprocess multi-critic evidence packet smoke gate completed.
-  The gate used only the prepared evidence-prep packet, crossed the model boundary
-  through the governed Codex CLI subprocess prompt-mode executor, completed two
-  critics, and recorded aggregate/per-critic runtime-boundary evidence. The
-  advisory previews support the bounded claim and preserve advisory-only,
-  no-mutation, no-publication, no-tool/search/browser, and human-review-required
-  boundaries.'
-formal_hisys_result: codex_cli_subprocess_multi_critic_evidence_packet_smoke_completed
+version: v0.0.62
+focus: 'Codex CLI subprocess multi-critic evidence packet review gate completed.
+  The review inspected the committed smoke report and runtime-boundary handles
+  without another provider/model subprocess. The evidence supports only the narrow
+  smoke-review claim and closes the immediate local review blocker; broader DARS
+  completion-claim upgrade remains blocked pending a separate completion-claim
+  review/prep decision.'
+formal_hisys_result: codex_cli_subprocess_multi_critic_evidence_packet_smoke_review_accepted
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-REVIEW-GATE
+next_safe_task: DARS-CODEX-CLI-SUBPROCESS-COMPLETION-CLAIM-REVIEW-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
@@ -21,22 +20,23 @@ bootstrap_arguments: go for m24; oss 는 향후 roadmap으로 넘기자; live da
   DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE에서 이 evidence를 검토;
   Queue refill planning and multi-critic panel 승인; DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP;
   DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP;
-  DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE 승인
-bootstrap_inference: The evidence-packet smoke gate ran the prepared packet
-  `docs/examples/dars/codex-cli-subprocess-multi-critic-panel.evidence-prep.json`
-  through the governed Codex CLI subprocess prompt-mode executor under a temporary
-  governed instance root. Aggregate runtime-boundary evidence records
+  DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE 승인;
+  다음 blocker를 미리 처리할 수 있나?
+bootstrap_inference: The local review gate inspected the committed evidence-packet
+  smoke report and runtime-boundary records under `/tmp/hisys-dars-codex-evidence-panel-smoke`.
+  It accepted the bounded smoke-review claim because aggregate evidence records
   critic_count=2, completed_critic_count=2, external_call_made=true,
   model_boundary_crossed=true, mutation_performed=false, publication_performed=false,
-  requires_human_review=true. Critic previews support that the bounded claim
-  follows from the evidence summary and that advisory-only/no-mutation/no-publication/
-  no-tool/search/browser boundaries remain preserved. No DARS completion-claim
-  upgrade occurred.
+  requires_human_review=true, and critic previews support both claim/evidence
+  consistency and boundary preservation. This closes the immediate local evidence
+  review blocker only. No additional Codex subprocess, provider API, credential
+  lookup, web/search/browser/tool authority, mutation, publication, or DARS
+  completion-claim upgrade occurred.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.61.md
-planning_baseline_head: 'd53c94a test: prepare codex evidence-bearing panel packet'
-current_head_at_plan_creation: 'd53c94a test: prepare codex evidence-bearing panel packet'
-previous_bootstrap_version: v0.0.60
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.62.md
+planning_baseline_head: '5bbaf4e docs: record codex evidence-packet smoke gate'
+current_head_at_plan_creation: '5bbaf4e docs: record codex evidence-packet smoke gate'
+previous_bootstrap_version: v0.0.61
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false

@@ -7023,3 +7023,27 @@ Resume checkpoint:
 - Quality gate status: pending.
 - Next command to run: final validation gates; commit `docs: record codex evidence-packet smoke gate`; push to existing `origin/dars`; then stop at local evidence review unless separately authorized.
 - Stop condition: do not run another live Codex panel or upgrade the DARS completion claim.
+
+### 2026-05-22 — DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-REVIEW-GATE
+
+- Phase completed: local evidence review of the evidence-packet smoke gate after the operator asked whether the next blocker could be handled in advance.
+- Request context: current profile v0.0.61 named `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-REVIEW-GATE` as next safe task; this row was local review only, not another live/provider run.
+- Evidence inspected: `docs/reports/dars-codex-cli-subprocess-multi-critic-evidence-packet-smoke-2026-05-22.md`; `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.61.md`; aggregate runtime-boundary record `/tmp/hisys-dars-codex-evidence-panel-smoke/runtime-boundary/dars-remote-subscription-panels/20260522/REQ-DARS-CODEX-PANEL-EVIDENCE-20260522-001/PANEL-DARS-CODEX-SUBPROCESS-EVIDENCE-20260522-001.json`; per-critic runtime-boundary JSON records under the same temporary instance root.
+- Accepted fields: `critic_count=2`, `completed_critic_count=2`, `external_call_made=true`, `model_boundary_crossed=true`, `local_model_call_made=false`, `mutation_performed=false`, `publication_performed=false`, `requires_human_review=true`, and `allowed_actions=advisory_only`.
+- Review finding: accepted only the narrow claim `codex_cli_subprocess_multi_critic_evidence_packet_smoke_review_accepted`. The evidence supports that the evidence-packet smoke completed with two advisory critics and preserved the recorded boundaries.
+- Remaining blocker: broader DARS completion-claim upgrade is still blocked. The next safe row is local docs/control `DARS-CODEX-CLI-SUBPROCESS-COMPLETION-CLAIM-REVIEW-PREP`, which should enumerate accepted evidence, missing evidence, candidate claim text, and stop conditions before considering any upgrade.
+- Governance + traceability: created `docs/reports/dars-codex-cli-subprocess-evidence-packet-smoke-review-2026-05-22.md`; created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.62.md`; bumped profile to v0.0.62; updated governance current-state expectation; prepended traceability.
+- Boundary: no additional Codex subprocess, provider API call, credential lookup, vault resolution, raw token/key/header handling, provider account configuration, web search flag, browser/tool authority, mutation, publication, deployment, PR/issue/release, or DARS completion-claim upgrade.
+- Quality gate result: pending final focused/full tests, traceability, secret scan, `git diff --check`, commit, and push.
+- Commit pending: `docs: accept codex evidence-packet smoke review`.
+
+Resume checkpoint:
+- Current HEAD: 5bbaf4e docs: record codex evidence-packet smoke gate
+- Working tree: review report, readiness decision v0.0.62, profile/test/traceability/Ralph edits pending validation and commit.
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-REVIEW-GATE.
+- Current in-progress task: validation and commit for evidence-packet review gate.
+- RED observed: none in this docs/evidence review increment.
+- GREEN observed: local evidence review accepted the narrow smoke-review claim.
+- Quality gate status: pending.
+- Next command to run: final validation gates; commit `docs: accept codex evidence-packet smoke review`; push to existing `origin/dars`; then stop unless explicitly continuing into completion-claim review PREP.
+- Stop condition: do not run another live Codex panel or upgrade the DARS completion claim.
