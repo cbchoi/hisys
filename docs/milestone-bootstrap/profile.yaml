@@ -1,15 +1,16 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.58
-focus: 'Codex CLI subprocess multi-critic panel PREP completed. The row created
-  a prepared panel packet with two critic roles, unique source execution IDs,
-  advisory-only/no-mutation/no-publication/human-review-required boundaries, and
-  a fixture-backed contract test that runs the packet through the existing
-  injected-executor panel dispatch harness without launching /usr/bin/codex.'
-formal_hisys_result: codex_cli_subprocess_multi_critic_panel_prep_complete
+version: v0.0.59
+focus: 'Codex CLI subprocess multi-critic panel smoke completed with findings.
+  The bounded two-critic panel ran through the governed Codex CLI subprocess prompt-mode
+  path and wrote runtime-boundary evidence under /tmp/hisys-dars-codex-panel-smoke.
+  A fail-closed redaction false positive was corrected locally, and the logical
+  consistency critic found that the prepared prompt lacked the actual bounded claim
+  and evidence summary needed for a claim-following-evidence judgment.'
+formal_hisys_result: codex_cli_subprocess_multi_critic_panel_smoke_completed_with_findings
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-SMOKE-GATE
+next_safe_task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
@@ -29,10 +30,10 @@ bootstrap_inference: The PREP row authored `docs/examples/dars/codex-cli-subproc
   real Codex subprocess, multi-critic live panel, provider API, credential lookup,
   web access, mutation, publication, or DARS completion-claim upgrade occurred.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.58.md
-planning_baseline_head: '2cc946a docs: authorize codex multi-critic panel prep'
-current_head_at_plan_creation: '2cc946a docs: authorize codex multi-critic panel prep'
-previous_bootstrap_version: v0.0.57
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.59.md
+planning_baseline_head: '680a52a test: prepare codex multi-critic panel packet'
+current_head_at_plan_creation: '680a52a test: prepare codex multi-critic panel packet'
+previous_bootstrap_version: v0.0.58
 tmux_or_background_agent_spawned: false
-production_code_created: false
+production_code_created: true
 tests_created: true

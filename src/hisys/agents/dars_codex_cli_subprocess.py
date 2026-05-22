@@ -25,9 +25,9 @@ _MAX_PROMPT_CHARS = 24_000
 _MAX_STDERR_PREVIEW_CHARS = 500
 _MAX_CRITIQUE_CHARS = 32_000
 _RAW_SECRET_MARKERS = re.compile(
-    r"(?i)(api[_-]?key|auth[_-]?token|access[_-]?token|authorization\s*:|"
-    r"refresh[_-]?token|secret|password|credential|sk-[A-Za-z0-9]|sk_[A-Za-z0-9]|"
-    r"ghp_[A-Za-z0-9]|xoxb-|xoxp-|hf_[A-Za-z0-9])"
+    r"(?i)(api[_-]?key\s*[:=]|auth[_-]?token\s*[:=]|access[_-]?token\s*[:=]|authorization\s*:|"
+    r"refresh[_-]?token\s*[:=]|password\s*[:=]|credentials?\s*[:=]|secrets?\s*[:=]|"
+    r"sk-[A-Za-z0-9]|sk_[A-Za-z0-9]|ghp_[A-Za-z0-9]|xoxb-|xoxp-|hf_[A-Za-z0-9])"
 )
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 _FORBIDDEN_AUTHORITY_MARKERS = re.compile(

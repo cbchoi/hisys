@@ -453,3 +453,18 @@ def test_codex_cli_subprocess_secret_like_output_fails_closed(
 
     with pytest.raises(ValueError, match="codex_cli_output_not_redacted"):
         executor(_executor_payload())
+
+
+def test_codex_cli_subprocess_allows_benign_governance_boundary_terms(tmp_path: Path):
+    full_output = (
+        "Advisory critique only. Credential lookup was not performed. "
+        "The existing-auth reference remains abstract, requires_human_review stays true, "
+        "and no secret value, token field, Authorization header, mutation, or publication is present."
+    )
+
+    def governance_runner(argv, **kwargs):
+        return SimpleNamespace(returncode=0, stdout=full_output, stderr="")
+
+    executor = _build_executor_with_runner(tmp_path, governance_runner)
+
+    assert executor(_executor_payload()) == full_output

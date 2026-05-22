@@ -6950,3 +6950,27 @@ Resume checkpoint:
 - Quality gate status: pass — focused `65 passed`; full project `1119 passed`; traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
 - Next command to run: commit `test: prepare codex multi-critic panel packet`; push to existing `origin/dars`; then stop unless explicitly continuing into the smoke gate.
 - Stop condition: stop after committing/pushing this PREP checkpoint unless explicitly continuing into the smoke gate.
+### 2026-05-22 — DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-SMOKE-GATE (live smoke -> findings)
+
+- Phase completed: executed the prepared bounded two-critic Codex CLI subprocess prompt-mode panel after the operator requested bounded panel execution and continuation only if no issue appears.
+- Request context: previous profile v0.0.58 named `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-SMOKE-GATE`; immediate preflight confirmed clean `dars`/`origin/dars`, `/usr/bin/codex`, `codex-cli 0.128.0`, focused governance/Codex/dispatch cohort `65 passed`, secret scan `hit_count=0`, and `git diff --check` clean.
+- Runtime-boundary evidence: aggregate panel record `/tmp/hisys-dars-codex-panel-smoke/runtime-boundary/dars-remote-subscription-panels/20260522/REQ-DARS-CODEX-PANEL-SMOKE-20260522-001/PANEL-DARS-CODEX-SUBPROCESS-20260522-001.json`; per-critic records under `/tmp/hisys-dars-codex-panel-smoke/runtime-boundary/dars-remote-subscriptions/20260522/REQ-DARS-CODEX-PANEL-SMOKE-20260522-001/`.
+- RED observed: the first Codex-output attempt failed closed with `codex_cli_output_not_redacted` because benign governance boundary language was treated as a raw-secret marker. Added `test_codex_cli_subprocess_allows_benign_governance_boundary_terms`; first focused run failed with that same code.
+- GREEN observed: narrowed the raw-secret detector to explicit secret field/value forms and raw-secret value prefixes while allowing benign governance vocabulary; focused benign-governance plus secret-like-output cohort passed (`11 passed`).
+- Panel findings: aggregate record completed with `critic_count=2`, `completed_critic_count=2`, `external_call_made=true`, `model_boundary_crossed=true`, `mutation_performed=false`, `publication_performed=false`, and `requires_human_review=true`; the evidence-governance critic accepted boundary preservation, while the logical-consistency critic found that the prepared prompt lacked the actual DARS panel claim and bounded runtime-boundary evidence needed to judge claim-from-evidence.
+- Governance + traceability: created `docs/reports/dars-codex-cli-subprocess-multi-critic-panel-smoke-2026-05-22.md`; created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.59.md`; bumped profile to v0.0.59 with next safe task `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP`; updated governance current-state expectation; prepended traceability.
+- Boundary: no SDK import, raw provider API call from Hisys, credential lookup, vault resolution, raw token/key/header handling, provider account configuration, web search flag, browser/tool authority, workspace-write by Codex, mutation, publication, deployment, PR/issue/release, or DARS completion-claim upgrade. Further live panel execution is not authorized by this finding.
+- Quality gate result: pending final focused/full tests, traceability, secret scan, `git diff --check`, commit, and push.
+- Continue decision: stop automatic continuation because the panel did surface an issue. The next safe row is local/docs-control `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP`.
+- Commit pending: `fix: record codex panel smoke findings`.
+
+Resume checkpoint:
+- Current HEAD: 680a52a test: prepare codex multi-critic panel packet
+- Working tree: redaction refinement, focused test, panel smoke report, readiness decision v0.0.59, profile/test/traceability/Ralph edits pending validation and commit.
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-SMOKE-GATE completed with findings.
+- Current in-progress task: validation and commit for smoke findings.
+- RED observed: benign-governance output test failed with `codex_cli_output_not_redacted`.
+- GREEN observed: focused benign-governance plus secret-like-output cohort `11 passed`; panel rerun completed with two critic records.
+- Quality gate status: pending.
+- Next command to run: final validation gates; commit `fix: record codex panel smoke findings`; push to existing `origin/dars`; then stop at `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP` unless the operator explicitly starts the local evidence-packet PREP row.
+- Stop condition: do not run another live Codex panel or upgrade the DARS completion claim until a revised evidence-bearing packet is prepared and separately authorized.
