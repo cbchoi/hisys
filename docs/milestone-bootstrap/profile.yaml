@@ -1,15 +1,17 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.60
-focus: 'Codex CLI subprocess multi-critic evidence packet PREP completed locally.
-  The revised bounded packet includes the exact claim and evidence summary that
-  the previous logical-consistency critic found missing, preserves advisory-only,
+version: v0.0.61
+focus: 'Codex CLI subprocess multi-critic evidence packet smoke gate completed.
+  The gate used only the prepared evidence-prep packet, crossed the model boundary
+  through the governed Codex CLI subprocess prompt-mode executor, completed two
+  critics, and recorded aggregate/per-critic runtime-boundary evidence. The
+  advisory previews support the bounded claim and preserve advisory-only,
   no-mutation, no-publication, no-tool/search/browser, and human-review-required
-  boundaries, and keeps completion_claim_upgrade_authorized=false.'
-formal_hisys_result: codex_cli_subprocess_multi_critic_evidence_packet_prepared
+  boundaries.'
+formal_hisys_result: codex_cli_subprocess_multi_critic_evidence_packet_smoke_completed
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE
+next_safe_task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-REVIEW-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
@@ -18,23 +20,23 @@ bootstrap_arguments: go for m24; oss 는 향후 roadmap으로 넘기자; live da
   사용; 허가; subprocess를 만드는 방향으로 전면 수정; 진행; smoke 진행;
   DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE에서 이 evidence를 검토;
   Queue refill planning and multi-critic panel 승인; DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP;
-  DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP
-bootstrap_inference: The PREP row authored `docs/examples/dars/codex-cli-subprocess-multi-critic-panel.evidence-prep.json`
-  and pinned it with a new contract test. The packet defines bounded claim
-  CLAIM-DARS-CODEX-PANEL-SMOKE-20260522-001, claim text
-  codex_cli_subprocess_multi_critic_panel_smoke_completed_with_findings, and
-  evidence summary fields from the prior aggregate runtime-boundary record
-  (critic_count=2, completed_critic_count=2, external_call_made=true,
+  DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP;
+  DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE 승인
+bootstrap_inference: The evidence-packet smoke gate ran the prepared packet
+  `docs/examples/dars/codex-cli-subprocess-multi-critic-panel.evidence-prep.json`
+  through the governed Codex CLI subprocess prompt-mode executor under a temporary
+  governed instance root. Aggregate runtime-boundary evidence records
+  critic_count=2, completed_critic_count=2, external_call_made=true,
   model_boundary_crossed=true, mutation_performed=false, publication_performed=false,
-  requires_human_review=true). Per-critic prompts include both Bounded claim and
-  Evidence summary sections and instruct critics not to upgrade the DARS completion
-  claim. No additional Codex subprocess, provider API, credential lookup, web
-  access, mutation, publication, or DARS completion-claim upgrade occurred.
+  requires_human_review=true. Critic previews support that the bounded claim
+  follows from the evidence summary and that advisory-only/no-mutation/no-publication/
+  no-tool/search/browser boundaries remain preserved. No DARS completion-claim
+  upgrade occurred.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.60.md
-planning_baseline_head: 'cc70248 fix: record codex panel smoke findings'
-current_head_at_plan_creation: 'cc70248 fix: record codex panel smoke findings'
-previous_bootstrap_version: v0.0.59
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.61.md
+planning_baseline_head: 'd53c94a test: prepare codex evidence-bearing panel packet'
+current_head_at_plan_creation: 'd53c94a test: prepare codex evidence-bearing panel packet'
+previous_bootstrap_version: v0.0.60
 tmux_or_background_agent_spawned: false
 production_code_created: false
-tests_created: true
+tests_created: false

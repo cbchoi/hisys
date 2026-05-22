@@ -6998,3 +6998,28 @@ Resume checkpoint:
 - Quality gate status: pass.
 - Next command to run: commit `test: prepare codex evidence-bearing panel packet`; push to existing `origin/dars`; then stop unless explicitly continuing into the live/provider smoke gate.
 - Stop condition: do not run another live Codex panel or upgrade the DARS completion claim until the operator separately authorizes the evidence-bearing smoke gate.
+
+### 2026-05-22 — DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE
+
+- Phase completed: executed the prepared evidence-bearing bounded two-critic Codex CLI subprocess prompt-mode panel after the operator approved `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE`.
+- Request context: operator instructed use of the prepared evidence-prep packet only and preservation of advisory-only/no-mutation/no-publication/no-tool/search/browser boundaries; stop condition was issue appearance.
+- Preflight: clean `dars`/`origin/dars`; `/usr/bin/codex`; `codex-cli 0.128.0`; focused dispatch/Codex/governance cohort passed; secret scan `hit_count=0`; `git diff --check` clean.
+- Runtime-boundary evidence: aggregate panel record `/tmp/hisys-dars-codex-evidence-panel-smoke/runtime-boundary/dars-remote-subscription-panels/20260522/REQ-DARS-CODEX-PANEL-EVIDENCE-20260522-001/PANEL-DARS-CODEX-SUBPROCESS-EVIDENCE-20260522-001.json`; per-critic records under `/tmp/hisys-dars-codex-evidence-panel-smoke/runtime-boundary/dars-remote-subscriptions/20260522/REQ-DARS-CODEX-PANEL-EVIDENCE-20260522-001/`.
+- Panel result: aggregate record completed with `critic_count=2`, `completed_critic_count=2`, `external_call_made=true`, `model_boundary_crossed=true`, `mutation_performed=false`, `publication_performed=false`, and `requires_human_review=true`.
+- Advisory findings: logical-consistency preview says the bounded claim mostly follows from the evidence summary and produced-findings/no-issue-continuation wording is supported by known findings; evidence-governance preview says boundary preservation appears intact, human review remains required, and mutation/publication boundaries are preserved.
+- Governance + traceability: created `docs/reports/dars-codex-cli-subprocess-multi-critic-evidence-packet-smoke-2026-05-22.md`; created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.61.md`; bumped profile to v0.0.61 with next safe task `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-REVIEW-GATE`; updated governance current-state expectation; prepended traceability.
+- Boundary: no SDK import, raw provider API call from Hisys, credential lookup, vault resolution, raw token/key/header handling, provider account configuration, web search flag, browser/tool authority, workspace-write by Codex, mutation, publication, deployment, PR/issue/release, or DARS completion-claim upgrade.
+- Quality gate result: pending final focused/full tests, traceability, secret scan, `git diff --check`, commit, and push.
+- Continue decision: continue only to local evidence review after validation; do not run another live Codex panel or upgrade the DARS completion claim without separate explicit authorization.
+- Commit pending: `docs: record codex evidence-packet smoke gate`.
+
+Resume checkpoint:
+- Current HEAD: d53c94a test: prepare codex evidence-bearing panel packet
+- Working tree: evidence-packet smoke report, readiness decision v0.0.61, profile/test/traceability/Ralph edits pending validation and commit.
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE.
+- Current in-progress task: validation and commit for evidence-packet smoke gate.
+- RED observed: none in this docs/evidence record increment.
+- GREEN observed: live evidence-packet panel completed with two critic records.
+- Quality gate status: pending.
+- Next command to run: final validation gates; commit `docs: record codex evidence-packet smoke gate`; push to existing `origin/dars`; then stop at local evidence review unless separately authorized.
+- Stop condition: do not run another live Codex panel or upgrade the DARS completion claim.
