@@ -824,3 +824,102 @@ def test_codex_cli_subprocess_multi_critic_panel_prep_packet_matches_dispatch_co
     assert aggregate["mutation_performed"] is False
     assert aggregate["publication_performed"] is False
     assert aggregate["requires_human_review"] is True
+
+
+def test_codex_cli_subprocess_multi_critic_evidence_packet_prep_includes_claim_and_evidence(tmp_path: Path):
+    """DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP fixes the evidence gap locally."""
+
+    from hisys.agents.dars_remote_subscription_dispatch import (
+        RemoteSubscriptionDispatchRequest,
+        run_dars_remote_subscription_panel_dispatch,
+    )
+
+    packet_path = ROOT / "docs/examples/dars/codex-cli-subprocess-multi-critic-panel.evidence-prep.json"
+    packet = json.loads(packet_path.read_text(encoding="utf-8"))
+
+    assert packet["schema_id"] == "hisys.dars.codex_cli_subprocess_multi_critic_evidence_packet_prep"
+    assert packet["prepared_for_row"] == "DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP"
+    assert packet["future_smoke_row"] == "DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE"
+    assert packet["live_execution_performed"] is False
+    assert packet["completion_claim_upgrade_authorized"] is False
+    assert packet["provider_id"] == "codex"
+    assert packet["adapter_class"] == "codex_subscription"
+    assert packet["critic_count"] >= 2
+
+    bounded_claim = packet["bounded_claim"]
+    assert bounded_claim["claim_id"] == "CLAIM-DARS-CODEX-PANEL-SMOKE-20260522-001"
+    assert bounded_claim["claim_text"] == "codex_cli_subprocess_multi_critic_panel_smoke_completed_with_findings"
+    assert bounded_claim["requires_human_review"] is True
+    assert bounded_claim["completion_claim_upgrade_requested"] is False
+
+    evidence_summary = packet["evidence_summary"]
+    assert evidence_summary["panel_boundary_ref"].endswith("PANEL-DARS-CODEX-SUBPROCESS-20260522-001.json")
+    assert evidence_summary["critic_count"] == 2
+    assert evidence_summary["completed_critic_count"] == 2
+    assert evidence_summary["external_call_made"] is True
+    assert evidence_summary["model_boundary_crossed"] is True
+    assert evidence_summary["mutation_performed"] is False
+    assert evidence_summary["publication_performed"] is False
+    assert evidence_summary["requires_human_review"] is True
+    assert evidence_summary["known_findings"]
+
+    policy_ref = _write_json(tmp_path / "codex-policy.json", _valid_policy_data(
+        provider_id="codex",
+        adapter_class="codex_subscription",
+        subscription_account_ref="vault://existing-auth/codex-subscription",
+        approval_ref=packet["approval_ref"],
+    ))
+    activation_ref = _write_json(tmp_path / "codex-activation.json", _valid_activation_data(
+        backend_id=packet["backend_id"],
+        backend_kind=packet["backend_kind"],
+        approval_ref=packet["approval_ref"],
+        remote_policy_packet_ref=str(policy_ref),
+    ))
+
+    requests = []
+    calls: list[dict] = []
+    for critic in packet["critics"]:
+        assert critic["transport_kind"] == "codex_cli_subprocess_prompt_mode"
+        assert critic["allowed_actions"] == "advisory_only"
+        assert critic["mutation_performed"] is False
+        assert critic["publication_performed"] is False
+        assert critic["requires_human_review"] is True
+        assert "Bounded claim:" in critic["prompt"]
+        assert bounded_claim["claim_id"] in critic["prompt"]
+        assert "Evidence summary:" in critic["prompt"]
+        assert evidence_summary["panel_boundary_ref"] in critic["prompt"]
+        assert "Do not upgrade the DARS completion claim" in critic["prompt"]
+        requests.append(RemoteSubscriptionDispatchRequest(
+            yyyymmdd=packet["yyyymmdd"],
+            request_id=packet["request_id"],
+            backend_id=packet["backend_id"],
+            backend_kind=packet["backend_kind"],
+            source_execution_id=critic["source_execution_id"],
+            approval_ref=packet["approval_ref"],
+            activation_packet_ref=str(activation_ref),
+            policy_packet_ref=str(policy_ref),
+            prompt=critic["prompt"],
+            transport_kind=critic["transport_kind"],
+        ))
+
+    def fake_codex_cli_executor(payload: dict):
+        calls.append(payload)
+        assert payload["transport_kind"] == "codex_cli_subprocess_prompt_mode"
+        assert packet["bounded_claim"]["claim_id"] in payload["prompt"]
+        assert packet["evidence_summary"]["panel_boundary_ref"] in payload["prompt"]
+        return f"{payload['source_execution_id']} advisory evidence-bearing critique; requires_human_review=true"
+
+    result = run_dars_remote_subscription_panel_dispatch(
+        InstanceRoot(tmp_path),
+        yyyymmdd=packet["yyyymmdd"],
+        request_id=packet["request_id"],
+        panel_id=packet["panel_id"],
+        requests=requests,
+        executor=fake_codex_cli_executor,
+    )
+
+    aggregate = json.loads((tmp_path / result.panel_boundary_ref).read_text(encoding="utf-8"))
+    assert len(calls) == packet["critic_count"]
+    assert aggregate["critic_count"] == packet["critic_count"]
+    assert aggregate["completed_critic_count"] == packet["critic_count"]
+    assert aggregate["requires_human_review"] is True

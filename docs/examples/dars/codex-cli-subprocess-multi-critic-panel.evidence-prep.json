@@ -1,0 +1,75 @@
+{
+  "adapter_class": "codex_subscription",
+  "allowed_actions": "advisory_only",
+  "approval_ref": "APPROVAL-DARS-REMOTE-SUB-20260522-CODEX-EXISTING-AUTH",
+  "backend_id": "codex_subscription_dars_critic",
+  "backend_kind": "codex_subscription",
+  "bounded_claim": {
+    "claim_id": "CLAIM-DARS-CODEX-PANEL-SMOKE-20260522-001",
+    "claim_scope": "The bounded two-critic Codex CLI subprocess prompt-mode panel completed and produced findings; this is not a no-issue continuation and not a DARS completion-claim upgrade.",
+    "claim_text": "codex_cli_subprocess_multi_critic_panel_smoke_completed_with_findings",
+    "completion_claim_upgrade_requested": false,
+    "requires_human_review": true
+  },
+  "completion_claim_upgrade_authorized": false,
+  "critic_count": 2,
+  "critics": [
+    {
+      "allowed_actions": "advisory_only",
+      "mutation_performed": false,
+      "prompt": "Critic role: logical consistency. Evaluate whether the bounded claim follows from the evidence summary. Bounded claim:\n- claim_id: CLAIM-DARS-CODEX-PANEL-SMOKE-20260522-001\n- claim_text: codex_cli_subprocess_multi_critic_panel_smoke_completed_with_findings\n- claim_scope: The bounded two-critic Codex CLI subprocess prompt-mode panel completed and produced findings; this is not a no-issue continuation and not a DARS completion-claim upgrade.\n- requires_human_review: true\n- completion_claim_upgrade_requested: false\n\nEvidence summary:\n- panel_boundary_ref: /tmp/hisys-dars-codex-panel-smoke/runtime-boundary/dars-remote-subscription-panels/20260522/REQ-DARS-CODEX-PANEL-SMOKE-20260522-001/PANEL-DARS-CODEX-SUBPROCESS-20260522-001.json\n- critic_count: 2\n- completed_critic_count: 2\n- external_call_made: true\n- model_boundary_crossed: true\n- mutation_performed: false\n- publication_performed: false\n- requires_human_review: true\n- known_findings: logical_consistency_critic reported that the original prepared prompt lacked the actual bounded claim and runtime-boundary evidence summary needed to judge claim-from-evidence; evidence_governance_critic found advisory-only, no-mutation, no-publication, no-tool/search/browser, and human-review-required boundaries preserved; local fail-closed redaction false positive for benign governance vocabulary was corrected and pinned by focused tests\n\nDo not upgrade the DARS completion claim. Return concise advisory findings only. Do not request tools, shell access, web access, repository mutation, publication, or claim upgrade.",
+      "publication_performed": false,
+      "requires_human_review": true,
+      "role_id": "logical_consistency_critic",
+      "source_execution_id": "EXEC-DARS-CODEX-PANEL-EVIDENCE-LOGICAL-20260522-001",
+      "transport_kind": "codex_cli_subprocess_prompt_mode"
+    },
+    {
+      "allowed_actions": "advisory_only",
+      "mutation_performed": false,
+      "prompt": "Critic role: evidence governance. Evaluate whether the evidence-bearing packet preserves advisory-only, no-mutation, no-publication, no-tool/search/browser, and human-review-required boundaries. Bounded claim:\n- claim_id: CLAIM-DARS-CODEX-PANEL-SMOKE-20260522-001\n- claim_text: codex_cli_subprocess_multi_critic_panel_smoke_completed_with_findings\n- claim_scope: The bounded two-critic Codex CLI subprocess prompt-mode panel completed and produced findings; this is not a no-issue continuation and not a DARS completion-claim upgrade.\n- requires_human_review: true\n- completion_claim_upgrade_requested: false\n\nEvidence summary:\n- panel_boundary_ref: /tmp/hisys-dars-codex-panel-smoke/runtime-boundary/dars-remote-subscription-panels/20260522/REQ-DARS-CODEX-PANEL-SMOKE-20260522-001/PANEL-DARS-CODEX-SUBPROCESS-20260522-001.json\n- critic_count: 2\n- completed_critic_count: 2\n- external_call_made: true\n- model_boundary_crossed: true\n- mutation_performed: false\n- publication_performed: false\n- requires_human_review: true\n- known_findings: logical_consistency_critic reported that the original prepared prompt lacked the actual bounded claim and runtime-boundary evidence summary needed to judge claim-from-evidence; evidence_governance_critic found advisory-only, no-mutation, no-publication, no-tool/search/browser, and human-review-required boundaries preserved; local fail-closed redaction false positive for benign governance vocabulary was corrected and pinned by focused tests\n\nDo not upgrade the DARS completion claim. Return concise advisory findings only. Do not request tools, shell access, web access, repository mutation, publication, or claim upgrade.",
+      "publication_performed": false,
+      "requires_human_review": true,
+      "role_id": "evidence_governance_critic",
+      "source_execution_id": "EXEC-DARS-CODEX-PANEL-EVIDENCE-GOVERNANCE-20260522-001",
+      "transport_kind": "codex_cli_subprocess_prompt_mode"
+    }
+  ],
+  "evidence_summary": {
+    "aggregate_transport_kind": "injected_subscription_executor_panel",
+    "completed_critic_count": 2,
+    "critic_count": 2,
+    "external_call_made": true,
+    "known_findings": [
+      "logical_consistency_critic reported that the original prepared prompt lacked the actual bounded claim and runtime-boundary evidence summary needed to judge claim-from-evidence",
+      "evidence_governance_critic found advisory-only, no-mutation, no-publication, no-tool/search/browser, and human-review-required boundaries preserved",
+      "local fail-closed redaction false positive for benign governance vocabulary was corrected and pinned by focused tests"
+    ],
+    "local_model_call_made": false,
+    "model_boundary_crossed": true,
+    "mutation_performed": false,
+    "panel_boundary_ref": "/tmp/hisys-dars-codex-panel-smoke/runtime-boundary/dars-remote-subscription-panels/20260522/REQ-DARS-CODEX-PANEL-SMOKE-20260522-001/PANEL-DARS-CODEX-SUBPROCESS-20260522-001.json",
+    "per_critic_boundary_refs": [
+      "/tmp/hisys-dars-codex-panel-smoke/runtime-boundary/dars-remote-subscriptions/20260522/REQ-DARS-CODEX-PANEL-SMOKE-20260522-001/codex_subscription_dars_critic-EXEC-DARS-CODEX-PANEL-LOGICAL-20260522-001.json",
+      "/tmp/hisys-dars-codex-panel-smoke/runtime-boundary/dars-remote-subscriptions/20260522/REQ-DARS-CODEX-PANEL-SMOKE-20260522-001/codex_subscription_dars_critic-EXEC-DARS-CODEX-PANEL-EVIDENCE-20260522-001.json"
+    ],
+    "per_critic_transport_kind": "codex_cli_subprocess_prompt_mode",
+    "publication_performed": false,
+    "readiness_record_ref": "docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.59.md",
+    "requires_human_review": true,
+    "source_report_ref": "docs/reports/dars-codex-cli-subprocess-multi-critic-panel-smoke-2026-05-22.md"
+  },
+  "future_smoke_row": "DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE",
+  "instance_root_policy": "temporary-governed-instance-root",
+  "live_execution_performed": false,
+  "panel_boundary_dir": "runtime-boundary/dars-remote-subscription-panels/20260522/REQ-DARS-CODEX-PANEL-SMOKE-20260522-001",
+  "panel_id": "PANEL-DARS-CODEX-SUBPROCESS-EVIDENCE-20260522-001",
+  "prepared_at": "2026-05-23T00:00:00Z",
+  "prepared_for_row": "DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP",
+  "provider_id": "codex",
+  "request_id": "REQ-DARS-CODEX-PANEL-EVIDENCE-20260522-001",
+  "schema_id": "hisys.dars.codex_cli_subprocess_multi_critic_evidence_packet_prep",
+  "schema_version": "0.1.0",
+  "transport_kind": "codex_cli_subprocess_prompt_mode",
+  "yyyymmdd": "20260522"
+}

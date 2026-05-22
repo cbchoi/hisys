@@ -6974,3 +6974,27 @@ Resume checkpoint:
 - Quality gate status: pending.
 - Next command to run: final validation gates; commit `fix: record codex panel smoke findings`; push to existing `origin/dars`; then stop at `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP` unless the operator explicitly starts the local evidence-packet PREP row.
 - Stop condition: do not run another live Codex panel or upgrade the DARS completion claim until a revised evidence-bearing packet is prepared and separately authorized.
+
+
+### 2026-05-23 — DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP
+
+- Phase completed: local docs/control PREP for the evidence-bearing multi-critic packet after the previous live smoke completed with findings.
+- Request context: profile v0.0.59 named `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP` as the next safe task because the prior logical-consistency critic found the prepared prompt lacked the actual bounded claim and runtime-boundary evidence summary.
+- RED observed: added `tests/unit/test_dars_remote_subscription_dispatch.py::test_codex_cli_subprocess_multi_critic_evidence_packet_prep_includes_claim_and_evidence`; focused run failed with `FileNotFoundError` for `docs/examples/dars/codex-cli-subprocess-multi-critic-panel.evidence-prep.json`.
+- GREEN observed: authored `docs/examples/dars/codex-cli-subprocess-multi-critic-panel.evidence-prep.json` with bounded claim `CLAIM-DARS-CODEX-PANEL-SMOKE-20260522-001`, claim text `codex_cli_subprocess_multi_critic_panel_smoke_completed_with_findings`, evidence summary fields from the prior aggregate runtime-boundary record, and per-critic prompts containing `Bounded claim` and `Evidence summary` sections. Focused evidence-packet contract test passed.
+- Governance + traceability: created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.60.md`; bumped profile to v0.0.60 with next safe task `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE`; updated governance current-state expectation; prepended traceability.
+- Boundary: no additional Codex subprocess, provider API call, credential lookup, vault resolution, raw token/key/header handling, provider account configuration, web search, browser/tool authority, mutation, publication, deployment, PR/issue/release, or DARS completion-claim upgrade occurred. The next row is live/provider-boundary gated and is not executed by this PREP checkpoint.
+- Quality gate result: pass — focused evidence-packet/governance gate `3 passed`; related DARS dispatch/Codex/governance gate `67 passed`; full project `1121 passed`; traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
+- Continue decision: after validation and commit, stop at `DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE` unless the operator explicitly authorizes the live/provider smoke gate.
+- Commit pending: `test: prepare codex evidence-bearing panel packet`.
+
+Resume checkpoint:
+- Current HEAD: cc70248 fix: record codex panel smoke findings
+- Working tree: evidence-prep packet, contract test, readiness decision v0.0.60, profile/test/traceability/Ralph edits pending validation and commit.
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP.
+- Current in-progress task: validation and commit for evidence-packet PREP.
+- RED observed: evidence-packet contract test failed while packet was absent.
+- GREEN observed: evidence-packet contract test passed with fake executor.
+- Quality gate status: pass.
+- Next command to run: commit `test: prepare codex evidence-bearing panel packet`; push to existing `origin/dars`; then stop unless explicitly continuing into the live/provider smoke gate.
+- Stop condition: do not run another live Codex panel or upgrade the DARS completion claim until the operator separately authorizes the evidence-bearing smoke gate.
