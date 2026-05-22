@@ -7069,3 +7069,26 @@ Resume checkpoint:
 - Quality gate status: traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
 - Next command to run: `git commit -m "docs: prep codex completion-claim review"`.
 - Stop condition: stop before any live/provider/model execution, credential lookup, external mutation/publication, or completion-claim upgrade.
+### 2026-05-22 — DARS Codex CLI subprocess completion-claim review gate (v0.0.64)
+
+- Task row: `DARS-CODEX-CLI-SUBPROCESS-COMPLETION-CLAIM-REVIEW-GATE`.
+- Classification: local review gate only. The user supplied the bounded candidate claim `codex_cli_subprocess_completion_claim_review_ready_with_bounded_runtime_evidence`; this run inspected committed docs/control artifacts and local runtime-boundary handles only.
+- Reviewed evidence: `docs/reports/dars-codex-cli-subprocess-completion-claim-review-prep-2026-05-22.md`; `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.63.md`; `docs/reports/dars-codex-cli-subprocess-evidence-packet-smoke-review-2026-05-22.md`; `docs/reports/dars-codex-cli-subprocess-multi-critic-evidence-packet-smoke-2026-05-22.md`; `docs/reports/dars-panel-local-completion-audit.md`; aggregate/per-critic runtime-boundary handles under `/tmp/hisys-dars-codex-evidence-panel-smoke/runtime-boundary/...`.
+- Accepted result: `codex_cli_subprocess_completion_claim_review_ready_with_bounded_runtime_evidence`.
+- Accepted meaning: controlled evidence is sufficient to state that a human-gated completion-claim review is ready with bounded runtime evidence.
+- Preserved productization claim: `local_fixture_localhost_controlled_advisory_complete`.
+- Rejected/blocked stronger claims: DARS system completion, production readiness, release readiness, live-provider readiness beyond bounded smoke evidence, mutation/publication/deployment/PR/issue/browser/search/tool/credential authority, and removal of `requires_human_review=true`.
+- Boundary: no Codex subprocess, provider API/model call, credential lookup, vault resolution, web/search/browser/tool authority, external mutation, publication, deployment, release, PR/issue creation, or DARS system-completion upgrade.
+- Governance + traceability: created `docs/reports/dars-codex-cli-subprocess-completion-claim-review-gate-2026-05-22.md`; created `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.64.md`; bumped profile to v0.0.64; updated governance current-state expectation; prepended traceability.
+- Quality gate result: focused governance current-state passed (`1 passed`); full project passed (`1121 passed`); traceability validation OK; secret scan `hit_count=0`; `git diff --check` clean.
+
+Resume checkpoint:
+- Current HEAD: 1e6de8a docs: prep codex completion-claim review
+- Working tree: completion-claim review-gate report, readiness decision v0.0.64, profile/test/traceability/Ralph edits ready for commit.
+- Last completed milestone/task: DARS-CODEX-CLI-SUBPROCESS-COMPLETION-CLAIM-REVIEW-GATE local artifact update.
+- Current in-progress task: commit and push for completion-claim review gate.
+- RED observed: n/a; docs/control review only.
+- GREEN observed: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q` -> `1 passed`; `PYTHONPATH=src:. pytest -q` -> `1121 passed`.
+- Quality gate status: traceability OK; secret scan `hit_count=0`; `git diff --check` clean.
+- Next command to run: `git commit -m "docs: accept bounded codex completion review"`.
+- Stop condition: stop before any stronger completion claim, live/provider/model execution, credential lookup, external mutation/publication, release, or human-review-removal claim.
