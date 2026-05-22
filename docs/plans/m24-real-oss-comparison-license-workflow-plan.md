@@ -2,6 +2,8 @@
 
 > **For Hermes/Ralph:** Execute M24 one checkpoint at a time with PREP -> RED/GREEN -> GATE discipline. The user authorized opening M24 with `go for m24`; this plan intentionally starts with docs/control boundaries only. Do not search, fetch, clone, inspect, or archive any real external repository in this milestone until a later human approval names exact repositories and execution limits.
 
+**Status:** Future-roadmap only after the 2026-05-22 user decision. M24 remains preserved as a planning-only, fail-closed surface; no additional OSS workflow row is active in Ralph.
+
 **Goal:** Extend the completed M23 fixture-local OSS comparison adapter toward a real-OSS comparison/license workflow without crossing the live/network/license boundary in the opening increment. M24 first defines the approval packet, provenance, retention, source-ingestion, and license-adjudication boundaries needed before any real repository access can be considered.
 
 **Authorization packet:** `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.39.md` records the user approval from Discord: `go for m24`.
@@ -17,10 +19,10 @@
 
 | Row | Task | Type | Status |
 |---|---|---|---|
-| M24-REAL-OSS-LICENSE-WORKFLOW-PREP | Author the detailed docs/control task packet for approved-repository declarations, provenance records, retention/cleanup policy, license-adjudication handoff, fixture-only RED/GREEN surfaces, and user-executable runbooks. | docs/control | next |
-| M24-REAL-OSS-LICENSE-WORKFLOW-RED-GREEN | Implement only deterministic fixture/local validators or report-shape tests defined by PREP. Must not clone/fetch/search external repositories or capture real license text. | fixture-local implementation | pending after PREP |
-| M24-REAL-OSS-LICENSE-WORKFLOW-GATE | Validate docs/control and fixture-local evidence; decide whether any later live/network/license row is sufficiently bounded for a separate human approval. | docs/control gate | pending after RED/GREEN |
-| QUEUE-REFILL-PREP | Re-classify remaining M24/live candidates after the gate. | docs/control | pending after GATE |
+| M24-REAL-OSS-LICENSE-WORKFLOW-PREP | Author the detailed docs/control task packet for approved-repository declarations, provenance records, retention/cleanup policy, license-adjudication handoff, fixture-only RED/GREEN surfaces, and user-executable runbooks. | docs/control | done |
+| M24-REAL-OSS-LICENSE-WORKFLOW-RED-GREEN | Implement only deterministic fixture/local validators or report-shape tests defined by PREP. Must not clone/fetch/search external repositories or capture real license text. | fixture-local implementation | done |
+| M24-REAL-OSS-LICENSE-WORKFLOW-GATE | Validate docs/control and fixture-local evidence; decide whether any later live/network/license row is sufficiently bounded for a separate human approval. | docs/control gate | done |
+| QUEUE-REFILL-PREP | Re-classify remaining M24/live candidates after the gate. | docs/control | deferred: OSS moved to future roadmap |
 
 ## First Executable Row
 

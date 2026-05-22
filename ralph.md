@@ -6357,9 +6357,26 @@ Resume checkpoint:
 - Next command to run: stage M24-GATE files and commit `docs: close m24 real oss license workflow milestone`; push to existing `origin/dars`; then stop and ask the user which post-M24 candidate to authorize next.
 - Stop condition: M24 milestone closure complete; no safe local row remains without user input.
 
+### 2026-05-22 — OSS comparison/license line moved to future roadmap (docs/control)
+
+- Phase completed: docs/control deferral record for the user's decision to move OSS comparison/license work to the future roadmap.
+- Request context: user said `oss 는 향후 roadmap으로 넘기자`; this supersedes treating real OSS comparison/license execution as a near-term post-M24 authorization candidate.
+- Controlled anchors checked: `roadmap.md`; `docs/plans/m24-real-oss-comparison-license-workflow-plan.md`; `docs/milestone-bootstrap/profile.yaml`; `docs/traceability/README.md`; `tests/unit/test_governance_docs_current_state.py`; current Git state at `bee7779 docs: close m24 real oss license workflow milestone`.
+- Implementation: updated `roadmap.md` to mark real OSS comparison/license adjudication as future-roadmap only; updated the M24 plan status/table so its planning rows are done and queue refill is deferred to roadmap; bumped `docs/milestone-bootstrap/profile.yaml` to `v0.0.43`; updated the governance current-state test expectation; prepended an OSS future-roadmap deferral row to traceability; updated this Ralph checkpoint.
+- Boundary: docs/control and governance-test expectation only. No production code change, no live model call, no remote provider call, no network search/fetch/clone, no real OSS repository access, no credential lookup, no license-text capture, no license adjudication, no raw source archival, no publication/deployment, no remote configuration change, no force/destructive Git action.
+- Continue decision: keep OSS on the future roadmap; do not reopen OSS clone/fetch/license/adjudication work from Ralph unless a later decision packet names exact repositories and execution limits.
+- Commit pending: `docs: move oss workflow to future roadmap`.
+
+Resume checkpoint:
+- Current HEAD: bee7779 docs: close m24 real oss license workflow milestone
+- Working tree: OSS roadmap deferral docs/profile/test/traceability/Ralph edits pending validation/commit/push
+- Last completed milestone/task: OSS future-roadmap deferral docs/control
+- Next safe Ralph queue target: none from OSS; continue only on separately authorized non-OSS work or a new decision packet.
+- Stop condition: OSS remains future-roadmap only.
+
 ## 16. Initial Next Action
 
-The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone and the authorized M23 adapter portfolio / live LSP smoke follow-up are closed at local/advisory boundaries. M24 was authorized with `go for m24` (`readiness_decision_record_v0.0.39.md`); M24 PREP (1b053a7), RED/GREEN (01466fe), and GATE are now closed at `local_fixture_advisory_complete` for the planning surface. No safe local row remains under the current authorization.
+The active authoritative `/rloo` queue is this `ralph.md` file. The current branch is `/home/cbchoi/workspaces/develop/repos/hisys` on `dars`. M23 advanced codebase adapter milestone and the authorized M23 adapter portfolio / live LSP smoke follow-up are closed at local/advisory boundaries. M24 was authorized with `go for m24` (`readiness_decision_record_v0.0.39.md`); M24 PREP (1b053a7), RED/GREEN (01466fe), and GATE are now closed at `local_fixture_advisory_complete` for the planning surface. The user has moved OSS comparison/license execution to the future roadmap, so no OSS workflow row is active in Ralph. No safe local row remains under the current authorization.
 
 Current queue status:
 
@@ -6375,23 +6392,25 @@ Done: M24-AUTH — recorded `go for m24` in readiness decision v0.0.39 and opene
 Done: M24-REAL-OSS-LICENSE-WORKFLOW-PREP — authored docs/plans/m24-real-oss-comparison-license-workflow-prep-tasks.md pinning the planning-only validator/builder/writer contract with `hisys.oss_license_workflow.v1`, deterministic issue codes, the standing `live_workflow_not_implemented` warning, the forbidden real-URL scheme/host allowlist, the SPDX-style license-tag allowlist, the human-review token allowlist, and the docs/gate/commit ritual.
 Done: M24-REAL-OSS-LICENSE-WORKFLOW-RED-GREEN — added `src/hisys/operations/real_oss_license_workflow.py`, `tests/unit/test_real_oss_license_workflow.py` (54 focused tests), and `docs/contracts/real-oss-license-workflow.md`. Full project pytest 1074 passed; standing `live_workflow_not_implemented` warning emitted on every valid packet; real URL schemes / hosts / live workflow authority / license text capture / license adjudication / automated cleanup / automated source ingestion / empty human review handoff all rejected by deterministic issue codes.
 Done: M24-REAL-OSS-LICENSE-WORKFLOW-GATE — M24 line closed at `local_fixture_advisory_complete` for the planning surface. Profile bumped to `v0.0.42` with `next_safe_task=QUEUE-REFILL-PREP-STOP`; governance current-state test updated to match. QUEUE-REFILL-PREP classification: every remaining post-M24 candidate requires fresh explicit user authorization.
+Done: OSS-FUTURE-ROADMAP-2026-05-22 — user moved OSS comparison/license execution to the future roadmap; profile bumped to `v0.0.43`; no OSS workflow row is active in Ralph.
 Next: QUEUE-REFILL-PREP-STOP — stop and ask. No safe local Ralph row remains under the current authorization envelope.
 ```
 
 Next safe Ralph queue target:
 
 ```text
-QUEUE-REFILL-PREP-STOP — stop and ask. Hand off to the user for the next explicit authorization. Candidates that require fresh user authorization:
-  1) Real OSS comparison / license adjudication live execution — approved repository URL set + credentials/network (clone/fetch/inspect) + license-text capture + license adjudication + raw source archival + new partition / live runtime.
-  2) Additional live LSP execution / executable / command allowlist expansion.
-  3) Live-provider DARS execution (would change the DARS completion claim from `local_fixture_localhost_controlled_advisory_complete`).
-  4) M25 or new product-scope milestone authorization.
-  5) Section 10.3 branch alignment between `feat/domain-adaptive-requirements-analysis` and the `dars` checkout (dormant; would change the automatic-push procedure).
-Do not start any of these candidates from within Ralph until the user explicitly authorizes the specific candidate.
+QUEUE-REFILL-PREP-STOP — stop and ask. Hand off to the user for the next explicit authorization. Active candidates that require fresh user authorization:
+  1) Additional live LSP execution / executable / command allowlist expansion.
+  2) Live-provider DARS execution (would change the DARS completion claim from `local_fixture_localhost_controlled_advisory_complete`).
+  3) M25 or new product-scope milestone authorization.
+  4) Section 10.3 branch alignment between `feat/domain-adaptive-requirements-analysis` and the `dars` checkout (dormant; would change the automatic-push procedure).
+Future-roadmap only:
+  - Real OSS comparison / license adjudication live execution — approved repository URL set + credentials/network (clone/fetch/inspect) + license-text capture + license adjudication + raw source archival + new partition / live runtime. Do not treat this as an active Ralph candidate unless a future roadmap decision packet reopens it.
+Do not start any of these active candidates from within Ralph until the user explicitly authorizes the specific candidate.
 ```
 
 Follow-up boundary:
 
-- allowed: nothing further without explicit user authorization for the next candidate above. The default autonomy rule does not extend to product-scope governance decisions (approved OSS repositories), credential/network actions, license-text capture, license adjudication, raw source archival, new live executions, or new milestone authority;
+- allowed: nothing further without explicit user authorization for the next active candidate above. The default autonomy rule does not extend to credential/network actions, new live executions, or new milestone authority;
 - DARS completion claim must remain `local_fixture_localhost_controlled_advisory_complete`; do not claim live provider execution has been smoked from this follow-up;
-- M24 planning surface is final at `local_fixture_advisory_complete` for the planning row; no further M24 row is enqueued until the user authorizes the live OSS comparison / license workflow.
+- M24 planning surface is final at `local_fixture_advisory_complete` for the planning row; OSS comparison/license execution is future-roadmap only and is not an active Ralph row.

@@ -6,6 +6,8 @@ This file records product-code roadmap items that are not yet authorized for liv
 
 ### Real OSS comparison and license adjudication
 
+Status as of 2026-05-22: **future-roadmap only**. The planning-only M24 surface is closed at `local_fixture_advisory_complete`; no real OSS clone/fetch, license-text capture, license adjudication, CLI expansion, or live workflow execution is part of the active Ralph queue. Reopening this line requires a separate future roadmap decision packet that names approved repositories and execution limits.
+
 Goal: extend the current fixture/local approved-OSS comparison adapter into a human-gated workflow that can use real external open-source repositories as comparison references.
 
 Scope to define before implementation:
