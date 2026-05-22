@@ -1,16 +1,15 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.62
-focus: 'Codex CLI subprocess multi-critic evidence packet review gate completed.
-  The review inspected the committed smoke report and runtime-boundary handles
-  without another provider/model subprocess. The evidence supports only the narrow
-  smoke-review claim and closes the immediate local review blocker; broader DARS
-  completion-claim upgrade remains blocked pending a separate completion-claim
-  review/prep decision.'
-formal_hisys_result: codex_cli_subprocess_multi_critic_evidence_packet_smoke_review_accepted
+version: v0.0.63
+focus: 'Codex CLI subprocess completion-claim review PREP completed. The local
+  docs/control checkpoint enumerates accepted runtime-boundary evidence, missing
+  evidence for stronger claims, the bounded review-readiness candidate claim, and
+  explicit stop conditions. No provider/model subprocess, credential lookup,
+  mutation, publication, or completion-claim upgrade occurred.'
+formal_hisys_result: codex_cli_subprocess_completion_claim_review_prep_completed
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-CODEX-CLI-SUBPROCESS-COMPLETION-CLAIM-REVIEW-PREP
+next_safe_task: DARS-CODEX-CLI-SUBPROCESS-COMPLETION-CLAIM-REVIEW-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
@@ -21,22 +20,20 @@ bootstrap_arguments: go for m24; oss 는 향후 roadmap으로 넘기자; live da
   Queue refill planning and multi-critic panel 승인; DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP;
   DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP;
   DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE 승인;
-  다음 blocker를 미리 처리할 수 있나?
-bootstrap_inference: The local review gate inspected the committed evidence-packet
-  smoke report and runtime-boundary records under `/tmp/hisys-dars-codex-evidence-panel-smoke`.
-  It accepted the bounded smoke-review claim because aggregate evidence records
-  critic_count=2, completed_critic_count=2, external_call_made=true,
-  model_boundary_crossed=true, mutation_performed=false, publication_performed=false,
-  requires_human_review=true, and critic previews support both claim/evidence
-  consistency and boundary preservation. This closes the immediate local evidence
-  review blocker only. No additional Codex subprocess, provider API, credential
-  lookup, web/search/browser/tool authority, mutation, publication, or DARS
-  completion-claim upgrade occurred.
+  다음 blocker를 미리 처리할 수 있나?; DARS-CODEX-CLI-SUBPROCESS-COMPLETION-CLAIM-REVIEW-PREP
+bootstrap_inference: The local completion-claim review PREP consolidated prior
+  local fixture completion, single-smoke, multi-critic, evidence-packet smoke,
+  and evidence-review records into a bounded review-readiness packet. It preserves
+  the existing DARS productization claim `local_fixture_localhost_controlled_advisory_complete`
+  and prepares only `codex_cli_subprocess_completion_claim_review_ready_with_bounded_runtime_evidence`
+  for possible local review. Stronger completion claims remain blocked by missing
+  governed live-provider, production-readiness, release, mutation/publication,
+  credential-authority, and human-review-removal evidence.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.62.md
-planning_baseline_head: '5bbaf4e docs: record codex evidence-packet smoke gate'
-current_head_at_plan_creation: '5bbaf4e docs: record codex evidence-packet smoke gate'
-previous_bootstrap_version: v0.0.61
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.63.md
+planning_baseline_head: '5241fa7 docs: accept codex evidence-packet smoke review'
+current_head_at_plan_creation: '5241fa7 docs: accept codex evidence-packet smoke review'
+previous_bootstrap_version: v0.0.62
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false
