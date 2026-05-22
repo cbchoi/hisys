@@ -1,0 +1,11 @@
+{
+  "activation_id": "DARS-BE-ACT-20260522-REMOTE-SUB-CODEX-001",
+  "allowed_actions": "advisory_only",
+  "approval_ref": "APPROVAL-DARS-REMOTE-SUB-20260522-CODEX-EXISTING-AUTH",
+  "backend_id": "codex_subscription_dars_critic",
+  "backend_kind": "codex_subscription",
+  "endpoint_scope": "external_api",
+  "expires_at": "2026-06-05T06:54:03Z",
+  "human_approved": true,
+  "remote_policy_packet_ref": "docs/examples/dars/codex-subscription-policy.recommended.json"
+}

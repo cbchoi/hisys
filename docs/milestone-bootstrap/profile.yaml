@@ -1,8 +1,8 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.48
-focus: Codex remote subscription provider selected and existing-auth instruction captured as a docs/control prerequisite record; provider boundary remains blocked until redaction/egress/expiry/revocation/policy-packet/activation-packet/executor/HISYS_INSTANCE confirmations are supplied
+version: v0.0.49
+focus: Recommended-default Codex subscription policy and activation packet drafts authored; expansion notes record remaining redaction, egress, executor, instance, prompt/evidence, smoke, panel, and completion-claim gates before live Codex execution
 formal_hisys_result: not_run_in_this_bootstrap
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
 next_safe_task: DARS-REMOTE-SUBSCRIPTION-AUTH-EXECUTE-OPERATOR-PREREQUISITES
@@ -10,12 +10,12 @@ remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: "go for m24; oss 는 향후 roadmap으로 넘기자; live dars execution approve; local readiness check then C subscription if not ready; provider는 codex로; 기존 auth정보 사용"
-bootstrap_inference: "Captured the operator prerequisite update in readiness decision record v0.0.48: provider_id=codex, adapter_class=codex_subscription, approval_ref=APPROVAL-DARS-REMOTE-SUB-20260522-CODEX-EXISTING-AUTH, subscription_account_ref=vault://existing-auth/codex-subscription, operator_id=choi-cb, and operator_auth_instruction=existing auth. This capture does not resolve credentials and does not cross a provider boundary. The same non-delegable prerequisite gate remains active because redaction_policy_ref, egress_scope, expires_at/revocation_ref, fresh policy packet, fresh activation packet, external subscription executor, no-tool/no-mutation confirmation, Section 7 precondition confirmation, and HISYS_INSTANCE are still required before any Codex subscription call."
+bootstrap_inference: "Authored recommended-default Codex remote subscription draft packets and extension notes without provider execution. Draft policy path docs/examples/dars/codex-subscription-policy.recommended.json pins provider_id=codex, adapter_class=codex_subscription, existing-auth vault-style subscription_account_ref, redaction_policy_ref, egress_scope, expires_at, revocation_ref, and audit_required=true. Draft activation path docs/examples/dars/codex-subscription-activation.recommended.json pins endpoint_scope=external_api, allowed_actions=advisory_only, human_approved=true, matching approval_ref, backend_id/backend_kind, and remote_policy_packet_ref. Expansion notes at docs/plans/dars-codex-subscription-packet-draft-and-extension-notes.md record required future work: concrete redaction transform, operator egress audit binding, external no-tool/no-mutation subscription executor, governed HISYS_INSTANCE, bounded prompt/evidence packet, single-critic smoke gate, later panel gate, and completion-claim review. No Codex call, credential lookup, vault resolution, provider account configuration, mutation, publication, or runtime-boundary evidence write occurred."
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.48.md
-planning_baseline_head: "7a17ecf docs: prepare dars remote subscription auth packet"
-current_head_at_plan_creation: "7a17ecf docs: prepare dars remote subscription auth packet"
-previous_bootstrap_version: v0.0.47
+next_artifact_ref: docs/plans/dars-codex-subscription-packet-draft-and-extension-notes.md
+planning_baseline_head: "3bc57c9 docs: capture codex subscription prerequisite"
+current_head_at_plan_creation: "3bc57c9 docs: capture codex subscription prerequisite"
+previous_bootstrap_version: v0.0.48
 tmux_or_background_agent_spawned: true
 production_code_created: false
 tests_created: false

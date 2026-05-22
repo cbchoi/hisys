@@ -1,0 +1,14 @@
+{
+  "access_mode": "subscription",
+  "adapter_class": "codex_subscription",
+  "approval_ref": "APPROVAL-DARS-REMOTE-SUB-20260522-CODEX-EXISTING-AUTH",
+  "audit_required": true,
+  "egress_scope": "advisory-dars-critic-prompt-and-bounded-evidence-summary-only",
+  "expires_at": "2026-06-05T06:54:03Z",
+  "operator_id": "choi-cb",
+  "policy_id": "DARS-REMOTE-SUB-POLICY-20260522-CODEX-001",
+  "provider_id": "codex",
+  "redaction_policy_ref": "policy://hisys/dars/codex-subscription-redaction-v1",
+  "revocation_ref": "revoke://hisys/dars/codex-subscription/20260522",
+  "subscription_account_ref": "vault://existing-auth/codex-subscription"
+}
