@@ -1,0 +1,46 @@
+{
+  "activation_packet_refs": [
+    "docs/examples/dars/live-provider-panel-smoke.activation.example.json"
+  ],
+  "advisory_only": true,
+  "alert_on_failure_ref": "ops://hisys/dars/unattended-alert/manual-review",
+  "approval_ref": "APPROVAL-DARS-UNATTENDED-PREP-20260523-001",
+  "audit_ledger_ref": "runtime-boundary/dars-unattended-advisory",
+  "audit_retention_ref": "retention://hisys/dars/unattended-ledger/90d",
+  "circuit_breakers": {
+    "cost_threshold_ref": "budget://hisys/dars/unattended/prep/2026-05",
+    "kill_switch_activation": true,
+    "max_consecutive_failures": 2,
+    "output_redaction_failure": true,
+    "policy_mismatch": true,
+    "rate_threshold_per_minute": 3,
+    "secret_scan_hit": true,
+    "stale_approval": true
+  },
+  "cost_budget_ref": "budget://hisys/dars/unattended/prep/2026-05",
+  "external_action_allowed": false,
+  "expires_at": "2026-06-23T00:00:00Z",
+  "kill_switch_ref": "ops://hisys/dars/unattended/kill-switch/manual",
+  "kill_switch_required": true,
+  "max_critics_per_run": 2,
+  "max_output_bytes_per_run": 4096,
+  "max_parallel_critics": 1,
+  "max_prompt_bytes_per_run": 4096,
+  "max_runs": 3,
+  "max_runs_per_hour": 1,
+  "mutation_allowed": false,
+  "operator_id": "operator:cbchoi",
+  "policy_id": "DARS-UNATTENDED-STANDING-PREP-20260523-001",
+  "post_run_reviewer_ref": "reviewer://operator/cbchoi",
+  "provider_policy_refs": [
+    "docs/examples/dars/live-provider-panel-smoke.policy.example.json"
+  ],
+  "publication_allowed": false,
+  "rate_limit_per_minute": 3,
+  "redaction_policy_ref": "policy://hisys/dars/live-provider-redaction-v1",
+  "request_class_allowlist": [
+    "dars_live_provider_advisory_dry_run"
+  ],
+  "requires_post_run_human_review": true,
+  "valid_from": "2026-05-23T00:00:00Z"
+}

@@ -1,29 +1,27 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.68
-focus: DARS live-provider, bounded unattended advisory operation, and controlled release
-  completion controlled-document baseline. The previous active live-LSP RLOO control plan has
-  been archived into ralph.history.md. The active ralph.md now points to the DARS live-provider
-  release claim ladder and the next local-safe R1 policy/transport TDD task.
-formal_hisys_result: dars_live_release_controlled_docs_ready_for_r1
-local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: DARS-LIVE-RELEASE-R1-POLICY
+version: v0.0.69
+focus: DARS bounded unattended advisory operation R5 documentation PREP and implementation
+  handoff. The active ralph.md now records the R5 runbook/example documentation checkpoint and
+  points to the next local-safe standing approval policy plus unattended runner RED/GREEN task.
+formal_hisys_result: dars_unattended_docs_ready_for_r5_tdd
+local_advisory_result: RALPH_CONTINUE_READY_WITH_CONTROLS
+next_safe_task: DARS-LIVE-RELEASE-R5-UNATTENDED-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: ralph.md를 ralph.history.md로 이동하고 요구사항/설계/시험/추적성 문서를 업데이트
-bootstrap_inference: The R0 documentation/control checkpoint defines the final DARS claim ladder
-  from local_fixture_localhost_controlled_advisory_complete through live_provider_advisory_smoked,
-  multi_critic_live_provider_advisory_complete, bounded_unattended_advisory_operation_ready,
-  release_candidate_ready, and released_for_controlled_advisory_use. It does not authorize or
-  claim any live provider/model call, credential lookup, standing unattended approval, release,
-  deployment, publication, external notification, mutation authority, or removal of human review.
+bootstrap_arguments: R5 bounded unattended advisory operation documentation PREP
+bootstrap_inference: The R5 documentation checkpoint defines the bounded unattended advisory
+  operation runbook, standing approval example, audit ledger, circuit breaker, fake/dry-run, and
+  post-run human-review contracts. It does not authorize or claim any live provider/model call,
+  credential lookup, activation of standing unattended approval, release, deployment, publication,
+  external notification, mutation authority, or removal of human review.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.68.md
-planning_baseline_head: '7b40649 docs: plan dars live provider release'
-current_head_at_plan_creation: '7b40649'
-previous_bootstrap_version: v0.0.67
+next_artifact_ref: docs/runbooks/dars-unattended-advisory-operation.md
+planning_baseline_head: '095ac61 docs: prepare dars multi-critic live provider panel smoke'
+current_head_at_plan_creation: '095ac61'
+previous_bootstrap_version: v0.0.68
 tmux_or_background_agent_spawned: false
 production_code_created: false
-tests_created: false
+tests_created: true
