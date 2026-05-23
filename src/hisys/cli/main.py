@@ -132,6 +132,11 @@ from ..operations.runtime_boundary_consistency import (
     build_runtime_boundary_consistency_report,
     write_runtime_boundary_consistency_report,
 )
+from ..operations.dars_live_status import (
+    build_dars_live_status,
+    render_dars_live_status_text,
+    write_dars_live_status_report,
+)
 from ..operations.runtime_status_surface import (
     build_runtime_status_packet,
     render_runtime_status_text,
@@ -2027,6 +2032,42 @@ def _cmd_runtime_status_surface(
     return 0
 
 
+def _cmd_dars_live_status(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    policy_refs: list[str],
+    standing_approval_ref: str,
+    kill_switch_ref: str,
+    budget_state_ref: str,
+    rollback_runbook_ref: str,
+    release_ref: str,
+    output_format: str,
+) -> int:
+    """Write local/read-only DARS live operations status artifacts."""
+
+    instance = InstanceRoot(instance_root)
+    root = Path(instance.root)
+    status = build_dars_live_status(
+        instance_root=root,
+        yyyymmdd=yyyymmdd,
+        policy_refs=policy_refs,
+        standing_approval_ref=standing_approval_ref,
+        kill_switch_ref=kill_switch_ref,
+        budget_state_ref=budget_state_ref,
+        rollback_runbook_ref=rollback_runbook_ref,
+        release_ref=release_ref,
+    )
+    artifacts = write_dars_live_status_report(instance_root=root, yyyymmdd=yyyymmdd, status=status)
+    if output_format == "json":
+        print(json.dumps({"status": status, "artifacts": artifacts}, ensure_ascii=False, indent=2, sort_keys=True))
+    elif output_format == "markdown":
+        print((root / artifacts["markdown_ref"]).read_text(encoding="utf-8"), end="")
+    else:
+        print(render_dars_live_status_text(status, json_ref=artifacts["json_ref"]))
+    return 0
+
+
 def _load_dars_panel_config(path: Path) -> DarsCriticPanelConfig:
     """Parse a local DARS panel config JSON file into the runtime dataclass.
 
@@ -2918,6 +2959,20 @@ def _build_parser() -> argparse.ArgumentParser:
     runtime_status_surface.add_argument("--approval-state", default="unknown", help="current approval/gate state")
     runtime_status_surface.add_argument("--context-budget", default="unknown", help="current context/cost budget summary")
     runtime_status_surface.add_argument("--format", choices=["text", "json", "markdown"], default="text")
+
+    dars_live_status = sub.add_parser(
+        "dars-live-status",
+        help="write local DARS live/unattended operations status and rollback-readiness artifacts",
+    )
+    dars_live_status.add_argument("--instance", required=True, help="Hisys runtime instance root")
+    dars_live_status.add_argument("--date", required=True, help="YYYYMMDD report partition")
+    dars_live_status.add_argument("--policy-ref", action="append", default=[], help="provider policy ref to report; repeatable")
+    dars_live_status.add_argument("--standing-approval-ref", required=True, help="standing approval policy ref; reported but not activated")
+    dars_live_status.add_argument("--kill-switch-ref", required=True, help="instance-relative kill-switch state JSON ref")
+    dars_live_status.add_argument("--budget-state-ref", required=True, help="instance-relative budget/circuit-breaker state JSON ref")
+    dars_live_status.add_argument("--rollback-runbook-ref", required=True, help="rollback runbook ref")
+    dars_live_status.add_argument("--release-ref", default="unreleased", help="release/version ref to report")
+    dars_live_status.add_argument("--format", choices=["text", "json", "markdown"], default="text")
 
     run_dars_panel = sub.add_parser(
         "run-dars-panel",
@@ -4286,6 +4341,18 @@ def main(argv: list[str] | None = None) -> int:
             session=args.session,
             approval_state=args.approval_state,
             context_budget=args.context_budget,
+            output_format=args.format,
+        )
+    if args.command == "dars-live-status":
+        return _cmd_dars_live_status(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            policy_refs=list(args.policy_ref),
+            standing_approval_ref=args.standing_approval_ref,
+            kill_switch_ref=args.kill_switch_ref,
+            budget_state_ref=args.budget_state_ref,
+            rollback_runbook_ref=args.rollback_runbook_ref,
+            release_ref=args.release_ref,
             output_format=args.format,
         )
     if args.command == "run-dars-panel":

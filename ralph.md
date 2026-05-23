@@ -12,7 +12,7 @@
 | Baseline at plan creation | `7b40649` |
 | Previous active control file | archived into `ralph.history.md` on 2026-05-23 |
 | Runtime | one coherent RED--GREEN--validate--commit unit per run; maximum 5 hours |
-| Active task | `DARS-LIVE-RELEASE-R6-STATUS-ROLLBACK` planned next (R1+R2 GREEN; R3/R4/R5 PREP GREEN; R3/R4/R5 ACTION rows remain HUMAN-GATED.) |
+| Active task | `DARS-LIVE-RELEASE-R7-RC` planned next (R1/R2/R5/R6 GREEN; R3/R4/R5 ACTION rows remain HUMAN-GATED.) |
 | User authorization | 최창범 교수 requested: `ralph.md를 ralph.history.md로 이동하고 요구사항/설계/시험/추적성 문서를 업데이트` |
 
 ## 1. Objective and bounded target outcome
@@ -28,7 +28,7 @@ local_fixture_localhost_controlled_advisory_complete
   -> released_for_controlled_advisory_use
 ```
 
-R1, R2, R3 PREP, R4 PREP, and R5 PREP are GREEN. R5 PREP implemented the bounded standing-approval policy validator, the unattended advisory runner with audit ledger and circuit breakers, and dry-run rehearsal evidence with fake/injected transports. R5 PREP remains within the local-safe authorization envelope; the bounded unattended live canary (R5 ACTION) is a separately approved HUMAN-GATED action. The next safe planned task is R6 status/rollback readiness documentation and local status surface.
+R1, R2, R3 PREP, R4 PREP, R5 PREP, and R6 are GREEN. R6 implemented the local live/unattended status surface, latest-boundary ref reporting, kill-switch/budget/circuit-breaker status refs, and rollback-readiness runbooks. R3/R4/R5 ACTION rows remain separately HUMAN-GATED. The next safe planned task is R7 release-candidate packet preparation; it must not claim release readiness unless live/unattended human-gated evidence is present and reviewed.
 
 ## 2. Continuous local-safe authorization envelope
 
@@ -179,7 +179,30 @@ git diff --check                                                                
 
 Boundary preserved: no live provider/model call, credential lookup, standing unattended approval activation, mutation, publication, deployment, release, external notification, or human-review removal. R5 ACTION remains separately HUMAN-GATED.
 
-Next safe task: `DARS-LIVE-RELEASE-R6-STATUS-ROLLBACK` — local status/kill-switch/latest-boundary reporting and rollback runbook. R6 remains local-safe if implemented with fixtures and checked-in docs only.
+### Completed: `DARS-LIVE-RELEASE-R6-STATUS-ROLLBACK` (2026-05-23)
+
+Implemented local live/unattended operations status and rollback readiness:
+
+- `src/hisys/operations/dars_live_status.py` — builds a refs-only status packet with policy refs, standing approval ref, kill-switch state, budget/circuit-breaker state, failed-run count, latest boundary refs, rollback runbook ref, release/version ref, and explicit no-live-action boundary flags.
+- `hisys dars-live-status` — writes JSON/Markdown reports under `reports/run-summaries/<YYYYMMDD>/` and prints text/JSON/Markdown without external calls.
+- `docs/runbooks/dars-live-operations.md` and `docs/runbooks/dars-live-rollback.md` — document status operation, evidence retention/privacy, troubleshooting, and rollback readiness steps: revoke standing approval, disable provider policy, rotate credential outside Hisys, stop scheduler outside Hisys, and verify no further runs.
+- `tests/unit/test_dars_live_status.py` — RED-first coverage for kill-switch/latest-boundary refs without secrets, report writing, CLI output/artifacts, and operations/rollback runbook content.
+- `docs/traceability/dars-critic-panel-runtime-traceability.md` (v0.23.0) records HISYS-FR-DARS-CP-014 / HISYS-T-DARS-CP-016 as GREEN for local status/rollback readiness.
+
+Validation (all GREEN):
+
+```bash
+PYTHONPATH=src:. pytest tests/unit/test_dars_live_status.py tests/unit/test_governance_docs_current_state.py -q   # 5 passed
+PYTHONPATH=src:. pytest tests/unit -q -k dars                                                          # 370 passed, 836 deselected
+PYTHONPATH=src:. pytest tests/unit -q                                                                  # 1206 passed
+python3 scripts/validate_traceability.py                                                              # OK
+python3 scripts/scan_secrets.py                                                                       # hit_count=0
+git diff --check                                                                                      # clean
+```
+
+Boundary preserved: no live provider/model call, credential lookup, standing unattended approval activation, rollback execution, mutation, publication, deployment, release, external notification, or human-review removal.
+
+Next safe task: `DARS-LIVE-RELEASE-R7-RC` — release-candidate packet/checklist preparation. R7 must remain docs/control-local unless a separate human decision packet authorizes live/release action.
 
 ## 6. Quality gates
 
@@ -222,4 +245,5 @@ Report:
 - 2026-05-23 — `DARS-LIVE-RELEASE-R4-PANEL-SMOKE-PREP`: GREEN. RED-first added `tests/unit/test_dars_live_provider_panel_smoke_runbook.py` (10 tests) covering runbook existence, required-phrase coverage for the multi-critic governance contract (multi-critic, two or more critics, panel_id, per-critic + panel-level boundary record, failure isolation, advisory synthesis, decision packet, approval/credential refs, redaction policy, `max_prompt_bytes`/`max_output_bytes`/`rate_limit_per_minute`, `cost_budget_ref`, env gate, boundary record flags, post-run human review), stop-condition coverage including duplicate `source_execution_id` and cross-critic policy mismatch, R1+R2+R3 module/anchor anchoring, the explicit "does not by itself authorize" assertion, the R3 reviewed single-smoke + `live_provider_advisory_smoked` precondition assertion, R1 policy validator acceptance of the example policy (with the deterministic warning), the credential-reference-only invariant in the example policy, the activation validator acceptance of the example activation, and the cross-packet matching between the example policy and activation. Tests initially failed at runbook/file existence and three content-anchor mismatches. GREEN added `docs/runbooks/dars-live-provider-panel-smoke.md`, `docs/examples/dars/live-provider-panel-smoke.policy.example.json`, and `docs/examples/dars/live-provider-panel-smoke.activation.example.json`. Three minor content-anchor adjustments unstuck content-anchor mismatches: (a) recast "exactly two or more advisory critic calls" to a wording that contains the literal "two or more critics" substring, (b) collapsed a line-wrap inside "rate-limit violation", (c) lowercased the leading "Synthesis" so the test substring "synthesis remains advisory" matches, and (d) added an explicit per-critic bounded-prompt/output/rate-limit field list in the preconditions section. Focused R1+R2+R3+R4 gate `pytest test_dars_live_provider_policy.py test_dars_live_provider_transport.py test_dars_live_provider_adapter.py test_dars_live_provider_single_smoke_runbook.py test_dars_live_provider_panel_smoke_runbook.py -q` → 65 passed. Regression gate `pytest tests/unit -q -k dars` → 340 passed, 836 deselected. Traceability validator → OK. Secret scan → `hit_count=0` (802 scanned files). `git diff --check` clean. RTM HISYS-FR-DARS-CP-012 → PREP-GREEN + HUMAN-GATED ACTION PLANNED. Boundary preserved: identical to R3 PREP; only docs/control files added; R4 ACTION explicitly remains separately approved HUMAN-GATED action and additionally requires a reviewed R3 ACTION smoke as a precondition. Success likelihood: 95% because PREP work is local docs/tests only and the runbook is paired with passing validator coverage. Next safe task: `DARS-LIVE-RELEASE-R5-UNATTENDED-PREP` (local Python + tests + docs; the bounded unattended live canary R5 ACTION is HUMAN-GATED).
 - 2026-05-23 — `DARS-LIVE-RELEASE-R5-UNATTENDED-PREP-DOCS`: DOCS-PREP. Authored `docs/runbooks/dars-unattended-advisory-operation.md`, `docs/examples/dars/unattended-standing-approval.example.json`, and `tests/unit/test_dars_unattended_docs.py`. Updated RTM to v0.21.0 and recorded HISYS-FR-DARS-CP-013 as DOCS-PREP + IMPLEMENTATION PLANNED + HUMAN-GATED ACTION PLANNED. Boundary preserved: no live provider/model call, credential lookup, standing unattended approval activation, mutation, publication, deployment, release, external notification, or human-review removal. Next safe implementation task remains R5 standing approval policy + unattended runner RED→GREEN.
 - 2026-05-23 — `DARS-LIVE-RELEASE-R5-UNATTENDED-PREP`: GREEN. RED-first added `tests/unit/test_dars_unattended_policy.py` (10 tests) and `tests/unit/test_dars_unattended_runner.py` (9 tests); both failed at import with `ModuleNotFoundError` before implementation. GREEN added `src/hisys/agents/dars_unattended_policy.py` and `src/hisys/operations/dars_unattended_runner.py`, with a small R2 adapter path-equivalence fix for activation policy refs. Focused R5+adapter gate `pytest test_dars_unattended_policy.py test_dars_unattended_runner.py test_dars_unattended_docs.py test_dars_live_provider_adapter.py -q` → 43 passed. Regression gate `pytest tests/unit -q -k dars` → 366 passed, 836 deselected. Traceability validator → OK. Secret scan → `hit_count=0` (809 scanned files). `git diff --check` clean. RTM HISYS-FR-DARS-CP-013 → PREP-GREEN + HUMAN-GATED ACTION PLANNED. Boundary preserved: no live provider/model call, credential lookup, standing unattended approval activation, mutation, publication, deployment, release, external notification, or human-review removal. Next safe task: `DARS-LIVE-RELEASE-R6-STATUS-ROLLBACK`.
-- Current HEAD: 095ac61
+- 2026-05-23 — `DARS-LIVE-RELEASE-R6-STATUS-ROLLBACK`: GREEN. RED-first added `tests/unit/test_dars_live_status.py` (4 tests); initial focused run failed with missing `hisys.operations.dars_live_status`, missing `hisys dars-live-status`, and missing operations/rollback runbooks. GREEN added the local refs-only status module, CLI surface, operations runbook, rollback runbook, and RTM v0.23.0 update. Focused R6+governance gate `pytest tests/unit/test_dars_live_status.py tests/unit/test_governance_docs_current_state.py -q` → 5 passed. DARS regression `pytest tests/unit -q -k dars` → 370 passed, 836 deselected. Full unit gate `pytest tests/unit -q` → 1206 passed. Traceability validator → OK. Secret scan → `hit_count=0` (813 scanned files). `git diff --check` clean. Boundary preserved: no live provider/model call, credential lookup, standing unattended approval activation, rollback execution, mutation, publication, deployment, release, external notification, or human-review removal. Next safe task: `DARS-LIVE-RELEASE-R7-RC`.
+- Current HEAD: 0579754

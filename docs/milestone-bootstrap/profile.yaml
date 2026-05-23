@@ -1,27 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.69
-focus: DARS bounded unattended advisory operation R5 documentation PREP and implementation
-  handoff. The active ralph.md now records the R5 runbook/example documentation checkpoint and
-  points to the next local-safe standing approval policy plus unattended runner RED/GREEN task.
-formal_hisys_result: dars_unattended_docs_ready_for_r5_tdd
+version: v0.0.70
+focus: DARS live operations status and rollback readiness R6 checkpoint. The active ralph.md now records the local status surface, kill-switch/latest-boundary reporting, budget/circuit-breaker refs, and rollback runbooks, and points to the next local-safe release-candidate packet task.
+formal_hisys_result: dars_live_status_rollback_ready_for_r7_prep
 local_advisory_result: RALPH_CONTINUE_READY_WITH_CONTROLS
-next_safe_task: DARS-LIVE-RELEASE-R5-UNATTENDED-PREP
+next_safe_task: DARS-LIVE-RELEASE-R7-RC
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: R5 bounded unattended advisory operation documentation PREP
-bootstrap_inference: The R5 documentation checkpoint defines the bounded unattended advisory
-  operation runbook, standing approval example, audit ledger, circuit breaker, fake/dry-run, and
-  post-run human-review contracts. It does not authorize or claim any live provider/model call,
-  credential lookup, activation of standing unattended approval, release, deployment, publication,
-  external notification, mutation authority, or removal of human review.
+bootstrap_arguments: R6 live operations status and rollback readiness
+bootstrap_inference: The R6 checkpoint defines a local refs-only DARS live status surface, kill-switch and latest-boundary reporting, budget/circuit-breaker state refs, operations runbook, and rollback runbook. It does not authorize or claim any live provider/model call, credential lookup, activation of standing unattended approval, rollback execution, release, deployment, publication, external notification, mutation authority, or removal of human review.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/runbooks/dars-unattended-advisory-operation.md
-planning_baseline_head: '095ac61 docs: prepare dars multi-critic live provider panel smoke'
-current_head_at_plan_creation: '095ac61'
-previous_bootstrap_version: v0.0.68
+next_artifact_ref: docs/runbooks/dars-live-operations.md
+planning_baseline_head: '0579754 feat: add dars unattended advisory prep runner'
+current_head_at_plan_creation: '0579754'
+previous_bootstrap_version: v0.0.69
 tmux_or_background_agent_spawned: false
-production_code_created: false
+production_code_created: true
 tests_created: true
