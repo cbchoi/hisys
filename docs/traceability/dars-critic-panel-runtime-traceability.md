@@ -1,10 +1,10 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.15.0
+version: 0.16.0
 document_status: draft-for-tdd
 created: 2026-05-19
-updated: 2026-05-21
+updated: 2026-05-23
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
@@ -23,6 +23,14 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 | HISYS-FR-DARS-CP-008 | advisory/human-decision fields | HISYS-T-DARS-CP-008 | `test_dars_panel_artifacts_preserve_advisory_human_decision_separation` | GREEN (MB-DARS-CP-T001) |
 | HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis, adapter-outcome-driven isolation (M-CP-EXT-1), per-task boundary record on failed/blocked branches (M-CP-EXT-2), typed adapter-missing isolation (M-CP-EXT-4), CLI preserves typed advisory exit-code semantics (M-CP-EXT-6), non-negative `duration_ms` clamp preserves record stability under backward clocks (M-CP-EXT-9), local-model response failure isolation (M-CP-LIVE-2), local-model CLI fail-closed activation guard (M-CP-LIVE-3), human-gated local smoke stop conditions (M-CP-LIVE-4) | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence`, `test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role`, `test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch`, `test_panel_runtime_clamps_negative_duration_ms_to_zero`, `test_live_panel_adapter_isolates_local_model_failure_as_failed_task`, `test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode`, `test_live_panel_local_smoke_runbook_preserves_stop_conditions_and_boundaries`, `test_critic_adapter_registry_blocks_external_dispatch_even_with_policy_approval` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4 + M-CP-EXT-6 + M-CP-EXT-9 + M-CP-LIVE-2 + M-CP-LIVE-3 + M-CP-LIVE-4 + M-CP-LIVE-5) |
 | HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate, slug validation on date/request_id/task_id (M-CP-EXT-2), naive-datetime clock rejection (M-CP-EXT-5), live activation raw-secret rejection and local-model request slug validation (M-CP-LIVE-1/M-CP-LIVE-2), smoke runbook secret/no-credential guardrails (M-CP-LIVE-4) | HISYS-T-DARS-CP-010 | changed-file secret scan, `test_write_execution_boundary_record_rejects_invalid_slug`, `test_write_execution_boundary_record_rejects_traversal_in_task_id`, `test_panel_runtime_rejects_invalid_slug`, `test_panel_runtime_rejects_naive_clock`, `test_live_panel_activation_rejects_raw_secret_fields`, `test_live_panel_adapter_calls_fake_local_model_and_records_model_boundary`, `test_live_panel_local_smoke_runbook_preserves_stop_conditions_and_boundaries` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-5 + M-CP-LIVE-1 + M-CP-LIVE-2 + M-CP-LIVE-4) |
+| HISYS-FR-DARS-CP-009 | `LiveProviderPolicyPacket`, credential-reference validation, provider/model allowlist, budget/rate bounds, raw-secret rejection | HISYS-T-DARS-CP-011 | `test_live_provider_policy_rejects_raw_secret_fields`, `test_live_provider_policy_accepts_credential_reference_only` | PLANNED (DARS-LIVE-RELEASE-R1-POLICY) |
+| HISYS-FR-DARS-CP-010 | `DarsLiveProviderTransportRequest`, fake/injected transport seam, fail-closed live-provider adapter | HISYS-T-DARS-CP-012 | `test_live_provider_transport_uses_fake_executor_without_external_call`, `test_live_provider_adapter_requires_policy_approval_and_credential_ref` | PLANNED (DARS-LIVE-RELEASE-R1/R2) |
+| HISYS-FR-DARS-CP-011 | single-critic live-provider smoke runbook, decision packet, provider boundary record | HISYS-T-DARS-CP-013 | `test_live_provider_single_smoke_runbook_requires_decision_packet_and_budget`; reviewed runtime-boundary evidence | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R3) |
+| HISYS-FR-DARS-CP-012 | multi-critic live-provider panel boundary and failure isolation | HISYS-T-DARS-CP-014 | `test_live_provider_panel_dispatch_writes_panel_boundary`, `test_live_provider_panel_isolates_one_failed_critic`; reviewed runtime-boundary evidence | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R4) |
+| HISYS-FR-DARS-CP-013 | `StandingApprovalPolicy`, `DarsUnattendedAdvisoryRunner`, audit ledger, budget/rate caps, kill switch | HISYS-T-DARS-CP-015 | `test_unattended_policy_expires_and_blocks_runner`, `test_unattended_runner_requires_kill_switch_and_budget_caps`; reviewed unattended canary ledger | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R5) |
+| HISYS-FR-DARS-CP-014 | `dars_live_status`, kill-switch state, latest boundary refs, rollback runbook | HISYS-T-DARS-CP-016 | `test_dars_live_status_reports_kill_switch_and_latest_boundary_refs_without_secrets` | PLANNED (DARS-LIVE-RELEASE-R6) |
+| HISYS-FR-DARS-CP-015 | release checklist, release notes, release decision packet, post-release smoke evidence | HISYS-T-DARS-CP-017 | `test_release_candidate_checklist_requires_live_unattended_and_rollback_evidence`; release decision packet review | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R7/R8) |
+| HISYS-NFR-DARS-CP-003 | claim-ladder and decision-packet enforcement for live-provider, unattended, release-candidate, and release claims | HISYS-T-DARS-CP-017 | release decision packet review and traceability gate | PLANNED (DARS-LIVE-RELEASE-R0..R8) |
 
 
 ## DARS-PANEL-RLOOP-OPT-1 — Local completion audit (2026-05-21)
@@ -606,3 +614,21 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 ## TDD verdict
 
 `YES_WITH_CONTROLS`: the controlled package is TDD-ready for a fixture/local-only DARS critic panel runtime increment. It is not approval to enable live DARS dispatch, external agent calls, mutation, publication, or autonomous decision authority. The invariant is `advisory_only` critic output until separate Hisys governance and human approval convert evidence into a downstream decision.
+## DARS-LIVE-RELEASE-R0 — Final live-provider/unattended/release controlled-document update (2026-05-23)
+
+- Scope: archived the prior active `ralph.md` into `ralph.history.md`, created a short active DARS live-provider release controller, and updated SRS/SDD/STD/RTM documents to define the final claim ladder and verification gates.
+- Plan anchor: `docs/plans/dars-panel-live-provider-unattended-release-final-plan.md`.
+- Decision record: `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.68.md`.
+- New claim ladder:
+
+```text
+local_fixture_localhost_controlled_advisory_complete
+  -> live_provider_advisory_smoked
+  -> multi_critic_live_provider_advisory_complete
+  -> bounded_unattended_advisory_operation_ready
+  -> release_candidate_ready
+  -> released_for_controlled_advisory_use
+```
+
+- Boundary: this R0 update is documentation/control only. It performs no live provider/model call, credential lookup, standing unattended approval, release, deployment, package upload, external notification, mutation outside the repository docs/control files, destructive Git action, or human-review removal.
+- Next safe task: `DARS-LIVE-RELEASE-R1-POLICY`, which starts with RED tests for live-provider policy and fake/injected transport contracts.

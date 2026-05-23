@@ -1,37 +1,29 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.67
-focus: M21 advanced codebase-analysis milestone closure. M21.1 through M21.9, including the
-  codebase-domain current-artifact bridge, are recorded as closed under local-only, advisory-only
-  evidence. The stale MB-CODEBASE-M21-6-PREP pointer is retired because M21.6 was already
-  verified by queue roll-forward and downstream M21.7..M21.9 rows are complete. Remaining
-  OSS/LSP/provider/product-scope work is outside M21 and remains operator-gated.
-formal_hisys_result: codex_cli_subprocess_completion_claim_review_ready_with_bounded_runtime_evidence
+version: v0.0.68
+focus: DARS live-provider, bounded unattended advisory operation, and controlled release
+  completion controlled-document baseline. The previous active live-LSP RLOO control plan has
+  been archived into ralph.history.md. The active ralph.md now points to the DARS live-provider
+  release claim ladder and the next local-safe R1 policy/transport TDD task.
+formal_hisys_result: dars_live_release_controlled_docs_ready_for_r1
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
-next_safe_task: OPERATOR-SELECTION-REQUIRED
+next_safe_task: DARS-LIVE-RELEASE-R1-POLICY
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: go for m24; oss 는 향후 roadmap으로 넘기자; live dars execution approve; local
-  readiness check then C subscription if not ready; provider는 codex로; 기존 auth정보 사용; 허가; subprocess를
-  만드는 방향으로 전면 수정; 진행; smoke 진행; DARS-CODEX-CLI-SUBPROCESS-SMOKE-REVIEW-GATE에서 이 evidence를
-  검토; Queue refill planning and multi-critic panel 승인; DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-PANEL-PREP;
-  DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-PREP; DARS-CODEX-CLI-SUBPROCESS-MULTI-CRITIC-EVIDENCE-PACKET-SMOKE-GATE
-  승인; 다음 blocker를 미리 처리할 수 있나?; DARS-CODEX-CLI-SUBPROCESS-COMPLETION-CLAIM-REVIEW-PREP; codex_cli_subprocess_completion_claim_review_ready_with_bounded_runtime_evidence
-bootstrap_inference: The local completion-claim review gate accepted only the bounded review-readiness
-  result `codex_cli_subprocess_completion_claim_review_ready_with_bounded_runtime_evidence`.
-  The accepted evidence set combines the local fixture completion audit, bounded Codex CLI
-  subprocess smoke/review records, and local runtime-boundary handles. The result means the
-  evidence is ready for human-gated completion-claim review, not that DARS is complete or
-  production/live/release ready. Stronger claims remain blocked by missing governed live-provider,
-  production-readiness, release, mutation/publication, credential-boundary, and human-review-removal
-  evidence.
-roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.67.md
-planning_baseline_head: '00b1a9f docs: align automatic push checkpoint with dars'
-current_head_at_plan_creation: '00b1a9f docs: align automatic push checkpoint with dars'
-previous_bootstrap_version: v0.0.66
+bootstrap_arguments: ralph.md를 ralph.history.md로 이동하고 요구사항/설계/시험/추적성 문서를 업데이트
+bootstrap_inference: The R0 documentation/control checkpoint defines the final DARS claim ladder
+  from local_fixture_localhost_controlled_advisory_complete through live_provider_advisory_smoked,
+  multi_critic_live_provider_advisory_complete, bounded_unattended_advisory_operation_ready,
+  release_candidate_ready, and released_for_controlled_advisory_use. It does not authorize or
+  claim any live provider/model call, credential lookup, standing unattended approval, release,
+  deployment, publication, external notification, mutation authority, or removal of human review.
+roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.68.md
+planning_baseline_head: '7b40649 docs: plan dars live provider release'
+current_head_at_plan_creation: '7b40649'
+previous_bootstrap_version: v0.0.67
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false
