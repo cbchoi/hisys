@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.19.0
+version: 0.20.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-23
@@ -26,7 +26,7 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 | HISYS-FR-DARS-CP-009 | `LiveProviderPolicyPacket`, credential-reference validation, provider/model allowlist, budget/rate bounds, raw-secret rejection (DARS-LIVE-RELEASE-R1-POLICY) | HISYS-T-DARS-CP-011 | `test_live_provider_policy_rejects_raw_secret_fields`, `test_live_provider_policy_accepts_credential_reference_only`, `test_live_provider_policy_rejects_missing_credential_reference`, `test_live_provider_policy_rejects_unknown_credential_ref_scheme`, `test_live_provider_policy_rejects_mutation_or_publication_authority`, `test_live_provider_policy_rejects_non_advisory_allowed_actions`, `test_live_provider_policy_rejects_disabled_external_call_or_human_review`, `test_live_provider_policy_rejects_unbounded_prompt_output_or_rate_limit`, `test_live_provider_policy_rejects_expired_packet`, `test_live_provider_policy_rejects_non_allowlisted_provider`, `test_live_provider_policy_rejects_missing_approval_or_cost_budget_ref`, `test_live_provider_policy_emits_dispatch_warning_even_when_valid`, `test_live_provider_policy_schema_constants_are_stable` | GREEN (DARS-LIVE-RELEASE-R1-POLICY) |
 | HISYS-FR-DARS-CP-010 | `DarsLiveProviderTransportRequest`/`Result`, `FakeLiveProviderTransport`, `LiveProviderTransportFailure`, redacted-payload executor seam (DARS-LIVE-RELEASE-R1-POLICY); `DarsLiveProviderAdapterRequest`/`Result`, `run_dars_live_provider_adapter`, env-gated dry-run and live mode entry points (DARS-LIVE-RELEASE-R2-ADAPTER) | HISYS-T-DARS-CP-012 | `test_live_provider_transport_uses_fake_executor_without_external_call`, `test_live_provider_transport_rejects_missing_transport`, `test_live_provider_transport_rejects_raw_prompt_text_field`, `test_live_provider_transport_request_rejects_invalid_allowed_actions`, `test_live_provider_transport_request_rejects_mutation_authority`, `test_live_provider_transport_request_rejects_disabled_external_call_allowed`, `test_live_provider_transport_request_rejects_disabled_human_review`, `test_live_provider_transport_request_rejects_unbounded_prompt_or_output`, `test_live_provider_transport_request_rejects_oversized_prompt_byte_count`, `test_live_provider_transport_rejects_unknown_transport_kind`, `test_live_provider_transport_records_failure_code_when_executor_raises_failure`, `test_live_provider_transport_rejects_oversized_output`, `test_live_provider_transport_rejects_empty_executor_output`, `test_live_provider_transport_rejects_executor_output_with_raw_secret_marker`, `test_live_provider_transport_rejects_unauthorized_authority_claim_in_output`, `test_live_provider_transport_schema_constants_are_stable`, `test_dars_live_provider_adapter_schema_constants_are_stable`, `test_live_provider_adapter_requires_policy_approval_and_credential_ref`, `test_live_provider_adapter_fails_closed_without_transport`, `test_live_provider_adapter_fails_closed_on_policy_without_credential_ref`, `test_live_provider_adapter_fails_closed_on_policy_with_raw_secret`, `test_live_provider_adapter_fails_closed_on_activation_without_human_approval`, `test_live_provider_adapter_fails_closed_on_approval_ref_mismatch`, `test_live_provider_adapter_fails_closed_on_policy_approval_mismatch`, `test_live_provider_adapter_fails_closed_on_missing_env_gate_in_live_mode`, `test_live_provider_adapter_live_mode_allowed_when_env_gate_set`, `test_live_provider_adapter_fails_closed_on_mutation_authority_in_policy`, `test_live_provider_adapter_writes_boundary_record`, `test_live_provider_adapter_propagates_transport_failure_code`, `test_live_provider_adapter_fails_closed_when_packet_files_missing`, `test_live_provider_adapter_rejects_unknown_mode`, `test_live_provider_adapter_rejects_invalid_yyyymmdd`, `test_live_provider_adapter_fails_closed_on_backend_id_mismatch` | GREEN (DARS-LIVE-RELEASE-R1-POLICY contract + fake transport + R2 fail-closed adapter; real-provider transport still PLANNED) |
 | HISYS-FR-DARS-CP-011 | single-critic live-provider smoke runbook (`docs/runbooks/dars-live-provider-single-smoke.md`), example policy/activation packets, decision-packet preconditions, env-gate procedure (PREP). Reviewed runtime-boundary evidence still required for R3 ACTION live call. | HISYS-T-DARS-CP-013 | `test_live_provider_single_smoke_runbook_exists`, `test_live_provider_single_smoke_runbook_requires_decision_packet_and_budget`, `test_live_provider_single_smoke_runbook_documents_stop_conditions`, `test_live_provider_single_smoke_runbook_anchors_r1_r2_artifacts`, `test_live_provider_single_smoke_runbook_does_not_authorize_live_call_by_itself`, `test_live_provider_single_smoke_example_policy_passes_r1_validator`, `test_live_provider_single_smoke_example_policy_uses_only_credential_reference`, `test_live_provider_single_smoke_example_activation_passes_validator`, `test_live_provider_single_smoke_example_activation_matches_example_policy`; reviewed runtime-boundary evidence (R3 ACTION) | PREP-GREEN + HUMAN-GATED ACTION PLANNED (DARS-LIVE-RELEASE-R3-SINGLE-SMOKE-PREP done; R3 ACTION reserved for human approval) |
-| HISYS-FR-DARS-CP-012 | multi-critic live-provider panel boundary and failure isolation | HISYS-T-DARS-CP-014 | `test_live_provider_panel_dispatch_writes_panel_boundary`, `test_live_provider_panel_isolates_one_failed_critic`; reviewed runtime-boundary evidence | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R4) |
+| HISYS-FR-DARS-CP-012 | multi-critic live-provider panel smoke runbook (`docs/runbooks/dars-live-provider-panel-smoke.md`), example policy/activation packets, per-critic + panel-level boundary record requirements, failure-isolation expectations (PREP); panel dispatch wiring + reviewed runtime-boundary evidence still required for R4 ACTION. | HISYS-T-DARS-CP-014 | `test_live_provider_panel_smoke_runbook_exists`, `test_live_provider_panel_smoke_runbook_requires_multi_critic_governance`, `test_live_provider_panel_smoke_runbook_documents_stop_conditions`, `test_live_provider_panel_smoke_runbook_anchors_prior_increments`, `test_live_provider_panel_smoke_runbook_does_not_authorize_live_call_by_itself`, `test_live_provider_panel_smoke_runbook_requires_r3_single_smoke_precondition`, `test_live_provider_panel_smoke_example_policy_passes_r1_validator`, `test_live_provider_panel_smoke_example_policy_uses_only_credential_reference`, `test_live_provider_panel_smoke_example_activation_passes_validator`, `test_live_provider_panel_smoke_example_activation_matches_example_policy`; `test_live_provider_panel_dispatch_writes_panel_boundary`, `test_live_provider_panel_isolates_one_failed_critic` (R4 ACTION) | PREP-GREEN + HUMAN-GATED ACTION PLANNED (DARS-LIVE-RELEASE-R4-PANEL-SMOKE-PREP done; R4 ACTION reserved for human approval) |
 | HISYS-FR-DARS-CP-013 | `StandingApprovalPolicy`, `DarsUnattendedAdvisoryRunner`, audit ledger, budget/rate caps, kill switch | HISYS-T-DARS-CP-015 | `test_unattended_policy_expires_and_blocks_runner`, `test_unattended_runner_requires_kill_switch_and_budget_caps`; reviewed unattended canary ledger | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R5) |
 | HISYS-FR-DARS-CP-014 | `dars_live_status`, kill-switch state, latest boundary refs, rollback runbook | HISYS-T-DARS-CP-016 | `test_dars_live_status_reports_kill_switch_and_latest_boundary_refs_without_secrets` | PLANNED (DARS-LIVE-RELEASE-R6) |
 | HISYS-FR-DARS-CP-015 | release checklist, release notes, release decision packet, post-release smoke evidence | HISYS-T-DARS-CP-017 | `test_release_candidate_checklist_requires_live_unattended_and_rollback_evidence`; release decision packet review | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R7/R8) |
@@ -614,6 +614,97 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 ## TDD verdict
 
 `YES_WITH_CONTROLS`: the controlled package is TDD-ready for a fixture/local-only DARS critic panel runtime increment. It is not approval to enable live DARS dispatch, external agent calls, mutation, publication, or autonomous decision authority. The invariant is `advisory_only` critic output until separate Hisys governance and human approval convert evidence into a downstream decision.
+## DARS-LIVE-RELEASE-R4-PANEL-SMOKE-PREP — Multi-critic live-provider panel smoke runbook and example packets (2026-05-23)
+
+- Scope: authored the controlled R4 PREP runbook and the example
+  policy/activation packets that future R4 ACTION will consume. PREP
+  produces only docs/control artifacts; no live provider call, model
+  call, credential lookup, network request, mutation, publication,
+  deployment, or remote push beyond the normal `git push origin dars`
+  checkpoint is performed.
+- New artifacts:
+  - `docs/runbooks/dars-live-provider-panel-smoke.md` — multi-critic
+    panel smoke runbook documenting preconditions (reviewed R3 single
+    smoke as a hard precondition, decision packet, R1 policy
+    validation, activation packet, approval/backend/policy-ref
+    coherence, per-critic redaction, per-critic
+    `max_prompt_bytes`/`max_output_bytes`/`rate_limit_per_minute`,
+    panel-level `cost_budget_ref`, R2 env gate, controlled instance
+    root, operator certainty), the multi-critic procedure (two or more
+    critics under one decision packet, unique
+    `source_execution_id` per critic, shared `request_id`/`panel_id`),
+    the per-critic + panel-level boundary record requirements with
+    explicit failure-isolation expectations
+    (`mutation_performed=false`, `publication_performed=false`,
+    `advisory_only=true`, `requires_human_review=true`,
+    `external_call_made=true`,
+    `model_boundary_crossed=true`, `allowed_actions=advisory_only`,
+    advisory `synthesis` may report `needs_more_evidence` when fewer
+    critics complete than the decision packet requires), the post-run
+    human review steps, and an exhaustive stop-condition list including
+    duplicate `source_execution_id`, mismatched `request_id`, and
+    cross-critic policy mismatches. The runbook explicitly does not by
+    itself authorize the live call and explicitly records that R4
+    ACTION requires a fresh human-approved decision packet plus a
+    separately approved real-provider transport (out of scope for
+    PREP).
+  - `docs/examples/dars/live-provider-panel-smoke.policy.example.json`
+    — credential-reference-only sample policy that passes
+    `validate_live_provider_policy_packet` with zero errors and the
+    deterministic `live_provider_dispatch_not_authorized_by_policy_alone`
+    warning.
+  - `docs/examples/dars/live-provider-panel-smoke.activation.example.json`
+    — matching activation packet that passes
+    `validate_dars_backend_activation_packet`, declares
+    `endpoint_scope=external_api`, `allowed_actions=advisory_only`,
+    `human_approved=true`, and references the example policy.
+- New tests:
+  - `tests/unit/test_dars_live_provider_panel_smoke_runbook.py` — 10
+    focused tests covering runbook existence, required-phrase coverage
+    (multi-critic, two or more critics, panel_id, per-critic + panel-
+    level boundary record, failure isolation, advisory synthesis,
+    decision packet, approval/credential refs, redaction policy,
+    `max_prompt_bytes`/`max_output_bytes`/`rate_limit_per_minute`,
+    `cost_budget_ref`, env gate, boundary record flags, post-run human
+    review), stop-condition coverage (missing decision packet, raw
+    secret, credential lookup, mutation/publication/tool/browser/search
+    authority, budget/rate-limit violation, secret-scan hit, output
+    redaction failure, duplicate `source_execution_id`, cross-critic
+    policy mismatch, operator uncertainty), R1+R2+R3 module/anchor
+    anchoring, the explicit "does not by itself authorize" assertion,
+    the R3 reviewed single-smoke + `live_provider_advisory_smoked`
+    precondition assertion, R1 policy validator acceptance of the
+    example policy (with the deterministic warning), the
+    credential-reference-only invariant in the example policy, the
+    activation validator acceptance of the example activation, and the
+    cross-packet matching between the example policy and activation.
+- Validation commands (all GREEN):
+
+  ```bash
+  PYTHONPATH=src:. pytest tests/unit/test_dars_live_provider_policy.py tests/unit/test_dars_live_provider_transport.py tests/unit/test_dars_live_provider_adapter.py tests/unit/test_dars_live_provider_single_smoke_runbook.py tests/unit/test_dars_live_provider_panel_smoke_runbook.py -q
+  # 65 passed
+  PYTHONPATH=src:. pytest tests/unit -q -k dars
+  # 340 passed, 836 deselected
+  python3 scripts/validate_traceability.py
+  # OK: schemas, trace test, and Hermes boundary convention pass traceability checks
+  python3 scripts/scan_secrets.py
+  # secret_scan: scanned_files=802 skipped_files=0 hit_count=0
+  git diff --check
+  ```
+
+- Boundary: no live provider/model call, credential lookup, standing
+  unattended approval, release artifact publication, deployment,
+  package upload, external notification, mutation outside the
+  repository docs/control files, destructive Git operation, or
+  human-review removal. The R4 PREP runbook explicitly preserves R4
+  ACTION as a separately approved HUMAN-GATED row that additionally
+  requires a reviewed R3 ACTION smoke (`live_provider_advisory_smoked`)
+  as a precondition.
+- Next safe task: `DARS-LIVE-RELEASE-R5-UNATTENDED-PREP` — the
+  bounded standing-approval policy + unattended runner contract +
+  dry-run rehearsal evidence. R5 ACTION (limited live unattended
+  canary) remains HUMAN-GATED.
+
 ## DARS-LIVE-RELEASE-R3-SINGLE-SMOKE-PREP — Single-critic live-provider smoke runbook and example packets (2026-05-23)
 
 - Scope: authored the controlled R3 PREP runbook and the example

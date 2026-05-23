@@ -1,0 +1,23 @@
+{
+  "approval_ref": "APPROVAL-DARS-LP-PANEL-SMOKE-20260523-001",
+  "audit_required": true,
+  "allowed_actions": "advisory_only",
+  "cost_budget_ref": "budget://hisys/dars/live-provider/panel-smoke/2026-05",
+  "credential_ref": "env://HISYS_DARS_PROVIDER_TOKEN",
+  "credential_ref_kind": "env",
+  "endpoint_ref": "subscription://claude/default",
+  "expires_at": "2026-06-23T00:00:00Z",
+  "external_call_allowed": true,
+  "max_output_bytes": 4096,
+  "max_prompt_bytes": 4096,
+  "model_id": "claude-opus-4-7",
+  "mutation_allowed": false,
+  "operator_id": "operator:cbchoi",
+  "policy_id": "DARS-LP-POL-20260523-PANEL-SMOKE-001",
+  "provider_id": "claude",
+  "provider_kind": "subscription",
+  "publication_allowed": false,
+  "rate_limit_per_minute": 6,
+  "redaction_policy_ref": "policy://hisys/dars/live-provider-redaction-v1",
+  "requires_human_review": true
+}
