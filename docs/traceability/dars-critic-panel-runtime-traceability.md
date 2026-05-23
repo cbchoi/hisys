@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.16.0
+version: 0.17.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-23
@@ -23,8 +23,8 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 | HISYS-FR-DARS-CP-008 | advisory/human-decision fields | HISYS-T-DARS-CP-008 | `test_dars_panel_artifacts_preserve_advisory_human_decision_separation` | GREEN (MB-DARS-CP-T001) |
 | HISYS-NFR-DARS-CP-001 | failure policy and partial synthesis, adapter-outcome-driven isolation (M-CP-EXT-1), per-task boundary record on failed/blocked branches (M-CP-EXT-2), typed adapter-missing isolation (M-CP-EXT-4), CLI preserves typed advisory exit-code semantics (M-CP-EXT-6), non-negative `duration_ms` clamp preserves record stability under backward clocks (M-CP-EXT-9), local-model response failure isolation (M-CP-LIVE-2), local-model CLI fail-closed activation guard (M-CP-LIVE-3), human-gated local smoke stop conditions (M-CP-LIVE-4) | HISYS-T-DARS-CP-009 | `test_dars_panel_isolates_one_critic_failure_and_reports_partial_evidence`, `test_panel_runtime_isolates_failed_adapter_outcome_without_keyword_match`, `test_panel_runtime_writes_one_boundary_record_per_task`, `test_panel_runtime_emits_blocked_when_registry_has_no_adapter_for_role`, `test_run_dars_panel_cli_blocks_external_backend_without_live_dispatch`, `test_panel_runtime_clamps_negative_duration_ms_to_zero`, `test_live_panel_adapter_isolates_local_model_failure_as_failed_task`, `test_run_dars_panel_cli_requires_activation_packet_for_local_model_mode`, `test_live_panel_local_smoke_runbook_preserves_stop_conditions_and_boundaries`, `test_critic_adapter_registry_blocks_external_dispatch_even_with_policy_approval` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-1 + M-CP-EXT-2 + M-CP-EXT-4 + M-CP-EXT-6 + M-CP-EXT-9 + M-CP-LIVE-2 + M-CP-LIVE-3 + M-CP-LIVE-4 + M-CP-LIVE-5) |
 | HISYS-NFR-DARS-CP-002 | redaction/secret-scan gate, slug validation on date/request_id/task_id (M-CP-EXT-2), naive-datetime clock rejection (M-CP-EXT-5), live activation raw-secret rejection and local-model request slug validation (M-CP-LIVE-1/M-CP-LIVE-2), smoke runbook secret/no-credential guardrails (M-CP-LIVE-4) | HISYS-T-DARS-CP-010 | changed-file secret scan, `test_write_execution_boundary_record_rejects_invalid_slug`, `test_write_execution_boundary_record_rejects_traversal_in_task_id`, `test_panel_runtime_rejects_invalid_slug`, `test_panel_runtime_rejects_naive_clock`, `test_live_panel_activation_rejects_raw_secret_fields`, `test_live_panel_adapter_calls_fake_local_model_and_records_model_boundary`, `test_live_panel_local_smoke_runbook_preserves_stop_conditions_and_boundaries` | GREEN (MB-DARS-CP-T001 + M-CP-EXT-2 + M-CP-EXT-5 + M-CP-LIVE-1 + M-CP-LIVE-2 + M-CP-LIVE-4) |
-| HISYS-FR-DARS-CP-009 | `LiveProviderPolicyPacket`, credential-reference validation, provider/model allowlist, budget/rate bounds, raw-secret rejection | HISYS-T-DARS-CP-011 | `test_live_provider_policy_rejects_raw_secret_fields`, `test_live_provider_policy_accepts_credential_reference_only` | PLANNED (DARS-LIVE-RELEASE-R1-POLICY) |
-| HISYS-FR-DARS-CP-010 | `DarsLiveProviderTransportRequest`, fake/injected transport seam, fail-closed live-provider adapter | HISYS-T-DARS-CP-012 | `test_live_provider_transport_uses_fake_executor_without_external_call`, `test_live_provider_adapter_requires_policy_approval_and_credential_ref` | PLANNED (DARS-LIVE-RELEASE-R1/R2) |
+| HISYS-FR-DARS-CP-009 | `LiveProviderPolicyPacket`, credential-reference validation, provider/model allowlist, budget/rate bounds, raw-secret rejection (DARS-LIVE-RELEASE-R1-POLICY) | HISYS-T-DARS-CP-011 | `test_live_provider_policy_rejects_raw_secret_fields`, `test_live_provider_policy_accepts_credential_reference_only`, `test_live_provider_policy_rejects_missing_credential_reference`, `test_live_provider_policy_rejects_unknown_credential_ref_scheme`, `test_live_provider_policy_rejects_mutation_or_publication_authority`, `test_live_provider_policy_rejects_non_advisory_allowed_actions`, `test_live_provider_policy_rejects_disabled_external_call_or_human_review`, `test_live_provider_policy_rejects_unbounded_prompt_output_or_rate_limit`, `test_live_provider_policy_rejects_expired_packet`, `test_live_provider_policy_rejects_non_allowlisted_provider`, `test_live_provider_policy_rejects_missing_approval_or_cost_budget_ref`, `test_live_provider_policy_emits_dispatch_warning_even_when_valid`, `test_live_provider_policy_schema_constants_are_stable` | GREEN (DARS-LIVE-RELEASE-R1-POLICY) |
+| HISYS-FR-DARS-CP-010 | `DarsLiveProviderTransportRequest`/`Result`, `FakeLiveProviderTransport`, `LiveProviderTransportFailure`, redacted-payload executor seam (DARS-LIVE-RELEASE-R1-POLICY); fail-closed live-provider adapter still planned for R2 | HISYS-T-DARS-CP-012 | `test_live_provider_transport_uses_fake_executor_without_external_call`, `test_live_provider_transport_rejects_missing_transport`, `test_live_provider_transport_rejects_raw_prompt_text_field`, `test_live_provider_transport_request_rejects_invalid_allowed_actions`, `test_live_provider_transport_request_rejects_mutation_authority`, `test_live_provider_transport_request_rejects_disabled_external_call_allowed`, `test_live_provider_transport_request_rejects_disabled_human_review`, `test_live_provider_transport_request_rejects_unbounded_prompt_or_output`, `test_live_provider_transport_request_rejects_oversized_prompt_byte_count`, `test_live_provider_transport_rejects_unknown_transport_kind`, `test_live_provider_transport_records_failure_code_when_executor_raises_failure`, `test_live_provider_transport_rejects_oversized_output`, `test_live_provider_transport_rejects_empty_executor_output`, `test_live_provider_transport_rejects_executor_output_with_raw_secret_marker`, `test_live_provider_transport_rejects_unauthorized_authority_claim_in_output`, `test_live_provider_transport_schema_constants_are_stable`; `test_live_provider_adapter_requires_policy_approval_and_credential_ref` (R2) | PARTIAL-GREEN (DARS-LIVE-RELEASE-R1-POLICY contract + fake transport GREEN; R2 fail-closed adapter PLANNED) |
 | HISYS-FR-DARS-CP-011 | single-critic live-provider smoke runbook, decision packet, provider boundary record | HISYS-T-DARS-CP-013 | `test_live_provider_single_smoke_runbook_requires_decision_packet_and_budget`; reviewed runtime-boundary evidence | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R3) |
 | HISYS-FR-DARS-CP-012 | multi-critic live-provider panel boundary and failure isolation | HISYS-T-DARS-CP-014 | `test_live_provider_panel_dispatch_writes_panel_boundary`, `test_live_provider_panel_isolates_one_failed_critic`; reviewed runtime-boundary evidence | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R4) |
 | HISYS-FR-DARS-CP-013 | `StandingApprovalPolicy`, `DarsUnattendedAdvisoryRunner`, audit ledger, budget/rate caps, kill switch | HISYS-T-DARS-CP-015 | `test_unattended_policy_expires_and_blocks_runner`, `test_unattended_runner_requires_kill_switch_and_budget_caps`; reviewed unattended canary ledger | PLANNED + HUMAN-GATED (DARS-LIVE-RELEASE-R5) |
@@ -614,6 +614,110 @@ Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/age
 ## TDD verdict
 
 `YES_WITH_CONTROLS`: the controlled package is TDD-ready for a fixture/local-only DARS critic panel runtime increment. It is not approval to enable live DARS dispatch, external agent calls, mutation, publication, or autonomous decision authority. The invariant is `advisory_only` critic output until separate Hisys governance and human approval convert evidence into a downstream decision.
+## DARS-LIVE-RELEASE-R1 — Live-provider policy and fake transport contract (2026-05-23)
+
+- Scope: implemented the R1 controlled live-provider policy validator and the
+  R1 live-provider transport request/result contract with a fake/injected
+  executor seam. The work satisfies the R1 RED baselines defined in
+  `docs/test/dars-critic-panel-runtime-std.md` §3 and the R1 milestone defined
+  in `docs/plans/dars-panel-live-provider-unattended-release-final-plan.md`.
+- New modules:
+  - `src/hisys/agents/dars_live_provider_policy.py` exports
+    `LIVE_PROVIDER_POLICY_SCHEMA_ID`,
+    `LIVE_PROVIDER_POLICY_SCHEMA_VERSION`, and
+    `validate_live_provider_policy_packet`. The validator rejects raw secret
+    fields/values, requires a controlled credential reference scheme
+    (`env://`, `secret-manager-ref://`, `vault://`,
+    `subscription-account-ref://`, `keychain-ref://`), forbids mutation /
+    publication authority, requires `allowed_actions=advisory_only`,
+    `external_call_allowed=true`, and `requires_human_review=true`, enforces
+    positive `max_prompt_bytes` / `max_output_bytes` / `rate_limit_per_minute`,
+    requires an `approval_ref` / `cost_budget_ref` / `redaction_policy_ref` /
+    `audit_required=true`, and emits the deterministic warning
+    `live_provider_dispatch_not_authorized_by_policy_alone` even when the
+    packet is structurally valid.
+  - `src/hisys/agents/dars_live_provider_transport.py` exports
+    `LIVE_PROVIDER_TRANSPORT_SCHEMA_ID`,
+    `LIVE_PROVIDER_TRANSPORT_SCHEMA_VERSION`,
+    `LiveProviderTransportRequest`, `LiveProviderTransportResult`,
+    `FakeLiveProviderTransport`, `LiveProviderTransportFailure`, and
+    `run_live_provider_transport`. The request dataclass rejects invalid
+    transport kinds, non-advisory actions, mutation/publication authority,
+    disabled `external_call_allowed`, disabled `requires_human_review`, raw
+    prompt text (only the controlled redacted prompt-packet schemes
+    `redacted://`, `prompt-ref://`, `policy-redacted://` are accepted),
+    non-positive max prompt/output bytes, and prompt sizes that exceed
+    `max_prompt_bytes`. The executor payload deliberately excludes any
+    credential, token, authorization, or raw-secret field; provider/model
+    refs, redaction-policy refs, and approval refs are the only context the
+    injected executor receives.
+- Safety envelope: every transport result preserves
+  `advisory_only=true`, `requires_human_review=true`,
+  `mutation_performed=false`, `publication_performed=false`,
+  `external_call_made=false`, and `model_boundary_crossed=false`. The fake
+  transport never opens a socket, never resolves a credential reference, and
+  never calls a provider. Output validation enforces deterministic failure
+  codes: `live_provider_empty_output`, `live_provider_output_too_long`,
+  `live_provider_output_not_redacted`,
+  `live_provider_output_claims_unauthorized_authority`,
+  `live_provider_invalid_executor_payload`,
+  `live_provider_invalid_output_byte_count`, and
+  `live_provider_transport_unhandled_error`.
+- New tests:
+  - `tests/unit/test_dars_live_provider_policy.py` — 13 focused tests
+    covering credential-reference acceptance, raw-secret rejection across
+    `api_key`, `token`, `password`, `authorization`, secret-shaped
+    `provider_token_value`, and secret-prefixed `credential_ref` values
+    (`sk-*` / `hf_*`), missing-credential rejection, unknown credential-ref
+    scheme rejection, mutation/publication authority rejection, non-advisory
+    `allowed_actions` rejection, disabled `external_call_allowed` and
+    `requires_human_review` rejection, non-positive max prompt/output bytes
+    and rate-limit rejection, expired packet rejection, non-allowlisted
+    provider rejection (only `codex` and `claude` are accepted in R1),
+    missing-approval/cost-budget-ref rejection, and the deterministic
+    dispatch-warning invariant.
+  - `tests/unit/test_dars_live_provider_transport.py` — 16 focused tests
+    covering schema-constant stability, fake-executor success without
+    external call, missing-transport fail-closed behaviour, raw-prompt-text
+    rejection, invalid-allowed-actions / mutation-authority /
+    disabled-`external_call_allowed` / disabled-`requires_human_review`
+    rejection, unbounded prompt/output rejection, oversized prompt-byte
+    rejection, unknown-transport-kind rejection, executor-raised
+    `LiveProviderTransportFailure` propagation as a deterministic failure
+    code, oversized-output rejection, empty-output rejection,
+    raw-secret-marker rejection in output, and unauthorized-authority claim
+    rejection in output.
+  - Test fixtures that exercise the raw-secret rejection paths use the
+    `FAKE_`/`sk-fake_*`/`hf_fake_*` prefixes recognised by
+    `hisys.security.secret_scan.SAFE_VALUE_PREFIXES` and the `[REDACTED]`
+    sentinel handling, so `scripts/scan_secrets.py` reports `hit_count=0`
+    across the full repository.
+- Validation commands (all GREEN):
+
+  ```bash
+  PYTHONPATH=src:. pytest tests/unit/test_dars_live_provider_policy.py tests/unit/test_dars_live_provider_transport.py -q
+  # 29 passed
+  PYTHONPATH=src:. pytest tests/unit -q -k dars
+  # 304 passed, 836 deselected
+  python3 scripts/validate_traceability.py
+  # OK: schemas, trace test, and Hermes boundary convention pass traceability checks
+  python3 scripts/scan_secrets.py
+  # secret_scan: scanned_files=792 skipped_files=0 hit_count=0
+  git diff --check
+  ```
+
+- Boundary: no live provider/model call, credential lookup, standing
+  unattended approval, release artifact publication, deployment, package
+  upload, external notification, mutation outside the repository, destructive
+  Git operation, or human-review removal is introduced by this increment. The
+  R1 policy validator and transport contract authorize only a future R2
+  fail-closed adapter to consume them; merely importing or wiring these
+  modules cannot perform a live provider call.
+- Next safe task: `DARS-LIVE-RELEASE-R2-ADAPTER` — the fail-closed live
+  provider adapter that requires policy + activation + credential-reference +
+  decision-packet gates before any real transport entry point can be
+  reached.
+
 ## DARS-LIVE-RELEASE-R0 — Final live-provider/unattended/release controlled-document update (2026-05-23)
 
 - Scope: archived the prior active `ralph.md` into `ralph.history.md`, created a short active DARS live-provider release controller, and updated SRS/SDD/STD/RTM documents to define the final claim ladder and verification gates.
