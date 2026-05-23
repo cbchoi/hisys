@@ -16,6 +16,8 @@ import pytest
 
 from hisys.agents.dars_config import (
     DarsBackendConfig,
+    DarsConfig,
+    build_dars_panel_config_from_hisys_config,
     derive_local_backend_metadata,
     load_dars_config,
     validate_dars_config_document,
@@ -83,6 +85,7 @@ def _minimal_dars_config() -> dict:
                     "output_contract": "DarsCritiqueRecord",
                 },
             },
+            "panels": {},
         },
     }
 
@@ -112,6 +115,85 @@ def test_active_runtime_config_may_select_enabled_cli_agent_backend():
     report = validate_dars_config_document(data, config_ref="inline://active-runtime-dars")
 
     assert report.valid is True
+
+
+def test_hisys_dars_config_can_define_named_panel_without_sidecar_file():
+    """R4 mapped panel prep: panel composition belongs in Hisys DARS config, not hardcoded CLI JSON."""
+
+    data = _minimal_dars_config()
+    data["spec"]["backends"]["codex_subscription_dars"] = {
+        "kind": "remote_subscription",
+        "enabled": False,
+        "mode": "external_api",
+        "external_call_allowed": False,
+        "credential_ref": "subscription-account-ref://codex/default",
+        "output_contract": "DarsCritiqueRecord",
+    }
+    data["spec"]["panels"] = {
+        "r4_mapped_subscription_panel": {
+            "panel_id": "PANEL-DARS-R4-MAPPED-SUBSCRIPTION-CONFIGURED",
+            "max_parallel_critics": 2,
+            "failure_policy": "continue_collect_errors",
+            "advisory_only": True,
+            "critics": [
+                {
+                    "critic_id": "logical-devil",
+                    "critic_role": "logical_devil",
+                    "backend_id": "codex_subscription_dars",
+                    "rubric_ref": "docs/rubrics/dars/logical-devil.md",
+                    "critique_dimensions": ["claim_consistency", "logical_validity"],
+                    "external_call_allowed": False,
+                    "mutation_allowed": False,
+                },
+                {
+                    "critic_id": "evidence-governance-devil",
+                    "critic_role": "evidence_governance_devil",
+                    "backend_id": "codex_subscription_dars",
+                    "rubric_ref": "docs/rubrics/dars/evidence-governance-devil.md",
+                    "critique_dimensions": ["evidence_sufficiency", "boundary_truthfulness"],
+                    "external_call_allowed": False,
+                    "mutation_allowed": False,
+                },
+            ],
+        }
+    }
+
+    report = validate_dars_config_document(data, config_ref="inline://dars-panel-configured")
+    assert report.valid is True
+
+    panel = build_dars_panel_config_from_hisys_config(
+        DarsConfig.model_validate(data),
+        panel_key="r4_mapped_subscription_panel",
+    )
+    assert panel.panel_id == "PANEL-DARS-R4-MAPPED-SUBSCRIPTION-CONFIGURED"
+    assert panel.max_parallel_critics == 2
+    assert [critic.critic_id for critic in panel.critics] == [
+        "logical-devil",
+        "evidence-governance-devil",
+    ]
+    assert all(critic.backend_id == "codex_subscription_dars" for critic in panel.critics)
+
+
+def test_hisys_dars_config_rejects_panel_unknown_backend():
+    data = _minimal_dars_config()
+    data["spec"]["panels"] = {
+        "bad_panel": {
+            "panel_id": "PANEL-BAD",
+            "critics": [
+                {
+                    "critic_id": "logical-devil",
+                    "critic_role": "logical_devil",
+                    "backend_id": "missing_backend",
+                    "rubric_ref": "docs/rubrics/dars/logical-devil.md",
+                }
+            ],
+        }
+    }
+
+    report = validate_dars_config_document(data, config_ref="inline://bad-panel")
+
+    assert report.valid is False
+    assert {issue.code for issue in report.issues} >= {"unknown_panel_backend"}
 
 
 def test_dars_config_validation_rejects_policy_and_schema_violations():

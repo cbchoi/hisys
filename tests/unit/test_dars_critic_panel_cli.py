@@ -118,6 +118,94 @@ def test_run_dars_panel_cli_persists_fixture_round_and_prints_json(tmp_path: Pat
         assert (tmp_path / ref).exists()
 
 
+def test_run_dars_panel_cli_loads_named_panel_from_hisys_config(tmp_path: Path, capsys):
+    """R4 config prep: CLI can run a named panel from config/dars.json without a sidecar panel JSON."""
+
+    from hisys.cli.main import main
+
+    candidate_ref, evidence_refs, rubric_ref = _candidate_fixture(tmp_path)
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    dars_config = {
+        "schema_id": "hisys.dars.config",
+        "schema_version": "0.1.0",
+        "config_id": "dars-default",
+        "config_version": "0.1.0",
+        "owner": "sysailab",
+        "status": "draft",
+        "classification": "runtime_config",
+        "traceability": {
+            "requirements": ["HISYS-FR-AGT-001", "HISYS-FR-DARS-CP-001"],
+            "constraints": ["HISYS-CON-010", "HISYS-CON-011", "HISYS-CON-012"],
+        },
+        "spec": {
+            "default_backend": "loopback_placeholder",
+            "policy": {
+                "enabled": False,
+                "allowed_actions": "advisory_only",
+                "require_human_approval_for_external_call": True,
+                "require_structured_output_schema": "DarsCritiqueRecord",
+                "allow_external_side_effects": False,
+                "max_runtime_seconds": 300,
+                "redact_markdown_outputs": True,
+            },
+            "roles": {},
+            "backends": {
+                "loopback_placeholder": {
+                    "kind": "loopback",
+                    "enabled": True,
+                    "mode": "local_only",
+                    "external_call_allowed": False,
+                    "output_contract": "DarsCritiqueRecord",
+                }
+            },
+            "panels": {
+                "r4_mapped_subscription_panel": {
+                    "panel_id": "PANEL-DARS-R4-CONFIGURED",
+                    "max_parallel_critics": 1,
+                    "critics": [
+                        {
+                            "critic_id": "logical-devil",
+                            "critic_role": "logical_devil",
+                            "backend_id": "loopback_placeholder",
+                            "rubric_ref": rubric_ref,
+                            "critique_dimensions": ["logical_validity"],
+                        }
+                    ],
+                }
+            },
+        },
+    }
+    (config_dir / "dars.json").write_text(json.dumps(dars_config), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "run-dars-panel",
+            "--instance",
+            str(tmp_path),
+            "--date",
+            "20260524",
+            "--request-id",
+            "REQ-DARS-R4-CONFIG-PANEL",
+            "--panel-key",
+            "r4_mapped_subscription_panel",
+            "--candidate-ref",
+            candidate_ref,
+            "--evidence-ref",
+            evidence_refs[0],
+            "--format",
+            "json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["panel_id"] == "PANEL-DARS-R4-CONFIGURED"
+    assert payload["task_statuses"] == {
+        "TASK-REQ-DARS-R4-CONFIG-PANEL-00-logical-devil": "completed"
+    }
+
+
 def test_run_dars_panel_cli_writes_operator_report_without_live_actions(tmp_path: Path, capsys):
     """DARS productization: persist an operator-facing advisory report."""
 

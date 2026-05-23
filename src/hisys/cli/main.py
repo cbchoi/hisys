@@ -35,6 +35,7 @@ from ..chief_editor import (
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
+from ..agents.dars_config import build_dars_panel_config_from_hisys_config, load_dars_config
 from ..agents.dars_panel import (
     DarsCriticPanelConfig,
     DarsCriticPanelRuntime,
@@ -2223,7 +2224,8 @@ def _cmd_run_dars_panel(
     instance_root: Path,
     yyyymmdd: str,
     request_id: str,
-    panel_config_path: Path,
+    panel_config_path: Path | None,
+    panel_key: str | None,
     candidate_ref: str,
     evidence_refs: list[str],
     output_format: str,
@@ -2241,8 +2243,17 @@ def _cmd_run_dars_panel(
     summary but do not change the CLI exit code.
     """
 
-    panel_config = _load_dars_panel_config(panel_config_path)
     instance = InstanceRoot(instance_root)
+    if panel_key is not None:
+        panel_config = build_dars_panel_config_from_hisys_config(
+            load_dars_config(instance),
+            panel_key=panel_key,
+        )
+    elif panel_config_path is not None:
+        panel_config = _load_dars_panel_config(panel_config_path)
+    else:
+        print("error: either --panel-config or --panel-key is required", file=sys.stderr)
+        raise SystemExit(2)
     if local_model_endpoint is not None:
         summary = _run_dars_panel_local_model_rehearsal(
             instance=instance,
@@ -2380,6 +2391,7 @@ def _cmd_run_dars_panel_golden(
         yyyymmdd=yyyymmdd,
         request_id=request_id,
         panel_config_path=config_path,
+        panel_key=None,
         candidate_ref=f"data/dars-panel-fixtures/{yyyymmdd}/candidate-001.json",
         evidence_refs=[f"data/dars-panel-fixtures/{yyyymmdd}/evidence-001.json"],
         output_format=output_format,
@@ -2981,7 +2993,8 @@ def _build_parser() -> argparse.ArgumentParser:
     run_dars_panel.add_argument("--instance", required=True, help="Hisys runtime instance root")
     run_dars_panel.add_argument("--date", required=True, help="YYYYMMDD run partition")
     run_dars_panel.add_argument("--request-id", required=True, help="request id slug for the round")
-    run_dars_panel.add_argument("--panel-config", type=Path, required=True, help="local DARS panel config JSON path")
+    run_dars_panel.add_argument("--panel-config", type=Path, default=None, help="local DARS panel config JSON path")
+    run_dars_panel.add_argument("--panel-key", default=None, help="named panel under instance config/dars.json spec.panels")
     run_dars_panel.add_argument("--candidate-ref", required=True, help="instance-relative candidate artifact ref")
     run_dars_panel.add_argument(
         "--evidence-ref",
@@ -4361,6 +4374,7 @@ def main(argv: list[str] | None = None) -> int:
             yyyymmdd=args.date,
             request_id=args.request_id,
             panel_config_path=args.panel_config,
+            panel_key=args.panel_key,
             candidate_ref=args.candidate_ref,
             evidence_refs=args.evidence_ref,
             output_format=args.format,

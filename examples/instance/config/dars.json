@@ -98,6 +98,51 @@
         ],
         "external_call_allowed": false,
         "output_contract": "DarsCritiqueRecord"
+      },
+      "codex_subscription_dars": {
+        "kind": "remote_subscription",
+        "enabled": false,
+        "mode": "external_api",
+        "external_call_allowed": false,
+        "credential_ref": "subscription-account-ref://codex/default",
+        "output_contract": "DarsCritiqueRecord"
+      }
+    },
+    "panels": {
+      "r4_mapped_subscription_panel": {
+        "panel_id": "PANEL-DARS-R4-MAPPED-SUBSCRIPTION-CONFIGURED",
+        "max_parallel_critics": 2,
+        "failure_policy": "continue_collect_errors",
+        "advisory_only": true,
+        "default_output_contract": "DarsCritiqueRecord",
+        "critics": [
+          {
+            "critic_id": "logical-devil",
+            "critic_role": "logical_devil",
+            "backend_id": "codex_subscription_dars",
+            "rubric_ref": "docs/rubrics/dars/logical-devil.md",
+            "critique_dimensions": [
+              "claim_consistency",
+              "logical_validity"
+            ],
+            "external_call_allowed": false,
+            "mutation_allowed": false,
+            "output_contract": "DarsCritiqueRecord"
+          },
+          {
+            "critic_id": "evidence-governance-devil",
+            "critic_role": "evidence_governance_devil",
+            "backend_id": "codex_subscription_dars",
+            "rubric_ref": "docs/rubrics/dars/evidence-governance-devil.md",
+            "critique_dimensions": [
+              "evidence_sufficiency",
+              "boundary_truthfulness"
+            ],
+            "external_call_allowed": false,
+            "mutation_allowed": false,
+            "output_contract": "DarsCritiqueRecord"
+          }
+        ]
       }
     }
   }

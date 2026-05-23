@@ -29,6 +29,7 @@ evidence is human-reviewed and accepted as
 | R2 fail-closed adapter | `src/hisys/agents/dars_live_provider_adapter.py` |
 | Existing backend activation | `src/hisys/agents/dars_backend_activation.py` |
 | Remote subscription dispatch + panel | `src/hisys/agents/dars_remote_subscription_dispatch.py` |
+| Named panel config | `examples/instance/config/dars.json` (`spec.panels.r4_mapped_subscription_panel`) |
 | Single-smoke PREP runbook | `docs/runbooks/dars-live-provider-single-smoke.md` |
 | Panel example policy | `docs/examples/dars/live-provider-panel-smoke.policy.example.json` |
 | Panel example activation | `docs/examples/dars/live-provider-panel-smoke.activation.example.json` |
@@ -67,26 +68,33 @@ decision packet:
    policy packet path.
 5. The activation `approval_ref`, the policy `approval_ref`, and every
    per-critic request `approval_ref` all match.
-6. Every per-critic dispatch request shares the same `request_id` and
+6. The approved panel composition is recorded in Hisys DARS config, not
+   assembled from an ad-hoc sidecar JSON. The checked-in PREP example is
+   `spec.panels.r4_mapped_subscription_panel` in
+   `examples/instance/config/dars.json`; an operator instance must carry
+   the same schema shape under `$HISYS_INSTANCE/config/dars.json` before
+   R4 ACTION. The configured panel remains advisory-only and references
+   disabled backends by id; the config alone does not authorize dispatch.
+7. Every per-critic dispatch request shares the same `request_id` and
    `panel_id`, and each critic has a unique `source_execution_id`. The
    panel runbook explicitly rejects duplicate `source_execution_id`
    values across critics and rejects mismatched `request_id` across
    critics (see `_validate_panel_shape` in
    `src/hisys/agents/dars_remote_subscription_dispatch.py`).
-7. The credential reference resolves outside Hisys
+8. The credential reference resolves outside Hisys
    (operator-managed environment, secret manager, vault, or subscription
    account). Hisys does not read, log, or validate the credential value.
-8. Bounded prompt/output sizes are confirmed across **all** critics:
+9. Bounded prompt/output sizes are confirmed across **all** critics:
    - `max_prompt_bytes` is positive and finite for every critic;
    - `max_output_bytes` is positive and finite for every critic;
    - `rate_limit_per_minute` is positive and finite for every critic.
    The panel-level cost envelope `cost_budget_ref` is set to a finite
    limit that covers every critic and any retry quota.
-9. The redaction policy ref
+10. The redaction policy ref
    (`policy://hisys/dars/live-provider-redaction-v1` or equivalent) is in
    force. Every per-critic bounded prompt packet is constructed under
    that policy.
-10. The R2 env gate is set in the operator shell only for the duration of
+11. The R2 env gate is set in the operator shell only for the duration of
     the panel smoke:
 
     ```bash
@@ -95,10 +103,10 @@ decision packet:
 
     The env gate **must** be unset immediately after the panel smoke
     completes or fails.
-11. A controlled Hisys instance root is selected for evidence storage
+12. A controlled Hisys instance root is selected for evidence storage
     (`$HISYS_INSTANCE`). Per-critic and panel-level boundary records
     will be written under this root.
-12. Operator certainty: the operator is confident the procedure is
+13. Operator certainty: the operator is confident the procedure is
     correct, the rollback is verified, and is willing to be the post-run
     reviewer.
 
@@ -117,6 +125,7 @@ The reference command shape (R4 ACTION) is:
 # Construct request set from approved decision packet
 request_id=<DARS-LP-PANEL-REQ-...>
 panel_id=<DARS-LP-PANEL-...>
+panel_key=r4_mapped_subscription_panel
 backend_id=<dars-live-claude-panel-smoke-001>
 policy_packet_ref=docs/examples/dars/live-provider-panel-smoke.policy.example.json
 activation_packet_ref=docs/examples/dars/live-provider-panel-smoke.activation.example.json
@@ -135,6 +144,16 @@ mode=live
 #     each critic and writes a panel-level summary boundary record.
 # Both paths require a separately approved real-provider transport that
 # is OUT OF SCOPE for R4 PREP.
+
+# Fixture/local CLI rehearsals for the same configured panel use:
+hisys run-dars-panel \
+  --instance "$HISYS_INSTANCE" \
+  --date "$yyyymmdd" \
+  --request-id "$request_id" \
+  --panel-key "$panel_key" \
+  --candidate-ref <instance-relative-candidate-ref> \
+  --evidence-ref <instance-relative-evidence-ref> \
+  --format json
 ```
 
 Until a real-provider transport is approved and merged, the R2 adapter
@@ -249,6 +268,7 @@ authorize the `multi_critic_live_provider_advisory_complete` claim.
 
 The R4 PREP example policy and activation packets at
 
+- `examples/instance/config/dars.json` (`spec.panels.r4_mapped_subscription_panel`)
 - `docs/examples/dars/live-provider-panel-smoke.policy.example.json`
 - `docs/examples/dars/live-provider-panel-smoke.activation.example.json`
 
@@ -257,7 +277,7 @@ pass the R1 validator (with the deterministic
 existing backend activation validator under
 `tests/unit/test_dars_live_provider_panel_smoke_runbook.py`. They are
 intended as templates; the operator **must** substitute approved
-`approval_ref`, `policy_id`, `activation_id`, `backend_id`, `panel_id`,
+`approval_ref`, `policy_id`, `activation_id`, `backend_id`, `panel_id`, `panel_key`,
 `credential_ref`, `cost_budget_ref`, and `expires_at` values from a
 fresh human-approved decision packet before any R4 ACTION attempt.
 
@@ -269,6 +289,8 @@ This R4 PREP runbook satisfies:
   prerequisites and failure-isolation requirements);
 - HISYS-T-DARS-CP-014 (multi-critic live provider panel smoke gate
   documentation and validator coverage at PREP scope);
+- HISYS-T-DARS-CP-014 (named Hisys config panel path for R4 mapped
+  subscription panel prep without ad-hoc sidecar panel config);
 - the R4 milestone defined in
   `docs/plans/dars-panel-live-provider-unattended-release-final-plan.md`.
 
@@ -290,7 +312,7 @@ The runbook is anchored by `DARS-LIVE-RELEASE-R4-PANEL-SMOKE-PREP` in
 ## 9. Verification commands for this PREP revision
 
 ```bash
-PYTHONPATH=src:. pytest tests/unit/test_dars_live_provider_policy.py tests/unit/test_dars_live_provider_transport.py tests/unit/test_dars_live_provider_adapter.py tests/unit/test_dars_live_provider_single_smoke_runbook.py tests/unit/test_dars_live_provider_panel_smoke_runbook.py -q
+PYTHONPATH=src:. pytest tests/unit/test_dars_config.py tests/unit/test_dars_critic_panel_cli.py tests/unit/test_dars_live_provider_policy.py tests/unit/test_dars_live_provider_transport.py tests/unit/test_dars_live_provider_adapter.py tests/unit/test_dars_live_provider_single_smoke_runbook.py tests/unit/test_dars_live_provider_panel_smoke_runbook.py -q
 python3 scripts/validate_traceability.py
 python3 scripts/scan_secrets.py
 git diff --check

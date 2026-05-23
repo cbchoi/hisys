@@ -20,7 +20,7 @@ from ..config.validation import ConfigValidationIssue, ConfigValidationReport, v
 
 DARS_SCHEMA_ID = "hisys.dars.config"
 DARS_OUTPUT_CONTRACT = "DarsCritiqueRecord"
-NON_LOOPBACK_BACKENDS = {"fixture_file", "mock_http", "openai_compatible", "cli_agent", "hermes_delegate"}
+NON_LOOPBACK_BACKENDS = {"fixture_file", "mock_http", "openai_compatible", "cli_agent", "hermes_delegate", "remote_subscription"}
 PROMPT_FIELD_NAMES = {"prompt", "objective", "focus", "instruction", "instructions", "summary", "description"}
 LOCAL_ENDPOINT_HOSTNAMES = {"localhost"}
 LOCAL_ENDPOINT_ALLOWED_SCHEMES = {"http", "https"}
@@ -71,7 +71,7 @@ class DarsRoleConfig(BaseModel):
 class DarsBackendConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["loopback", "fixture_file", "mock_http", "openai_compatible", "cli_agent", "hermes_delegate"]
+    kind: Literal["loopback", "fixture_file", "mock_http", "openai_compatible", "cli_agent", "hermes_delegate", "remote_subscription"]
     enabled: bool = False
     mode: Literal["local_only", "local_network_only", "read_only", "external_api"]
     external_call_allowed: bool = False
@@ -86,6 +86,36 @@ class DarsBackendConfig(BaseModel):
     disallowed_tools: list[str] = Field(default_factory=list)
 
 
+class DarsPanelCriticConfig(BaseModel):
+    """One configured critic role in a named Hisys DARS panel."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    critic_id: str
+    critic_role: str
+    backend_id: str
+    rubric_ref: str
+    critique_dimensions: list[str] = Field(default_factory=list)
+    enabled: bool = True
+    output_contract: Literal["DarsCritiqueRecord"] = "DarsCritiqueRecord"
+    mutation_allowed: bool = False
+    external_call_allowed: bool = False
+    approval_ref: str | None = None
+
+
+class DarsPanelConfig(BaseModel):
+    """Named DARS critic panel stored in the Hisys DARS runtime config."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    panel_id: str
+    critics: list[DarsPanelCriticConfig] = Field(default_factory=list)
+    max_parallel_critics: int = Field(default=1, ge=1, le=16)
+    failure_policy: Literal["continue_collect_errors"] = "continue_collect_errors"
+    advisory_only: bool = True
+    default_output_contract: Literal["DarsCritiqueRecord"] = "DarsCritiqueRecord"
+
+
 class DarsConfigSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -93,6 +123,7 @@ class DarsConfigSpec(BaseModel):
     policy: DarsPolicyConfig
     roles: dict[str, DarsRoleConfig]
     backends: dict[str, DarsBackendConfig]
+    panels: dict[str, DarsPanelConfig] = Field(default_factory=dict)
 
 
 class DarsConfig(BaseModel):
@@ -261,6 +292,49 @@ def _cross_field_issues(config: DarsConfig) -> list[ConfigValidationIssue]:
                     message="external-call backends must reference credentials without storing secret values",
                 )
             )
+    for panel_key, panel in config.spec.panels.items():
+        if not panel.advisory_only:
+            issues.append(
+                ConfigValidationIssue(
+                    path=f"spec.panels.{panel_key}.advisory_only",
+                    code="panel_must_be_advisory_only",
+                    message="DARS panels configured in Hisys config must remain advisory-only",
+                )
+            )
+        if panel.default_output_contract != DARS_OUTPUT_CONTRACT:
+            issues.append(
+                ConfigValidationIssue(
+                    path=f"spec.panels.{panel_key}.default_output_contract",
+                    code="invalid_output_contract",
+                    message="DARS panels must output DarsCritiqueRecord",
+                )
+            )
+        for index, critic in enumerate(panel.critics):
+            critic_path = f"spec.panels.{panel_key}.critics.{index}"
+            if critic.backend_id not in config.spec.backends:
+                issues.append(
+                    ConfigValidationIssue(
+                        path=f"{critic_path}.backend_id",
+                        code="unknown_panel_backend",
+                        message="panel critic backend_id must reference spec.backends",
+                    )
+                )
+            if critic.output_contract != DARS_OUTPUT_CONTRACT:
+                issues.append(
+                    ConfigValidationIssue(
+                        path=f"{critic_path}.output_contract",
+                        code="invalid_output_contract",
+                        message="DARS panel critics must output DarsCritiqueRecord",
+                    )
+                )
+            if critic.mutation_allowed:
+                issues.append(
+                    ConfigValidationIssue(
+                        path=f"{critic_path}.mutation_allowed",
+                        code="panel_mutation_not_allowed",
+                        message="DARS panel critics may not mutate state",
+                    )
+                )
     return issues
 
 
@@ -365,9 +439,40 @@ def derive_local_backend_metadata(backend: DarsBackendConfig) -> dict[str, Any]:
     return {}
 
 
+def build_dars_panel_config_from_hisys_config(
+    config: DarsConfig,
+    *,
+    panel_key: str,
+):
+    """Build the runtime DARS critic panel config from a named Hisys config panel.
+
+    This keeps panel composition in ``config/dars.json`` and avoids a separate
+    operator-maintained sidecar JSON file for governed R4/R5 panel runs.
+    """
+
+    try:
+        panel = config.spec.panels[panel_key]
+    except KeyError as exc:
+        raise KeyError(f"unknown DARS panel config: {panel_key}") from exc
+
+    from .dars_panel import DarsCriticPanelConfig, DarsCriticRoleConfig
+
+    return DarsCriticPanelConfig(
+        panel_id=panel.panel_id,
+        critics=[DarsCriticRoleConfig(**critic.model_dump()) for critic in panel.critics],
+        max_parallel_critics=panel.max_parallel_critics,
+        failure_policy=panel.failure_policy,
+        advisory_only=panel.advisory_only,
+        default_output_contract=panel.default_output_contract,
+    )
+
+
 __all__ = [
     "DarsBackendConfig",
     "DarsConfig",
+    "DarsPanelConfig",
+    "DarsPanelCriticConfig",
+    "build_dars_panel_config_from_hisys_config",
     "DarsConfigSpec",
     "derive_local_backend_metadata",
     "load_dars_config",
