@@ -12,7 +12,7 @@
 | Baseline at plan creation | `7b40649` |
 | Previous active control file | archived into `ralph.history.md` on 2026-05-23 |
 | Runtime | one coherent RED--GREEN--validate--commit unit per run; maximum 5 hours |
-| Active task | `DARS-LIVE-RELEASE-R3-SINGLE-SMOKE-PREP` (R1+R2 GREEN; R3 prepares the single-critic live smoke runbook and decision packet template before any human-gated live call) |
+| Active task | `DARS-LIVE-RELEASE-R4-PANEL-SMOKE-PREP` (R1+R2 GREEN; R3 PREP GREEN; R4 PREP prepares the multi-critic live smoke runbook and example packets. R3 ACTION and R4 ACTION remain HUMAN-GATED.) |
 | User authorization | 최창범 교수 requested: `ralph.md를 ralph.history.md로 이동하고 요구사항/설계/시험/추적성 문서를 업데이트` |
 
 ## 1. Objective and bounded target outcome
@@ -28,7 +28,7 @@ local_fixture_localhost_controlled_advisory_complete
   -> released_for_controlled_advisory_use
 ```
 
-R1 and R2 are GREEN. The next executable task is R3 PREP: author the single-critic live-provider smoke runbook and decision packet template that documents the human conditions required before any single live-provider call. R3 PREP is documentation/control only and remains within the local-safe authorization envelope; the actual single live call is a separately approved HUMAN-GATED action.
+R1, R2, and R3 PREP are GREEN. The next executable task is R4 PREP: author the multi-critic live-provider panel smoke runbook and example packets. R4 PREP is documentation/control only and remains within the local-safe authorization envelope; the actual multi-critic live call (R4 ACTION) is a separately approved HUMAN-GATED action.
 
 ## 2. Continuous local-safe authorization envelope
 
@@ -107,32 +107,45 @@ python3 scripts/scan_secrets.py                                                 
 git diff --check                                                                                                                                                      # clean
 ```
 
-### Next: `DARS-LIVE-RELEASE-R3-SINGLE-SMOKE-PREP`
+### Completed: `DARS-LIVE-RELEASE-R3-SINGLE-SMOKE-PREP` (2026-05-23)
 
-Objective: author the single-critic live-provider smoke runbook and decision packet template so a human can later approve exactly one real provider call under R3 ACTION. This row is documentation/control only; no live call is performed, no credential is read, and no boundary record beyond template/example files is produced by this row.
+Authored the single-critic live-provider smoke PREP artifacts:
+
+- `docs/runbooks/dars-live-provider-single-smoke.md` — preconditions (decision packet, R1 policy validation, activation packet, approval/backend/policy-ref coherence, credential reference scheme, bounded prompt/output/rate limits, `cost_budget_ref`, redaction policy, R2 env gate, controlled instance root, operator certainty), single-call procedure, boundary-record requirements, post-run human review, exhaustive stop-condition list. The runbook explicitly does not by itself authorize the live call.
+- `docs/examples/dars/live-provider-single-smoke.policy.example.json` — credential-reference-only sample policy that passes the R1 validator (with the deterministic dispatch warning).
+- `docs/examples/dars/live-provider-single-smoke.activation.example.json` — matching activation packet (`endpoint_scope=external_api`, `human_approved=true`).
+- `tests/unit/test_dars_live_provider_single_smoke_runbook.py` (9 tests) — runbook existence + required phrase + stop-condition + R1/R2 anchor + non-authorization + example-packet R1 validator + credential-reference-only + activation validator + activation/policy match coverage. GREEN.
+- `docs/traceability/dars-critic-panel-runtime-traceability.md` (v0.19.0) flips HISYS-FR-DARS-CP-011 to PREP-GREEN + HUMAN-GATED ACTION PLANNED and adds the DARS-LIVE-RELEASE-R3-SINGLE-SMOKE-PREP reflection section.
+
+Validation (all GREEN):
+
+```bash
+PYTHONPATH=src:. pytest tests/unit/test_dars_live_provider_policy.py tests/unit/test_dars_live_provider_transport.py tests/unit/test_dars_live_provider_adapter.py tests/unit/test_dars_live_provider_single_smoke_runbook.py -q   # 55 passed
+PYTHONPATH=src:. pytest tests/unit -q -k dars                                                                                                                                                                              # 330 passed
+python3 scripts/validate_traceability.py                                                                                                                                                                                  # OK
+python3 scripts/scan_secrets.py                                                                                                                                                                                           # hit_count=0
+git diff --check                                                                                                                                                                                                          # clean
+```
+
+### Next: `DARS-LIVE-RELEASE-R4-PANEL-SMOKE-PREP`
+
+Objective: author the multi-critic live-provider panel smoke runbook and example packets that future R4 ACTION will consume. PREP is documentation/control only; the multi-critic live call (R4 ACTION) is a separately approved HUMAN-GATED action.
 
 Expected files (PREP scope):
 
-- `docs/runbooks/dars-live-provider-single-smoke.md` (new) — preflight, single-call procedure, evidence requirements, stop conditions.
-- `docs/examples/dars/live-provider-single-smoke.policy.example.json` (new) — sample policy packet that passes the R1 validator (credential reference only, no raw secrets).
-- `docs/examples/dars/live-provider-single-smoke.activation.example.json` (new) — sample activation packet that matches the example policy and a sample approval_ref.
-- `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.69.md` (new) — readiness decision recording the R3 PREP scope and the boundary that no live call is authorized by this row.
-- updates to `docs/traceability/dars-critic-panel-runtime-traceability.md` and the runbook anchor table.
+- `docs/runbooks/dars-live-provider-panel-smoke.md` (new) — multi-critic preconditions, per-critic + panel-level boundary record requirements, failure-isolation expectations, cost/latency envelope, post-run review.
+- `docs/examples/dars/live-provider-panel-smoke.policy.example.json` (new) — sample multi-critic policy packet(s).
+- `docs/examples/dars/live-provider-panel-smoke.activation.example.json` (new) — matching activation packet.
+- updates to `docs/traceability/dars-critic-panel-runtime-traceability.md`, the runbook anchor table, and ralph.md.
+- new pytest anchor `tests/unit/test_dars_live_provider_panel_smoke_runbook.py` mirroring the R3 PREP test pattern.
 
-RED commands (planned for R3 ACTION, not PREP):
+GREEN requirements for R4 PREP:
 
-```bash
-# Human-gated. PREP row does not run this.
-PYTHONPATH=src:. pytest tests/unit/test_dars_live_provider_single_smoke_runbook.py -q
-```
-
-GREEN requirements for R3 PREP:
-
-- runbook explicitly lists the human decision-packet, allowlist, redaction, budget/rate, and post-run review preconditions;
-- example policy/activation packets pass `validate_live_provider_policy_packet` and `validate_dars_backend_activation_packet` with `live_provider_dispatch_not_authorized_by_policy_alone` warning and zero errors;
-- secret scan over the new examples returns zero hits;
-- traceability validator continues to pass;
-- ralph.md and RTM reflect R3 PREP GREEN and explicitly leave R3 ACTION as a separate HUMAN-GATED row.
+- runbook documents multi-critic dispatch through the existing remote-subscription panel dispatch + R2 adapter seam without authorizing a real provider transport;
+- runbook documents per-critic and panel-level boundary record fields including failure isolation (one critic fails, others complete; synthesis advisory);
+- example policy/activation pass the R1 + activation validators with zero errors;
+- secret scan + traceability validator continue to pass;
+- ralph.md and RTM reflect R4 PREP GREEN and leave R4 ACTION HUMAN-GATED.
 
 ## 6. Quality gates
 
@@ -170,5 +183,6 @@ Report:
 
 - 2026-05-23 — `DARS-LIVE-RELEASE-R0-PREP`: active `ralph.md` archived into `ralph.history.md`; new DARS live-provider release controller prepared; R0 controlled-document update in progress. Success likelihood: 85% because all current work is docs/control-local and no live provider or credential boundary is crossed.
 - 2026-05-23 — `DARS-LIVE-RELEASE-R1-POLICY`: GREEN. RED-first added `tests/unit/test_dars_live_provider_policy.py` (13 tests) and `tests/unit/test_dars_live_provider_transport.py` (16 tests); both failed at import with `ModuleNotFoundError` before implementation. GREEN added `src/hisys/agents/dars_live_provider_policy.py` and `src/hisys/agents/dars_live_provider_transport.py`. Focused gate `pytest test_dars_live_provider_policy.py test_dars_live_provider_transport.py -q` → 29 passed. Regression gate `pytest tests/unit -q -k dars` → 304 passed, 836 deselected. Traceability validator → OK. Secret scan over full repository → `hit_count=0` (fake secret-rejection inputs use the `FAKE_`/`sk-fake_*`/`hf_fake_*` prefixes recognised by `hisys.security.secret_scan.SAFE_VALUE_PREFIXES`). `git diff --check` clean. RTM HISYS-FR-DARS-CP-009 → GREEN; HISYS-FR-DARS-CP-010 → PARTIAL-GREEN (transport contract GREEN; R2 fail-closed adapter PLANNED). Boundary preserved: no live provider/model call, credential lookup, standing unattended approval, release artifact publication, deployment, package upload, external notification, mutation outside the repository, destructive Git operation, or human-review removal. Success likelihood: 95% because all changes are local Python contract + tests + docs and every R1 RED command in the plan is now GREEN. Committed as `5e25844`. Pushed to `origin/dars`. Next safe task: `DARS-LIVE-RELEASE-R2-ADAPTER`.
-- 2026-05-23 — `DARS-LIVE-RELEASE-R2-ADAPTER`: GREEN. RED-first added `tests/unit/test_dars_live_provider_adapter.py` (17 tests); failed at import with `ModuleNotFoundError` before implementation. GREEN added `src/hisys/agents/dars_live_provider_adapter.py` exposing `DarsLiveProviderAdapterRequest`/`Result`, `run_dars_live_provider_adapter`, and the `DARS_LIVE_PROVIDER_LIVE_TRANSPORT_ENV_VAR` env-gate constant. Adapter composes the R1 policy validator, the existing backend activation validator, and the R1 fake transport seam into a single fail-closed entry point. Cross-checks: approval_ref (request vs policy vs activation), backend_id (request vs activation), activation `endpoint_scope=external_api`, activation `remote_policy_packet_ref` equals request `policy_packet_ref`. Env gate `HISYS_DARS_LIVE_PROVIDER_LIVE_TRANSPORT_ENABLED=true` required in live mode. Boundary records persisted under `<instance>/runtime-boundary/dars-live-provider-adapter/<YYYYMMDD>/<request_id>/<backend_id>-<source_execution_id>.{json,md}` for both completed and failed runs, always with `external_call_made=false`, `model_boundary_crossed=false`, `mutation_performed=false`, `publication_performed=false`, `advisory_only=true`, `requires_human_review=true`, and no credential/token material. Focused R1+R2 gate `pytest test_dars_live_provider_policy.py test_dars_live_provider_transport.py test_dars_live_provider_adapter.py -q` → 46 passed. Regression gate `pytest tests/unit -q -k dars` → 321 passed, 836 deselected. Traceability validator → OK. Secret scan → `hit_count=0` (794 scanned files). `git diff --check` clean. RTM HISYS-FR-DARS-CP-010 → GREEN for the policy+transport+adapter scope; only the real-provider transport remains PLANNED. Boundary preserved: identical to R1. Success likelihood: 95% because all changes remain local Python + tests + docs and every R2 plan requirement is satisfied. Next safe task: `DARS-LIVE-RELEASE-R3-SINGLE-SMOKE-PREP` (documentation/control only; the actual single live call is a separately approved HUMAN-GATED action).
-- Current HEAD: 5e25844 (pre-R2-commit)
+- 2026-05-23 — `DARS-LIVE-RELEASE-R2-ADAPTER`: GREEN. RED-first added `tests/unit/test_dars_live_provider_adapter.py` (17 tests); failed at import with `ModuleNotFoundError` before implementation. GREEN added `src/hisys/agents/dars_live_provider_adapter.py` exposing `DarsLiveProviderAdapterRequest`/`Result`, `run_dars_live_provider_adapter`, and the `DARS_LIVE_PROVIDER_LIVE_TRANSPORT_ENV_VAR` env-gate constant. Adapter composes the R1 policy validator, the existing backend activation validator, and the R1 fake transport seam into a single fail-closed entry point. Cross-checks: approval_ref (request vs policy vs activation), backend_id (request vs activation), activation `endpoint_scope=external_api`, activation `remote_policy_packet_ref` equals request `policy_packet_ref`. Env gate `HISYS_DARS_LIVE_PROVIDER_LIVE_TRANSPORT_ENABLED=true` required in live mode. Boundary records persisted under `<instance>/runtime-boundary/dars-live-provider-adapter/<YYYYMMDD>/<request_id>/<backend_id>-<source_execution_id>.{json,md}` for both completed and failed runs, always with `external_call_made=false`, `model_boundary_crossed=false`, `mutation_performed=false`, `publication_performed=false`, `advisory_only=true`, `requires_human_review=true`, and no credential/token material. Focused R1+R2 gate `pytest test_dars_live_provider_policy.py test_dars_live_provider_transport.py test_dars_live_provider_adapter.py -q` → 46 passed. Regression gate `pytest tests/unit -q -k dars` → 321 passed, 836 deselected. Traceability validator → OK. Secret scan → `hit_count=0` (794 scanned files). `git diff --check` clean. RTM HISYS-FR-DARS-CP-010 → GREEN for the policy+transport+adapter scope; only the real-provider transport remains PLANNED. Boundary preserved: identical to R1. Success likelihood: 95% because all changes remain local Python + tests + docs and every R2 plan requirement is satisfied. Committed as `278ae23`. Pushed to `origin/dars`. Next safe task: `DARS-LIVE-RELEASE-R3-SINGLE-SMOKE-PREP` (documentation/control only; the actual single live call is a separately approved HUMAN-GATED action).
+- 2026-05-23 — `DARS-LIVE-RELEASE-R3-SINGLE-SMOKE-PREP`: GREEN. RED-first added `tests/unit/test_dars_live_provider_single_smoke_runbook.py` (9 tests) covering runbook existence, required-phrase coverage (decision packet, approval/credential refs, redaction policy, bounded prompt/output/rate-limit fields, `cost_budget_ref`, env gate, boundary record flags, post-run human review), stop-condition coverage (missing decision packet, raw secret, credential lookup, mutation/publication/tool/browser/search authority, budget/rate violation, secret-scan hit, output redaction failure, operator uncertainty), R1+R2 module/anchor anchoring, the explicit "does not by itself authorize" assertion, R1 policy validator acceptance of the example policy (with the deterministic warning), the credential-reference-only invariant in the example policy, the activation validator acceptance of the example activation, and the cross-packet matching between the example policy and activation. Tests initially failed at runbook/file existence and content-anchor mismatches. GREEN added `docs/runbooks/dars-live-provider-single-smoke.md`, `docs/examples/dars/live-provider-single-smoke.policy.example.json`, and `docs/examples/dars/live-provider-single-smoke.activation.example.json`. Two minor adjustments unstuck content-anchor mismatches: removed a line-wrap inside the "does not by itself authorize" phrase and added an explicit "Prior controlled increments" section listing `DARS-LIVE-RELEASE-R1-POLICY` and `DARS-LIVE-RELEASE-R2-ADAPTER`. Focused R1+R2+R3 gate `pytest test_dars_live_provider_policy.py test_dars_live_provider_transport.py test_dars_live_provider_adapter.py test_dars_live_provider_single_smoke_runbook.py -q` → 55 passed. Regression gate `pytest tests/unit -q -k dars` → 330 passed, 836 deselected. Traceability validator → OK. Secret scan → `hit_count=0` (798 scanned files). `git diff --check` clean. RTM HISYS-FR-DARS-CP-011 → PREP-GREEN + HUMAN-GATED ACTION PLANNED. Boundary preserved: no live provider/model call, credential lookup, network request, mutation, publication, deployment, package upload, external notification, or human-review removal; only docs/control files added; R3 ACTION explicitly remains separately approved HUMAN-GATED action. Success likelihood: 95% because PREP work is local docs/tests only and the runbook is paired with passing validator coverage. Next safe task: `DARS-LIVE-RELEASE-R4-PANEL-SMOKE-PREP`.
+- Current HEAD: 278ae23 (pre-R3-commit)
