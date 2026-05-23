@@ -21,7 +21,7 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import urlencode, urljoin, urlparse
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from .. import __version__
@@ -32,7 +32,6 @@ from ..chief_editor import (
     AlertApprovalTransitionRuntime,
     AlertConnectorRuntime,
     ChiefEditorPolicy,
-    ChiefEditorRuntime,
     create_chief_editor_product,
 )
 from ..agents import DarsRuntime
@@ -47,7 +46,6 @@ from ..audit import LapidaryGovernanceAuditWriter
 from ..browser.public_profile import load_public_browser_profile
 from ..browser.public_summary import write_public_browser_run_summary
 from ..browser.reports import (
-    _browser_investigation_report,
     _render_browser_chief_editor_review_md,
     _render_browser_dars_handoff_md,
     _render_browser_dars_revision_report_md,
@@ -55,7 +53,6 @@ from ..browser.reports import (
     _render_browser_dars_review_md,
     _render_final_browser_acceptance_report_md,
     _render_final_browser_acceptance_review_md,
-    _write_browser_investigation_report,
 )
 from ..browser.workflow import BrowserInvestigationRunConfig, run_browser_investigation
 from ..hermes_deploy import (
@@ -71,7 +68,6 @@ from ..browser.review_chain import (
     _build_browser_dars_revision_resolution,
     _build_final_browser_acceptance_review,
     _browser_revision_ready_for_final_review,
-    _primary_browser_segment,
 )
 from ..config import InstanceRoot, apply_live_vault_transaction, apply_vault_plan_to_fixture, build_live_obsidian_config_status_report, build_live_vault_approval_package, build_live_vault_preflight_report, build_live_vault_transaction_plan, build_live_vault_write_gate_report, build_obsidian_evidence_promotion_plan, build_obsidian_git_sync_plan, build_obsidian_milestone_status_report, build_topic_gatekeeper_decision, build_topic_identity_transition_plan, build_vault_plan, build_vault_template_plan, execute_obsidian_git_initialization_in_fixture, execute_obsidian_git_sync_in_fixture, execute_obsidian_git_sync_live, load_source_registry, rehearse_live_vault_transaction_in_fixture, validate_fixture_vault_roundtrip, validate_vault_manifests, write_live_obsidian_config_status_report, write_live_vault_approval_package, write_live_vault_preflight_report, write_live_vault_transaction_apply_report, write_live_vault_transaction_plan, write_live_vault_transaction_rehearsal_report, write_live_vault_write_gate_report, write_obsidian_evidence_promotion_plan, write_obsidian_git_fixture_execution_report, write_obsidian_git_live_execution_report, write_obsidian_milestone_status_report, write_topic_gatekeeper_decision, write_topic_identity_transition_plan, write_vault_apply_report, write_vault_plan_artifacts, write_vault_roundtrip_report, write_vault_template_plan_artifacts, write_vault_validation_report
 from ..connectors import ClaimCoverageGateBuilder, ClaimEvidenceLedgerBuilder, ClaimEvidenceSummaryBuilder, DoiMetadataConnector, FixturePublisherConnector, GeneralWebSearchConnector, OpenAccessPdfConnector, PdfCandidatePlanner, PdfEvidencePromotionLoader, PdfQuoteExtractor, PlaywrightBrowserConnector, PlaywrightUnavailableError, RecommendationClaimRegistryBuilder, SourceConnectorDispatchGate, load_source_connector_registry
@@ -5070,7 +5066,7 @@ def _cmd_evidence_store_init(*, config_path: Path, root: Path, store_id: str, ou
     _print_json_or_text(
         report,
         output_format=output_format,
-        text_lines=[f"evidence_store: initialized", f"root: {report['root']}", f"config: {report['config_path']}"],
+        text_lines=["evidence_store: initialized", f"root: {report['root']}", f"config: {report['config_path']}"],
     )
     return 0
 

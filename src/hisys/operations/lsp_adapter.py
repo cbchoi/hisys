@@ -275,8 +275,10 @@ def _parse_ruff_json(
         message = str(item.get("message") or "")
         filename = str(item.get("filename") or "")
         location = item.get("location") or {}
-        row = location.get("row") if isinstance(location, dict) else 1
-        col = location.get("column") if isinstance(location, dict) else 1
+        raw_row = location.get("row") if isinstance(location, dict) else 1
+        raw_col = location.get("column") if isinstance(location, dict) else 1
+        row = raw_row if isinstance(raw_row, int) else 1
+        col = raw_col if isinstance(raw_col, int) else 1
         file_ref, is_unsafe = _safe_file_ref(filename, workspace_root)
         if is_unsafe:
             unsafe.append(file_ref)
@@ -316,8 +318,10 @@ def _parse_pyright_json(
         rule = str(item.get("rule") or "")
         rng = item.get("range") or {}
         start = rng.get("start") if isinstance(rng, dict) else {}
-        line = (start.get("line") if isinstance(start, dict) else 0) or 0
-        col = (start.get("character") if isinstance(start, dict) else 0) or 0
+        raw_line = start.get("line") if isinstance(start, dict) else 0
+        raw_col = start.get("character") if isinstance(start, dict) else 0
+        line = raw_line if isinstance(raw_line, int) else 0
+        col = raw_col if isinstance(raw_col, int) else 0
         file_ref, is_unsafe = _safe_file_ref(filename, workspace_root)
         if is_unsafe:
             unsafe.append(file_ref)
@@ -327,8 +331,8 @@ def _parse_pyright_json(
                 severity=severity,
                 code=rule,
                 file_ref=file_ref,
-                line=int(line) + 1,
-                column=int(col) + 1,
+                line=line + 1,
+                column=col + 1,
                 message=message,
                 category_ref="type_check",
             )

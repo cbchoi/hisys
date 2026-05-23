@@ -363,3 +363,17 @@ Final report to the user must state:
 - Commit message: `docs: refresh live lsp smoke evidence`.
 - Boundary: no package installation, no command allowlist expansion, no `--fix`/mutation, no network/credential lookup, no provider/model call, no publication/release, no remote-setup changes, no destructive Git operation.
 - Next stop condition: this RLOO pass is complete. Further work requires a fresh `/rloo` invocation or a Section 3 boundary decision; advisory diagnostics still require human review.
+
+### 2026-05-23 — LIVE-LSP-DIAGNOSTIC-TRIAGE-FIX
+
+- Phase completed: continued after `push and rloi` by fixing the bounded advisory diagnostics from the live LSP smoke refresh and rerunning governed after-fix LSP evidence.
+- HEAD before continuation: 04e79bc docs: refresh live lsp smoke evidence.
+- RED diagnostics: ruff reported 14 lint diagnostics; pyright reported 2 `reportArgumentType` diagnostics in `src/hisys/operations/lsp_adapter.py`.
+- Minimal fixes: removed unused imports/local variable while preserving DARS dispatch's public guard-constant reexports, replaced one placeholder-free f-string, and normalized parsed diagnostic line/column values to concrete integers.
+- Command ids run after fix: `ruff-check-live-after-fix` and `pyright-check-live-after-fix`, both through the governed `hisys lsp-adapter` boundary with caller-authored bundles under `build/live-lsp-diagnostic-fix/20260523/`.
+- Generated runtime artifacts: `runtime-boundary/lsp-adapter/20260523/ruff-check-live-after-fix/lsp-report.json`, `.../lsp-report.md`, `runtime-boundary/lsp-adapter/20260523/pyright-check-live-after-fix/lsp-report.json`, `.../lsp-report.md`. Report: `docs/reports/live-lsp-diagnostic-triage-fix-2026-05-23.md`. Traceability row prepended as `LIVE-LSP-DIAGNOSTIC-TRIAGE-FIX-2026-05-23`.
+- After-fix diagnostic counts: ruff `diagnostic_count=0` (exit=0), pyright `diagnostic_count=0` (exit=0). Both reports preserve `advisory_only=true`, `requires_human_review=true`, `external_call_made=false`, `mutation_performed=false`, `raw_source_content_persisted=false`, `live_external_action_authorized=false`, `allowed_actions=advisory_only`.
+- Validation: governed after-fix LSP reports generated with zero diagnostics; focused tests `tests/unit/test_lsp_adapter.py tests/unit/test_domain_cli.py tests/unit/test_governance_docs_current_state.py -q` → `46 passed`; full unit suite `tests/unit -q` → `1111 passed`; `ruff check --output-format=concise src tests/unit/test_lsp_adapter.py` → passed; `pyright src/hisys/operations/lsp_adapter.py` → `0 errors`; `scripts/validate_traceability.py` → OK; `scripts/scan_secrets.py` → `hit_count=0`; `git diff --check` clean.
+- Boundary: no package installation, no command allowlist expansion, no fixer/mutation command, no network/credential lookup, no provider/model call, no publication/release, no remote-setup changes, no destructive Git operation.
+- Commit message: `fix: clear live lsp advisory diagnostics`.
+- Next stop condition: continuation pass complete after validation, commit, and normal `git push origin dars`; further work requires a fresh task selection or boundary decision.

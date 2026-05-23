@@ -6,7 +6,6 @@ Traceability: HISYS-T-023, HISYS-FR-ADM-003, HISYS-DATA-001..004.
 from __future__ import annotations
 
 import hashlib
-import json
 import zipfile
 from pathlib import Path
 from typing import Iterable

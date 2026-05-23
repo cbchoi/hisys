@@ -1,0 +1,30 @@
+{
+  "advisory_only": true,
+  "allowed_actions": "advisory_only",
+  "category_ref_summary": [],
+  "command_id": "pyright-check-live-after-fix",
+  "current_head_short": "04e79bc",
+  "date": "20260523",
+  "diagnostic_count": 0,
+  "diagnostics": [],
+  "error_count": 0,
+  "external_call_made": false,
+  "info_count": 0,
+  "live_external_action_authorized": false,
+  "mutation_performed": false,
+  "output_bytes": 251,
+  "output_format": "pyright_json",
+  "output_truncated": false,
+  "raw_source_content_persisted": false,
+  "requires_human_review": true,
+  "schema_id": "hisys.lsp_adapter.v1",
+  "subprocess_exit_code": 0,
+  "subprocess_killed": false,
+  "subprocess_timed_out": false,
+  "target_refs": [
+    "src/hisys/operations/lsp_adapter.py"
+  ],
+  "unsafe_refs": [],
+  "warning_count": 0,
+  "workspace_root_ref": "."
+}

@@ -108,7 +108,6 @@ def build_governance_current_state_report(repo_root: Path) -> GovernanceCurrentS
     branch = _run_git(root, "branch", "--show-current")
     head_short = _run_git(root, "rev-parse", "--short", "HEAD")
     head_subject = _run_git(root, "log", "-1", "--pretty=%s")
-    head_label = f"{head_short} {head_subject}"
 
     profile_version = str(profile.get("version", ""))
     next_safe_task = str(profile.get("next_safe_task", ""))

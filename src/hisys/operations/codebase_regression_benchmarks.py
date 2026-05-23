@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from hisys.operations.codebase_analysis import resolve_instance_runtime_ref
 
