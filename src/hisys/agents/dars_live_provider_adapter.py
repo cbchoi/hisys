@@ -258,7 +258,9 @@ def run_dars_live_provider_adapter(
                 f"activation endpoint_scope must be {_ALLOWED_ACTIVATION_ENDPOINT_SCOPE}"
             ),
         )
-    if activation_data.get("remote_policy_packet_ref") != request.policy_packet_ref:
+    if not _policy_refs_match(
+        str(activation_data.get("remote_policy_packet_ref", "")), request.policy_packet_ref
+    ):
         return _write_and_return_failed(
             request,
             instance=instance,
@@ -376,6 +378,19 @@ def _load_packet(path_ref: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise _PacketLoadError("packet must be a JSON object")
     return payload
+
+
+def _policy_refs_match(activation_ref: str, request_ref: str) -> bool:
+    if activation_ref == request_ref:
+        return True
+    if not activation_ref or not request_ref:
+        return False
+    if "://" in activation_ref or "://" in request_ref:
+        return False
+    try:
+        return Path(activation_ref).resolve() == Path(request_ref).resolve()
+    except OSError:
+        return False
 
 
 def _write_and_return_failed(

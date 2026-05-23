@@ -21,8 +21,8 @@ R5 advances the claim ladder from multi-critic live-provider evidence toward `bo
 | R3 single-smoke PREP runbook | `docs/runbooks/dars-live-provider-single-smoke.md` |
 | R4 panel-smoke PREP runbook | `docs/runbooks/dars-live-provider-panel-smoke.md` |
 | R5 standing approval example | `docs/examples/dars/unattended-standing-approval.example.json` |
-| Planned R5 policy module | `src/hisys/agents/dars_unattended_policy.py` |
-| Planned R5 runner module | `src/hisys/operations/dars_unattended_runner.py` |
+| R5 policy module | `src/hisys/agents/dars_unattended_policy.py` |
+| R5 runner module | `src/hisys/operations/dars_unattended_runner.py` |
 | Active controller | `ralph.md` |
 
 ## 2. R5 PREP scope
@@ -41,7 +41,7 @@ R5 PREP does **not** authorize:
 
 ## 3. Standing approval policy contract
 
-A standing approval policy is finite, advisory-only, and revocable. The planned validator shall reject the policy unless all required fields are present and internally consistent.
+A standing approval policy is finite, advisory-only, and revocable. The `validate_standing_approval_policy` validator rejects the policy unless all required fields are present and internally consistent.
 
 Required policy fields:
 
@@ -67,7 +67,7 @@ The policy stores references only. It must not contain raw credential values, pr
 
 ## 4. Unattended runner contract
 
-The planned `DarsUnattendedAdvisoryRunner` shall be a bounded advisory runner, not an autonomous decision system. Before each request it shall:
+The `DarsUnattendedAdvisoryRunner` is a bounded advisory runner, not an autonomous decision system. Before each request it shall:
 
 1. load and validate the `StandingApprovalPolicy`;
 2. reject expired or not-yet-valid policies;
@@ -205,7 +205,7 @@ python3 scripts/scan_secrets.py
 git diff --check
 ```
 
-Full R5 PREP validation after implementation should add the policy and runner tests:
+Full R5 PREP validation after implementation includes the policy and runner tests:
 
 ```bash
 PYTHONPATH=src:. pytest tests/unit/test_dars_unattended_policy.py tests/unit/test_dars_unattended_runner.py tests/unit/test_dars_unattended_docs.py -q
