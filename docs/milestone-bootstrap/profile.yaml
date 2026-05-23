@@ -1,17 +1,14 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.65
-focus: 'Stop-preflight after Codex CLI subprocess completion-claim review gate
-  acceptance. QUEUE-REFILL-PREP re-classified all remaining post-v0.0.64
-  candidates as non-delegable (production-readiness/release/live-provider/
-  credential/mutation/publication/human-review-removal for the Codex line;
-  fresh authorization for additional live LSP/M25/Section 10.3 alignment).
-  Local docs/control bookkeeping advance only; no Codex subprocess, SDK call,
-  credential lookup, mutation, publication, release, or completion-claim
-  upgrade occurred. The existing DARS productization claim remains local
-  fixture/localhost controlled advisory complete; the Codex CLI subprocess
-  bounded review-readiness claim is preserved.'
+version: v0.0.66
+focus: 'Section 10.3 automatic milestone push checkpoint aligned with the active
+  governed Hisys development branch dars / origin/dars. The controlled exception
+  remains narrow: clean tree, completed local commits, Section 10.2 global gate,
+  existing branch/upstream alignment, normal non-force push only, and no credential,
+  key, remote, branch, history, or security changes. Docs/control housekeeping
+  only; no production code, live provider/model call, credential lookup, mutation,
+  publication, release, or completion-claim upgrade occurred.'
 formal_hisys_result: codex_cli_subprocess_completion_claim_review_ready_with_bounded_runtime_evidence
 local_advisory_result: RALPH_START_READY_WITH_CONTROLS
 next_safe_task: MB-CODEBASE-M21-6-PREP
@@ -36,10 +33,10 @@ bootstrap_inference: The local completion-claim review gate accepted only the
   remain blocked by missing governed live-provider, production-readiness, release,
   mutation/publication, credential-boundary, and human-review-removal evidence.
 roadmap_ref: docs/plans/dars-live-backend-implementation-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.64.md
-planning_baseline_head: '9b53e38 docs: accept bounded codex completion review'
-current_head_at_plan_creation: '9b53e38 docs: accept bounded codex completion review'
-previous_bootstrap_version: v0.0.64
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.66.md
+planning_baseline_head: 'b50c47e docs: stop-preflight after completion-claim review'
+current_head_at_plan_creation: 'b50c47e docs: stop-preflight after completion-claim review'
+previous_bootstrap_version: v0.0.65
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: false

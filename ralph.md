@@ -558,14 +558,14 @@ Preconditions:
 1. Confirm all milestone tasks have local commits.
 2. Run the Global Gate in Section 10.2.
 3. Confirm `git status --short` is clean.
-4. Confirm the current branch is `feat/domain-adaptive-requirements-analysis`.
-5. Confirm the upstream is `origin/feat/domain-adaptive-requirements-analysis`.
-6. Confirm the push is a normal non-force push and does not require credential, key, remote, branch, history, or security changes.
+4. Confirm the current branch is `dars`.
+5. Confirm the upstream is `origin/dars`.
+6. Confirm the push is a normal non-force push to the existing `origin/dars` branch and does not require credential, key, remote, branch, history, or security changes.
 
 Automatic command:
 
 ```bash
-git push origin feat/domain-adaptive-requirements-analysis
+git push origin dars
 ```
 
 Record the command result in the Reflection Log. If the push fails, if the branch/upstream differs, if the working tree is dirty, or if Git asks for credential/security/history/force-push action, stop and report the exact blocker instead of attempting recovery. Do not start the next milestone until either the automatic push succeeds or the blocker is explicitly resolved.
@@ -7126,3 +7126,26 @@ Resume checkpoint:
 - Quality gate status: pass before this edit; re-run after edit then commit.
 - Next command to run: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`; commit `docs: stop-preflight after completion-claim review`; then stop and ask the operator which candidate to open next.
 - Stop condition: do not run any live Codex subprocess, live LSP execution, additional provider/model boundary crossing, credential lookup, mutation, publication, release, or completion-claim upgrade until the operator selects a candidate and supplies the required prerequisite packet.
+
+### 2026-05-23 — SECTION-10-3-DARS-BRANCH-ALIGNMENT (docs/control)
+
+- Phase completed: aligned the automatic milestone push checkpoint in Section 10.3 with the active governed Hisys development branch `dars` / `origin/dars` after the operator selected the previously human-gated branch-alignment candidate.
+- Request context: operator said `1번 수행하자`, referring to the recommended first next action: update Section 10.3 branch/push contract before opening any larger live-local LSP, OSS, M25, or stronger DARS-completion line.
+- Baseline observed: branch `dars`, upstream `origin/dars`, HEAD `b50c47e docs: stop-preflight after completion-claim review`, working tree clean before edits.
+- Controlled anchors checked: Section 10.3 Automatic Milestone Push Checkpoint; Section 2.2 non-delegable safety boundary; Section 11 Commit Rule; latest QUEUE-REFILL-PREP-STOP-PREFLIGHT Reflection Log; `docs/milestone-bootstrap/profile.yaml` v0.0.65; `tests/unit/test_governance_docs_current_state.py`.
+- Implementation: changed Section 10.3 preconditions from `feat/domain-adaptive-requirements-analysis` / `origin/feat/domain-adaptive-requirements-analysis` to `dars` / `origin/dars`, and changed the automatic command to `git push origin dars`. The safety preconditions still require clean status, normal non-force push, existing branch/upstream alignment, and no credential/key/remote/branch/history/security changes. Created readiness decision record v0.0.66, bumped the governance profile to v0.0.66, updated the governance current-state expectation, and prepended traceability.
+- Boundary: docs/control only. No production code change, no test behavior change beyond governance expectation, no live model/provider call, no credential lookup, no remote configuration change, no force/destructive Git action, no publication/release, no runtime-boundary record write, and no DARS completion-claim upgrade.
+- Quality gate result: pass — governance current-state `1 passed`; traceability validator OK; secret scan `hit_count=0`; `git diff --check` clean; branch `dars` synced to `origin/dars` before commit.
+- Continue decision: commit and normal-push this governance housekeeping increment to existing `origin/dars`. Next product-scope or runtime candidate remains operator-gated.
+- Commit pending: `docs: align automatic push checkpoint with dars`.
+
+Resume checkpoint:
+- Current HEAD: b50c47e docs: stop-preflight after completion-claim review
+- Working tree: Section 10.3 branch-alignment docs/control edits pending validation and commit.
+- Last completed milestone/task: SECTION-10-3-DARS-BRANCH-ALIGNMENT docs/control update.
+- Current in-progress task: validation and commit for Section 10.3 branch alignment.
+- RED observed: n/a; docs/control governance alignment only.
+- GREEN observed: governance current-state `1 passed`; traceability validator OK; secret scan `hit_count=0`; `git diff --check` clean.
+- Quality gate status: pass.
+- Next command to run: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`; commit `docs: align automatic push checkpoint with dars`; push to existing `origin/dars` if normal push is safe.
+- Stop condition: stop before any live Codex subprocess, live LSP execution, additional provider/model boundary crossing, credential lookup, mutation, publication, release, or completion-claim upgrade until the operator selects that candidate and supplies required prerequisites.
