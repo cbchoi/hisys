@@ -30,6 +30,7 @@ Codex.
 | Subprocess path revision | `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.52.md` |
 | Subprocess PREP implementation | `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.53.md`; `src/hisys/agents/dars_codex_cli_subprocess.py`; `tests/unit/test_dars_codex_cli_subprocess.py` |
 | Live-provider policy + fake transport (R1) | `src/hisys/agents/dars_live_provider_policy.py`; `src/hisys/agents/dars_live_provider_transport.py`; `tests/unit/test_dars_live_provider_policy.py`; `tests/unit/test_dars_live_provider_transport.py` |
+| Fail-closed live-provider adapter (R2) | `src/hisys/agents/dars_live_provider_adapter.py`; `tests/unit/test_dars_live_provider_adapter.py` |
 | Codex policy packet draft | `docs/examples/dars/codex-subscription-policy.recommended.json` |
 | Codex activation packet draft | `docs/examples/dars/codex-subscription-activation.recommended.json` |
 | Remote subscription dispatch harness (M-DARS-BE-6) | `src/hisys/agents/dars_remote_subscription_dispatch.py` |
