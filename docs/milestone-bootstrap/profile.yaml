@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.73
-focus: DARS R3 action transport prep. The prep records the operator's live-release intent while preserving the claim ladder and defining bridge choices before any upgrade to live_provider_advisory_smoked.
-formal_hisys_result: r3_action_transport_prep_complete
+version: v0.0.74
+focus: DARS R3 mapped subscription bridge decision. The decision selects mapped_subscription and accepts only a bounded Codex subscription subprocess transport live-smoke claim for human review.
+formal_hisys_result: r3_mapped_subscription_transport_live_smoke_ready_for_human_review
 local_advisory_result: RALPH_CONTINUE_READY_WITH_CONTROLS
-next_safe_task: DARS-LIVE-RELEASE-R3-ACTION-DECISION-PACKET
+next_safe_task: DARS-LIVE-RELEASE-R4-PANEL-MAPPED-SUBSCRIPTION-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: go for live release
-bootstrap_inference: The instruction is recorded as release intent, but the current claim ladder still blocks release execution. The prep defines two permissible R3 bridge choices, adapter_native and mapped_subscription, and stops before any new provider/model call, credential lookup, R4, R5 ACTION, R7, release publication, deployment, external notification, mutation authority, or removal of human review.
+bootstrap_arguments: mapped로 가자
+bootstrap_inference: The operator selected the mapped_subscription bridge. Existing Codex subscription subprocess evidence is mapped into the claim ladder only as subscription-transport live smoke for human review; raw-provider API readiness, adapter_native readiness, R4 action, R5 ACTION, R7, release publication, deployment, external notification, mutation authority, and removal of human review remain blocked.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/reports/dars-r3-action-transport-prep-2026-05-23.md
-planning_baseline_head: '0b70792 docs: record dars r3 smoke review gate'
-current_head_at_plan_creation: '0b70792'
-previous_bootstrap_version: v0.0.72
+next_artifact_ref: docs/reports/dars-r3-action-decision-packet-mapped-subscription-2026-05-23.md
+planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
+current_head_at_plan_creation: '7ced5fa'
+previous_bootstrap_version: v0.0.73
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true
