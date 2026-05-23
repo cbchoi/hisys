@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.70
-focus: DARS live operations status and rollback readiness R6 checkpoint. The active ralph.md now records the local status surface, kill-switch/latest-boundary reporting, budget/circuit-breaker refs, and rollback runbooks, and points to the next local-safe release-candidate packet task.
-formal_hisys_result: dars_live_status_rollback_ready_for_r7_prep
+version: v0.0.71
+focus: DARS R3 critic live smoke evidence checkpoint. The active ralph.md now records one bounded Codex CLI subprocess prompt-mode advisory smoke, the runtime-boundary evidence refs, and the review/gate task that must run before R4, R5 ACTION, or R7.
+formal_hisys_result: r3_single_critic_codex_subscription_live_smoke_evidence_captured
 local_advisory_result: RALPH_CONTINUE_READY_WITH_CONTROLS
-next_safe_task: DARS-LIVE-RELEASE-R7-RC
+next_safe_task: DARS-LIVE-RELEASE-R3-SMOKE-REVIEW-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: R6 live operations status and rollback readiness
-bootstrap_inference: The R6 checkpoint defines a local refs-only DARS live status surface, kill-switch and latest-boundary reporting, budget/circuit-breaker state refs, operations runbook, and rollback runbook. It does not authorize or claim any live provider/model call, credential lookup, activation of standing unattended approval, rollback execution, release, deployment, publication, external notification, mutation authority, or removal of human review.
+bootstrap_arguments: R3 critic live smoke evidence capture
+bootstrap_inference: One operator-authorized R3 advisory smoke crossed the model boundary through the governed Codex CLI subprocess prompt-mode path and wrote runtime-boundary evidence under /tmp/hisys-r3-critic-live-smoke-20260523. This checkpoint does not authorize any further live provider/model call, credential lookup, activation of standing unattended approval, R4/R5 action, release, deployment, publication, external notification, mutation authority, or removal of human review.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/runbooks/dars-live-operations.md
-planning_baseline_head: '0579754 feat: add dars unattended advisory prep runner'
-current_head_at_plan_creation: '0579754'
-previous_bootstrap_version: v0.0.69
+next_artifact_ref: docs/reports/dars-r3-critic-live-smoke-2026-05-23.md
+planning_baseline_head: '47bb94f docs: record dars r3 r5 live evidence preflight stop'
+current_head_at_plan_creation: '47bb94f'
+previous_bootstrap_version: v0.0.70
 tmux_or_background_agent_spawned: false
 production_code_created: true
 tests_created: true
