@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.71
-focus: DARS R3 critic live smoke evidence checkpoint. The active ralph.md now records one bounded Codex CLI subprocess prompt-mode advisory smoke, the runtime-boundary evidence refs, and the review/gate task that must run before R4, R5 ACTION, or R7.
-formal_hisys_result: r3_single_critic_codex_subscription_live_smoke_evidence_captured
+version: v0.0.72
+focus: DARS R3 critic live smoke review gate. The gate accepted only the narrow Codex subscription single-critic smoke review claim and did not upgrade to live_provider_advisory_smoked.
+formal_hisys_result: r3_codex_subscription_single_critic_smoke_review_accepted
 local_advisory_result: RALPH_CONTINUE_READY_WITH_CONTROLS
-next_safe_task: DARS-LIVE-RELEASE-R3-SMOKE-REVIEW-GATE
+next_safe_task: DARS-LIVE-RELEASE-R3-ACTION-TRANSPORT-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: R3 critic live smoke evidence capture
-bootstrap_inference: One operator-authorized R3 advisory smoke crossed the model boundary through the governed Codex CLI subprocess prompt-mode path and wrote runtime-boundary evidence under /tmp/hisys-r3-critic-live-smoke-20260523. This checkpoint does not authorize any further live provider/model call, credential lookup, activation of standing unattended approval, R4/R5 action, release, deployment, publication, external notification, mutation authority, or removal of human review.
+bootstrap_arguments: R3 critic live smoke review gate
+bootstrap_inference: The review gate inspected the committed R3 Codex subscription smoke report and runtime-boundary evidence without another model/provider call. Evidence supports one reviewed Codex-subprocess R3 advisory smoke only; it does not authorize raw-provider transport, live_provider_advisory_smoked, R4, R5 ACTION, R7, credential lookup, release, deployment, publication, external notification, mutation authority, or removal of human review.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/reports/dars-r3-critic-live-smoke-2026-05-23.md
-planning_baseline_head: '47bb94f docs: record dars r3 r5 live evidence preflight stop'
-current_head_at_plan_creation: '47bb94f'
-previous_bootstrap_version: v0.0.70
+next_artifact_ref: docs/reports/dars-r3-critic-live-smoke-review-gate-2026-05-23.md
+planning_baseline_head: '8f50b55 docs: capture dars r3 critic live smoke'
+current_head_at_plan_creation: '8f50b55'
+previous_bootstrap_version: v0.0.71
 tmux_or_background_agent_spawned: false
-production_code_created: true
-tests_created: true
+production_code_created: false
+tests_created: false
