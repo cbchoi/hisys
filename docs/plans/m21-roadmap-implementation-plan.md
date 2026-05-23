@@ -1,5 +1,8 @@
 # M21 Advanced Codebase-Analysis Roadmap Implementation Plan
 
+
+> **Closure status as of 2026-05-23:** M21 is closed as a local-only, advisory-only codebase-analysis milestone. M21.1..M21.9 and the M21.CA codebase-domain current-artifact bridge are implemented and traceable. The historical `MB-CODEBASE-M21-6-PREP` bootstrap pointer was later verified as satisfied by queue roll-forward rather than re-authored. Approved OSS comparison, local LSP execution/allowlist expansion, provider execution, and new product-scope work are no longer M21 backlog rows; they require separate operator authorization and prerequisite packets.
+
 > **For Hermes:** Execute one M21 increment at a time with strict Plan -> RED -> GREEN -> validate -> commit discipline. Use the `test-driven-development` skill for code-bearing tasks and the `milestone-bootstrap` follow-on pattern for Prepare/document-RED checkpoints.
 
 **Goal:** Convert the M21 advanced codebase-analysis backlog into a sequenced, local-only, advisory-only implementation roadmap after M21.1 and M21.2 are complete.

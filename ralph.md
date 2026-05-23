@@ -7149,3 +7149,25 @@ Resume checkpoint:
 - Quality gate status: pass.
 - Next command to run: `PYTHONPATH=src:. pytest tests/unit/test_governance_docs_current_state.py -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`; commit `docs: align automatic push checkpoint with dars`; push to existing `origin/dars` if normal push is safe.
 - Stop condition: stop before any live Codex subprocess, live LSP execution, additional provider/model boundary crossing, credential lookup, mutation, publication, release, or completion-claim upgrade until the operator selects that candidate and supplies required prerequisites.
+### 2026-05-23 — M21-ADVANCED-CODEBASE-ANALYSIS-CLOSURE (docs/control)
+
+- Phase completed: docs/control closure for M21 advanced codebase-analysis. The operator said `M21을 닫아보자`; this checkpoint records M21 as closed rather than opening new product/runtime work.
+- Baseline observed: branch `dars`, upstream `origin/dars`, HEAD `00b1a9f docs: align automatic push checkpoint with dars`, working tree clean before edits.
+- Controlled anchors checked: `docs/plans/m21-roadmap-implementation-plan.md`; `docs/traceability/README.md` M21.1..M21.9 and M21.CA rows; historical QUEUE-REFILL-PREP entry verifying `MB-CODEBASE-M21-6-PREP` as satisfied by queue roll-forward; `docs/milestone-bootstrap/profile.yaml` v0.0.66; `tests/unit/test_governance_docs_current_state.py`.
+- Closure finding: M21.1..M21.9 plus M21.CA are implemented and traceable under local-only/advisory-only boundaries. The stale `MB-CODEBASE-M21-6-PREP` pointer carries no remaining M21 implementation work because M21.6 was already verified as implemented and green, and M21.7..M21.9 downstream rows are complete.
+- Implementation: created readiness decision record v0.0.67, bumped the governance profile to v0.0.67, set `next_safe_task=OPERATOR-SELECTION-REQUIRED`, updated the governance current-state expectation, prepended traceability, and added a closure note to the M21 roadmap plan.
+- Boundary: docs/control only. No production code change, no behavioral test change beyond governance expectation, no live model/provider call, no Codex subprocess, no credential lookup, no real OSS clone/fetch/license adjudication, no LSP subprocess or allowlist expansion, no publication/release, no runtime-boundary record write, and no DARS completion-claim upgrade.
+- Quality gate result: pass — focused M21/governance gate `116 passed`; full project suite `1121 passed`; traceability validator OK; secret scan `hit_count=0`; `git diff --check` clean; branch `dars` synced to `origin/dars` before commit.
+- Continue decision: commit and normal-push this closure increment to existing `origin/dars` because validation passed and Section 10.3 preconditions remain true. After closure, next work remains operator selection across product/runtime candidates.
+- Commit pending: `docs: close m21 codebase-analysis milestone`.
+
+Resume checkpoint:
+- Current HEAD: 00b1a9f docs: align automatic push checkpoint with dars
+- Working tree: M21 closure docs/control edits pending validation and commit.
+- Last completed milestone/task: M21-ADVANCED-CODEBASE-ANALYSIS-CLOSURE docs/control update.
+- Current in-progress task: validation and commit for M21 closure.
+- RED observed: n/a; docs/control closure only.
+- GREEN observed: focused M21/governance gate `116 passed`; full project suite `1121 passed`; traceability validator OK; secret scan `hit_count=0`; `git diff --check` clean.
+- Quality gate status: pass.
+- Next command to run: `PYTHONPATH=src:. pytest tests/unit/test_traceability_coverage.py tests/unit/test_runtime_boundary_consistency.py tests/unit/test_codebase_map_freshness.py tests/unit/test_codebase_regression_benchmarks.py tests/unit/test_change_impact.py tests/unit/test_architecture_candidates.py tests/unit/test_code_analysis_pass_contract.py tests/unit/test_code_analysis_pass_contract_fixtures.py tests/unit/test_subagent_evidence_collector_protocol.py tests/unit/test_domain_cli.py tests/unit/test_governance_docs_current_state.py -q && PYTHONPATH=src:. pytest -q && python3 scripts/validate_traceability.py && python3 scripts/scan_secrets.py && git diff --check && git status --short --branch`; commit `docs: close m21 codebase-analysis milestone`; push to existing `origin/dars` if normal push is safe.
+- Stop condition: stop before any live Codex subprocess, live LSP execution, additional provider/model boundary crossing, credential lookup, OSS live execution, mutation, publication, release, or completion-claim upgrade until the operator selects that candidate and supplies required prerequisites.
