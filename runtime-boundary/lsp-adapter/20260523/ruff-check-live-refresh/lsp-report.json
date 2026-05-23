@@ -1,0 +1,160 @@
+{
+  "advisory_only": true,
+  "allowed_actions": "advisory_only",
+  "category_ref_summary": [
+    "unused"
+  ],
+  "command_id": "ruff-check-live-refresh",
+  "current_head_short": "3ce9ab1",
+  "date": "20260523",
+  "diagnostic_count": 14,
+  "diagnostics": [
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 21,
+      "file_ref": "src/hisys/agents/dars_dispatch.py",
+      "line": 15,
+      "message_digest": "e95fe318fd888b29",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 5,
+      "file_ref": "src/hisys/agents/dars_dispatch.py",
+      "line": 23,
+      "message_digest": "c448d27cb1884df1",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 5,
+      "file_ref": "src/hisys/agents/dars_dispatch.py",
+      "line": 24,
+      "message_digest": "94abd3f3845c4ac5",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 5,
+      "file_ref": "src/hisys/agents/dars_dispatch.py",
+      "line": 25,
+      "message_digest": "68f1587365ee9493",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 25,
+      "file_ref": "src/hisys/agents/dars_panel_live_adapter.py",
+      "line": 17,
+      "message_digest": "e208bfe39daa0de7",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 37,
+      "file_ref": "src/hisys/cli/main.py",
+      "line": 24,
+      "message_digest": "8e3773ac8eecdecb",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 5,
+      "file_ref": "src/hisys/cli/main.py",
+      "line": 35,
+      "message_digest": "7182b7889d9038ea",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 5,
+      "file_ref": "src/hisys/cli/main.py",
+      "line": 50,
+      "message_digest": "74bfedf5beefd4aa",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 5,
+      "file_ref": "src/hisys/cli/main.py",
+      "line": 58,
+      "message_digest": "a59a43696d7be0fd",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 5,
+      "file_ref": "src/hisys/cli/main.py",
+      "line": 74,
+      "message_digest": "6782955877c433a8",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F541",
+      "column": 21,
+      "file_ref": "src/hisys/cli/main.py",
+      "line": 5073,
+      "message_digest": "9eb0d14a088f075d",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 8,
+      "file_ref": "src/hisys/operations/backup.py",
+      "line": 9,
+      "message_digest": "163ed5fab7212b7e",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F401",
+      "column": 33,
+      "file_ref": "src/hisys/operations/codebase_regression_benchmarks.py",
+      "line": 16,
+      "message_digest": "99987f2c392ad002",
+      "severity": "error"
+    },
+    {
+      "category_ref": "unused",
+      "code": "F841",
+      "column": 5,
+      "file_ref": "src/hisys/operations/governance_docs.py",
+      "line": 111,
+      "message_digest": "efe3e9b5be116cb7",
+      "severity": "error"
+    }
+  ],
+  "error_count": 14,
+  "external_call_made": false,
+  "info_count": 0,
+  "live_external_action_authorized": false,
+  "mutation_performed": false,
+  "output_bytes": 12655,
+  "output_format": "ruff_json",
+  "output_truncated": false,
+  "raw_source_content_persisted": false,
+  "requires_human_review": true,
+  "schema_id": "hisys.lsp_adapter.v1",
+  "subprocess_exit_code": 1,
+  "subprocess_killed": false,
+  "subprocess_timed_out": false,
+  "target_refs": [
+    "src",
+    "tests/unit/test_lsp_adapter.py"
+  ],
+  "unsafe_refs": [],
+  "warning_count": 0,
+  "workspace_root_ref": "."
+}

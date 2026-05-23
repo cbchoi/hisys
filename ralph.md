@@ -351,3 +351,15 @@ Final report to the user must state:
 - Current HEAD: 00b1a9f docs: align automatic push checkpoint with dars
 - Next task for `/rloo`: `LIVE-LSP-SMOKE-REFRESH`, starting at Task 0.
 - Stop condition: only the Section 3 true boundary crossings require user input; ordinary local PREP/action/review/trace/validate/commit steps continue without further approval.
+
+### 2026-05-23 — LIVE-LSP-SMOKE-REFRESH
+
+- Phase completed: ran the bounded live LSP RLOO pass end-to-end per Tasks 0–5 of this plan, without further user approval, inside the Section 2 envelope.
+- HEAD before run: 3ce9ab1 docs: prepare live lsp rloo plan.
+- Command ids run: `ruff-check-live-refresh` and `pyright-check-live-refresh`, both through the governed `hisys lsp-adapter` boundary with caller-authored bundles under `build/live-lsp-smoke-refresh/20260523/` and PATH extended only to `/home/cbchoi/.hermes/hermes-agent/venv/bin` and `/home/cbchoi/.hermes/hisys-lsp-tools/node_modules/.bin`.
+- Generated runtime artifacts: `runtime-boundary/lsp-adapter/20260523/ruff-check-live-refresh/lsp-report.json`, `.../lsp-report.md`, `runtime-boundary/lsp-adapter/20260523/pyright-check-live-refresh/lsp-report.json`, `.../lsp-report.md`. Smoke report: `docs/reports/live-lsp-smoke-refresh-2026-05-23.md`. Traceability row prepended to `docs/traceability/README.md` as `LIVE-LSP-SMOKE-REFRESH-2026-05-23`.
+- Diagnostic counts: ruff `diagnostic_count=14` (errors=14, warnings=0, info=0, exit=1), pyright `diagnostic_count=2` (errors=2, warnings=0, info=0, exit=1). Both reports preserve `advisory_only=true`, `requires_human_review=true`, `external_call_made=false`, `mutation_performed=false`, `raw_source_content_persisted=false`, `live_external_action_authorized=false`, `allowed_actions=advisory_only`. Nonzero exit `1` is the expected diagnostic-present signal for lint/type tools and is not a failure.
+- Validation: focused tests `tests/unit/test_lsp_adapter.py tests/unit/test_domain_cli.py tests/unit/test_governance_docs_current_state.py -q` → `46 passed`; `scripts/validate_traceability.py` → OK; `scripts/scan_secrets.py` → `hit_count=0`; `git diff --check` clean.
+- Commit message: `docs: refresh live lsp smoke evidence`.
+- Boundary: no package installation, no command allowlist expansion, no `--fix`/mutation, no network/credential lookup, no provider/model call, no publication/release, no remote-setup changes, no destructive Git operation.
+- Next stop condition: this RLOO pass is complete. Further work requires a fresh `/rloo` invocation or a Section 3 boundary decision; advisory diagnostics still require human review.
