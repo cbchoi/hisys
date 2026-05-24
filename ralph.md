@@ -12,7 +12,7 @@
 | Baseline at plan creation | `7b40649` |
 | Previous active control file | archived into `ralph.history.md` on 2026-05-23 |
 | Runtime | one coherent RED--GREEN--validate--commit unit per run; maximum 5 hours |
-| Active task | R4H request/response harness is closed for human review; next safe task is R7 RC scope decision. |
+| Active task | R7 RC scope decision recorded for human review; next safe task is R7 RC packet prep. |
 | User authorization | 최창범 교수 requested R3-R5 live evidence execution on 2026-05-23, explicitly instructed `go for R3 critic live smoke`, instructed `go for live release`, selected `mapped로 가자`, approved `R4 Codex subprocess panel smoke 실행`, asked `지금 다시 해볼래?`, accepted the recommended R4H Hermes-mediated split with `추천하는데로 해보자`, then instructed `R4H로 진행 R4C는 추후 작업으로`; one R3 Codex subprocess model-boundary call completed, two R4 Codex subprocess attempts stopped on auth refresh before critique output, one R4H Hermes-mediated advisory panel completed for human review only, and R4H is now selected for continuation. |
 
 ## 1. Objective and bounded target outcome
@@ -208,13 +208,15 @@ Completed: `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-REQUEST-RESPONSE-HARNESS
 
 R4C closure: `DARS-LIVE-RELEASE-R4C-FUTURE-DEFERRED-CLOSURE` — record only that R4C is future/deferred work. Do not retry Codex subprocess, inspect credentials, call raw provider APIs, claim subprocess completion, or reactivate R4C without a separate explicit operator instruction and decision packet.
 
-Next safe task: `DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION` — decide the RC scope after R4H closure while preserving that R5 action, R7 readiness, and R8 release execution remain human-gated and not accepted by the R4H harness.
+Completed: `DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION` — recorded the RC scope after R4H closure. Accepted only `r7_rc_scope_decision_recorded_for_human_review`; `release_candidate_ready=false`, R5 ACTION canary evidence is missing, and R4C remains deferred.
+
+Next safe task: `DARS-LIVE-RELEASE-R7-RC-PACKET-PREP` — prepare the full human-review RC packet from the scoped evidence set without release action.
 
 ### Resume checkpoint — R4H productization prep (2026-05-24)
 
-- Current HEAD: c98c509
-- Accepted claim: `r4h_hermes_mediated_request_response_harness_closed_for_human_review`
-- Next safe task: `DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION`
+- Current HEAD: c5a2b08
+- Accepted claim: `r7_rc_scope_decision_recorded_for_human_review`
+- Next safe task: `DARS-LIVE-RELEASE-R7-RC-PACKET-PREP`
 - Boundary: no additional model/provider/Codex subprocess call, raw provider API readiness, adapter-native readiness, R5/R7/R8 readiness, credential lookup, mutation, publication, release action, or human-review removal; R4C future reactivation requires separate approval.
 
 ## 6. Quality gates
@@ -274,4 +276,6 @@ Report:
 - 2026-05-24 — `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-PRODUCTIZATION-PREP`: PREP READY. After the operator instructed `go`, added the local/read-only `hisys dars-r4h-productization-prep` CLI surface and `hisys.operations.dars_r4h_productization` packet builder. The packet defines request schema `hisys.dars.r4h_hermes_mediated_request`, response schema `hisys.dars.r4h_hermes_mediated_response`, supported critics `logical_consistency_critic` and `evidence_governance_critic`, report refs, human-review requirements, and the deferred R4C relation. Boundary preserved: no additional model/provider/Codex subprocess call, no raw provider API call/readiness, no adapter-native readiness, no credential lookup, no mutation/publication/release/external notification, and no human-review removal. Next safe task: `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-REQUEST-RESPONSE-HARNESS`.
 - Current HEAD: d4fac11
 - 2026-05-24 — `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-REQUEST-RESPONSE-HARNESS`: CLOSED FOR HUMAN REVIEW. After the operator instructed `R4H를 닫을 때까지 rloo 실행`, added request validation, fixture response synthesis, report writing, and CLI command `hisys dars-r4h-request-response-harness`. Generated example request/response artifacts and readiness record `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.83.md`. Accepted only `r4h_hermes_mediated_request_response_harness_closed_for_human_review`. Boundary preserved: fixture-injected harness only; no Hermes model/provider call, no Codex subprocess call/completion claim, no raw provider API call/readiness, no adapter-native readiness, no R5/R7/R8 readiness, no credential lookup, no mutation/publication/release/external notification, and human review remains required. Next safe task: `DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION`.
-- Current HEAD: c98c509
+- Current HEAD: c5a2b08
+
+- 2026-05-24 — `DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION`: SCOPE-DECISION. RED-first added `tests/unit/test_dars_release_candidate_scope.py` and observed missing release-scope docs. GREEN added `docs/release/dars-panel-rc-scope-decision-v0.0.84.md`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/release/dars-panel-release-notes-v0.0.84.md`, and `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.84.md`. Boundary preserved: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release action, publication, external notification, or human-review removal. Next safe task: `DARS-LIVE-RELEASE-R7-RC-PACKET-PREP`.

@@ -1,27 +1,27 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.83
-focus: R4H Hermes-mediated request/response harness closed for human review with a
-  local fixture-injected contract harness.
-formal_hisys_result: r4h_hermes_mediated_request_response_harness_closed_for_human_review
-local_advisory_result: R4H_REQUEST_RESPONSE_HARNESS_CLOSED_FOR_HUMAN_REVIEW
-next_safe_task: DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION
+version: v0.0.84
+focus: R7 RC scope decision recorded after R4H request/response harness closure,
+  with release-candidate readiness still false pending human-gated evidence review.
+formal_hisys_result: r7_rc_scope_decision_recorded_for_human_review
+local_advisory_result: R7_RC_SCOPE_DECISION_RECORDED_FOR_HUMAN_REVIEW
+next_safe_task: DARS-LIVE-RELEASE-R7-RC-PACKET-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: R4H를 닫을 때까지 rloo 실행
-bootstrap_inference: The operator instructed Hisys to continue the RLOO loop until
-  the active R4H continuation is closed. Hisys may add local repository code,
-  tests, docs, and fixture/injected harness evidence, but may not perform any
-  additional model/provider/Codex subprocess call, raw provider API call,
-  credential lookup, mutation, publication, release action, or removal of human
-  review.
+bootstrap_arguments: go
+bootstrap_inference: The operator instructed Hisys to proceed from the R4H closure
+  state to the next safe R7 scope-decision task. Hisys may add local release-scope
+  docs, tests, traceability, and decision records, but may not perform any live
+  model/provider/Codex subprocess call, raw provider API call, credential lookup,
+  standing unattended activation, mutation, publication, release action, external
+  notification, or removal of human review.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.83.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.84.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: c98c509
-previous_bootstrap_version: v0.0.82
+current_head_at_plan_creation: c5a2b08
+previous_bootstrap_version: v0.0.83
 tmux_or_background_agent_spawned: false
-production_code_created: true
+production_code_created: false
 tests_created: true
