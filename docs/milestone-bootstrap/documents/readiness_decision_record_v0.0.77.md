@@ -1,4 +1,4 @@
-# Readiness decision record v0.0.77 — DARS R4 Codex subprocess panel smoke auth stop
+# Readiness decision record v0.0.77 — DARS R4 Codex subprocess panel smoke token refresh-state stop
 
 ## Request context
 
@@ -9,7 +9,7 @@
 
 ## Result
 
-The R4 Codex subprocess panel smoke was attempted and stopped by Codex CLI authentication refresh failure before any critique output or runtime-boundary panel evidence was produced.
+The R4 Codex subprocess panel smoke was attempted using the existing Codex subscription-auth path and stopped by Codex CLI refresh-token reuse rejection before any critique output or runtime-boundary panel evidence was produced.
 
 Accepted bounded result:
 
@@ -41,10 +41,10 @@ Only control packet files were written; no panel runtime-boundary record exists.
 
 ## Boundary
 
-No credential lookup by Hisys, raw provider API call by Hisys, mutation, publication, deployment, release, external notification, R5/R7/R8 action, or human-review removal was performed. Codex CLI attempted its own subscription auth refresh and failed.
+No credential lookup by Hisys, raw provider API call by Hisys, mutation, publication, deployment, release, external notification, R5/R7/R8 action, or human-review removal was performed. Codex CLI found/used its own existing subscription-auth state, attempted refresh, and failed with `refresh_token_reused`.
 
 ## Next safe task
 
 ```text
-DARS-LIVE-RELEASE-R4-CODEX-AUTH-RECOVERY-OUTSIDE-HISYS
+DARS-LIVE-RELEASE-R4-CODEX-REFRESH-STATE-RECONCILIATION-OUTSIDE-HISYS
 ```

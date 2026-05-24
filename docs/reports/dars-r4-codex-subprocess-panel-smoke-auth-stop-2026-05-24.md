@@ -1,11 +1,11 @@
-# DARS R4 Codex subprocess panel smoke attempt — auth stop — 2026-05-24
+# DARS R4 Codex subprocess panel smoke attempt — token refresh-state stop — 2026-05-24
 
 ## Result
 
-The approved R4 Codex subprocess panel smoke was attempted and stopped before any completed critic boundary record was written.
+The approved R4 Codex subprocess panel smoke was attempted using the existing Codex subscription-auth path and stopped before any completed critic boundary record was written.
 
 ```text
-r4_codex_subscription_multi_critic_panel_smoke_blocked_by_codex_auth_refresh
+r4_codex_subscription_multi_critic_panel_smoke_blocked_by_codex_refresh_token_reuse
 ```
 
 ## Request context
@@ -70,7 +70,7 @@ It then invoked `run_dars_remote_subscription_panel_dispatch(...)` with `build_c
 
 ## Stop evidence
 
-The first Codex subprocess returned nonzero before a critique was produced:
+The first Codex subprocess found/used the existing Codex subscription-auth state, then returned nonzero before a critique was produced because the CLI-side refresh token was rejected as already used:
 
 ```text
 codex_cli_subprocess_failed: returncode=1
@@ -110,7 +110,7 @@ Rejected or not accepted:
 
 - Hisys did not inspect, resolve, print, store, or request credential material.
 - Hisys did not call a raw provider API.
-- Codex CLI attempted its own subscription auth refresh and failed.
+- Codex CLI used its own existing subscription-auth state, attempted refresh, and failed with `refresh_token_reused`.
 - No advisory critique text was returned.
 - No per-critic or aggregate runtime-boundary record was written by the dispatch harness because the executor failed before returning output.
 - No mutation, publication, deployment, release, external notification, R5 action, R7 action, or R8 action was performed.
@@ -119,7 +119,7 @@ Rejected or not accepted:
 ## Next safe task
 
 ```text
-DARS-LIVE-RELEASE-R4-CODEX-AUTH-RECOVERY-OUTSIDE-HISYS
+DARS-LIVE-RELEASE-R4-CODEX-REFRESH-STATE-RECONCILIATION-OUTSIDE-HISYS
 ```
 
-The operator should refresh/sign in to Codex outside Hisys, then provide a new exact scoped approval before retrying the R4 Codex subprocess panel smoke.
+The operator should reconcile the Codex CLI subscription-auth refresh state outside Hisys, without exposing token material to Hisys, then provide a new exact scoped approval before retrying the R4 Codex subprocess panel smoke.
