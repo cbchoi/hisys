@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.98
-focus: Release execution decision approved for docs-only human-reviewed scope without concrete release action authorization.
-formal_hisys_result: release_execution_decision_approved_for_human_reviewed_docs_only
-local_advisory_result: RELEASE_EXECUTION_DECISION_APPROVED_DOCS_ONLY_ACTION_NOT_AUTHORIZED
-next_safe_task: DARS-LIVE-RELEASE-ACTION-AUTHORIZATION-PACKET
+version: v0.0.99
+focus: Release action authorization packet approved for docs-only human-reviewed scope without concrete action authorization.
+formal_hisys_result: release_action_authorization_packet_approved_for_docs_only
+local_advisory_result: RELEASE_ACTION_AUTHORIZATION_PACKET_APPROVED_DOCS_ONLY_ACTION_NOT_AUTHORIZED
+next_safe_task: DARS-LIVE-RELEASE-SPECIFIC-ACTION-SELECTION-PACKET
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: 승인
-bootstrap_inference: The operator approved after the release execution decision packet was identified. Hisys may record release_execution_decision_authorized=true for docs-only human-reviewed scope. It may not perform or authorize a concrete release action, tag, package upload, deployment, publication, external notification, live provider/model call, raw provider API call, credential lookup, standing unattended activation, or human-review removal without a separate action-authorization packet.
+bootstrap_inference: The operator approved after the release action authorization packet was identified. Hisys may record release_action_authorization_packet_approved=true for docs-only human-reviewed scope. It may not authorize or perform a concrete release action, tag, package upload, deployment, publication, external notification, live provider/model call, raw provider API call, credential lookup, standing unattended activation, or human-review removal without a separate specific-action selection packet.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.98.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.99.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: c1b43e7
-previous_bootstrap_version: v0.0.97
+current_head_at_plan_creation: 12dee4c
+previous_bootstrap_version: v0.0.98
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true
