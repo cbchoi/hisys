@@ -123,3 +123,49 @@ DARS-LIVE-RELEASE-R4-CODEX-REFRESH-STATE-RECONCILIATION-OUTSIDE-HISYS
 ```
 
 The operator should reconcile the Codex CLI subscription-auth refresh state outside Hisys, without exposing token material to Hisys, then provide a new exact scoped approval before retrying the R4 Codex subprocess panel smoke.
+
+## Retry attempt 002 — 2026-05-24T02:47:55Z
+
+The operator asked `지금 다시 해볼래?`; Hisys retried the same bounded R4 Codex subprocess panel smoke scope.
+
+Retry preflight evidence:
+
+```bash
+PYTHONPATH=src:. pytest \
+  tests/unit/test_dars_codex_cli_subprocess.py \
+  tests/unit/test_dars_remote_subscription_dispatch.py::test_remote_subscription_multi_critic_panel_dispatch_writes_aggregate_boundary \
+  tests/unit/test_dars_remote_subscription_dispatch.py::test_codex_cli_subprocess_multi_critic_panel_prep_packet_matches_dispatch_contract \
+  tests/unit/test_governance_docs_current_state.py \
+  -q
+# 48 passed
+
+command -v codex
+# /usr/bin/codex
+codex --version
+# codex-cli 0.128.0
+```
+
+Retry instance:
+
+```text
+/tmp/hisys-r4-codex-panel-smoke-retry-20260524-002
+```
+
+Only secret-free control packet files were written. No per-critic or aggregate runtime-boundary panel record exists.
+
+Retry stop evidence:
+
+```text
+codex_cli_subprocess_failed: returncode=1
+Failed to refresh token: 401 Unauthorized
+code=refresh_token_reused
+message=Your refresh token has already been used to generate a new access token. Please try signing in again.
+```
+
+Accepted retry claim:
+
+```text
+r4_codex_subscription_multi_critic_panel_smoke_retry_attempted_auth_blocked
+```
+
+The completion claim remains rejected. Boundary preserved: Hisys did not inspect credentials, call raw provider APIs, mutate, publish, deploy, release, execute R5/R7/R8, or remove human review.

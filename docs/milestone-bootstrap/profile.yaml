@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.77
-focus: "DARS R4 Codex subprocess panel smoke attempted after explicit approval using existing Codex subscription-auth state and stopped on Codex CLI refresh_token_reused before critique output or panel boundary evidence."
-formal_hisys_result: r4_codex_subscription_multi_critic_panel_smoke_attempted_auth_blocked
+version: v0.0.78
+focus: "DARS R4 Codex subprocess panel smoke retry attempted under the same bounded scope and again stopped on Codex CLI refresh_token_reused before critique output or panel boundary evidence."
+formal_hisys_result: r4_codex_subscription_multi_critic_panel_smoke_retry_attempted_auth_blocked
 local_advisory_result: RALPH_STOP_CODEX_REFRESH_STATE_RECONCILIATION_REQUIRED
 next_safe_task: DARS-LIVE-RELEASE-R4-CODEX-REFRESH-STATE-RECONCILIATION-OUTSIDE-HISYS
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "codex subprocess실행까지 해야하지 않나?? / 승인: R4 Codex subprocess panel smoke 실행"
-bootstrap_inference: "The operator explicitly approved a bounded R4 Codex subprocess panel smoke. Preflight passed, then Codex CLI used existing subscription-auth state and failed before critique output with refresh_token_reused. Hisys did not inspect credentials or call a raw provider API. The completion claim remains rejected; Codex refresh-state reconciliation must happen outside Hisys before any retry."
+bootstrap_arguments: "지금 다시 해볼래?"
+bootstrap_inference: "The operator requested a retry of the bounded R4 Codex subprocess panel smoke. Focused preflight passed, then Codex CLI used existing subscription-auth state and failed before critique output with refresh_token_reused/401 Unauthorized. Hisys did not inspect credentials or call a raw provider API. The completion claim remains rejected; Codex refresh-state reconciliation must happen outside Hisys before any retry."
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/reports/dars-r4-codex-subprocess-panel-smoke-auth-stop-2026-05-24.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.78.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
 current_head_at_plan_creation: '7ced5fa'
-previous_bootstrap_version: v0.0.76
+previous_bootstrap_version: v0.0.77
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true
