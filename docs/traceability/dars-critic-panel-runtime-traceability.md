@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.42.0
+version: 0.43.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-24
@@ -10,6 +10,14 @@ updated: 2026-05-24
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-R7-RC-READINESS-ACCEPTANCE-PACKET — RC readiness accepted for human-reviewed controlled scope (2026-05-25)
+
+- Scope: after residual-risk acceptance was recorded and Hermes presented the RC readiness acceptance boundary, the operator responded `승인`. This accepts release-candidate readiness only for the current human-reviewed controlled RC evidence package.
+- Artifacts: `docs/release/dars-r7-rc-readiness-acceptance-packet-v0.0.96.md`, `docs/release/dars-panel-release-notes-v0.0.96.md`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.96.md`, `tests/unit/test_dars_r7_rc_readiness_acceptance_packet.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `r7_rc_ready_for_human_review_controlled_scope`; `release_candidate_ready=true`; `human_release_approval_recorded=true`; `human_residual_risk_acceptance=accepted`; `released_for_controlled_advisory_use=false`; `release_execution_authorized=false`; `r5_live_canary_executed=false`; `bounded_unattended_advisory_operation_ready=false`; `live_provider_model_call_made=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 now has scoped RC readiness acceptance and a next controlled advisory use decision packet.
+- Boundary: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release tag/package/upload/deploy/publication, external notification, mutation outside repository docs/tests/control files, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-R7-RC-RESIDUAL-RISK-EXACT-APPROVAL — residual-risk scope accepted, release not authorized (2026-05-24)
 

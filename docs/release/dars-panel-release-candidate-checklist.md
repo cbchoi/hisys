@@ -1,16 +1,18 @@
 ---
 doc_id: HISYS-DARS-R7-RC-CHECKLIST-001
 title: DARS Panel Release Candidate Checklist
-version: v0.0.95
-status: r7-residual-risk-scope-accepted-no-release-authorization
+version: v0.0.96
+status: rc-readiness-accepted-for-human-reviewed-controlled-scope
 created: 2026-05-24
 ---
 
 # DARS Panel Release Candidate Checklist
 
-This checklist defines what must be present before Hisys can report `release_candidate_ready`. The current R7 residual-risk exact approval is recorded for human review; `release_candidate_ready` remains false until a separate RC readiness acceptance packet records that claim.
+This checklist defines what must be present before Hisys can report `release_candidate_ready`. The current R7 RC readiness acceptance packet records `release_candidate_ready=true` only for a human-reviewed controlled RC scope.
 
-release_candidate_ready remains false until every required evidence row is accepted.
+Release execution, controlled advisory use, live provider/model calls, standing unattended activation, and human-review removal remain separate gated decisions.
+
+Historical pre-acceptance checklist rule retained for traceability: release_candidate_ready remains false until every required evidence row is accepted. In v0.0.96 the scoped RC readiness row is accepted, while release execution and controlled advisory use remain false.
 
 ## Required evidence rows
 
@@ -30,8 +32,8 @@ release_candidate_ready remains false until every required evidence row is accep
 - [x] R7 RC readiness decision packet is present at `docs/release/dars-r7-rc-readiness-decision-packet-v0.0.93.md` and accepts only `r7_rc_readiness_decision_packet_recorded_for_human_review`.
 - [x] R7 residual-risk human gate is entered at `docs/release/dars-r7-rc-residual-risk-human-gate-v0.0.94.md` and accepts only `r7_rc_residual_risk_human_gate_entered`; residual risk acceptance is still not recorded.
 - [x] R7 residual-risk exact approval is recorded at `docs/release/dars-r7-rc-residual-risk-exact-approval-v0.0.95.md` with `human_residual_risk_acceptance=accepted` and accepted claim `r7_rc_residual_risk_scope_accepted_for_human_review`.
-- [ ] RC readiness acceptance packet records whether `release_candidate_ready=true` is accepted for the residual-risk-scoped evidence package.
-- [ ] human release approval state is explicit and separate from release execution approval.
+- [x] R7 RC readiness acceptance packet records `release_candidate_ready=true` at `docs/release/dars-r7-rc-readiness-acceptance-packet-v0.0.96.md` for the residual-risk-scoped evidence package.
+- [x] human release approval is recorded for RC readiness only and remains separate from release execution approval.
 
 ## Scoped substitute rule
 

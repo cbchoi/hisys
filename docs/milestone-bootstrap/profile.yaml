@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.95
-focus: R7 residual-risk scope accepted for human-reviewed RC readiness consideration without release authorization.
-formal_hisys_result: r7_rc_residual_risk_scope_accepted_for_human_review
-local_advisory_result: R7_RC_RESIDUAL_RISK_ACCEPTED_RELEASE_NOT_AUTHORIZED
-next_safe_task: DARS-LIVE-RELEASE-R7-RC-READINESS-ACCEPTANCE-PACKET
+version: v0.0.96
+focus: R7 RC readiness accepted for human-reviewed controlled scope without release execution authorization.
+formal_hisys_result: r7_rc_ready_for_human_review_controlled_scope
+local_advisory_result: R7_RC_READY_FOR_HUMAN_REVIEW_CONTROLLED_SCOPE_RELEASE_NOT_AUTHORIZED
+next_safe_task: DARS-LIVE-RELEASE-CONTROLLED-ADVISORY-USE-DECISION-PACKET
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: 승인
-bootstrap_inference: The operator approved after Hermes presented the residual-risk scope, evidence limits, alternatives, and non-authorized boundaries. Hisys may record scoped residual-risk acceptance for the current non-live, human-reviewed RC evidence package. It may not set release_candidate_ready without a separate acceptance packet, nor perform a live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release action, deployment, publication, external notification, or human-review removal.
+bootstrap_inference: The operator approved after Hermes presented the RC readiness acceptance boundary. Hisys may record release_candidate_ready=true only for the current human-reviewed controlled RC evidence package. It may not record released_for_controlled_advisory_use, perform release execution, make a live provider/model call, retry Codex subprocess, call raw provider APIs, look up credentials, activate standing unattended approval, deploy, publish, send external notification, or remove human review without a separate approval packet.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.95.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.96.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: 4ca096d
-previous_bootstrap_version: v0.0.94
+current_head_at_plan_creation: 48a3580
+previous_bootstrap_version: v0.0.95
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true
