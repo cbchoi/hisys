@@ -5,8 +5,10 @@ runner validates a finite standing approval policy, checks circuit breakers,
 routes only through the R2 fail-closed adapter with fake/injected transport, and
 writes an audit ledger entry for every completed/blocked/failed run.
 
-The runner performs no credential lookup and makes no live provider/model call;
-for R5 PREP it accepts only ``mode='dry_run'``.
+The runner performs no credential lookup and makes no live provider/model call.
+It supports the R5 PREP dry-run path and a distinct R5 canary-mode contract;
+the canary path still routes through the fake/injected dry-run adapter until a
+separate human-gated live canary execution is approved.
 
 Traceability:
 
@@ -30,7 +32,11 @@ from hisys.agents.dars_live_provider_adapter import (
     run_dars_live_provider_adapter,
 )
 from hisys.agents.dars_live_provider_transport import FakeLiveProviderTransport
-from hisys.agents.dars_unattended_policy import validate_standing_approval_policy
+from hisys.agents.dars_unattended_policy import (
+    STANDING_APPROVAL_CANARY_REQUEST_CLASS,
+    STANDING_APPROVAL_DRY_RUN_REQUEST_CLASS,
+    validate_standing_approval_policy,
+)
 from hisys.config.instance import InstanceRoot
 
 
@@ -41,8 +47,15 @@ DARS_UNATTENDED_ADVISORY_LEDGER_SCHEMA_VERSION = "0.1.0"
 
 _SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 _DATE_RE = re.compile(r"^\d{8}$")
-_ALLOWED_PREP_MODE = "dry_run"
-_ALLOWED_PREP_REQUEST_CLASS = "dars_live_provider_advisory_dry_run"
+_ALLOWED_MODES: tuple[str, ...] = ("dry_run", "canary")
+_REQUEST_CLASS_BY_MODE: dict[str, str] = {
+    "dry_run": STANDING_APPROVAL_DRY_RUN_REQUEST_CLASS,
+    "canary": STANDING_APPROVAL_CANARY_REQUEST_CLASS,
+}
+_VALIDATION_MODE_BY_RUNNER_MODE: dict[str, str] = {
+    "dry_run": "prep",
+    "canary": "canary",
+}
 
 
 @dataclass(frozen=True)
@@ -58,7 +71,8 @@ class DarsUnattendedAdvisoryRequest:
     prompt_packet_ref: str
     prompt_byte_count: int
     yyyymmdd: str
-    mode: Literal["dry_run"] = "dry_run"
+    mode: Literal["dry_run", "canary"] = "dry_run"
+    canary_action_decision_packet_ref: str | None = None
     now: str | None = None
     mutation_allowed: bool = False
     publication_allowed: bool = False
@@ -92,8 +106,14 @@ class DarsUnattendedAdvisoryRequest:
             raise ValueError("invalid_backend_id")
         if not _DATE_RE.fullmatch(self.yyyymmdd):
             raise ValueError("invalid_yyyymmdd")
-        if self.mode != _ALLOWED_PREP_MODE:
-            raise ValueError("unattended_prep_allows_dry_run_only")
+        if self.mode not in _ALLOWED_MODES:
+            raise ValueError("invalid_unattended_runner_mode")
+        if self.mode == "canary":
+            if (
+                not isinstance(self.canary_action_decision_packet_ref, str)
+                or not self.canary_action_decision_packet_ref
+            ):
+                raise ValueError("missing_canary_action_decision_packet_ref")
         if (
             isinstance(self.prompt_byte_count, bool)
             or not isinstance(self.prompt_byte_count, int)
@@ -145,20 +165,23 @@ class DarsUnattendedAdvisoryRunner:
                 failure_detail=str(exc),
             )
 
+        validation_mode = _VALIDATION_MODE_BY_RUNNER_MODE[request.mode]
         policy_report = validate_standing_approval_policy(
             policy,
             config_ref=request.standing_approval_policy_ref,
             now=request.now,
+            mode=validation_mode,  # type: ignore[arg-type]
         )
         policy_issue_codes = {
             issue.code for issue in policy_report.issues if issue.severity == "error"
         }
         if not policy_report.valid:
-            failure_code = (
-                "standing_approval_not_active"
-                if "standing_approval_not_active" in policy_issue_codes
-                else "standing_approval_policy_invalid"
-            )
+            if request.mode == "canary":
+                failure_code = "canary_mode_policy_invalid"
+            elif "standing_approval_not_active" in policy_issue_codes:
+                failure_code = "standing_approval_not_active"
+            else:
+                failure_code = "standing_approval_policy_invalid"
             return self._finish(
                 request,
                 policy=policy,
@@ -219,10 +242,28 @@ class DarsUnattendedAdvisoryRunner:
     def _preflight_failure(
         self, request: DarsUnattendedAdvisoryRequest, policy: dict[str, Any]
     ) -> tuple[Literal["blocked", "circuit_broken"], str, str] | None:
-        if request.request_class != _ALLOWED_PREP_REQUEST_CLASS:
+        expected_class = _REQUEST_CLASS_BY_MODE[request.mode]
+        if request.mode == "canary" and request.request_class != expected_class:
+            return (
+                "blocked",
+                "canary_mode_requires_canary_request_class",
+                request.request_class,
+            )
+        if request.request_class != expected_class:
             return ("blocked", "request_class_not_allowlisted", request.request_class)
         if request.request_class not in policy.get("request_class_allowlist", []):
             return ("blocked", "request_class_not_allowlisted", request.request_class)
+        if request.mode == "canary":
+            policy_decision_ref = policy.get("canary_action_decision_packet_ref")
+            if (
+                not isinstance(policy_decision_ref, str)
+                or policy_decision_ref != request.canary_action_decision_packet_ref
+            ):
+                return (
+                    "blocked",
+                    "canary_action_decision_packet_ref_mismatch",
+                    str(request.canary_action_decision_packet_ref),
+                )
         kill_switch_ref = str(policy.get("kill_switch_ref", ""))
         if self.kill_switch_state.get(kill_switch_ref) != "armed":
             return ("blocked", "kill_switch_triggered", kill_switch_ref)
@@ -363,21 +404,41 @@ def _write_ledger_entry(
             if adapter_result
             else "fake_injected_provider_transport"
         ),
+        "adapter_mode": adapter_result.mode if adapter_result else "dry_run",
         "adapter_boundary_ref": adapter_result.boundary_ref if adapter_result else None,
         "external_call_made": adapter_result.external_call_made if adapter_result else False,
         "model_boundary_crossed": adapter_result.model_boundary_crossed if adapter_result else False,
+        "live_provider_model_call_made": False,
+        "raw_provider_api_call_by_hisys": False,
+        "credential_lookup_by_hisys": False,
         "mutation_performed": False,
         "publication_performed": False,
         "external_action_performed": False,
         "advisory_only": True,
         "requires_human_review": True,
         "requires_post_run_human_review": True,
+        "canary_action_decision_packet_ref": (
+            request.canary_action_decision_packet_ref
+            if request.mode == "canary"
+            else None
+        ),
+        "canary_post_run_reviewer_ref": (
+            policy.get("canary_post_run_reviewer_ref", "")
+            if request.mode == "canary"
+            else ""
+        ),
+        "requires_post_canary_human_review": (
+            policy.get("requires_post_canary_human_review", False)
+            if request.mode == "canary"
+            else False
+        ),
         "secret_scan_passed": request.secret_scan_passed,
         "output_redaction_passed": request.output_redaction_passed,
         "policy_refs": [
             "HISYS-FR-DARS-CP-013",
             "HISYS-T-DARS-CP-015",
             "DARS-LIVE-RELEASE-R5-UNATTENDED-PREP",
+            "DARS-LIVE-RELEASE-R5-CANARY-MODE-PREP",
         ],
     }
     if policy_issue_codes:

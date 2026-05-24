@@ -24,11 +24,19 @@ from hisys.agents.dars_unattended_policy import (
 
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE_POLICY = ROOT / "docs" / "examples" / "dars" / "unattended-standing-approval.example.json"
+EXAMPLE_CANARY_POLICY = (
+    ROOT / "docs" / "examples" / "dars" / "unattended-standing-approval-canary.example.json"
+)
 NOW = "2026-05-23T12:00:00Z"
+CANARY_NOW = "2026-05-24T12:00:00Z"
 
 
 def _example_policy() -> dict[str, object]:
     return json.loads(EXAMPLE_POLICY.read_text(encoding="utf-8"))
+
+
+def _example_canary_policy() -> dict[str, object]:
+    return json.loads(EXAMPLE_CANARY_POLICY.read_text(encoding="utf-8"))
 
 
 def _error_codes(data: dict[str, object], *, now: str = NOW) -> set[str]:
@@ -36,6 +44,18 @@ def _error_codes(data: dict[str, object], *, now: str = NOW) -> set[str]:
         data,
         config_ref="test://standing-approval",
         now=now,
+    )
+    return {issue.code for issue in report.issues if issue.severity == "error"}
+
+
+def _canary_error_codes(
+    data: dict[str, object], *, now: str = CANARY_NOW
+) -> set[str]:
+    report = validate_standing_approval_policy(
+        data,
+        config_ref="test://standing-approval-canary",
+        now=now,
+        mode="canary",
     )
     return {issue.code for issue in report.issues if issue.severity == "error"}
 
@@ -133,3 +153,96 @@ def test_standing_approval_policy_rejects_secret_looking_nested_values() -> None
     data["circuit_breakers"]["diagnostic"] = "hf_" + "unattended_policy_secret_value"
 
     assert "raw_secret_value_rejected" in _error_codes(data)
+
+
+# DARS-LIVE-RELEASE-R5-CANARY-MODE-PREP canary-mode contract tests
+
+
+def test_standing_approval_example_canary_policy_passes_validator_in_canary_mode() -> None:
+    report = validate_standing_approval_policy(
+        _example_canary_policy(),
+        config_ref=str(EXAMPLE_CANARY_POLICY),
+        now=CANARY_NOW,
+        mode="canary",
+    )
+
+    assert report.schema_id == STANDING_APPROVAL_POLICY_SCHEMA_ID
+    assert report.valid is True
+    assert not {issue.code for issue in report.issues if issue.severity == "error"}
+    assert {
+        issue.code for issue in report.issues if issue.severity == "warning"
+    } == {"standing_approval_does_not_authorize_live_action_by_itself"}
+
+
+def test_standing_approval_canary_policy_rejected_in_prep_mode_because_canary_class_not_allowed() -> None:
+    assert "request_class_not_allowed_for_prep" in _error_codes(
+        _example_canary_policy(), now=CANARY_NOW
+    )
+
+
+def test_standing_approval_canary_mode_rejects_missing_canary_action_decision_packet_ref() -> None:
+    data = _example_canary_policy()
+    data.pop("canary_action_decision_packet_ref")
+
+    assert "canary_action_decision_packet_ref_missing" in _canary_error_codes(data)
+
+
+def test_standing_approval_canary_mode_rejects_missing_canary_post_run_reviewer_ref() -> None:
+    data = _example_canary_policy()
+    data.pop("canary_post_run_reviewer_ref")
+
+    assert "canary_post_run_reviewer_ref_missing" in _canary_error_codes(data)
+
+
+def test_standing_approval_canary_mode_rejects_missing_canary_window() -> None:
+    data = _example_canary_policy()
+    data.pop("canary_window_start")
+    data.pop("canary_window_end")
+
+    codes = _canary_error_codes(data)
+    assert "canary_window_missing" in codes
+
+
+def test_standing_approval_canary_mode_rejects_inactive_canary_window() -> None:
+    data = _example_canary_policy()
+    data["canary_window_start"] = "2026-05-25T00:00:00Z"
+    data["canary_window_end"] = "2026-06-01T00:00:00Z"
+
+    assert "canary_window_not_active" in _canary_error_codes(data)
+
+
+def test_standing_approval_canary_mode_rejects_canary_max_runs_exceeding_max_runs() -> None:
+    data = _example_canary_policy()
+    data["canary_max_runs"] = int(data["max_runs"]) + 1
+
+    assert "canary_max_runs_exceeds_max_runs" in _canary_error_codes(data)
+
+
+def test_standing_approval_canary_mode_rejects_missing_post_canary_human_review_flag() -> None:
+    data = _example_canary_policy()
+    data["requires_post_canary_human_review"] = False
+
+    assert "post_canary_human_review_required" in _canary_error_codes(data)
+
+
+def test_standing_approval_canary_mode_rejects_missing_canary_request_class_in_allowlist() -> None:
+    data = _example_canary_policy()
+    data["request_class_allowlist"] = ["dars_live_provider_advisory_dry_run"]
+
+    assert "canary_request_class_missing" in _canary_error_codes(data)
+
+
+def test_standing_approval_canary_mode_still_rejects_authority_flags() -> None:
+    data = _example_canary_policy()
+    data["mutation_allowed"] = True
+    data["publication_allowed"] = True
+    data["external_action_allowed"] = True
+
+    assert "unattended_authority_rejected" in _canary_error_codes(data)
+
+
+def test_standing_approval_canary_mode_still_rejects_inactive_validity_window() -> None:
+    data = _example_canary_policy()
+    data["expires_at"] = "2026-05-24T00:00:00Z"
+
+    assert "standing_approval_not_active" in _canary_error_codes(data)

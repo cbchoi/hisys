@@ -16,7 +16,7 @@ Traceability:
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from hisys.config.validation import ConfigValidationIssue, ConfigValidationReport
 
@@ -24,7 +24,16 @@ from hisys.config.validation import ConfigValidationIssue, ConfigValidationRepor
 STANDING_APPROVAL_POLICY_SCHEMA_ID = "hisys.dars.standing_approval_policy"
 STANDING_APPROVAL_POLICY_SCHEMA_VERSION = "0.1.0"
 
-_ALLOWED_PREP_REQUEST_CLASSES = ("dars_live_provider_advisory_dry_run",)
+STANDING_APPROVAL_DRY_RUN_REQUEST_CLASS = "dars_live_provider_advisory_dry_run"
+STANDING_APPROVAL_CANARY_REQUEST_CLASS = "dars_live_provider_advisory_canary"
+
+ValidationMode = Literal["prep", "canary"]
+
+_ALLOWED_PREP_REQUEST_CLASSES = (STANDING_APPROVAL_DRY_RUN_REQUEST_CLASS,)
+_ALLOWED_CANARY_REQUEST_CLASSES = (
+    STANDING_APPROVAL_DRY_RUN_REQUEST_CLASS,
+    STANDING_APPROVAL_CANARY_REQUEST_CLASS,
+)
 _REQUIRED_STRING_FIELDS = (
     "policy_id",
     "approval_ref",
@@ -78,17 +87,26 @@ def validate_standing_approval_policy(
     *,
     config_ref: str,
     now: str | datetime | None = None,
+    mode: ValidationMode = "prep",
 ) -> ConfigValidationReport:
     """Validate a DARS unattended standing approval policy.
 
-    Validity means the policy is well-formed for bounded dry-run rehearsal. It
-    does not authorize a live provider/model call or activate unattended action.
+    Validity means the policy is well-formed for the requested validation
+    ``mode``. The default ``mode='prep'`` validates a bounded dry-run rehearsal
+    policy. ``mode='canary'`` validates a bounded canary-mode policy that
+    additionally records a finite canary execution window, a canary action
+    decision packet ref, and a canary post-run reviewer. Neither mode
+    authorizes a live provider/model call by itself; the bounded unattended
+    live canary remains a separately HUMAN-GATED action.
     """
+
+    if mode not in ("prep", "canary"):
+        raise ValueError("invalid_standing_approval_validation_mode")
 
     issues: list[ConfigValidationIssue] = []
     issues.extend(_raw_secret_issues(data))
     issues.extend(_required_field_issues(data))
-    issues.extend(_request_class_issues(data))
+    issues.extend(_request_class_issues(data, mode=mode))
     issues.extend(_provider_ref_issues(data))
     issues.extend(_bounded_int_issues(data))
     issues.extend(_kill_switch_issues(data))
@@ -96,6 +114,8 @@ def validate_standing_approval_policy(
     issues.extend(_authority_issues(data))
     issues.extend(_circuit_breaker_issues(data))
     issues.extend(_validity_window_issues(data, now=now))
+    if mode == "canary":
+        issues.extend(_canary_mode_issues(data, now=now))
 
     issues = _dedupe_issues(issues)
     valid = not any(issue.severity == "error" for issue in issues)
@@ -150,7 +170,9 @@ def _required_field_issues(data: dict[str, Any]) -> list[ConfigValidationIssue]:
     return issues
 
 
-def _request_class_issues(data: dict[str, Any]) -> list[ConfigValidationIssue]:
+def _request_class_issues(
+    data: dict[str, Any], *, mode: ValidationMode = "prep"
+) -> list[ConfigValidationIssue]:
     classes = data.get("request_class_allowlist")
     if not isinstance(classes, list) or not classes:
         return [
@@ -160,19 +182,45 @@ def _request_class_issues(data: dict[str, Any]) -> list[ConfigValidationIssue]:
                 message="standing approval must declare a non-empty request_class_allowlist",
             )
         ]
+    if mode == "canary":
+        allowed = _ALLOWED_CANARY_REQUEST_CLASSES
+        rejection_code = "request_class_not_allowed_for_canary"
+        rejection_message = (
+            "R5 canary mode permits only dars_live_provider_advisory_dry_run"
+            " and dars_live_provider_advisory_canary; other request classes"
+            " remain HUMAN-GATED ACTION"
+        )
+    else:
+        allowed = _ALLOWED_PREP_REQUEST_CLASSES
+        rejection_code = "request_class_not_allowed_for_prep"
+        rejection_message = (
+            "R5 PREP permits only dars_live_provider_advisory_dry_run;"
+            " live canary request classes remain HUMAN-GATED ACTION"
+        )
     issues: list[ConfigValidationIssue] = []
     for index, value in enumerate(classes):
-        if value not in _ALLOWED_PREP_REQUEST_CLASSES:
+        if value not in allowed:
             issues.append(
                 ConfigValidationIssue(
                     path=f"request_class_allowlist[{index}]",
-                    code="request_class_not_allowed_for_prep",
-                    message=(
-                        "R5 PREP permits only dars_live_provider_advisory_dry_run;"
-                        " live canary request classes remain HUMAN-GATED ACTION"
-                    ),
+                    code=rejection_code,
+                    message=rejection_message,
                 )
             )
+    if (
+        mode == "canary"
+        and STANDING_APPROVAL_CANARY_REQUEST_CLASS not in classes
+    ):
+        issues.append(
+            ConfigValidationIssue(
+                path="request_class_allowlist",
+                code="canary_request_class_missing",
+                message=(
+                    "canary mode standing approval must include"
+                    " dars_live_provider_advisory_canary in request_class_allowlist"
+                ),
+            )
+        )
     return issues
 
 
@@ -332,6 +380,113 @@ def _validity_window_issues(
     return []
 
 
+def _canary_mode_issues(
+    data: dict[str, Any], *, now: str | datetime | None
+) -> list[ConfigValidationIssue]:
+    issues: list[ConfigValidationIssue] = []
+
+    decision_ref = data.get("canary_action_decision_packet_ref")
+    if not isinstance(decision_ref, str) or not decision_ref:
+        issues.append(
+            ConfigValidationIssue(
+                path="canary_action_decision_packet_ref",
+                code="canary_action_decision_packet_ref_missing",
+                message=(
+                    "canary mode standing approval must declare"
+                    " canary_action_decision_packet_ref"
+                ),
+            )
+        )
+
+    reviewer_ref = data.get("canary_post_run_reviewer_ref")
+    if not isinstance(reviewer_ref, str) or not reviewer_ref:
+        issues.append(
+            ConfigValidationIssue(
+                path="canary_post_run_reviewer_ref",
+                code="canary_post_run_reviewer_ref_missing",
+                message=(
+                    "canary mode standing approval must declare"
+                    " canary_post_run_reviewer_ref"
+                ),
+            )
+        )
+
+    if data.get("requires_post_canary_human_review") is not True:
+        issues.append(
+            ConfigValidationIssue(
+                path="requires_post_canary_human_review",
+                code="post_canary_human_review_required",
+                message="requires_post_canary_human_review must remain true",
+            )
+        )
+
+    canary_max_runs = data.get("canary_max_runs")
+    max_runs = data.get("max_runs")
+    if (
+        isinstance(canary_max_runs, bool)
+        or not isinstance(canary_max_runs, int)
+        or canary_max_runs <= 0
+    ):
+        issues.append(
+            ConfigValidationIssue(
+                path="canary_max_runs",
+                code="canary_max_runs_missing",
+                message="canary_max_runs must be a positive integer",
+            )
+        )
+    elif isinstance(max_runs, int) and not isinstance(max_runs, bool):
+        if canary_max_runs > max_runs:
+            issues.append(
+                ConfigValidationIssue(
+                    path="canary_max_runs",
+                    code="canary_max_runs_exceeds_max_runs",
+                    message="canary_max_runs must not exceed max_runs",
+                )
+            )
+
+    start = _parse_datetime(data.get("canary_window_start"))
+    end = _parse_datetime(data.get("canary_window_end"))
+    if start is None or end is None:
+        issues.append(
+            ConfigValidationIssue(
+                path="canary_window_start/canary_window_end",
+                code="canary_window_missing",
+                message=(
+                    "canary mode standing approval must declare"
+                    " canary_window_start and canary_window_end as ISO datetimes"
+                ),
+            )
+        )
+    else:
+        if end <= start:
+            issues.append(
+                ConfigValidationIssue(
+                    path="canary_window_start/canary_window_end",
+                    code="canary_window_not_active",
+                    message="canary_window_end must be after canary_window_start",
+                )
+            )
+        else:
+            current = (
+                _parse_datetime(now)
+                if now is not None
+                else datetime.now(timezone.utc)
+            )
+            if current is None or current < start or current > end:
+                issues.append(
+                    ConfigValidationIssue(
+                        path="canary_window_start/canary_window_end",
+                        code="canary_window_not_active",
+                        message=(
+                            "canary execution window is not active for the"
+                            " supplied time"
+                        ),
+                    )
+                )
+
+    return issues
+
+
 def _parse_datetime(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         parsed = value
@@ -399,7 +554,10 @@ def _dedupe_issues(
 
 
 __all__ = [
+    "STANDING_APPROVAL_CANARY_REQUEST_CLASS",
+    "STANDING_APPROVAL_DRY_RUN_REQUEST_CLASS",
     "STANDING_APPROVAL_POLICY_SCHEMA_ID",
     "STANDING_APPROVAL_POLICY_SCHEMA_VERSION",
+    "ValidationMode",
     "validate_standing_approval_policy",
 ]

@@ -148,3 +148,69 @@ def test_traceability_records_r5_documentation_prep_boundary() -> None:
     assert "docs/examples/dars/unattended-standing-approval.example.json" in text
     assert "DOCS-PREP" in text
     assert "HUMAN-GATED ACTION PLANNED" in text
+
+
+# DARS-LIVE-RELEASE-R5-CANARY-MODE-PREP runbook coverage
+
+CANARY_EXAMPLE_POLICY = (
+    ROOT / "docs" / "examples" / "dars" / "unattended-standing-approval-canary.example.json"
+)
+
+
+def test_unattended_operation_runbook_documents_canary_mode_contract() -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    required_phrases = [
+        "Canary mode contract",
+        "DARS-LIVE-RELEASE-R5-CANARY-MODE-PREP",
+        "mode=canary",
+        "mode=dry_run",
+        "dars_live_provider_advisory_canary",
+        "canary_action_decision_packet_ref",
+        "canary_post_run_reviewer_ref",
+        "canary_window_start",
+        "canary_window_end",
+        "canary_max_runs",
+        "requires_post_canary_human_review=true",
+        "canary_mode_policy_invalid",
+        "canary_mode_requires_canary_request_class",
+        "canary_action_decision_packet_ref_mismatch",
+        "adapter_mode=dry_run",
+        "live_provider_model_call_made=false",
+        "raw_provider_api_call_by_hisys=false",
+        "credential_lookup_by_hisys=false",
+    ]
+    for phrase in required_phrases:
+        assert phrase in text, phrase
+
+
+def test_unattended_canary_standing_approval_example_has_required_safe_fields() -> None:
+    data = json.loads(CANARY_EXAMPLE_POLICY.read_text(encoding="utf-8"))
+    assert data["policy_id"] == "DARS-UNATTENDED-STANDING-CANARY-20260524-001"
+    assert data["approval_ref"] == "APPROVAL-DARS-UNATTENDED-CANARY-20260524-001"
+    assert "dars_live_provider_advisory_canary" in data["request_class_allowlist"]
+    assert "dars_live_provider_advisory_dry_run" in data["request_class_allowlist"]
+    assert data["canary_action_decision_packet_ref"].endswith(".md")
+    assert data["canary_post_run_reviewer_ref"].startswith("reviewer://")
+    assert data["requires_post_canary_human_review"] is True
+    assert data["canary_max_runs"] > 0
+    assert data["canary_max_runs"] <= data["max_runs"]
+    assert data["kill_switch_required"] is True
+    assert data["requires_post_run_human_review"] is True
+    assert data["mutation_allowed"] is False
+    assert data["publication_allowed"] is False
+    assert data["external_action_allowed"] is False
+    assert data["advisory_only"] is True
+
+
+def test_unattended_canary_standing_approval_example_is_reference_only() -> None:
+    data = json.loads(CANARY_EXAMPLE_POLICY.read_text(encoding="utf-8"))
+    forbidden_keys = {"api_key", "token", "password", "authorization", "credential_value"}
+    lowered_keys = {str(key).lower() for key in data.keys()}
+    assert forbidden_keys.isdisjoint(lowered_keys)
+    for value in _walk_values(data):
+        if isinstance(value, str):
+            lowered = value.lower()
+            assert "bearer " not in lowered
+            assert "sk-" not in lowered
+            assert "api" + "_key=" not in lowered
+            assert "pass" + "word=" not in lowered

@@ -21,6 +21,8 @@ R5 advances the claim ladder from multi-critic live-provider evidence toward `bo
 | R3 single-smoke PREP runbook | `docs/runbooks/dars-live-provider-single-smoke.md` |
 | R4 panel-smoke PREP runbook | `docs/runbooks/dars-live-provider-panel-smoke.md` |
 | R5 standing approval example | `docs/examples/dars/unattended-standing-approval.example.json` |
+| R5 canary standing approval example | `docs/examples/dars/unattended-standing-approval-canary.example.json` |
+| R5 canary action decision packet | `docs/release/dars-r5-canary-action-decision-packet-v0.0.87.md` |
 | R5 policy module | `src/hisys/agents/dars_unattended_policy.py` |
 | R5 runner module | `src/hisys/operations/dars_unattended_runner.py` |
 | Active controller | `ralph.md` |
@@ -193,6 +195,37 @@ Stop immediately and ask for a fresh human decision packet if any of the followi
 - repeated failures threshold reached;
 - cost threshold reached;
 - operator uncertainty.
+
+## 9b. Canary mode contract (R5 canary-mode-prep)
+
+`DARS-LIVE-RELEASE-R5-CANARY-MODE-PREP` adds a distinct canary-mode contract for the bounded unattended runner. The canary mode does not by itself authorize a live provider/model call. It is the local, fail-closed shape that a later HUMAN-GATED canary execution must satisfy before any live boundary may be crossed.
+
+The runner exposes two modes:
+
+```text
+mode=dry_run   # default R5 PREP rehearsal class
+mode=canary    # bounded canary path; still routes through the fake/injected adapter
+```
+
+For `mode=canary`:
+
+- `request_class` must equal `dars_live_provider_advisory_canary`; the dry-run class is rejected by the runner.
+- The standing approval policy is validated with `validate_standing_approval_policy(..., mode="canary")` and must declare all of:
+  - `canary_action_decision_packet_ref` matching the request's `canary_action_decision_packet_ref`;
+  - `canary_post_run_reviewer_ref`;
+  - `canary_window_start` and `canary_window_end` (finite, current time within the window);
+  - `canary_max_runs` (positive int, not exceeding `max_runs`);
+  - `requires_post_canary_human_review=true`;
+  - `request_class_allowlist` containing `dars_live_provider_advisory_canary`.
+- All authority flags remain locked: `mutation_allowed=false`, `publication_allowed=false`, `external_action_allowed=false`, `advisory_only=true`, `requires_post_run_human_review=true`.
+- The runner still calls the R2 fail-closed adapter with `mode=dry_run` because no approved real-provider transport exists yet. The ledger therefore records `adapter_mode=dry_run`, `transport_kind=fake_injected_provider_transport`, `external_call_made=false`, `model_boundary_crossed=false`, `live_provider_model_call_made=false`, `raw_provider_api_call_by_hisys=false`, and `credential_lookup_by_hisys=false`. No provider/model boundary is crossed.
+- Deterministic failure codes for the canary path:
+  - `canary_mode_policy_invalid` — standing approval policy fails canary-mode validation (e.g. missing canary fields, inactive canary window);
+  - `canary_mode_requires_canary_request_class` — `mode=canary` was requested with a non-canary `request_class`;
+  - `canary_action_decision_packet_ref_mismatch` — request `canary_action_decision_packet_ref` does not match the policy's.
+- The dry-run path is preserved unchanged. `mode=dry_run` continues to accept only `dars_live_provider_advisory_dry_run` and continues to write the previously specified ledger envelope.
+
+The canary-mode contract is local and read-only. It does not activate a standing unattended approval, does not authorize a live provider/model call, does not perform a credential lookup, does not request raw provider API readiness, and does not transition the claim ladder.
 
 ## 10. Validation commands
 
