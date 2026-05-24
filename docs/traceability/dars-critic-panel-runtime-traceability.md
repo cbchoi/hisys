@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.32.0
+version: 0.33.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-24
@@ -10,6 +10,13 @@ updated: 2026-05-24
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-R4C-FUTURE-DEFERRED-CLOSURE — record-only branch closure (2026-05-24)
+
+- Scope: after the operator instructed `R4C는 미래로 넘긴다는 기록만 남기고 닫자`, closed the active R4C branch for the current work loop as future/deferred work only.
+- Artifacts: `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.82.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted record-only claim is `r4c_codex_subprocess_path_closed_as_future_deferred_work`; future R4C work remains `DARS-LIVE-RELEASE-R4C-CODEX-REFRESH-STATE-RECONCILIATION-OUTSIDE-HISYS`; active continuation remains R4H request/response harness validation.
+- Boundary: no Codex CLI subprocess retry/completion claim, raw provider API call/readiness, adapter-native readiness, credential lookup, mutation, publication, external notification, release action, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-PRODUCTIZATION-PREP — governed request/response contract (2026-05-24)
 
