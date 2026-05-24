@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.79
-focus: "R4H Hermes-mediated model advisory branch completed as a separate two-critic advisory path after R4-C Codex subprocess panel smoke remained auth-blocked."
-formal_hisys_result: r4_hermes_mediated_multi_critic_panel_advisory_completed_with_findings
-local_advisory_result: R4H_HERMES_MEDIATED_ADVISORY_COMPLETE_HUMAN_REVIEW_REQUIRED
-next_safe_task: DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-ADVISORY-REVIEW-GATE
+version: v0.0.80
+focus: "R4H Hermes-mediated advisory path selected for continuation; R4C Codex subprocess transport evidence deferred to later work."
+formal_hisys_result: r4h_hermes_mediated_advisory_path_selected_for_continuation
+local_advisory_result: R4H_ACTIVE_R4C_DEFERRED_HUMAN_REVIEW_REQUIRED
+next_safe_task: DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-PRODUCTIZATION-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "추천하는데로 해보자"
-bootstrap_inference: "The operator accepted the recommended split between R4-C Codex CLI subprocess transport and R4H Hermes-mediated advisory. R4H produced a two-critic Hermes-mediated advisory artifact with advisory-only and human-review-required boundaries. It does not complete the blocked Codex subprocess claim, raw provider API readiness, adapter-native readiness, R5, R7, or R8."
+bootstrap_arguments: "R4H로 진행 R4C는 추후 작업으로"
+bootstrap_inference: "The operator selected R4H as the active continuation path and deferred R4C to future work. R4H remains Hermes-mediated, advisory-only, and human-review-required. R4C remains blocked on Codex CLI refresh-state reconciliation outside Hisys and is not a blocker for R4H productization prep."
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.79.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.80.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: '039e00e'
-previous_bootstrap_version: v0.0.78
+current_head_at_plan_creation: '165cfe3'
+previous_bootstrap_version: v0.0.79
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true

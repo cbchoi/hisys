@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.30.0
+version: 0.31.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-24
@@ -11,12 +11,20 @@ updated: 2026-05-24
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
 
+## DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-ADVISORY-REVIEW-GATE — R4H selected, R4C deferred (2026-05-24)
+
+- Scope: after the operator instructed `R4H로 진행 R4C는 추후 작업으로`, selected R4H as the active continuation branch and parked R4C as later transport-evidence work.
+- Artifacts: `docs/reports/dars-r4h-hermes-mediated-panel-review-gate-proceed-2026-05-24.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.80.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `r4h_hermes_mediated_advisory_path_selected_for_continuation`; active branch is `R4H`; deferred branch is `R4C`; future R4C work is `DARS-LIVE-RELEASE-R4C-CODEX-REFRESH-STATE-RECONCILIATION-OUTSIDE-HISYS`.
+- Traceability: HISYS-FR-DARS-CP-012 / HISYS-T-DARS-CP-014 now proceeds on the R4H Hermes-mediated advisory branch; R4C subprocess completion remains rejected and deferred.
+- Boundary: no Codex CLI subprocess completion claim, raw provider API readiness, adapter-native readiness, R5/R7/R8 readiness, credential lookup, mutation, publication, external notification, release action, or human-review removal is introduced.
+
 ## DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-ADVISORY-ACTION — Hermes-mediated advisory completed (2026-05-24)
 
 - Scope: after the operator accepted the recommended split, recorded R4H as a separate Hermes-mediated model advisory path rather than as a Codex CLI subprocess completion.
 - Artifacts: `docs/reports/dars-r4h-hermes-mediated-panel-advisory-2026-05-24.md`, `docs/examples/dars/hermes-mediated-r4h-multi-critic-panel.advisory.json`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.79.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
 - Evidence contract: accepted claim is `r4_hermes_mediated_multi_critic_panel_advisory_completed_with_findings`; transport is `hermes_mediated_model_advisory`; critic count is 2; completed critic count is 2.
-- Traceability: HISYS-FR-DARS-CP-012 / HISYS-T-DARS-CP-014 now has an additional R4H advisory branch `HERMES-MEDIATED-ADVISORY-COMPLETE + HUMAN-REVIEW-REQUIRED`, while the R4-C subprocess completion claim remains blocked.
+- Traceability: HISYS-FR-DARS-CP-012 / HISYS-T-DARS-CP-014 now has an additional R4H advisory branch `R4H-SELECTED-FOR-CONTINUATION + R4C-DEFERRED + HUMAN-REVIEW-REQUIRED`, while the R4-C subprocess completion claim remains blocked.
 - Boundary: no Codex CLI subprocess call, raw provider API call by Hisys, credential lookup by Hisys, mutation, publication, release, external notification, R5/R7/R8 action, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-R4-CODEX-SUBPROCESS-PANEL-SMOKE-RETRY-AUTH-STOP — Retry blocked by Codex refresh state (2026-05-24)
