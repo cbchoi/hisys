@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.43.0
+version: 0.44.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-24
@@ -10,6 +10,14 @@ updated: 2026-05-24
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-CONTROLLED-ADVISORY-USE-DECISION-PACKET — controlled advisory use accepted with human review (2026-05-25)
+
+- Scope: after RC readiness acceptance, the operator responded `승인` for the controlled advisory use decision packet. This accepts controlled advisory use only with human review retained.
+- Artifacts: `docs/release/dars-controlled-advisory-use-decision-packet-v0.0.97.md`, `docs/release/dars-panel-release-notes-v0.0.97.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.97.md`, `tests/unit/test_dars_controlled_advisory_use_decision_packet.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `released_for_controlled_advisory_use_with_human_review`; `release_candidate_ready=true`; `released_for_controlled_advisory_use=true`; `requires_human_review=true`; `release_execution_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `live_provider_model_call_made=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 now has controlled advisory use acceptance and a next release execution decision packet.
+- Boundary: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release tag/package/upload/deploy/publication, external notification, mutation outside repository docs/tests/control files, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-R7-RC-READINESS-ACCEPTANCE-PACKET — RC readiness accepted for human-reviewed controlled scope (2026-05-25)
 
