@@ -1,14 +1,14 @@
 ---
 doc_id: HISYS-DARS-R7-RC-CHECKLIST-001
 title: DARS Panel Release Candidate Checklist
-version: v0.0.94
-status: r7-residual-risk-human-gate-entered
+version: v0.0.95
+status: r7-residual-risk-scope-accepted-no-release-authorization
 created: 2026-05-24
 ---
 
 # DARS Panel Release Candidate Checklist
 
-This checklist defines what must be present before Hisys can report `release_candidate_ready`. The current R7 residual-risk human gate is entered for human review; `release_candidate_ready` remains false because residual risk acceptance is still not recorded and live-provider/model canary evidence remains absent.
+This checklist defines what must be present before Hisys can report `release_candidate_ready`. The current R7 residual-risk exact approval is recorded for human review; `release_candidate_ready` remains false until a separate RC readiness acceptance packet records that claim.
 
 release_candidate_ready remains false until every required evidence row is accepted.
 
@@ -29,7 +29,8 @@ release_candidate_ready remains false until every required evidence row is accep
 - [ ] secret scan passes: `python3 scripts/scan_secrets.py`.
 - [x] R7 RC readiness decision packet is present at `docs/release/dars-r7-rc-readiness-decision-packet-v0.0.93.md` and accepts only `r7_rc_readiness_decision_packet_recorded_for_human_review`.
 - [x] R7 residual-risk human gate is entered at `docs/release/dars-r7-rc-residual-risk-human-gate-v0.0.94.md` and accepts only `r7_rc_residual_risk_human_gate_entered`; residual risk acceptance is still not recorded.
-- [ ] residual risk acceptance is recorded in the RC decision packet.
+- [x] R7 residual-risk exact approval is recorded at `docs/release/dars-r7-rc-residual-risk-exact-approval-v0.0.95.md` with `human_residual_risk_acceptance=accepted` and accepted claim `r7_rc_residual_risk_scope_accepted_for_human_review`.
+- [ ] RC readiness acceptance packet records whether `release_candidate_ready=true` is accepted for the residual-risk-scoped evidence package.
 - [ ] human release approval state is explicit and separate from release execution approval.
 
 ## Scoped substitute rule
