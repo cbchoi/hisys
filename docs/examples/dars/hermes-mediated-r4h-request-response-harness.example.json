@@ -1,0 +1,105 @@
+{
+  "accepted_claim": "r4h_hermes_mediated_request_response_harness_closed_for_human_review",
+  "active_branch": "R4H",
+  "active_evidence_refs": [
+    "docs/reports/dars-r4h-hermes-mediated-productization-prep-2026-05-24.md",
+    "docs/examples/dars/hermes-mediated-r4h-productization-prep.example.json"
+  ],
+  "active_transport_kind": "fixture_injected_hermes_mediated_contract_harness",
+  "boundary_flags": {
+    "adapter_native_readiness": false,
+    "allowed_actions": "advisory_only",
+    "codex_cli_subprocess_call": false,
+    "codex_cli_subprocess_completion_claim": false,
+    "credential_lookup_by_hisys": false,
+    "external_notification_performed": false,
+    "fixture_injected_harness": true,
+    "hermes_mediated_model_call_made": false,
+    "human_review_required_for_consequential_use": true,
+    "mutation_performed": false,
+    "publication_performed": false,
+    "r5_unattended_readiness": false,
+    "r7_release_candidate_readiness": false,
+    "r8_release_execution_readiness": false,
+    "raw_provider_api_call_by_hisys": false,
+    "raw_provider_api_readiness": false,
+    "release_action_performed": false,
+    "requires_human_review": true
+  },
+  "date": "20260524",
+  "next_safe_task": "DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION",
+  "not_accepted_upgrades": [
+    "r4_codex_subscription_multi_critic_panel_smoke_completed_with_findings",
+    "codex_cli_subprocess_prompt_mode_completed",
+    "raw_provider_api_readiness",
+    "adapter_native_readiness",
+    "bounded_unattended_advisory_operation_ready",
+    "release_candidate_ready",
+    "released_for_controlled_advisory_use"
+  ],
+  "request": {
+    "candidate_refs": [
+      "docs/examples/dars/hermes-mediated-r4h-productization-prep.example.json"
+    ],
+    "critic_roles": [
+      "logical_consistency_critic",
+      "evidence_governance_critic"
+    ],
+    "evidence_refs": [
+      "docs/reports/dars-r4h-hermes-mediated-productization-prep-2026-05-24.md",
+      "docs/reports/dars-r4h-hermes-mediated-panel-review-gate-proceed-2026-05-24.md"
+    ],
+    "human_review_ref": "human-review-required:R4H",
+    "objective": "Validate the R4H Hermes-mediated request/response contract with local fixture findings before any additional model/provider/subprocess action.",
+    "request_id": "REQ-DARS-R4H-HARNESS-20260524-001",
+    "schema_id": "hisys.dars.r4h_hermes_mediated_request"
+  },
+  "request_validation": {
+    "issue_codes": [],
+    "valid": true
+  },
+  "response": {
+    "aggregate_findings": [
+      "R4H request/response harness is locally closed for human review."
+    ],
+    "boundary_flags": {
+      "adapter_native_readiness": false,
+      "allowed_actions": "advisory_only",
+      "codex_cli_subprocess_call": false,
+      "codex_cli_subprocess_completion_claim": false,
+      "credential_lookup_by_hisys": false,
+      "external_notification_performed": false,
+      "fixture_injected_harness": true,
+      "hermes_mediated_model_call_made": false,
+      "human_review_required_for_consequential_use": true,
+      "mutation_performed": false,
+      "publication_performed": false,
+      "r5_unattended_readiness": false,
+      "r7_release_candidate_readiness": false,
+      "r8_release_execution_readiness": false,
+      "raw_provider_api_call_by_hisys": false,
+      "raw_provider_api_readiness": false,
+      "release_action_performed": false,
+      "requires_human_review": true
+    },
+    "critic_findings": {
+      "evidence_governance_critic": [
+        "Harness execution is fixture-injected and preserves no-action, no-credential, and human-review boundaries."
+      ],
+      "logical_consistency_critic": [
+        "R4H request/response schema is internally consistent with the productization-prep contract."
+      ]
+    },
+    "human_review_required_for_consequential_use": true,
+    "request_id": "REQ-DARS-R4H-HARNESS-20260524-001",
+    "schema_id": "hisys.dars.r4h_hermes_mediated_response",
+    "schema_version": "0.1.0",
+    "status": "completed"
+  },
+  "schema_id": "hisys.dars.r4h_request_response_harness",
+  "schema_version": "0.1.0",
+  "traceability": [
+    "HISYS-FR-DARS-CP-012",
+    "HISYS-T-DARS-CP-014"
+  ]
+}

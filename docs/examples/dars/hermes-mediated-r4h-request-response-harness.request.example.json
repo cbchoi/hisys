@@ -1,0 +1,17 @@
+{
+  "candidate_refs": [
+    "docs/examples/dars/hermes-mediated-r4h-productization-prep.example.json"
+  ],
+  "critic_roles": [
+    "logical_consistency_critic",
+    "evidence_governance_critic"
+  ],
+  "evidence_refs": [
+    "docs/reports/dars-r4h-hermes-mediated-productization-prep-2026-05-24.md",
+    "docs/reports/dars-r4h-hermes-mediated-panel-review-gate-proceed-2026-05-24.md"
+  ],
+  "human_review_ref": "human-review-required:R4H",
+  "objective": "Validate the R4H Hermes-mediated request/response contract with local fixture findings before any additional model/provider/subprocess action.",
+  "request_id": "REQ-DARS-R4H-HARNESS-20260524-001",
+  "schema_id": "hisys.dars.r4h_hermes_mediated_request"
+}

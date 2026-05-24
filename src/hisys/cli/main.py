@@ -2468,6 +2468,41 @@ def _cmd_dars_r4h_productization_prep(
     return 0
 
 
+def _cmd_dars_r4h_request_response_harness(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    request_path: Path,
+    output_format: str,
+    write_report: bool,
+) -> int:
+    """Print/write the local R4H Hermes-mediated request/response harness packet."""
+
+    from hisys.operations.dars_r4h_productization import (
+        build_r4h_request_response_harness,
+        render_r4h_request_response_harness_markdown,
+        render_r4h_request_response_harness_text,
+        write_r4h_request_response_harness_report,
+    )
+
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    packet = build_r4h_request_response_harness(yyyymmdd=yyyymmdd, request=request)
+    if write_report:
+        packet["report_refs"] = write_r4h_request_response_harness_report(
+            instance_root=instance_root,
+            yyyymmdd=yyyymmdd,
+            packet=packet,
+        )
+
+    if output_format == "json":
+        print(json.dumps(packet, ensure_ascii=False, indent=2, sort_keys=True))
+    elif output_format == "markdown":
+        print(render_r4h_request_response_harness_markdown(packet), end="")
+    else:
+        print(render_r4h_request_response_harness_text(packet))
+    return 0
+
+
 def _cmd_completion_status(
     *,
     instance_root: Path,
@@ -3120,6 +3155,31 @@ def _build_parser() -> argparse.ArgumentParser:
         "--write-report",
         action="store_true",
         help="persist the prep packet under reports/run-summaries/<date>",
+    )
+
+    dars_r4h_request_response_harness = sub.add_parser(
+        "dars-r4h-request-response-harness",
+        help=(
+            "validate the R4H Hermes-mediated request/response contract through a local fixture harness; "
+            "no model/provider/Codex subprocess action"
+        ),
+    )
+    dars_r4h_request_response_harness.add_argument(
+        "--instance", required=True, help="Hisys runtime instance root"
+    )
+    dars_r4h_request_response_harness.add_argument(
+        "--date", required=True, help="YYYYMMDD run partition"
+    )
+    dars_r4h_request_response_harness.add_argument(
+        "--request", required=True, help="path to an R4H Hermes-mediated request JSON packet"
+    )
+    dars_r4h_request_response_harness.add_argument(
+        "--format", choices=["json", "text", "markdown"], default="text"
+    )
+    dars_r4h_request_response_harness.add_argument(
+        "--write-report",
+        action="store_true",
+        help="persist the harness packet under reports/run-summaries/<date>",
     )
 
     spec_packet = sub.add_parser("build-spec-first-packet", help="write a spec-first run packet before governed agent work")
@@ -4456,6 +4516,14 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_dars_r4h_productization_prep(
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
+            output_format=args.format,
+            write_report=args.write_report,
+        )
+    if args.command == "dars-r4h-request-response-harness":
+        return _cmd_dars_r4h_request_response_harness(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            request_path=Path(args.request),
             output_format=args.format,
             write_report=args.write_report,
         )
