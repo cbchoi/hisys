@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.99
-focus: Release action authorization packet approved for docs-only human-reviewed scope without concrete action authorization.
-formal_hisys_result: release_action_authorization_packet_approved_for_docs_only
-local_advisory_result: RELEASE_ACTION_AUTHORIZATION_PACKET_APPROVED_DOCS_ONLY_ACTION_NOT_AUTHORIZED
-next_safe_task: DARS-LIVE-RELEASE-SPECIFIC-ACTION-SELECTION-PACKET
+version: v0.0.100
+focus: Specific release action candidate set recorded for human review without action selection or authorization.
+formal_hisys_result: release_specific_action_candidate_set_recorded_for_human_review
+local_advisory_result: RELEASE_SPECIFIC_ACTION_CANDIDATE_SET_RECORDED_NO_ACTION_SELECTED
+next_safe_task: DARS-LIVE-RELEASE-SPECIFIC-ACTION-APPROVAL-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: 승인
-bootstrap_inference: The operator approved after the release action authorization packet was identified. Hisys may record release_action_authorization_packet_approved=true for docs-only human-reviewed scope. It may not authorize or perform a concrete release action, tag, package upload, deployment, publication, external notification, live provider/model call, raw provider API call, credential lookup, standing unattended activation, or human-review removal without a separate specific-action selection packet.
+bootstrap_arguments: 다음
+bootstrap_inference: The operator instructed the next step after the specific-action selection packet was identified. Hisys may record the finite candidate action set for human review with selected_action_set=none. It may not authorize or perform a concrete release action, tag, package upload, deployment, publication, external notification, live provider/model call, raw provider API call, credential lookup, standing unattended activation, or human-review removal without a separate approval gate.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.99.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.100.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: 12dee4c
-previous_bootstrap_version: v0.0.98
+current_head_at_plan_creation: 1fe0cf9
+previous_bootstrap_version: v0.0.99
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true
