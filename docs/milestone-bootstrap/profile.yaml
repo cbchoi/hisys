@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.75
-focus: "DARS R4 mapped subscription panel config prep. The named multi-critic panel is now represented in Hisys DARS config instead of an ad-hoc sidecar panel JSON."
-formal_hisys_result: r4_mapped_subscription_panel_config_ready_for_human_gated_action_prep
+version: v0.0.76
+focus: "DARS R4 mapped subscription action decision packet. The packet selects the mapped-subscription panel path for human review while keeping live action blocked."
+formal_hisys_result: r4_mapped_subscription_panel_action_packet_ready_for_human_review
 local_advisory_result: RALPH_CONTINUE_READY_WITH_CONTROLS
-next_safe_task: DARS-LIVE-RELEASE-R4-PANEL-MAPPED-SUBSCRIPTION-ACTION-DECISION-PACKET
+next_safe_task: DARS-LIVE-RELEASE-R4-PANEL-MAPPED-SUBSCRIPTION-HARNESS-PREFLIGHT
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: "r4로 진행하는데 dars panel에 대한 config를 하드코딩하지 않고 hisys 설정에 추가해봐"
-bootstrap_inference: "The operator asked for R4 prep without hardcoded DARS panel config. The safe increment is a local config/schema/CLI wiring change: add named panels to config/dars.json, validate panel backend references and advisory-only boundaries, and allow run-dars-panel --panel-key to load panel composition from Hisys config. R4 action, further model/provider calls, credential lookup, R5 ACTION, R7, release publication, deployment, external notification, mutation authority, and removal of human review remain blocked."
+bootstrap_arguments: "go"
+bootstrap_inference: "The operator said go after R4 mapped-subscription panel config prep. The safe increment is a local action decision packet and harness-preflight readiness step. It does not authorize another Codex subprocess call, raw provider API call, credential lookup, R4 live action, R5 ACTION, R7, release publication, deployment, external notification, mutation authority, or removal of human review."
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: examples/instance/config/dars.json
+next_artifact_ref: docs/reports/dars-r4-action-decision-packet-mapped-subscription-panel-2026-05-24.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
 current_head_at_plan_creation: '7ced5fa'
-previous_bootstrap_version: v0.0.74
+previous_bootstrap_version: v0.0.75
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true
