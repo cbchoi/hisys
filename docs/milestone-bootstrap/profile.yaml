@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.91
-focus: R5 bounded canary-mode runner executed once under fake/injected transport after human approval.
-formal_hisys_result: r5_canary_mode_runner_executed_under_fake_transport_for_human_review
-local_advisory_result: R5_CANARY_MODE_RUNNER_EXECUTED_UNDER_FAKE_TRANSPORT_FOR_HUMAN_REVIEW
-next_safe_task: DARS-LIVE-RELEASE-R5-CANARY-POST-RUN-REVIEW-GATE
+version: v0.0.92
+focus: R5 fake-transport canary post-run review gate accepted the bounded claim only.
+formal_hisys_result: r5_fake_transport_canary_post_run_review_accepted
+local_advisory_result: R5_FAKE_TRANSPORT_CANARY_POST_RUN_REVIEW_ACCEPTED
+next_safe_task: DARS-LIVE-RELEASE-R7-RC-READINESS-DECISION-PACKET
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: DARS-LIVE-RELEASE-R5-CANARY-EXECUTION-RUN-AFTER-EXACT-HUMAN-APPROVAL
-bootstrap_inference: The operator instructed `canary 승인`. Hisys may execute one bounded canary-mode runner through the fake/injected transport and dry-run adapter path, record and review the resulting ledger, update controlled docs/tests, and commit. It may not perform a live model/provider/Codex subprocess critic call, raw provider API call, credential lookup, mutation outside the controlled runtime instance and repo artifacts, publication, release action, external notification, or removal of human review.
+bootstrap_arguments: DARS-LIVE-RELEASE-R5-CANARY-POST-RUN-REVIEW-GATE
+bootstrap_inference: The operator instructed `post run gate 수행`. Hisys may review the already completed fake/injected-transport canary ledger and adapter boundary records, accept or reject only the narrow post-run claim, update controlled docs/tests, and commit. It may not perform another live model/provider/Codex subprocess critic call, raw provider API call, credential lookup, standing unattended activation, publication, release action, external notification, or removal of human review.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.91.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.92.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: edbc12d
-previous_bootstrap_version: v0.0.90
+current_head_at_plan_creation: a1c434e
+previous_bootstrap_version: v0.0.91
 tmux_or_background_agent_spawned: false
 production_code_created: true
 tests_created: true
