@@ -12,7 +12,7 @@
 | Baseline at plan creation | `7b40649` |
 | Previous active control file | archived into `ralph.history.md` on 2026-05-23 |
 | Runtime | one coherent RED--GREEN--validate--commit unit per run; maximum 5 hours |
-| Active task | R5 canary-mode contract prepared for human review; next safe task is the R5 canary execution human gate. |
+| Active task | R5 canary execution human gate entered; exact scoped approval is required before one bounded canary-mode runner execution. |
 | User authorization | 최창범 교수 requested R3-R5 live evidence execution on 2026-05-23, explicitly instructed `go for R3 critic live smoke`, instructed `go for live release`, selected `mapped로 가자`, approved `R4 Codex subprocess panel smoke 실행`, asked `지금 다시 해볼래?`, accepted the recommended R4H Hermes-mediated split with `추천하는데로 해보자`, then instructed `R4H로 진행 R4C는 추후 작업으로`; one R3 Codex subprocess model-boundary call completed, two R4 Codex subprocess attempts stopped on auth refresh before critique output, one R4H Hermes-mediated advisory panel completed for human review only, and R4H is now selected for continuation. |
 
 ## 1. Objective and bounded target outcome
@@ -40,7 +40,7 @@ Stop before action if the next step would require any of these boundaries:
 
 1. any additional real provider/model call or remote API dispatch beyond the already-completed single R3 Codex subprocess smoke and already-completed R4H Hermes-mediated advisory panel;
 2. credential, token, keychain, or secret lookup;
-3. activation of a standing unattended approval policy;
+3. activation of a standing unattended approval policy or R5 canary execution before exact scoped human approval;
 4. release tag/package/upload/deploy/publication;
 5. browser/search/tool authority for a critic;
 6. mutation, approval, external notification, or downstream action authority;
@@ -305,3 +305,5 @@ Report:
 - Current HEAD: 677e4c6
 - 2026-05-24 — `DARS-LIVE-RELEASE-R5-CANARY-MODE-PREP`: GREEN. Claude Code subprocess began the RLOO implementation and Hermes completed verification/docs synchronization after the subprocess hit the wall-clock limit. RED/GREEN coverage added canary-mode validation in `tests/unit/test_dars_unattended_policy.py`, canary-mode runner behavior in `tests/unit/test_dars_unattended_runner.py`, and runbook/example coverage in `tests/unit/test_dars_unattended_docs.py`. Implementation added `mode=canary`, canary-specific standing approval validation, `docs/examples/dars/unattended-standing-approval-canary.example.json`, and truthful ledger fields showing the canary path still routes through the fake/injected dry-run adapter (`adapter_mode=dry_run`, `external_call_made=false`, `model_boundary_crossed=false`). Focused gate `pytest tests/unit/test_dars_unattended_runner.py tests/unit/test_dars_unattended_policy.py tests/unit/test_dars_unattended_docs.py tests/unit/test_governance_docs_current_state.py -q` → 49 passed. Accepted only `r5_canary_mode_contract_prepared_for_human_review`. Boundary preserved: no live provider/model call, Codex subprocess critic call, raw provider API call, credential lookup, standing unattended activation, R5 live canary execution, bounded unattended readiness, release action, publication, external notification, or human-review removal. Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-EXECUTION-HUMAN-GATE`.
 - Current HEAD: 5d427e8
+- 2026-05-24 — `DARS-LIVE-RELEASE-R5-CANARY-EXECUTION-HUMAN-GATE`: GATE ENTERED. After the operator instructed `human gate로 넘어가`, recorded the human-gate evidence packet `docs/reports/dars-r5-canary-execution-human-gate-2026-05-24.md` and readiness record `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.90.md`. The canary standing-approval example validates locally in canary mode with no errors and the expected warning `standing_approval_does_not_authorize_live_action_by_itself`. Accepted only `r5_canary_execution_human_gate_entered`; exact scoped human approval remains required before a bounded canary-mode runner execution. Boundary preserved: no canary execution, live provider/model call, Codex subprocess critic call, raw provider API call, credential lookup, standing unattended activation, bounded unattended readiness, release action, publication, deployment, external notification, or human-review removal. Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-EXECUTION-RUN-AFTER-EXACT-HUMAN-APPROVAL`.
+- Current HEAD: e3bc538

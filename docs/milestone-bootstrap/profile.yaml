@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.89
-focus: R5 canary-mode contract implemented locally after the dry-run-only runner blocked the prior canary request class.
-formal_hisys_result: r5_canary_mode_contract_prepared_for_human_review
-local_advisory_result: R5_CANARY_MODE_CONTRACT_PREPARED_FOR_HUMAN_REVIEW
-next_safe_task: DARS-LIVE-RELEASE-R5-CANARY-EXECUTION-HUMAN-GATE
+version: v0.0.90
+focus: R5 canary execution human gate entered; exact scoped approval is required before one bounded canary-mode runner execution.
+formal_hisys_result: r5_canary_execution_human_gate_entered
+local_advisory_result: R5_CANARY_EXECUTION_HUMAN_GATE_ENTERED
+next_safe_task: DARS-LIVE-RELEASE-R5-CANARY-EXECUTION-RUN-AFTER-EXACT-HUMAN-APPROVAL
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: DARS-LIVE-RELEASE-R5-CANARY-MODE-PREP
-bootstrap_inference: The operator instructed R5 completion through RLOO Claude. Hisys may implement a local canary-mode contract, update tests/docs/traceability, and commit. It may not perform a live model/provider/Codex subprocess critic call, raw provider API call, credential lookup, standing unattended activation, mutation outside repo artifacts, publication, release action, external notification, or removal of human review. Canary execution remains separately human-gated.
+bootstrap_arguments: DARS-LIVE-RELEASE-R5-CANARY-EXECUTION-HUMAN-GATE
+bootstrap_inference: The operator instructed the workflow to move to the human gate. Hisys may record the gate, validate the canary standing-approval example locally, prepare exact scoped approval text, update controlled docs/tests, and commit. It may not execute the canary, activate standing unattended approval, perform a live model/provider/Codex subprocess critic call, raw provider API call, credential lookup, mutation outside repo artifacts, publication, release action, external notification, or removal of human review until exact scoped approval is supplied.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.89.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.90.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: 5d427e8
-previous_bootstrap_version: v0.0.88
+current_head_at_plan_creation: e3bc538
+previous_bootstrap_version: v0.0.89
 tmux_or_background_agent_spawned: false
 production_code_created: true
 tests_created: true
