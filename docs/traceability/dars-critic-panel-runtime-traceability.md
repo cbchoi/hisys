@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.35.0
+version: 0.36.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-24
@@ -10,6 +10,14 @@ updated: 2026-05-24
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-R5-CANARY-SCOPE-DECISION — R5 selected, R4C excluded from this release (2026-05-24)
+
+- Scope: after the operator instructed `R5진행 R4C는 이번 release에서 제외`, selected R5 canary packet preparation as the active next release-evidence row and excluded R4C Codex subprocess panel completion from this release scope.
+- Artifacts: `docs/release/dars-r5-canary-scope-decision-v0.0.85.md`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/release/dars-panel-release-notes-v0.0.85.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.85.md`, `tests/unit/test_dars_r5_canary_scope.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `r5_canary_scope_selected_with_r4c_excluded_from_this_release`; `r5_live_canary_executed=false`; `bounded_unattended_advisory_operation_ready=false`; `release_candidate_ready=false`; `r4c_codex_subprocess_completion_required_for_this_release=false`.
+- Traceability: HISYS-FR-DARS-CP-013 / HISYS-T-DARS-CP-015 moves from PREP-GREEN to canary packet prep planned; HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 records that R4C is excluded from this release scope and not an RC blocker.
+- Boundary: no live provider/model call, Codex subprocess call, raw provider API call, credential lookup, standing unattended approval activation, release tag/package/upload/deploy/publication, external notification, mutation outside repository docs/tests/control files, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION — RC scope recorded for human review (2026-05-24)
 

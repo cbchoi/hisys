@@ -210,14 +210,16 @@ R4C closure: `DARS-LIVE-RELEASE-R4C-FUTURE-DEFERRED-CLOSURE` — record only tha
 
 Completed: `DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION` — recorded the RC scope after R4H closure. Accepted only `r7_rc_scope_decision_recorded_for_human_review`; `release_candidate_ready=false`, R5 ACTION canary evidence is missing, and R4C remains deferred.
 
-Next safe task: `DARS-LIVE-RELEASE-R7-RC-PACKET-PREP` — prepare the full human-review RC packet from the scoped evidence set without release action.
+Completed: `DARS-LIVE-RELEASE-R5-CANARY-SCOPE-DECISION` — recorded the operator instruction `R5진행 R4C는 이번 release에서 제외`. Accepted only `r5_canary_scope_selected_with_r4c_excluded_from_this_release`; R5 canary packet preparation is the active next evidence row, R4C is excluded from this release, `r5_live_canary_executed=false`, `bounded_unattended_advisory_operation_ready=false`, and `release_candidate_ready=false`.
+
+Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-PACKET-PREP` — prepare the R5 canary packet from the scoped evidence set without live canary execution.
 
 ### Resume checkpoint — R4H productization prep (2026-05-24)
 
-- Current HEAD: c5a2b08
-- Accepted claim: `r7_rc_scope_decision_recorded_for_human_review`
-- Next safe task: `DARS-LIVE-RELEASE-R7-RC-PACKET-PREP`
-- Boundary: no additional model/provider/Codex subprocess call, raw provider API readiness, adapter-native readiness, R5/R7/R8 readiness, credential lookup, mutation, publication, release action, or human-review removal; R4C future reactivation requires separate approval.
+- Current HEAD: c03cf66
+- Accepted claim: `r5_canary_scope_selected_with_r4c_excluded_from_this_release`
+- Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-PACKET-PREP`
+- Boundary: no additional model/provider/Codex subprocess call, raw provider API readiness, adapter-native readiness, R5 live canary execution, bounded unattended readiness, R7/R8 readiness, credential lookup, mutation, publication, release action, or human-review removal; R4C is excluded from this release and future reactivation requires separate approval.
 
 ## 6. Quality gates
 
@@ -279,3 +281,6 @@ Report:
 - Current HEAD: c5a2b08
 
 - 2026-05-24 — `DARS-LIVE-RELEASE-R7-RC-SCOPE-DECISION`: SCOPE-DECISION. RED-first added `tests/unit/test_dars_release_candidate_scope.py` and observed missing release-scope docs. GREEN added `docs/release/dars-panel-rc-scope-decision-v0.0.84.md`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/release/dars-panel-release-notes-v0.0.84.md`, and `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.84.md`. Boundary preserved: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release action, publication, external notification, or human-review removal. Next safe task: `DARS-LIVE-RELEASE-R7-RC-PACKET-PREP`.
+- Current HEAD: c5a2b08
+- 2026-05-24 — `DARS-LIVE-RELEASE-R5-CANARY-SCOPE-DECISION`: SCOPE-DECISION. RED-first added `tests/unit/test_dars_r5_canary_scope.py` and observed missing R5/R4C release-scope docs. GREEN recorded the operator instruction `R5진행 R4C는 이번 release에서 제외`, selected R5 canary packet preparation as the active next evidence row, and excluded R4C from this release scope. Boundary preserved: no live provider/model call, Codex subprocess call, raw provider API call, credential lookup, standing unattended activation, R5 live canary execution, bounded unattended readiness, release action, publication, external notification, or human-review removal. Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-PACKET-PREP`.
+- Current HEAD: c03cf66
