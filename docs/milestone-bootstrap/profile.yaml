@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.85
-focus: R5 canary scope selected after operator instruction, with R4C excluded from this release and release-candidate readiness still false.
-formal_hisys_result: r5_canary_scope_selected_with_r4c_excluded_from_this_release
-local_advisory_result: R5_CANARY_SCOPE_SELECTED_R4C_EXCLUDED_FROM_THIS_RELEASE
-next_safe_task: DARS-LIVE-RELEASE-R5-CANARY-PACKET-PREP
+version: v0.0.86
+focus: R5 canary packet prepared for human review with R4C excluded from this release; bounded unattended live canary execution remains separately HUMAN-GATED.
+formal_hisys_result: r5_canary_packet_prepared_for_human_review
+local_advisory_result: R5_CANARY_PACKET_PREPARED_FOR_HUMAN_REVIEW
+next_safe_task: DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: R5진행 R4C는 이번 release에서 제외
-bootstrap_inference: The operator instructed Hisys to proceed on R5 and exclude R4C from this release. Hisys may add local release-scope docs, tests, traceability, and decision records, but may not perform any live model/provider/Codex subprocess call, raw provider API call, credential lookup, standing unattended activation, mutation, publication, release action, external notification, or removal of human review.
+bootstrap_arguments: DARS-LIVE-RELEASE-R5-CANARY-PACKET-PREP
+bootstrap_inference: The operator-scoped R5 canary path is being prepared as a reference-only packet for human review. Hisys may add local release-scope docs, tests, traceability, and decision records, but may not perform any live model/provider/Codex subprocess call, raw provider API call, credential lookup, standing unattended activation, mutation, publication, release action, external notification, or removal of human review.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.85.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.86.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: c03cf66
-previous_bootstrap_version: v0.0.84
+current_head_at_plan_creation: 4c43f5b
+previous_bootstrap_version: v0.0.85
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true

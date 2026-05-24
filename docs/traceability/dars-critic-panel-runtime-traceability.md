@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.36.0
+version: 0.37.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-24
@@ -10,6 +10,14 @@ updated: 2026-05-24
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-R5-CANARY-PACKET-PREP — R5 canary packet prepared for human review (2026-05-24)
+
+- Scope: assembled a reference-only bounded unattended canary packet that aggregates the existing R5 PREP standing-approval validator, dry-run unattended runner, example standing-approval policy, and R6 local status/rollback runbooks for human review.
+- Artifacts: `docs/release/dars-r5-canary-packet-prep-v0.0.86.md`, `docs/release/dars-panel-release-notes-v0.0.86.md`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.86.md`, `tests/unit/test_dars_r5_canary_packet_prep.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `r5_canary_packet_prepared_for_human_review`; `r5_canary_packet_prepared=true`; `r5_live_canary_executed=false`; `standing_unattended_approval_activated=false`; `bounded_unattended_advisory_operation_ready=false`; `release_candidate_ready=false`; `requires_human_review=true`. The packet records finite standing-approval refs, request-class scope, budget/rate/prompt/output caps, kill-switch ref, audit-retention ref, post-run human review, stop conditions, and R6 status/rollback refs.
+- Traceability: HISYS-FR-DARS-CP-013 / HISYS-T-DARS-CP-015 now has a PREP packet ready for canary action decision review; the next safe task is `DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET`.
+- Boundary: no live provider/model call, Codex subprocess call, raw provider API call, credential lookup, standing unattended approval activation, release tag/package/upload/deploy/publication, external notification, mutation outside repository docs/tests/control files, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-R5-CANARY-SCOPE-DECISION — R5 selected, R4C excluded from this release (2026-05-24)
 

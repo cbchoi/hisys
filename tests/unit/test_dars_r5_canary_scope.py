@@ -59,7 +59,8 @@ def test_release_checklist_and_notes_use_r5_canary_without_r4c_blocker() -> None
     checklist = _read(CHECKLIST)
     notes = _read(NOTES)
 
-    assert "R5 bounded unattended canary packet prep is the active next evidence row" in checklist
+    assert "R5 bounded unattended canary packet prep" in checklist
+    assert "R5 bounded unattended canary action decision packet is reviewed" in checklist
     assert "R4C is excluded from this release scope" in checklist
     assert "R4C Codex subprocess completion is not a release blocker for v0.0.85" in notes
     assert "R5 canary has not executed in this decision increment" in notes
