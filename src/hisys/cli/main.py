@@ -2435,6 +2435,39 @@ def _cmd_dars_panel_readiness(
     return 0
 
 
+def _cmd_dars_r4h_productization_prep(
+    *,
+    instance_root: Path,
+    yyyymmdd: str,
+    output_format: str,
+    write_report: bool,
+) -> int:
+    """Print/write the local R4H Hermes-mediated productization-prep packet."""
+
+    from hisys.operations.dars_r4h_productization import (
+        build_r4h_productization_prep,
+        render_r4h_productization_prep_markdown,
+        render_r4h_productization_prep_text,
+        write_r4h_productization_prep_report,
+    )
+
+    packet = build_r4h_productization_prep(yyyymmdd=yyyymmdd)
+    if write_report:
+        packet["report_refs"] = write_r4h_productization_prep_report(
+            instance_root=instance_root,
+            yyyymmdd=yyyymmdd,
+            packet=packet,
+        )
+
+    if output_format == "json":
+        print(json.dumps(packet, ensure_ascii=False, indent=2, sort_keys=True))
+    elif output_format == "markdown":
+        print(render_r4h_productization_prep_markdown(packet), end="")
+    else:
+        print(render_r4h_productization_prep_text(packet))
+    return 0
+
+
 def _cmd_completion_status(
     *,
     instance_root: Path,
@@ -3065,6 +3098,28 @@ def _build_parser() -> argparse.ArgumentParser:
         "--write-report",
         action="store_true",
         help="persist the readiness snapshot under reports/run-summaries/<date>",
+    )
+
+    dars_r4h_productization_prep = sub.add_parser(
+        "dars-r4h-productization-prep",
+        help=(
+            "write the R4H Hermes-mediated DARS productization-prep contract; "
+            "advisory-only, no Codex subprocess or live action"
+        ),
+    )
+    dars_r4h_productization_prep.add_argument(
+        "--instance", required=True, help="Hisys runtime instance root"
+    )
+    dars_r4h_productization_prep.add_argument(
+        "--date", required=True, help="YYYYMMDD run partition"
+    )
+    dars_r4h_productization_prep.add_argument(
+        "--format", choices=["json", "text", "markdown"], default="text"
+    )
+    dars_r4h_productization_prep.add_argument(
+        "--write-report",
+        action="store_true",
+        help="persist the prep packet under reports/run-summaries/<date>",
     )
 
     spec_packet = sub.add_parser("build-spec-first-packet", help="write a spec-first run packet before governed agent work")
@@ -4392,6 +4447,13 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.command == "dars-panel-readiness":
         return _cmd_dars_panel_readiness(
+            instance_root=Path(args.instance),
+            yyyymmdd=args.date,
+            output_format=args.format,
+            write_report=args.write_report,
+        )
+    if args.command == "dars-r4h-productization-prep":
+        return _cmd_dars_r4h_productization_prep(
             instance_root=Path(args.instance),
             yyyymmdd=args.date,
             output_format=args.format,

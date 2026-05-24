@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.31.0
+version: 0.32.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-24
@@ -10,6 +10,14 @@ updated: 2026-05-24
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-PRODUCTIZATION-PREP — governed request/response contract (2026-05-24)
+
+- Scope: after the operator instructed `go`, defined the governed Hermes-mediated DARS productization-prep path for R4H while keeping R4C deferred as separate Codex subprocess transport-evidence work.
+- Artifacts: `src/hisys/operations/dars_r4h_productization.py`, `tests/unit/test_dars_r4h_productization_prep.py`, `docs/examples/dars/hermes-mediated-r4h-productization-prep.example.json`, `docs/reports/dars-r4h-hermes-mediated-productization-prep-2026-05-24.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.81.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `r4h_hermes_mediated_productization_prep_ready_for_human_review`; request schema is `hisys.dars.r4h_hermes_mediated_request`; response schema is `hisys.dars.r4h_hermes_mediated_response`; supported critics are `logical_consistency_critic` and `evidence_governance_critic`.
+- Traceability: HISYS-FR-DARS-CP-012 / HISYS-T-DARS-CP-014 now has a local/read-only productization-prep surface and CLI command `hisys dars-r4h-productization-prep`; the next safe task is request/response harness validation.
+- Boundary: no Codex CLI subprocess call/completion claim, raw provider API call/readiness, adapter-native readiness, R5/R7/R8 readiness, credential lookup, mutation, publication, external notification, release action, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-ADVISORY-REVIEW-GATE — R4H selected, R4C deferred (2026-05-24)
 

@@ -12,7 +12,7 @@
 | Baseline at plan creation | `7b40649` |
 | Previous active control file | archived into `ralph.history.md` on 2026-05-23 |
 | Runtime | one coherent RED--GREEN--validate--commit unit per run; maximum 5 hours |
-| Active task | R4H selected as the active continuation path; R4C Codex subprocess transport evidence deferred to future work. |
+| Active task | R4H Hermes-mediated productization prep contract is defined; next safe task is request/response harness validation. |
 | User authorization | 최창범 교수 requested R3-R5 live evidence execution on 2026-05-23, explicitly instructed `go for R3 critic live smoke`, instructed `go for live release`, selected `mapped로 가자`, approved `R4 Codex subprocess panel smoke 실행`, asked `지금 다시 해볼래?`, accepted the recommended R4H Hermes-mediated split with `추천하는데로 해보자`, then instructed `R4H로 진행 R4C는 추후 작업으로`; one R3 Codex subprocess model-boundary call completed, two R4 Codex subprocess attempts stopped on auth refresh before critique output, one R4H Hermes-mediated advisory panel completed for human review only, and R4H is now selected for continuation. |
 
 ## 1. Objective and bounded target outcome
@@ -202,7 +202,16 @@ git diff --check                                                                
 
 Boundary preserved: no live provider/model call, credential lookup, standing unattended approval activation, rollback execution, mutation, publication, deployment, release, external notification, or human-review removal.
 
-Next safe task: `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-PRODUCTIZATION-PREP` — define the governed Hermes-mediated DARS tool path contract, supported request/response boundary, report shape, human-review requirements, and R4C deferred-work relation. Do not claim R4-C Codex subprocess completion, raw provider API readiness, adapter-native readiness, R5 action, R7 transition, or R8 execution without separate approved evidence.
+Completed: `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-PRODUCTIZATION-PREP` — defined the governed Hermes-mediated DARS tool path contract, supported request/response boundary, report shape, human-review requirements, and R4C deferred-work relation. Do not claim R4-C Codex subprocess completion, raw provider API readiness, adapter-native readiness, R5 action, R7 transition, or R8 execution without separate approved evidence.
+
+Next safe task: `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-REQUEST-RESPONSE-HARNESS` — validate the R4H request/response contract through a local fixture/injected harness before any additional model/provider/subprocess action.
+
+### Resume checkpoint — R4H productization prep (2026-05-24)
+
+- Current HEAD: d381b85
+- Accepted claim: `r4h_hermes_mediated_productization_prep_ready_for_human_review`
+- Next safe task: `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-REQUEST-RESPONSE-HARNESS`
+- Boundary: no additional model/provider/Codex subprocess call, raw provider API readiness, adapter-native readiness, credential lookup, mutation, publication, release action, or human-review removal.
 
 ## 6. Quality gates
 
@@ -258,3 +267,5 @@ Report:
 - 2026-05-24 — `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-ADVISORY-ACTION`: ADVISORY COMPLETE, CLAIM BOUNDED. After the operator accepted the recommended split with `추천하는데로 해보자`, recorded R4H as a separate Hermes-mediated model advisory branch. Two Hermes-mediated critics completed: logical consistency and evidence governance. Artifacts: `docs/reports/dars-r4h-hermes-mediated-panel-advisory-2026-05-24.md`, `docs/examples/dars/hermes-mediated-r4h-multi-critic-panel.advisory.json`, and `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.79.md`. Accepted only `r4_hermes_mediated_multi_critic_panel_advisory_completed_with_findings`. Rejected Codex subprocess completion, raw provider API readiness, adapter-native readiness, R5, R7, and R8. Boundary preserved: `codex_cli_subprocess_call=false`, `raw_provider_api_call_by_hisys=false`, `credential_lookup_by_hisys=false`, `allowed_actions=advisory_only`, `mutation_performed=false`, `publication_performed=false`, and `requires_human_review=true`. Next safe task: `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-ADVISORY-REVIEW-GATE`.
 - 2026-05-24 — `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-ADVISORY-REVIEW-GATE`: R4H SELECTED, R4C DEFERRED. After the operator instructed `R4H로 진행 R4C는 추후 작업으로`, accepted `r4h_hermes_mediated_advisory_path_selected_for_continuation`. Artifacts: `docs/reports/dars-r4h-hermes-mediated-panel-review-gate-proceed-2026-05-24.md` and `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.80.md`. R4H is now the active continuation path; R4C remains future work under `DARS-LIVE-RELEASE-R4C-CODEX-REFRESH-STATE-RECONCILIATION-OUTSIDE-HISYS`. Boundary preserved: no Codex subprocess completion claim, no raw provider API readiness, no adapter-native readiness, no R5/R7/R8 readiness, no credential lookup, no mutation/publication/release/external notification, and human review remains required. Next safe task: `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-PRODUCTIZATION-PREP`.
 - Current HEAD: 165cfe3
+- 2026-05-24 — `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-PRODUCTIZATION-PREP`: PREP READY. After the operator instructed `go`, added the local/read-only `hisys dars-r4h-productization-prep` CLI surface and `hisys.operations.dars_r4h_productization` packet builder. The packet defines request schema `hisys.dars.r4h_hermes_mediated_request`, response schema `hisys.dars.r4h_hermes_mediated_response`, supported critics `logical_consistency_critic` and `evidence_governance_critic`, report refs, human-review requirements, and the deferred R4C relation. Boundary preserved: no additional model/provider/Codex subprocess call, no raw provider API call/readiness, no adapter-native readiness, no credential lookup, no mutation/publication/release/external notification, and no human-review removal. Next safe task: `DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-REQUEST-RESPONSE-HARNESS`.
+- Current HEAD: d381b85

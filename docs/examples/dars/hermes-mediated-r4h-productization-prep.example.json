@@ -1,0 +1,108 @@
+{
+  "accepted_claim": "r4h_hermes_mediated_productization_prep_ready_for_human_review",
+  "active_branch": "R4H",
+  "active_evidence_refs": [
+    "docs/reports/dars-r4h-hermes-mediated-panel-advisory-2026-05-24.md",
+    "docs/examples/dars/hermes-mediated-r4h-multi-critic-panel.advisory.json",
+    "docs/reports/dars-r4h-hermes-mediated-panel-review-gate-proceed-2026-05-24.md"
+  ],
+  "active_transport_kind": "hermes_mediated_model_advisory",
+  "boundary_flags": {
+    "adapter_native_readiness": false,
+    "allowed_actions": "advisory_only",
+    "codex_cli_subprocess_call": false,
+    "codex_cli_subprocess_completion_claim": false,
+    "credential_lookup_by_hisys": false,
+    "external_notification_performed": false,
+    "human_review_required_for_consequential_use": true,
+    "mutation_performed": false,
+    "publication_performed": false,
+    "r5_unattended_readiness": false,
+    "r7_release_candidate_readiness": false,
+    "r8_release_execution_readiness": false,
+    "raw_provider_api_call_by_hisys": false,
+    "raw_provider_api_readiness": false,
+    "release_action_performed": false,
+    "requires_human_review": true
+  },
+  "date": "20260524",
+  "deferred_transport_relation": {
+    "deferred_branch": "R4C",
+    "deferred_reason": "Codex CLI refresh_token_reused before critique output or panel boundary evidence",
+    "deferred_transport_kind": "codex_cli_subprocess_prompt_mode",
+    "future_task": "DARS-LIVE-RELEASE-R4C-CODEX-REFRESH-STATE-RECONCILIATION-OUTSIDE-HISYS",
+    "r4c_is_not_blocker_for_r4h_productization_prep": true
+  },
+  "next_safe_task": "DARS-LIVE-RELEASE-R4H-HERMES-MEDIATED-PANEL-REQUEST-RESPONSE-HARNESS",
+  "not_accepted_upgrades": [
+    "r4_codex_subscription_multi_critic_panel_smoke_completed_with_findings",
+    "codex_cli_subprocess_prompt_mode_completed",
+    "raw_provider_api_readiness",
+    "adapter_native_readiness",
+    "bounded_unattended_advisory_operation_ready",
+    "release_candidate_ready",
+    "released_for_controlled_advisory_use"
+  ],
+  "report_contract": {
+    "json_ref_pattern": "reports/run-summaries/<YYYYMMDD>/dars-r4h-productization-prep.json",
+    "markdown_ref_pattern": "reports/run-summaries/<YYYYMMDD>/dars-r4h-productization-prep.md",
+    "operator_message_required": "This is not a Codex CLI subprocess success claim."
+  },
+  "request_contract": {
+    "constraints": {
+      "allowed_actions": "advisory_only",
+      "candidate_refs_are_local_or_controlled_refs": true,
+      "critic_roles_subset_of_supported_roles": true,
+      "evidence_refs_are_local_or_controlled_refs": true,
+      "requires_human_review": true
+    },
+    "forbidden_fields": [
+      "raw_prompt_secret",
+      "credential_ref",
+      "api_key",
+      "mutation_authority",
+      "publication_authority",
+      "release_authority"
+    ],
+    "required_fields": [
+      "request_id",
+      "objective",
+      "candidate_refs",
+      "evidence_refs",
+      "critic_roles",
+      "human_review_ref"
+    ],
+    "schema_id": "hisys.dars.r4h_hermes_mediated_request"
+  },
+  "response_contract": {
+    "allowed_statuses": [
+      "completed",
+      "blocked",
+      "failed"
+    ],
+    "claim_boundary": "Hermes-mediated advisory findings only; no Codex subprocess or raw-provider readiness claim",
+    "required_fields": [
+      "request_id",
+      "critic_findings",
+      "aggregate_findings",
+      "boundary_flags",
+      "human_review_required_for_consequential_use"
+    ],
+    "schema_id": "hisys.dars.r4h_hermes_mediated_response"
+  },
+  "schema_id": "hisys.dars.r4h_hermes_mediated_productization_prep",
+  "schema_version": "0.1.0",
+  "supported_critic_roles": [
+    "logical_consistency_critic",
+    "evidence_governance_critic"
+  ],
+  "supported_use_cases": [
+    "human-reviewed advisory critique of a bounded candidate and evidence set",
+    "logical consistency review of claim-ladder and branch-disposition packets",
+    "evidence-governance review of no-mutation/no-publication/no-credential boundaries"
+  ],
+  "traceability": [
+    "HISYS-FR-DARS-CP-012",
+    "HISYS-T-DARS-CP-014"
+  ]
+}
