@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.87
-focus: R5 canary action decision packet ready for human review with R4C excluded from this release; bounded unattended live canary execution remains separately HUMAN-GATED.
-formal_hisys_result: r5_canary_action_decision_packet_ready_for_human_review
-local_advisory_result: R5_CANARY_ACTION_DECISION_PACKET_READY_FOR_HUMAN_REVIEW
-next_safe_task: DARS-LIVE-RELEASE-R5-CANARY-ACTION-HUMAN-REVIEW-GATE
+version: v0.0.88
+focus: R5 canary execution attempt was blocked before live action because the current PREP runner accepts only dry-run request classes.
+formal_hisys_result: r5_canary_execution_attempt_blocked_before_live_action
+local_advisory_result: R5_CANARY_EXECUTION_ATTEMPT_BLOCKED_BEFORE_LIVE_ACTION
+next_safe_task: DARS-LIVE-RELEASE-R5-CANARY-MODE-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET
-bootstrap_inference: The operator-scoped R5 canary action decision packet is recorded as a reference-only artifact that connects the prepared R5 canary packet to a later HUMAN-GATED canary execution. Hisys may add local release-scope docs, tests, traceability, and decision records, but may not perform any live model/provider/Codex subprocess call, raw provider API call, credential lookup, standing unattended activation, mutation, publication, release action, external notification, or removal of human review.
+bootstrap_arguments: DARS-LIVE-RELEASE-R5-CANARY-EXECUTION-ATTEMPT
+bootstrap_inference: The operator instructed canary execution, but the controlled R5 PREP runner blocked the canary request class before adapter execution. Hisys may record the blocked attempt and add local docs/tests/traceability, but may not perform a live model/provider/Codex subprocess call, raw provider API call, credential lookup, standing unattended activation, mutation, publication, release action, external notification, or removal of human review until a canary-mode contract is prepared and separately approved.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.87.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.88.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: a4e0ab2
-previous_bootstrap_version: v0.0.86
+current_head_at_plan_creation: 677e4c6
+previous_bootstrap_version: v0.0.87
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true

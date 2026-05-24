@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.38.0
+version: 0.39.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-24
@@ -10,6 +10,15 @@ updated: 2026-05-24
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-R5-CANARY-EXECUTION-ATTEMPT — canary attempt blocked before live action (2026-05-24)
+
+- Scope: after the operator instructed `canary실행`, Hisys attempted the R5 canary request class through the existing R5 unattended runner with the fake/injected transport seam. The runner blocked before adapter execution because R5 PREP currently accepts only `dars_live_provider_advisory_dry_run`.
+- Artifacts: `docs/reports/dars-r5-canary-execution-attempt-blocked-2026-05-24.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.88.md`, `tests/unit/test_dars_unattended_runner.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Runtime evidence: `/tmp/hisys-r5-canary-execution-attempt-20260524/runtime-boundary/dars-unattended-advisory/20260524/DARS-UNATTENDED-STANDING-PREP-20260523-001/DARS_R5_CANARY_ATTEMPT_20260524_001.json` records `status=blocked`, `failure_code=request_class_not_allowlisted`, `request_class=dars_live_provider_advisory_canary`, `external_call_made=false`, `model_boundary_crossed=false`, `mutation_performed=false`, `publication_performed=false`, `external_action_performed=false`, `advisory_only=true`, and `requires_human_review=true`.
+- Evidence contract: accepted claim is `r5_canary_execution_attempt_blocked_before_live_action`; `r5_live_canary_executed=false`; `standing_unattended_approval_activated=false`; `bounded_unattended_advisory_operation_ready=false`; `release_candidate_ready=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-013 / HISYS-T-DARS-CP-015 now has an attempted canary execution stop record. The next safe task is `DARS-LIVE-RELEASE-R5-CANARY-MODE-PREP`.
+- Boundary: no live provider/model call, Codex subprocess call, raw provider API call, credential lookup, standing unattended approval activation, release tag/package/upload/deploy/publication, external notification, mutation outside repository docs/tests/control files, or human-review removal was introduced.
 
 ## DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET — R5 canary action decision packet ready for human review (2026-05-24)
 

@@ -210,3 +210,23 @@ def test_unattended_runner_records_output_redaction_failure(tmp_path: Path) -> N
 
     assert result.status == "circuit_broken"
     assert result.failure_code == "output_redaction_failure"
+
+
+def test_unattended_runner_blocks_canary_request_class_until_canary_mode_exists(
+    tmp_path: Path,
+) -> None:
+    policy_ref = _policy_file(tmp_path)
+    runner = _runner(tmp_path)
+
+    result = runner.run(
+        _request(policy_ref, request_class="dars_live_provider_advisory_canary")
+    )
+
+    assert result.status == "blocked"
+    assert result.failure_code == "request_class_not_allowlisted"
+    assert result.external_call_made is False
+    assert result.model_boundary_crossed is False
+    assert result.mutation_performed is False
+    assert result.publication_performed is False
+    assert result.external_action_performed is False
+    assert result.requires_human_review is True
