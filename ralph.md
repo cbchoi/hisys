@@ -12,7 +12,7 @@
 | Baseline at plan creation | `7b40649` |
 | Previous active control file | archived into `ralph.history.md` on 2026-05-23 |
 | Runtime | one coherent RED--GREEN--validate--commit unit per run; maximum 5 hours |
-| Active task | R7 RC scope decision recorded for human review; next safe task is R7 RC packet prep. |
+| Active task | R5 canary action decision packet ready for human review; next safe task is the R5 canary action human-review gate. |
 | User authorization | 최창범 교수 requested R3-R5 live evidence execution on 2026-05-23, explicitly instructed `go for R3 critic live smoke`, instructed `go for live release`, selected `mapped로 가자`, approved `R4 Codex subprocess panel smoke 실행`, asked `지금 다시 해볼래?`, accepted the recommended R4H Hermes-mediated split with `추천하는데로 해보자`, then instructed `R4H로 진행 R4C는 추후 작업으로`; one R3 Codex subprocess model-boundary call completed, two R4 Codex subprocess attempts stopped on auth refresh before critique output, one R4H Hermes-mediated advisory panel completed for human review only, and R4H is now selected for continuation. |
 
 ## 1. Objective and bounded target outcome
@@ -214,7 +214,9 @@ Completed: `DARS-LIVE-RELEASE-R5-CANARY-SCOPE-DECISION` — recorded the operato
 
 Completed: `DARS-LIVE-RELEASE-R5-CANARY-PACKET-PREP` — assembled the reference-only bounded unattended canary packet for human review. Accepted only `r5_canary_packet_prepared_for_human_review`; `r5_canary_packet_prepared=true`, `r5_live_canary_executed=false`, `standing_unattended_approval_activated=false`, `bounded_unattended_advisory_operation_ready=false`, `release_candidate_ready=false`. Packet records finite standing-approval refs, request-class scope, budget/rate/prompt/output caps, kill-switch ref, audit-retention ref, post-run human review, stop conditions, and R6 status/rollback refs. R4C remains excluded from this release.
 
-Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET` — record the canary action decision packet (separately HUMAN-GATED) without live canary execution.
+Completed: `DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET` — recorded the canary action decision packet for human review only, connecting the prepared canary packet to a separately HUMAN-GATED canary execution decision. Accepted only `r5_canary_action_decision_packet_ready_for_human_review`; `r5_canary_action_decision_packet_ready=true`, `r5_live_canary_executed=false`, `standing_unattended_approval_activated=false`, `bounded_unattended_advisory_operation_ready=false`, `release_candidate_ready=false`. The packet enumerates standing-approval fields, request-class scope including `dars_live_provider_advisory_canary`, finite caps, kill-switch ref, audit-retention ref, post-run human review, stop conditions, and R6 status/rollback refs. R4C remains excluded from this release and future reactivation requires separate explicit operator instruction.
+
+Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-ACTION-HUMAN-REVIEW-GATE` — record the human-review gate decision for the action decision packet before any canary execution.
 
 ### Resume checkpoint — R5 canary packet prep (2026-05-24)
 
@@ -222,6 +224,13 @@ Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET` — record 
 - Accepted claim: `r5_canary_packet_prepared_for_human_review`
 - Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET`
 - Boundary: no additional model/provider/Codex subprocess call, raw provider API readiness, adapter-native readiness, R5 live canary execution, standing unattended approval activation, bounded unattended readiness, R7/R8 readiness, credential lookup, mutation, publication, release action, or human-review removal; R4C is excluded from this release and future reactivation requires separate approval.
+
+### Resume checkpoint — R5 canary action decision packet (2026-05-24)
+
+- Current HEAD: a4e0ab2
+- Accepted claim: `r5_canary_action_decision_packet_ready_for_human_review`
+- Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-ACTION-HUMAN-REVIEW-GATE`
+- Boundary: no additional model/provider/Codex subprocess call, raw provider API readiness, adapter-native readiness, R5 live canary execution, standing unattended approval activation, bounded unattended readiness, R7/R8 readiness, credential lookup, mutation, publication, release action, or human-review removal; R4C is excluded from this release and future reactivation requires separate explicit operator instruction.
 
 ## 6. Quality gates
 
@@ -288,3 +297,5 @@ Report:
 - Current HEAD: 4c43f5b
 - 2026-05-24 — `DARS-LIVE-RELEASE-R5-CANARY-PACKET-PREP`: PACKET-PREP. RED-first added `tests/unit/test_dars_r5_canary_packet_prep.py` and observed `FileNotFoundError` plus missing checklist row (6 failed, 1 passed). GREEN authored `docs/release/dars-r5-canary-packet-prep-v0.0.86.md`, `docs/release/dars-panel-release-notes-v0.0.86.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.86.md`, updated `docs/release/dars-panel-release-candidate-checklist.md` to record the packet document is present, bumped `docs/milestone-bootstrap/profile.yaml` to v0.0.86 with `next_safe_task=DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET`, bumped RTM to 0.37.0 with a new R5 canary packet-prep reflection, and updated `tests/unit/test_governance_docs_current_state.py`. Accepted only `r5_canary_packet_prepared_for_human_review`. Boundary preserved: no live provider/model call, Codex subprocess call, raw provider API call, credential lookup, standing unattended activation, R5 live canary execution, bounded unattended readiness, release action, publication, external notification, or human-review removal; R4C remains excluded from this release. Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET`.
 - Current HEAD: 4c43f5b
+- 2026-05-24 — `DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET`: ACTION-DECISION-PACKET. RED-first added `tests/unit/test_dars_r5_canary_action_decision_packet.py` and observed `FileNotFoundError` for the packet/RDR/notes documents plus missing checklist row (7 failed, 2 passed). GREEN authored `docs/release/dars-r5-canary-action-decision-packet-v0.0.87.md`, `docs/release/dars-panel-release-notes-v0.0.87.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.87.md`, updated `docs/release/dars-panel-release-candidate-checklist.md` to record the action decision packet document is present and a new reviewer-gate row, bumped `docs/milestone-bootstrap/profile.yaml` to v0.0.87 with `next_safe_task=DARS-LIVE-RELEASE-R5-CANARY-ACTION-HUMAN-REVIEW-GATE`, bumped RTM to 0.38.0 with a new R5 canary action decision packet reflection, and updated `tests/unit/test_governance_docs_current_state.py`. Two minor wrap adjustments unstuck content-anchor mismatches: split the line that contained "no standing unattended approval activation" and the line that contained "future reactivation requires separate explicit operator instruction" so both phrases appear contiguous. Accepted only `r5_canary_action_decision_packet_ready_for_human_review`. Boundary preserved: no live provider/model call, Codex subprocess call, raw provider API call, credential lookup, standing unattended activation, R5 live canary execution, bounded unattended readiness, release action, publication, external notification, or human-review removal; R4C remains excluded from this release and future reactivation requires separate explicit operator instruction. Next safe task: `DARS-LIVE-RELEASE-R5-CANARY-ACTION-HUMAN-REVIEW-GATE`.
+- Current HEAD: a4e0ab2

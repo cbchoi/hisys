@@ -1,14 +1,14 @@
 ---
 doc_id: HISYS-DARS-R7-RC-CHECKLIST-001
 title: DARS Panel Release Candidate Checklist
-version: v0.0.86
-status: r5-canary-packet-prep-gate
+version: v0.0.87
+status: r5-canary-action-decision-packet-gate
 created: 2026-05-24
 ---
 
 # DARS Panel Release Candidate Checklist
 
-This checklist defines what must be present before Hisys can report `release_candidate_ready`. The current R5 scope decision keeps the claim false while R5 canary packet prep becomes the active next evidence row.
+This checklist defines what must be present before Hisys can report `release_candidate_ready`. The current R5 scope decision keeps the claim false while the R5 canary action decision packet awaits separate HUMAN-GATED review before any canary execution.
 
 release_candidate_ready remains false until every required evidence row is accepted.
 
@@ -18,7 +18,8 @@ release_candidate_ready remains false until every required evidence row is accep
 - [ ] R4 reviewed multi-critic evidence or accepted scoped substitute is linked.
 - [x] R5 bounded unattended canary packet prep has advanced to a prepared packet for human review.
 - [x] R5 bounded unattended canary packet prep document is present at `docs/release/dars-r5-canary-packet-prep-v0.0.86.md`.
-- [ ] R5 bounded unattended canary action decision packet is reviewed before any canary execution.
+- [x] R5 bounded unattended canary action decision packet document is present at `docs/release/dars-r5-canary-action-decision-packet-v0.0.87.md`.
+- [ ] R5 bounded unattended canary action decision packet is reviewed by the named post-run reviewer before any canary execution.
 - [ ] R5 bounded unattended live canary evidence is reviewed and accepted before any `bounded_unattended_advisory_operation_ready` claim.
 - [ ] R6 live operations status report is current and references latest boundary records without copying raw payloads.
 - [ ] rollback runbook is present and its disable/recovery sequence is reviewable.

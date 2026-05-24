@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.37.0
+version: 0.38.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-24
@@ -10,6 +10,14 @@ updated: 2026-05-24
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-R5-CANARY-ACTION-DECISION-PACKET — R5 canary action decision packet ready for human review (2026-05-24)
+
+- Scope: recorded the action decision packet that connects the prepared R5 canary packet (v0.0.86) and the R5 canary scope decision (v0.0.85) to a separately HUMAN-GATED canary execution decision. The packet enumerates the standing-approval fields, request-class scope, budget/rate/prompt/output caps, kill-switch ref, audit-retention ref, post-run human review, stop conditions, and R6 status/rollback refs that a later canary execution must satisfy.
+- Artifacts: `docs/release/dars-r5-canary-action-decision-packet-v0.0.87.md`, `docs/release/dars-panel-release-notes-v0.0.87.md`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.87.md`, `tests/unit/test_dars_r5_canary_action_decision_packet.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `r5_canary_action_decision_packet_ready_for_human_review`; `r5_canary_action_decision_packet_ready=true`; `r5_live_canary_executed=false`; `standing_unattended_approval_activated=false`; `bounded_unattended_advisory_operation_ready=false`; `release_candidate_ready=false`; `requires_human_review=true`. R4C remains excluded from this release scope.
+- Traceability: HISYS-FR-DARS-CP-013 / HISYS-T-DARS-CP-015 now has an action decision packet ready for human-review gate; the next safe task is `DARS-LIVE-RELEASE-R5-CANARY-ACTION-HUMAN-REVIEW-GATE`.
+- Boundary: no live provider/model call, Codex subprocess call, raw provider API call, credential lookup, standing unattended approval activation, release tag/package/upload/deploy/publication, external notification, mutation outside repository docs/tests/control files, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-R5-CANARY-PACKET-PREP — R5 canary packet prepared for human review (2026-05-24)
 
