@@ -1,14 +1,14 @@
 ---
 doc_id: HISYS-DARS-R7-RC-CHECKLIST-001
 title: DARS Panel Release Candidate Checklist
-version: v0.0.92
-status: r5-fake-transport-canary-post-run-review-accepted
+version: v0.0.93
+status: r7-rc-readiness-decision-packet-recorded-not-ready
 created: 2026-05-24
 ---
 
 # DARS Panel Release Candidate Checklist
 
-This checklist defines what must be present before Hisys can report `release_candidate_ready`. The current R5 post-run gate accepts only the fake/injected-transport canary evidence; `release_candidate_ready` remains false because live-provider/model canary evidence and residual-risk acceptance are not accepted.
+This checklist defines what must be present before Hisys can report `release_candidate_ready`. The current R7 RC readiness decision packet records the evidence scope for human review; `release_candidate_ready` remains false because live-provider/model canary evidence, bounded unattended advisory readiness, and residual-risk acceptance are not accepted.
 
 release_candidate_ready remains false until every required evidence row is accepted.
 
@@ -27,6 +27,7 @@ release_candidate_ready remains false until every required evidence row is accep
 - [ ] full unit gate passes: `PYTHONPATH=src:. pytest tests/unit -q`.
 - [ ] traceability validator passes: `python3 scripts/validate_traceability.py`.
 - [ ] secret scan passes: `python3 scripts/scan_secrets.py`.
+- [x] R7 RC readiness decision packet is present at `docs/release/dars-r7-rc-readiness-decision-packet-v0.0.93.md` and accepts only `r7_rc_readiness_decision_packet_recorded_for_human_review`.
 - [ ] residual risk acceptance is recorded in the RC decision packet.
 - [ ] human release approval state is explicit and separate from release execution approval.
 
