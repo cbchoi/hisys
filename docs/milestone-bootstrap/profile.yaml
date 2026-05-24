@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.93
-focus: R7 RC readiness decision packet recorded the scoped evidence and blockers without upgrading readiness.
-formal_hisys_result: r7_rc_readiness_decision_packet_recorded_for_human_review
-local_advisory_result: R7_RC_READINESS_DECISION_PACKET_RECORDED_NOT_READY
-next_safe_task: DARS-LIVE-RELEASE-R7-RC-RESIDUAL-RISK-HUMAN-GATE
+version: v0.0.94
+focus: R7 residual-risk human gate entered and exact approval text documented without recording approval.
+formal_hisys_result: r7_rc_residual_risk_human_gate_entered
+local_advisory_result: R7_RC_RESIDUAL_RISK_HUMAN_GATE_ENTERED_APPROVAL_REQUIRED
+next_safe_task: DARS-LIVE-RELEASE-R7-RC-RESIDUAL-RISK-EXACT-APPROVAL
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: DARS-LIVE-RELEASE-R7-RC-READINESS-DECISION-PACKET
-bootstrap_inference: The operator instructed `go` after R5 fake-transport canary post-run review. Hisys may assemble a release-candidate readiness decision packet from existing R4H/R5/R6 evidence and record blockers/residual-risk items for human review. It may not perform a live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release action, deployment, publication, external notification, or human-review removal.
+bootstrap_arguments: DARS-LIVE-RELEASE-R7-RC-RESIDUAL-RISK-HUMAN-GATE
+bootstrap_inference: The operator named the residual-risk human gate. Hisys may enter the gate, document the exact approval text and residual-risk scope, and preserve not-recorded approval state. It may not treat the task name as residual-risk acceptance, perform a live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release action, deployment, publication, external notification, or human-review removal.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.93.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.94.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: c740574
-previous_bootstrap_version: v0.0.92
+current_head_at_plan_creation: e313941
+previous_bootstrap_version: v0.0.93
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true
