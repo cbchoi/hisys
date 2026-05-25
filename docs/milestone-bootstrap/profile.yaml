@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.116
-focus: Package-upload registry/artifact policy details partial; artifact/version details were received, but registry policy is still missing so build/upload remain locked.
-formal_hisys_result: release_package_upload_registry_artifact_policy_details_partial
-local_advisory_result: PACKAGE_UPLOAD_REGISTRY_ARTIFACT_POLICY_DETAILS_PARTIAL
-next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-ARTIFACT-EXACT-APPROVAL
+version: v0.0.117
+focus: Package distribution registry/upload scope discarded; PyPI/TestPyPI-style publication is not planned for the single-operator DARS panel.
+formal_hisys_result: release_package_registry_upload_scope_discarded
+local_advisory_result: PACKAGE_REGISTRY_UPLOAD_SCOPE_DISCARDED
+next_safe_task: DARS-LIVE-RELEASE-LOCAL-ARTIFACT-RELEASE-SCOPE-REVIEW
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: rloo
-bootstrap_inference: "The operator supplied artifact build boundary, version-alignment basis, and explicit execution boundary details after the three exact tokens were recorded. The target registry policy, registry URL policy, production-PyPI exclusion, and credential-reference handling remain missing. Hisys records partial policy details but keeps the composite approval incomplete and all build/upload/registry/credential actions locked."
+bootstrap_inference: "The operator clarified that if registry means a package distribution registry such as PyPI/TestPyPI, this DARS panel is for single-operator use and no package registry publication is planned. Hisys retires the package-upload composite approval packet instead of completing registry policy details, keeps all build/upload/registry/credential actions locked, and advances only to local artifact/release-scope review."
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.116.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.117.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: eb3d332
-previous_bootstrap_version: v0.0.115
+current_head_at_plan_creation: 83577ba
+previous_bootstrap_version: v0.0.116
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true

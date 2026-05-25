@@ -1,13 +1,21 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.56.0
+version: 0.57.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-25
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
+
+## DARS-LIVE-RELEASE-PACKAGE-REGISTRY-UPLOAD-SCOPE-DISCARDED — registry/upload scope discarded
+
+- Scope: after the v0.0.116 partial policy record, the operator clarified that a package distribution registry such as PyPI/TestPyPI is not planned for the single-operator DARS panel. This retires the package distribution registry/upload path instead of completing its registry policy block.
+- Artifacts: `docs/release/dars-release-package-registry-upload-scope-discarded-v0.0.117.md`, `docs/release/dars-panel-release-notes-v0.0.117.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.117.md`, `tests/unit/test_dars_release_package_registry_scope_discarded.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `release_package_registry_upload_scope_discarded`; `operator_decision=registry_and_package_upload_not_planned`; `registry_policy_details_required=false`; `composite_upload_approval_packet_retired=true`; `package_upload_path_active=false`; `pypi_registry_use_planned=false`; `testpypi_registry_use_planned=false`; `registry_target_selected=false`; `registry_url_resolved=false`; `distribution_artifact_built=false`; `build_command_executed=false`; `upload_command_executed=false`; `package_upload_authorized=false`; `package_upload_performed=false`; `package_registry_interaction_performed=false`; `credential_lookup_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 no longer waits for package distribution registry policy; the package-upload registry path is discarded and the next safe task is local artifact/release-scope review.
+- Boundary: no artifact build, upload command, package distribution registry interaction, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, branch rewrite, force push, or human-review removal is introduced. Internal Hisys source/evidence/fixture registries are not affected by this package distribution registry decision.
 
 ## DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-ARTIFACT-EXACT-APPROVAL — policy details partial
 
