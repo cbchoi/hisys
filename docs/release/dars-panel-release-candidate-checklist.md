@@ -34,6 +34,8 @@ Historical pre-acceptance checklist rule retained for traceability: release_cand
 - [x] R7 residual-risk exact approval is recorded at `docs/release/dars-r7-rc-residual-risk-exact-approval-v0.0.95.md` with `human_residual_risk_acceptance=accepted` and accepted claim `r7_rc_residual_risk_scope_accepted_for_human_review`.
 - [x] R7 RC readiness acceptance packet records `release_candidate_ready=true` at `docs/release/dars-r7-rc-readiness-acceptance-packet-v0.0.96.md` for the residual-risk-scoped evidence package.
 - [x] human release approval is recorded for RC readiness only and remains separate from release execution approval.
+- [x] post-tag-push review packet for v0.0.103 is recorded at `docs/release/dars-release-post-tag-push-review-packet-v0.0.106.md` with `additional_release_action_authorized=false`.
+- [x] package-upload authorization-packet preflight is recorded at `docs/release/dars-release-package-upload-authorization-preflight-v0.0.107.md` with `package_upload_authorization_packet_approved=false` and `selected_action_set=tag_creation_only`; package-upload authorization remains gated on the scoped tokens `APPROVE-PACKAGE-UPLOAD-SCOPE-EXPANSION-v0.0.107` and `APPROVE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET-v0.0.107`.
 
 ## Scoped substitute rule
 
