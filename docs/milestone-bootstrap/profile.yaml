@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.115
-focus: Package-upload registry/artifact approval packet incomplete; exact tokens were received, but policy details are missing so build/upload remain locked.
-formal_hisys_result: release_package_upload_registry_artifact_approval_packet_incomplete
-local_advisory_result: PACKAGE_UPLOAD_REGISTRY_ARTIFACT_APPROVAL_PACKET_INCOMPLETE
+version: v0.0.116
+focus: Package-upload registry/artifact policy details partial; artifact/version details were received, but registry policy is still missing so build/upload remain locked.
+formal_hisys_result: release_package_upload_registry_artifact_policy_details_partial
+local_advisory_result: PACKAGE_UPLOAD_REGISTRY_ARTIFACT_POLICY_DETAILS_PARTIAL
 next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-ARTIFACT-EXACT-APPROVAL
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: rloo
-bootstrap_inference: "The operator supplied the three exact package-upload registry/artifact/version-alignment tokens, but not the required target registry policy, artifact build command/output directory, artifact hash recording method, version alignment basis, credential-reference handling, or upload-execution boundary. Hisys records the tokens as received but keeps the composite approval packet incomplete and all build/upload/registry/credential actions locked."
+bootstrap_inference: "The operator supplied artifact build boundary, version-alignment basis, and explicit execution boundary details after the three exact tokens were recorded. The target registry policy, registry URL policy, production-PyPI exclusion, and credential-reference handling remain missing. Hisys records partial policy details but keeps the composite approval incomplete and all build/upload/registry/credential actions locked."
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.115.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.116.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: 977516d
-previous_bootstrap_version: v0.0.114
+current_head_at_plan_creation: eb3d332
+previous_bootstrap_version: v0.0.115
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true

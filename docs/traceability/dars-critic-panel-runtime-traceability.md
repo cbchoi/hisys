@@ -9,6 +9,14 @@ updated: 2026-05-25
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-ARTIFACT-EXACT-APPROVAL — policy details partial
+
+- Scope: after the v0.0.115 incomplete approval packet, the operator supplied artifact build boundary, version-alignment basis, and explicit execution boundary details. This records those details while preserving the missing registry policy; the same exact-approval gate remains open.
+- Artifacts: `docs/release/dars-release-package-upload-registry-artifact-policy-details-partial-v0.0.116.md`, `docs/release/dars-panel-release-notes-v0.0.116.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.116.md`, `tests/unit/test_dars_release_package_upload_registry_artifact_policy_details_partial.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `release_package_upload_registry_artifact_policy_details_partial`; `approval_tokens_received=true`; `artifact_build_policy_details_received=true`; `version_alignment_policy_details_received=true`; `execution_boundary_details_received=true`; `registry_policy_details_received=false`; `composite_approval_packet_complete=false`; `registry_human_approval_recorded=false`; `artifact_build_human_approval_recorded=false`; `version_alignment_human_approval_recorded=false`; `registry_target_selected=false`; `registry_url_resolved=false`; `distribution_artifact_built=false`; `distribution_artifact_verified=false`; `distribution_artifact_hash_recorded=false`; `package_version_alignment_verified=false`; `build_command_executed=false`; `upload_command_executed=false`; `package_upload_authorized=false`; `package_upload_performed=false`; `package_registry_interaction_performed=false`; `credential_lookup_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 remains at `DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-ARTIFACT-EXACT-APPROVAL`; registry policy details must still be recorded before artifact build or upload-oriented action.
+- Boundary: no artifact build, upload command, package registry interaction, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, branch rewrite, force push, or human-review removal is introduced.
+
 ## DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-ARTIFACT-EXACT-APPROVAL — approval packet incomplete
 
 - Scope: after the v0.0.114 missing-approval record, the operator supplied the three exact registry/artifact/version-alignment tokens only. This records token receipt and the missing policy details; the same exact-approval gate remains open.
