@@ -1,13 +1,21 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.54.0
+version: 0.55.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-25
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
+
+## DARS-LIVE-RELEASE-PACKAGE-UPLOAD-COMMAND-PREFLIGHT — command boundary recorded (2026-05-25)
+
+- Scope: after the v0.0.111 instruction override, the operator instructed `go`. This records the package-upload command boundary and candidate build/upload command shapes before any package-upload command, package-registry interaction, credential lookup, artifact publication, deployment, or external notification.
+- Artifacts: `docs/release/dars-release-package-upload-command-preflight-v0.0.112.md`, `docs/release/dars-panel-release-notes-v0.0.112.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.112.md`, `tests/unit/test_dars_release_package_upload_command_preflight.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `release_package_upload_command_preflight_recorded_for_human_review`; `candidate_build_command=python -m build`; `candidate_upload_command=python -m twine upload <registry> dist/*`; `package_upload_command_preflight_recorded=true`; `registry_target_selected=false`; `registry_url_resolved=false`; `distribution_artifact_built=false`; `distribution_artifact_verified=false`; `package_version_alignment_verified=false`; `upload_command_executed=false`; `package_upload_authorized=false`; `package_upload_performed=false`; `package_registry_interaction_performed=false`; `credential_lookup_by_hisys=false`; `deployment_authorized=false`; `publication_authorized=false`; `external_notification_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `standing_unattended_approval_activated=false`; `human_review_removal_authorized=false`; `force_push_authorized=false`; `branch_rewrite_authorized=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 now advances to `DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-AND-ARTIFACT-HUMAN-GATE`, where registry target, artifact hashes, package metadata/version alignment, credential-reference handling, and exact upload execution authority must be reviewed before any upload action.
+- Boundary: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, package upload execution, package registry interaction, deployment, publication, external notification, branch rewrite, force push, or human-review removal is introduced.
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
 

@@ -74,5 +74,4 @@ def test_package_upload_instruction_override_updates_current_state_and_next_task
     assert "next_safe_task=DARS-LIVE-RELEASE-PACKAGE-UPLOAD-COMMAND-PREFLIGHT" in record
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-INSTRUCTION-OVERRIDE" in trace
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-COMMAND-PREFLIGHT`" in ralph
-    assert "version: v0.0.111" in profile
-    assert "next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-COMMAND-PREFLIGHT" in profile
+    assert "previous_bootstrap_version: v0.0.111" in profile
