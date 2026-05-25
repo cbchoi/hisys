@@ -11,6 +11,14 @@ updated: 2026-05-25
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
 
+## DARS-LIVE-RELEASE-POST-TAG-PUSH-REVIEW-PACKET — tag push reviewed, no additional action (2026-05-25)
+
+- Scope: after remote tag push, the operator instructed `go`. This records post-tag-push review evidence for `v0.0.103` without authorizing or performing package upload, deployment, publication, external notification, or any other release action.
+- Artifacts: `docs/release/dars-release-post-tag-push-review-packet-v0.0.106.md`, `docs/release/dars-panel-release-notes-v0.0.106.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.106.md`, `tests/unit/test_dars_release_post_tag_push_review_packet.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `release_tag_push_reviewed_for_human_review_no_additional_action`; `tag_name=v0.0.103`; `tag_target_commit=ea26df6`; `remote_tag_ref=refs/tags/v0.0.103`; `remote_tag_object=1b94bf8da8d9fdd43201ee05b44558d2c9787789`; `remote_tag_peeled_commit=ea26df63f8705faf178b0860ff9f17090ba0b8c3`; `tag_push_reviewed=true`; `additional_release_action_authorized=false`; `additional_release_action_performed=false`; `package_upload_authorized=false`; `deployment_authorized=false`; `publication_authorized=false`; `external_notification_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 advances to the package-upload authorization packet; package upload remains a separate authorization and execution step.
+- Boundary: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, package upload, deployment, publication, external notification, branch rewrite, force push, or human-review removal is introduced.
+
 ## DARS-LIVE-RELEASE-TAG-PUSH-AUTHORIZATION-PACKET — remote tag pushed (2026-05-25)
 
 - Scope: after local tag creation, the operator instructed `push`. This authorizes and records pushing one annotated Git tag, `v0.0.103`, to `origin` with refspec `refs/tags/v0.0.103:refs/tags/v0.0.103`.
