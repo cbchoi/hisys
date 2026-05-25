@@ -37,6 +37,7 @@ Historical pre-acceptance checklist rule retained for traceability: release_cand
 - [x] post-tag-push review packet for v0.0.103 is recorded at `docs/release/dars-release-post-tag-push-review-packet-v0.0.106.md` with `additional_release_action_authorized=false`.
 - [x] package-upload authorization-packet preflight is recorded at `docs/release/dars-release-package-upload-authorization-preflight-v0.0.107.md` with `package_upload_authorization_packet_approved=false` and `selected_action_set=tag_creation_only`; package-upload authorization remains gated on the scoped tokens `APPROVE-PACKAGE-UPLOAD-SCOPE-EXPANSION-v0.0.107` and `APPROVE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET-v0.0.107`.
 - [x] package-upload authorization packet is recorded at `docs/release/dars-release-package-upload-authorization-packet-v0.0.108.md` after both scoped approval tokens were supplied; `selected_action_set=tag_creation_and_package_upload` and `package_upload_authorization_packet_approved=true`, while `package_upload_authorized=false` and `package_upload_performed=false` remain gated by the next execution decision packet.
+- [x] package-upload execution decision packet is recorded at `docs/release/dars-release-package-upload-execution-decision-packet-v0.0.109.md` after operator `go`; `package_upload_execution_decision_packet_approved=true`, while `package_upload_execution_instruction_received=false`, `package_upload_authorized=false`, and `package_upload_performed=false` remain gated by the scoped execution instruction gate.
 
 ## Scoped substitute rule
 

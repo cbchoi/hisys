@@ -70,7 +70,6 @@ def test_package_upload_authorization_record_traceability_and_next_gate() -> Non
     trace = TRACEABILITY.read_text(encoding="utf-8")
     trace_readme = TRACEABILITY_README.read_text(encoding="utf-8")
     ralph = RALPH.read_text(encoding="utf-8")
-    profile = PROFILE.read_text(encoding="utf-8")
 
     assert "Package-upload authorization packet approved for human review" in notes
     assert (
@@ -86,5 +85,3 @@ def test_package_upload_authorization_record_traceability_and_next_gate() -> Non
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET — authorization packet approved" in trace
     assert "DARS package-upload authorization packet" in trace_readme
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET`" in ralph
-    assert "version: v0.0.108" in profile
-    assert "next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-EXECUTION-DECISION-PACKET" in profile
