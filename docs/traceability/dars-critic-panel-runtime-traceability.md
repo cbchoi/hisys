@@ -1,15 +1,23 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.47.0
+version: 0.48.0
 document_status: draft-for-tdd
 created: 2026-05-19
-updated: 2026-05-24
+updated: 2026-05-25
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-SPECIFIC-ACTION-APPROVAL-GATE — approval gate entered, exact scoped approval required (2026-05-25)
+
+- Scope: after the candidate action set was recorded, the operator instructed `다음 단계`. This enters the specific-action approval gate and documents exact scoped approval templates without selecting, approving, authorizing, or performing any action.
+- Artifacts: `docs/release/dars-release-specific-action-approval-gate-v0.0.101.md`, `docs/release/dars-panel-release-notes-v0.0.101.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.101.md`, `tests/unit/test_dars_release_specific_action_approval_gate.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `release_specific_action_approval_gate_entered`; `selected_action_set=none`; `specific_action_selection_approved=false`; `exact_human_approval_required=true`; `release_action_authorized=false`; `release_action_performed=false`; `tag_creation_authorized=false`; `package_upload_authorized=false`; `deployment_authorized=false`; `publication_authorized=false`; `external_notification_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 now has a specific-action approval gate and a next exact selected-action approval task.
+- Boundary: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release tag/package/upload/deploy/publication, external notification, mutation outside repository docs/tests/control files, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-SPECIFIC-ACTION-SELECTION-PACKET — candidate action set recorded for human review (2026-05-25)
 
