@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.104
-focus: Local annotated release tag creation executed without remote tag push or non-tag release action.
-formal_hisys_result: release_tag_creation_executed_for_local_repository_only
-local_advisory_result: RELEASE_TAG_CREATED_LOCAL_ONLY_NOT_PUSHED
-next_safe_task: DARS-LIVE-RELEASE-TAG-PUSH-AUTHORIZATION-PACKET
+version: v0.0.105
+focus: Remote tag push executed for v0.0.103 without package upload, deployment, publication, or other release action.
+formal_hisys_result: release_tag_pushed_to_origin_only
+local_advisory_result: RELEASE_TAG_PUSHED_TO_ORIGIN_ONLY
+next_safe_task: DARS-LIVE-RELEASE-POST-TAG-PUSH-REVIEW-PACKET
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: 실행
-bootstrap_inference: The operator instructed execution after selecting the tag_creation_only action set. Hisys may create one local annotated Git tag named v0.0.103 at target commit ea26df6. It may not push the tag, upload a package, deploy, publish, send external notifications, make live provider/model calls, perform raw provider API calls, look up credentials, activate standing unattended approval, or remove human review without a separate authorization packet.
+bootstrap_arguments: push
+bootstrap_inference: The operator instructed push after local tag creation. Hisys may push the existing annotated Git tag v0.0.103 to origin using refspec refs/tags/v0.0.103:refs/tags/v0.0.103. It may not upload a package, deploy, publish, send external notifications, make live provider/model calls, perform raw provider API calls, look up credentials, activate standing unattended approval, remove human review, branch rewrite, or force push without a separate authorization packet.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.104.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.105.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: ea26df6
-previous_bootstrap_version: v0.0.103
+current_head_at_plan_creation: 7b20679
+previous_bootstrap_version: v0.0.104
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true

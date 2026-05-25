@@ -11,6 +11,14 @@ updated: 2026-05-25
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
 
+## DARS-LIVE-RELEASE-TAG-PUSH-AUTHORIZATION-PACKET — remote tag pushed (2026-05-25)
+
+- Scope: after local tag creation, the operator instructed `push`. This authorizes and records pushing one annotated Git tag, `v0.0.103`, to `origin` with refspec `refs/tags/v0.0.103:refs/tags/v0.0.103`.
+- Artifacts: `docs/release/dars-release-tag-push-authorization-packet-v0.0.105.md`, `docs/release/dars-panel-release-notes-v0.0.105.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.105.md`, `tests/unit/test_dars_release_tag_push_authorization_packet.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `release_tag_pushed_to_origin_only`; `tag_name=v0.0.103`; `tag_target_commit=ea26df6`; `tag_kind=annotated`; `tag_creation_performed=true`; `tag_push_authorized=true`; `tag_push_performed=true`; `package_upload_authorized=false`; `deployment_authorized=false`; `publication_authorized=false`; `external_notification_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 advances to the post-tag-push review packet; all package upload, deployment, publication, and notification actions remain separate authorization steps.
+- Boundary: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, package upload, deployment, publication, external notification, branch rewrite, force push, or human-review removal is introduced.
+
 ## DARS-LIVE-RELEASE-TAG-CREATION-EXECUTION-DECISION-PACKET — local tag created, not pushed (2026-05-25)
 
 - Scope: after `tag_creation_only` was selected, the operator instructed `실행`. This authorizes and records one local annotated Git tag, `v0.0.103`, at target commit `ea26df6`; the tag is not pushed.
