@@ -16,9 +16,11 @@ predecessor_claim=release_package_upload_registry_artifact_policy_details_partia
 operator_decision=registry_and_package_upload_not_planned
 registry_policy_details_required=false
 composite_upload_approval_packet_retired=true
-package_upload_path_active=false
+package_upload_scope_retired=true
 pypi_registry_use_planned=false
 testpypi_registry_use_planned=false
+upload_command_scope_retired=true
+package_registry_interaction_scope_retired=true
 ```
 
 ## Accepted claim
@@ -27,10 +29,12 @@ testpypi_registry_use_planned=false
 accepted_claim=release_package_registry_upload_scope_discarded
 registry_policy_details_required=false
 composite_upload_approval_packet_retired=true
-package_upload_path_active=false
+package_upload_scope_retired=true
 package_distribution_registry_policy_pending=false
 pypi_registry_use_planned=false
 testpypi_registry_use_planned=false
+upload_command_scope_retired=true
+package_registry_interaction_scope_retired=true
 requires_human_review=true
 ```
 
@@ -47,6 +51,8 @@ version_alignment_policy_details_received=true
 execution_boundary_details_received=true
 registry_policy_details_required=false
 composite_upload_approval_packet_retired=true
+upload_command_scope_retired=true
+package_registry_interaction_scope_retired=true
 registry_target_selected=false
 registry_url_resolved=false
 registry_human_approval_recorded=false
@@ -57,10 +63,6 @@ distribution_artifact_verified=false
 distribution_artifact_hash_recorded=false
 package_version_alignment_verified=false
 build_command_executed=false
-upload_command_executed=false
-package_upload_authorized=false
-package_upload_performed=false
-package_registry_interaction_performed=false
 credential_lookup_by_hisys=false
 deployment_authorized=false
 deployment_performed=false
@@ -90,4 +92,4 @@ This does not retire Hisys source registries, evidence registries, or fixture re
 next_safe_task=DARS-LIVE-RELEASE-LOCAL-ARTIFACT-RELEASE-SCOPE-REVIEW
 ```
 
-The next safe review is local artifact/release-scope review only. It may examine what local-only artifacts or repository records are useful for the single-operator DARS panel, but it does not authorize artifact build, package upload, registry interaction, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, branch rewrite, force push, or human-review removal.
+The next safe review is local artifact/release-scope review only. It may examine what local-only artifacts or repository records are useful for the single-operator DARS panel, but it does not authorize artifact build, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, branch rewrite, force push, or human-review removal.

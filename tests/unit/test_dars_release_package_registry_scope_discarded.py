@@ -20,13 +20,23 @@ def test_registry_upload_scope_is_discarded_without_selecting_a_registry() -> No
     assert "operator_decision=registry_and_package_upload_not_planned" in text
     assert "registry_policy_details_required=false" in text
     assert "composite_upload_approval_packet_retired=true" in text
-    assert "package_upload_path_active=false" in text
+    assert "package_upload_scope_retired=true" in text
     assert "pypi_registry_use_planned=false" in text
     assert "testpypi_registry_use_planned=false" in text
+    assert "upload_command_scope_retired=true" in text
+    assert "package_registry_interaction_scope_retired=true" in text
 
 
 def test_registry_discard_record_preserves_all_live_external_locks() -> None:
     text = PACKET.read_text(encoding="utf-8")
+
+    for retired_flag in [
+        "upload_command_executed=false",
+        "package_upload_authorized=false",
+        "package_upload_performed=false",
+        "package_registry_interaction_performed=false",
+    ]:
+        assert retired_flag not in text
 
     for flag in [
         "registry_target_selected=false",
@@ -38,10 +48,6 @@ def test_registry_discard_record_preserves_all_live_external_locks() -> None:
         "distribution_artifact_verified=false",
         "distribution_artifact_hash_recorded=false",
         "build_command_executed=false",
-        "upload_command_executed=false",
-        "package_upload_authorized=false",
-        "package_upload_performed=false",
-        "package_registry_interaction_performed=false",
         "credential_lookup_by_hisys=false",
         "live_external_action_authorized=false",
         "requires_human_review=true",
@@ -69,6 +75,7 @@ def test_release_notes_profile_traceability_and_ralph_advance_to_discard_state()
     assert "accepted_claim=release_package_registry_upload_scope_discarded" in record
     assert "registry_policy_details_required: false" in record
     assert "composite_upload_approval_packet_retired: true" in record
+    assert "package_upload_scope_retired: true" in record
     assert "DARS-LIVE-RELEASE-PACKAGE-REGISTRY-UPLOAD-SCOPE-DISCARDED — registry/upload scope discarded" in trace
     assert "dars-release-package-registry-upload-scope-discarded-v0.0.117.md" in checklist
     assert "version: v0.0.117" in profile
