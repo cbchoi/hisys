@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.107
-focus: Package-upload authorization-packet preflight recorded; selected action set remains tag_creation_only; package upload remains out of approved scope.
-formal_hisys_result: release_package_upload_authorization_packet_preflight_recorded_for_human_review
-local_advisory_result: PACKAGE_UPLOAD_AUTHORIZATION_PACKET_PREFLIGHT_RECORDED
-next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET-EXACT-APPROVAL-GATE
+version: v0.0.108
+focus: Package-upload authorization packet approved for human review; selected action set expanded to tag_creation_and_package_upload; actual upload remains separately gated.
+formal_hisys_result: release_package_upload_authorization_packet_approved_for_human_review
+local_advisory_result: PACKAGE_UPLOAD_AUTHORIZATION_PACKET_APPROVED_FOR_HUMAN_REVIEW
+next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-EXECUTION-DECISION-PACKET
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: rloo
-bootstrap_inference: After the post-tag-push review (v0.0.106), the queued package-upload authorization packet cannot advance without scoped operator approval because the selected action set is tag_creation_only (package upload excluded) and no package-upload approval instruction has been recorded. Hisys may record this docs-only preflight that names exact approval tokens APPROVE-PACKAGE-UPLOAD-SCOPE-EXPANSION-v0.0.107 and APPROVE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET-v0.0.107 and preserves every lockout. It may not approve the authorization packet, expand the selected action set, upload a package, deploy, publish, send external notifications, make live provider/model calls, perform raw provider API calls, look up credentials, activate standing unattended approval, remove human review, branch rewrite, or force push.
+bootstrap_inference: The operator supplied both exact package-upload authorization packet approval tokens, so Hisys may record a docs/control authorization packet and expand the selected action set to tag_creation_and_package_upload. This does not authorize or perform the actual package upload; a separate package-upload execution decision packet and scoped execution instruction are required before any upload. Hisys may not deploy, publish, send external notifications, make live provider/model calls, perform raw provider API calls, look up credentials, activate standing unattended approval, remove human review, branch rewrite, or force push.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.107.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.108.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: b0782a1
-previous_bootstrap_version: v0.0.106
+current_head_at_plan_creation: d4b6a1a
+previous_bootstrap_version: v0.0.107
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true

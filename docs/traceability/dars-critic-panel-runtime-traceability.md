@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.51.0
+version: 0.52.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-25
@@ -10,6 +10,14 @@ updated: 2026-05-25
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET — authorization packet approved (2026-05-25)
+
+- Scope: after the v0.0.107 exact-approval gate, the operator supplied `APPROVE-PACKAGE-UPLOAD-SCOPE-EXPANSION-v0.0.107` and `APPROVE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET-v0.0.107`. This records the package-upload authorization packet for human review and expands the selected action set to `tag_creation_and_package_upload`.
+- Artifacts: `docs/release/dars-release-package-upload-authorization-packet-v0.0.108.md`, `docs/release/dars-panel-release-notes-v0.0.108.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.108.md`, `tests/unit/test_dars_release_package_upload_authorization_packet.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `release_package_upload_authorization_packet_approved_for_human_review`; `operator_approval_scope_expansion=APPROVE-PACKAGE-UPLOAD-SCOPE-EXPANSION-v0.0.107`; `operator_approval_authorization_packet=APPROVE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET-v0.0.107`; `selected_action_set=tag_creation_and_package_upload`; `package_upload_in_selected_action_set=true`; `package_upload_authorization_packet_approved=true`; `operator_instruction_for_package_upload_received=true`; `package_upload_execution_decision_packet_approved=false`; `package_upload_authorized=false`; `package_upload_performed=false`; `deployment_authorized=false`; `publication_authorized=false`; `external_notification_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`; `standing_unattended_approval_activated=false`; `human_review_removal_authorized=false`; `force_push_authorized=false`; `branch_rewrite_authorized=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 now has a package-upload authorization-packet approval record; the next row is the separately gated `DARS-LIVE-RELEASE-PACKAGE-UPLOAD-EXECUTION-DECISION-PACKET`.
+- Boundary: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, package upload execution, deployment, publication, external notification, branch rewrite, force push, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-PACKAGE-UPLOAD-AUTHORIZATION-PACKET-PREFLIGHT — preflight recorded, no approval (2026-05-25)
 
