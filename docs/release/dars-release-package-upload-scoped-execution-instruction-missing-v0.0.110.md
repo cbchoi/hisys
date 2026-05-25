@@ -5,11 +5,13 @@ Task: `DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE`
 
 ## Request context
 
-The current next safe task is the scoped package-upload execution instruction gate. The operator instructed `go`. At this gate, generic `go` is not a scoped execution instruction for package upload. This packet records the missing scoped instruction and preserves every upload/external-action lockout.
+The current next safe task is the scoped package-upload execution instruction gate. The operator instructed `go`, then later instructed `execute`. At this gate, neither generic `go` nor unscoped `execute` is a scoped execution instruction for package upload. This packet records the missing scoped instruction and preserves every upload/external-action lockout.
 
 ```text
 task_id=DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE
 operator_instruction=go
+followup_operator_instruction=execute
+followup_instruction_scoped_package_upload_execution=false
 predecessor_packet=docs/release/dars-release-package-upload-execution-decision-packet-v0.0.109.md
 predecessor_claim=release_package_upload_execution_decision_packet_approved_for_human_review
 ```
@@ -29,11 +31,13 @@ This exact instruction would authorize only the next package-upload execution pa
 ```text
 accepted_claim=release_package_upload_scoped_execution_instruction_missing
 operator_instruction=go
+followup_operator_instruction=execute
 selected_action_set=tag_creation_and_package_upload
 package_upload_authorization_packet_approved=true
 package_upload_execution_decision_packet_approved=true
 scoped_package_upload_execution_instruction_required=true
 scoped_package_upload_execution_instruction_received=false
+followup_instruction_scoped_package_upload_execution=false
 required_exact_execution_instruction=EXECUTE-PACKAGE-UPLOAD-v0.0.110
 package_upload_execution_instruction_received=false
 requires_human_review=true
@@ -54,6 +58,9 @@ package_upload_authorized=false
 package_upload_performed=false
 package_registry_interaction_performed=false
 credential_lookup_by_hisys=false
+followup_package_upload_authorized=false
+followup_package_registry_interaction_performed=false
+followup_credential_lookup_by_hisys=false
 deployment_authorized=false
 deployment_performed=false
 publication_authorized=false

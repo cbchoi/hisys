@@ -5,7 +5,7 @@ Task: `DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE`
 
 ## Decision
 
-The operator instructed `go` at the scoped execution instruction gate. This is not a scoped package-upload execution instruction. The gate remains open and no package upload, package registry interaction, credential lookup, deployment, publication, external notification, branch rewrite, force push, live provider/model call, raw provider API call by Hisys, standing unattended activation, or human-review removal is authorized or performed.
+The operator instructed `go`, then later instructed `execute`, at the scoped execution instruction gate. Neither phrase is the exact scoped package-upload execution instruction. The gate remains open and no package upload, package registry interaction, credential lookup, deployment, publication, external notification, branch rewrite, force push, live provider/model call, raw provider API call by Hisys, standing unattended activation, or human-review removal is authorized or performed.
 
 ## Accepted claim
 
@@ -13,11 +13,13 @@ The operator instructed `go` at the scoped execution instruction gate. This is n
 accepted_claim=release_package_upload_scoped_execution_instruction_missing
 task_id=DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE
 operator_instruction=go
+followup_operator_instruction=execute
 selected_action_set=tag_creation_and_package_upload
 package_upload_authorization_packet_approved=true
 package_upload_execution_decision_packet_approved=true
 scoped_package_upload_execution_instruction_required=true
 scoped_package_upload_execution_instruction_received=false
+followup_instruction_scoped_package_upload_execution=false
 required_exact_execution_instruction=EXECUTE-PACKAGE-UPLOAD-v0.0.110
 package_upload_execution_instruction_received=false
 requires_human_review=true
@@ -39,6 +41,9 @@ package_upload_authorized: false
 package_upload_performed: false
 package_registry_interaction_performed: false
 credential_lookup_by_hisys: false
+followup_package_upload_authorized: false
+followup_package_registry_interaction_performed: false
+followup_credential_lookup_by_hisys: false
 deployment_authorized: false
 deployment_performed: false
 publication_authorized: false

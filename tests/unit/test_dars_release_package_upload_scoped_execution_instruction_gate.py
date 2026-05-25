@@ -34,6 +34,16 @@ def test_scoped_execution_instruction_gate_records_generic_go_as_missing_instruc
     assert "required_exact_execution_instruction=EXECUTE-PACKAGE-UPLOAD-v0.0.110" in text
 
 
+def test_scoped_execution_instruction_gate_records_unscoped_execute_as_missing_instruction() -> None:
+    text = PACKET.read_text(encoding="utf-8")
+
+    assert "followup_operator_instruction=execute" in text
+    assert "followup_instruction_scoped_package_upload_execution=false" in text
+    assert "followup_package_upload_authorized=false" in text
+    assert "followup_package_registry_interaction_performed=false" in text
+    assert "followup_credential_lookup_by_hisys=false" in text
+
+
 def test_scoped_execution_instruction_gate_keeps_upload_and_external_actions_blocked() -> None:
     text = PACKET.read_text(encoding="utf-8")
 
