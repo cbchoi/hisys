@@ -19,8 +19,7 @@ RECORD = (
 )
 TRACEABILITY = ROOT / "docs" / "traceability" / "dars-critic-panel-runtime-traceability.md"
 TRACEABILITY_README = ROOT / "docs" / "traceability" / "README.md"
-RALPH = ROOT / "ralph.md"
-PROFILE = ROOT / "docs" / "milestone-bootstrap" / "profile.yaml"
+
 
 
 def test_scoped_execution_instruction_gate_records_generic_go_as_missing_instruction() -> None:
@@ -89,8 +88,7 @@ def test_scoped_execution_instruction_missing_record_traceability_and_next_gate(
     record = RECORD.read_text(encoding="utf-8")
     trace = TRACEABILITY.read_text(encoding="utf-8")
     trace_readme = TRACEABILITY_README.read_text(encoding="utf-8")
-    ralph = RALPH.read_text(encoding="utf-8")
-    profile = PROFILE.read_text(encoding="utf-8")
+
 
     assert "Package-upload scoped execution instruction missing" in notes
     assert "accepted_claim=release_package_upload_scoped_execution_instruction_missing" in record
@@ -106,9 +104,3 @@ def test_scoped_execution_instruction_missing_record_traceability_and_next_gate(
         in trace
     )
     assert "DARS package-upload scoped execution instruction missing" in trace_readme
-    assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE`" in ralph
-    assert "version: v0.0.110" in profile
-    assert (
-        "next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE"
-        in profile
-    )

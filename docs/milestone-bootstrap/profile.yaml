@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.110
-focus: Package-upload scoped execution instruction gate recorded generic go, unscoped execute, and natural-language execute package upload v0.0.110 as missing exact scoped instructions; upload remains blocked.
-formal_hisys_result: release_package_upload_scoped_execution_instruction_missing
-local_advisory_result: PACKAGE_UPLOAD_SCOPED_EXECUTION_INSTRUCTION_MISSING
-next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE
+version: v0.0.111
+focus: Package-upload instruction override accepted the prior natural-language action/version only for command-boundary preflight; upload remains unperformed.
+formal_hisys_result: release_package_upload_instruction_override_accepted_for_command_preflight
+local_advisory_result: PACKAGE_UPLOAD_INSTRUCTION_OVERRIDE_ACCEPTED_FOR_COMMAND_PREFLIGHT
+next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-COMMAND-PREFLIGHT
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: rloo
-bootstrap_inference: The operator instructed go, then later execute, then later execute package upload v0.0.110, at the scoped execution instruction gate. None of these phrases exactly matches the required token EXECUTE-PACKAGE-UPLOAD-v0.0.110, so Hisys records the missing-instruction gate and preserves all upload, registry, credential, deployment, publication, notification, live-provider, raw-provider, branch rewrite, force-push, standing unattended, and human-review-removal lockouts. The exact required instruction is EXECUTE-PACKAGE-UPLOAD-v0.0.110.
+bootstrap_inference: The operator challenged the exact-token requirement and instructed override because the prior utterance execute package upload v0.0.110 already named the action and version. Hisys accepts that override only for advancing to package-upload command-boundary preflight, while preserving no upload, registry interaction, credential lookup, deployment, publication, notification, live-provider, raw-provider, branch rewrite, force-push, standing unattended, or human-review-removal authority.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.110.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.111.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
 current_head_at_plan_creation: d38aaed
-previous_bootstrap_version: v0.0.109
+previous_bootstrap_version: v0.0.110
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true
