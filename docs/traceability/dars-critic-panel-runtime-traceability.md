@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.49.0
+version: 0.50.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-25
@@ -10,6 +10,14 @@ updated: 2026-05-25
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-SPECIFIC-ACTION-EXACT-APPROVAL — tag creation selected, tag not created (2026-05-25)
+
+- Scope: after the exact-approval gate remained open, the operator instructed `tag creation`. This records `selected_action_set=tag_creation_only` for human review without authorizing or performing tag creation.
+- Artifacts: `docs/release/dars-release-tag-creation-selection-approval-v0.0.103.md`, `docs/release/dars-panel-release-notes-v0.0.103.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.103.md`, `tests/unit/test_dars_release_tag_creation_selection_approval.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `release_specific_action_tag_creation_selected_for_human_review`; `selected_action_set=tag_creation_only`; `specific_action_selection_approved=true`; `exact_human_approval_provided=true`; `tag_creation_selected=true`; `tag_creation_authorized=false`; `tag_creation_performed=false`; `release_action_authorized=false`; `release_action_performed=false`; `package_upload_authorized=false`; `deployment_authorized=false`; `publication_authorized=false`; `external_notification_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 advances to the tag-creation execution decision packet; actual tag creation remains a separate authorization and execution step.
+- Boundary: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release tag creation, package upload, deployment, publication, external notification, mutation outside repository docs/tests/control files, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-SPECIFIC-ACTION-EXACT-APPROVAL — exact approval missing, action locked (2026-05-25)
 
