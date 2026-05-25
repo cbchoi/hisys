@@ -12,7 +12,7 @@
 | Baseline at plan creation | `7b40649` |
 | Previous active control file | archived into `ralph.history.md` on 2026-05-23 |
 | Runtime | one coherent RED--GREEN--validate--commit unit per run; maximum 5 hours |
-| Active task | Package-upload scoped execution instruction gate recorded generic `go` and unscoped `execute` as missing scoped instructions. Actual package upload remains blocked. Next safe task remains `DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE`; exact instruction required: `EXECUTE-PACKAGE-UPLOAD-v0.0.110`. |
+| Active task | Package-upload scoped execution instruction gate recorded generic `go`, unscoped `execute`, and natural-language `execute package upload v0.0.110` as missing exact scoped instructions. Actual package upload remains blocked. Next safe task remains `DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE`; exact instruction required: `EXECUTE-PACKAGE-UPLOAD-v0.0.110`. |
 | User authorization | 최창범 교수 requested R3-R5 live evidence execution on 2026-05-23, explicitly instructed `go for R3 critic live smoke`, instructed `go for live release`, selected `mapped로 가자`, approved `R4 Codex subprocess panel smoke 실행`, asked `지금 다시 해볼래?`, accepted the recommended R4H Hermes-mediated split with `추천하는데로 해보자`, then instructed `R4H로 진행 R4C는 추후 작업으로`; one R3 Codex subprocess model-boundary call completed, two R4 Codex subprocess attempts stopped on auth refresh before critique output, one R4H Hermes-mediated advisory panel completed for human review only, and R4H is now selected for continuation. |
 
 ## 1. Objective and bounded target outcome

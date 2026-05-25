@@ -5,13 +5,16 @@ Task: `DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE`
 
 ## Request context
 
-The current next safe task is the scoped package-upload execution instruction gate. The operator instructed `go`, then later instructed `execute`. At this gate, neither generic `go` nor unscoped `execute` is a scoped execution instruction for package upload. This packet records the missing scoped instruction and preserves every upload/external-action lockout.
+The current next safe task is the scoped package-upload execution instruction gate. The operator instructed `go`, then later instructed `execute`, then later instructed `execute package upload v0.0.110`. At this gate, only the exact token `EXECUTE-PACKAGE-UPLOAD-v0.0.110` satisfies the scoped execution instruction. The natural-language variant names the action and version, but it does not match the exact required registry-boundary token. This packet records the missing exact scoped instruction and preserves every upload/external-action lockout.
 
 ```text
 task_id=DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE
 operator_instruction=go
 followup_operator_instruction=execute
 followup_instruction_scoped_package_upload_execution=false
+second_followup_operator_instruction=execute package upload v0.0.110
+second_followup_exact_required_instruction_matched=false
+second_followup_instruction_scoped_package_upload_execution=false
 predecessor_packet=docs/release/dars-release-package-upload-execution-decision-packet-v0.0.109.md
 predecessor_claim=release_package_upload_execution_decision_packet_approved_for_human_review
 ```
@@ -32,12 +35,15 @@ This exact instruction would authorize only the next package-upload execution pa
 accepted_claim=release_package_upload_scoped_execution_instruction_missing
 operator_instruction=go
 followup_operator_instruction=execute
+second_followup_operator_instruction=execute package upload v0.0.110
 selected_action_set=tag_creation_and_package_upload
 package_upload_authorization_packet_approved=true
 package_upload_execution_decision_packet_approved=true
 scoped_package_upload_execution_instruction_required=true
 scoped_package_upload_execution_instruction_received=false
 followup_instruction_scoped_package_upload_execution=false
+second_followup_exact_required_instruction_matched=false
+second_followup_instruction_scoped_package_upload_execution=false
 required_exact_execution_instruction=EXECUTE-PACKAGE-UPLOAD-v0.0.110
 package_upload_execution_instruction_received=false
 requires_human_review=true
@@ -61,6 +67,10 @@ credential_lookup_by_hisys=false
 followup_package_upload_authorized=false
 followup_package_registry_interaction_performed=false
 followup_credential_lookup_by_hisys=false
+second_followup_package_upload_authorized=false
+second_followup_package_upload_performed=false
+second_followup_package_registry_interaction_performed=false
+second_followup_credential_lookup_by_hisys=false
 deployment_authorized=false
 deployment_performed=false
 publication_authorized=false

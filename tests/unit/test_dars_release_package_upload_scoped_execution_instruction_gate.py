@@ -44,6 +44,18 @@ def test_scoped_execution_instruction_gate_records_unscoped_execute_as_missing_i
     assert "followup_credential_lookup_by_hisys=false" in text
 
 
+def test_scoped_execution_instruction_gate_records_natural_language_package_upload_as_missing_exact_token() -> None:
+    text = PACKET.read_text(encoding="utf-8")
+
+    assert "second_followup_operator_instruction=execute package upload v0.0.110" in text
+    assert "second_followup_exact_required_instruction_matched=false" in text
+    assert "second_followup_instruction_scoped_package_upload_execution=false" in text
+    assert "second_followup_package_upload_authorized=false" in text
+    assert "second_followup_package_upload_performed=false" in text
+    assert "second_followup_package_registry_interaction_performed=false" in text
+    assert "second_followup_credential_lookup_by_hisys=false" in text
+
+
 def test_scoped_execution_instruction_gate_keeps_upload_and_external_actions_blocked() -> None:
     text = PACKET.read_text(encoding="utf-8")
 
