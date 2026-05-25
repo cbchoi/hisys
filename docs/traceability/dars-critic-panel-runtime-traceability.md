@@ -1,7 +1,7 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.48.0
+version: 0.49.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-25
@@ -10,6 +10,14 @@ updated: 2026-05-25
 # DARS Critic Panel Runtime Traceability Matrix
 
 Source Hisys packet: `/tmp/hisys-dars-critic-panel-instance/runtime-boundary/agent-workflows/20260519/SPEC-DARS-CRITIC-PANEL-001.json`.
+
+## DARS-LIVE-RELEASE-SPECIFIC-ACTION-EXACT-APPROVAL — exact approval missing, action locked (2026-05-25)
+
+- Scope: after the specific-action approval gate documented exact approval templates, the operator instructed generic `go`. This records that exact selected-action approval is missing; it does not select, approve, authorize, or perform any action.
+- Artifacts: `docs/release/dars-release-specific-action-exact-approval-missing-v0.0.102.md`, `docs/release/dars-panel-release-notes-v0.0.102.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.102.md`, `tests/unit/test_dars_release_specific_action_exact_approval_missing.py`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `release_specific_action_exact_approval_missing`; `selected_action_set=none`; `specific_action_selection_approved=false`; `exact_human_approval_required=true`; `exact_human_approval_provided=false`; `release_action_authorized=false`; `release_action_performed=false`; `tag_creation_authorized=false`; `package_upload_authorized=false`; `deployment_authorized=false`; `publication_authorized=false`; `external_notification_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 remains at the exact selected-action approval task until an exact scoped approval is provided.
+- Boundary: no live provider/model call, Codex subprocess retry, raw provider API call, credential lookup, standing unattended activation, release tag/package/upload/deploy/publication, external notification, mutation outside repository docs/tests/control files, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-SPECIFIC-ACTION-APPROVAL-GATE — approval gate entered, exact scoped approval required (2026-05-25)
 
