@@ -1,13 +1,21 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.57.0
+version: 0.58.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-25
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
+
+## DARS-LIVE-RELEASE-LOCAL-ARTIFACT-RELEASE-SCOPE-REVIEW — local artifact scope review approved
+
+- Scope: after package distribution registry/upload scope was retired, the operator supplied `APPROVE-LOCAL-ARTIFACT-RELEASE-SCOPE-REVIEW-v0.0.117` and approved local-only review of artifacts and repository records useful for the single-operator DARS panel.
+- Artifacts: `docs/release/dars-release-local-artifact-scope-review-approval-v0.0.118.md`, `docs/release/dars-panel-release-notes-v0.0.118.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.118.md`, `tests/unit/test_dars_release_local_artifact_scope_review_approval.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `local_artifact_release_scope_review_approved`; `local_artifact_review_scope_approved=true`; `repository_record_review_scope_approved=true`; `single_operator_dars_panel_scope=true`; `package_upload_scope_retired=true`; `upload_command_scope_retired=true`; `package_registry_interaction_scope_retired=true`; `credential_lookup_by_hisys=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 advances to `DARS-LIVE-RELEASE-LOCAL-ARTIFACT-INVENTORY-REVIEW`; only local-only artifact and repository-record inventory/recommendation work is authorized.
+- Boundary: no artifact build, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, force push, branch rewrite, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-PACKAGE-REGISTRY-UPLOAD-SCOPE-DISCARDED — registry/upload scope discarded
 
