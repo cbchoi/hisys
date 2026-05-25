@@ -69,7 +69,6 @@ def test_package_upload_execution_decision_record_traceability_and_next_gate() -
     trace = TRACEABILITY.read_text(encoding="utf-8")
     trace_readme = TRACEABILITY_README.read_text(encoding="utf-8")
     ralph = RALPH.read_text(encoding="utf-8")
-    profile = PROFILE.read_text(encoding="utf-8")
 
     assert "Package-upload execution decision packet approved for human review" in notes
     assert (
@@ -89,8 +88,3 @@ def test_package_upload_execution_decision_record_traceability_and_next_gate() -
     )
     assert "DARS package-upload execution decision packet" in trace_readme
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-EXECUTION-DECISION-PACKET`" in ralph
-    assert "version: v0.0.109" in profile
-    assert (
-        "next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE"
-        in profile
-    )

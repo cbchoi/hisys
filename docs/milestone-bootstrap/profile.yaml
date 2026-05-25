@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.109
-focus: Package-upload execution decision packet approved for human review; actual upload remains gated by scoped execution instruction.
-formal_hisys_result: release_package_upload_execution_decision_packet_approved_for_human_review
-local_advisory_result: PACKAGE_UPLOAD_EXECUTION_DECISION_PACKET_APPROVED_FOR_HUMAN_REVIEW
+version: v0.0.110
+focus: Package-upload scoped execution instruction gate recorded generic go as missing scoped instruction; upload remains blocked.
+formal_hisys_result: release_package_upload_scoped_execution_instruction_missing
+local_advisory_result: PACKAGE_UPLOAD_SCOPED_EXECUTION_INSTRUCTION_MISSING
 next_safe_task: DARS-LIVE-RELEASE-PACKAGE-UPLOAD-SCOPED-EXECUTION-INSTRUCTION-GATE
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: rloo
-bootstrap_inference: The operator instructed go after the package-upload authorization packet. Hisys may record a package-upload execution decision packet for human review and move to a scoped execution instruction gate. This does not authorize or perform package upload; package registry interaction, credential lookup, deployment, publication, external notification, live provider/model calls, raw provider API calls, standing unattended activation, human-review removal, branch rewrite, and force push remain blocked.
+bootstrap_inference: The operator instructed go at the scoped execution instruction gate. Generic go is not a scoped package-upload execution instruction, so Hisys records the missing-instruction gate and preserves all upload, registry, credential, deployment, publication, notification, live-provider, raw-provider, branch rewrite, force-push, standing unattended, and human-review-removal lockouts. The exact required instruction is EXECUTE-PACKAGE-UPLOAD-v0.0.110.
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.109.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.110.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: ed05ecc
-previous_bootstrap_version: v0.0.108
+current_head_at_plan_creation: d38aaed
+previous_bootstrap_version: v0.0.109
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true
