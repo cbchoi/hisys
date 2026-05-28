@@ -423,6 +423,68 @@ def build_judge_advisory_panel_report(
     }
 
 
+def _render_count_lines(gate_status_counts: Mapping[str, Any]) -> str:
+    if not gate_status_counts:
+        return "  (none)"
+    return "\n".join(
+        f"  - {status}: {gate_status_counts[status]}"
+        for status in gate_status_counts
+    )
+
+
+def _render_queue_lines(queue: Iterable[Mapping[str, Any]]) -> str:
+    lines = [
+        f"  {index}. {entry['gate_status']} - {entry['packet_id']}"
+        for index, entry in enumerate(queue, start=1)
+    ]
+    if not lines:
+        return "  (none)"
+    return "\n".join(lines)
+
+
+def render_judge_advisory_panel_report_text(report: Mapping[str, Any]) -> str:
+    """Render a bundled advisory panel report into human-readable text.
+
+    ``report`` is the mapping produced by
+    :func:`build_judge_advisory_panel_report`. The returned value is a single
+    deterministic, human-readable string for a human reviewer that surfaces the
+    panel summary counts, the most-restrictive advisory outcome, and the
+    most-restrictive-first human-review work queue (so the packets that most
+    need human review appear at the top of the rendered queue).
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate ``report``, and returns a fresh string on every call. It grants no
+    execution authority: the rendered text states that the panel is advisory
+    only and that human review is required, and it repeats the report's
+    ``non_authorization_note`` that a human reviewer must decide before any
+    action is taken.
+    """
+
+    panel_summary = report["panel_summary"]
+    work_queue = report["human_review_work_queue"]
+    most_restrictive = panel_summary["most_restrictive_gate_status"]
+
+    return "\n".join(
+        (
+            "Judge Advisory Panel Report",
+            "===========================",
+            f"Packets reviewed: {report['packet_count']}",
+            "Most restrictive gate status: "
+            f"{most_restrictive if most_restrictive is not None else '(none)'}",
+            "Advisory only: yes",
+            "Requires human review: yes",
+            "",
+            "Gate status counts:",
+            _render_count_lines(panel_summary["gate_status_counts"]),
+            "",
+            "Human-review work queue (most restrictive first):",
+            _render_queue_lines(work_queue["queue"]),
+            "",
+            f"Note: {report['non_authorization_note']}",
+        )
+    )
+
+
 def render_judge_gate_result(
     source: JudgeAdvisoryDecisionPacket | Mapping[str, Any] | Any,
 ) -> JudgeGateResult:
@@ -459,6 +521,7 @@ __all__ = [
     "build_judge_advisory_panel_report",
     "build_judge_gate_result_packet",
     "build_judge_human_review_work_queue",
+    "render_judge_advisory_panel_report_text",
     "render_judge_gate_result",
     "summarize_judge_gate_result_packets",
 ]

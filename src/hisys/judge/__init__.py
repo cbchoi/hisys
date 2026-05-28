@@ -31,6 +31,7 @@ from .gate_result import (
     build_judge_advisory_panel_report,
     build_judge_gate_result_packet,
     build_judge_human_review_work_queue,
+    render_judge_advisory_panel_report_text,
     render_judge_gate_result,
     summarize_judge_gate_result_packets,
 )
@@ -114,6 +115,7 @@ __all__ = [
     "build_judge_human_review_work_queue",
     "get_judge_subsystem_invocation_modes",
     "get_judge_subsystem_manifest",
+    "render_judge_advisory_panel_report_text",
     "render_judge_gate_result",
     "summarize_judge_gate_result_packets",
     "validate_judge_decision_packet",
