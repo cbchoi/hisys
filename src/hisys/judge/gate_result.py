@@ -380,6 +380,49 @@ def build_judge_human_review_work_queue(
     }
 
 
+def build_judge_advisory_panel_report(
+    packets: Iterable[Mapping[str, Any] | Any],
+) -> dict[str, Any]:
+    """Bundle the panel summary and human-review work queue into one report.
+
+    ``packets`` is any iterable of the JSON-serializable mappings produced by
+    :func:`build_judge_gate_result_packet`. The returned mapping is plain,
+    deterministic, and JSON-serializable. It composes
+    :func:`summarize_judge_gate_result_packets` (the bounded panel summary) and
+    :func:`build_judge_human_review_work_queue` (the most-restrictive-first work
+    queue) over the *same* gate-result packets, so a single advisory panel
+    report carries both the aggregate counts and the ordered human-review queue.
+    ``packets`` is materialized once before being fed to both views, so a
+    one-shot iterable (e.g. a generator) populates both the summary and the
+    queue rather than being exhausted by the first.
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate its inputs, and returns a fresh mapping (with independent nested
+    ``panel_summary`` / ``human_review_work_queue`` mappings) on every call. It
+    grants no execution authority: the top-level ``authority_locks`` pin
+    ``advisory_only=true`` / ``requires_human_review=true`` (no escalation keys),
+    and ``non_authorization_note`` repeats that a human reviewer must decide
+    before any action is taken.
+    """
+
+    materialized = list(packets)
+
+    return {
+        "subsystem": "judge",
+        "kind": "advisory_gate_result_panel_report",
+        "packet_count": len(materialized),
+        "panel_summary": summarize_judge_gate_result_packets(materialized),
+        "human_review_work_queue": build_judge_human_review_work_queue(
+            materialized
+        ),
+        "authority_locks": {
+            "advisory_only": True,
+            "requires_human_review": True,
+        },
+        "non_authorization_note": JUDGE_GATE_NON_AUTHORIZATION_NOTE,
+    }
+
+
 def render_judge_gate_result(
     source: JudgeAdvisoryDecisionPacket | Mapping[str, Any] | Any,
 ) -> JudgeGateResult:
@@ -413,6 +456,7 @@ __all__ = [
     "JUDGE_PANEL_MALFORMED_GATE_STATUS",
     "JUDGE_WORK_QUEUE_UNIDENTIFIED_PACKET_ID",
     "JudgeGateResult",
+    "build_judge_advisory_panel_report",
     "build_judge_gate_result_packet",
     "build_judge_human_review_work_queue",
     "render_judge_gate_result",
