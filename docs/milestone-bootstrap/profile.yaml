@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.123
-focus: Post-inventory recommendation accepted by bounded operator override; active/historical repository-record treatment accepted without external or completion-boundary upgrade.
-formal_hisys_result: post_inventory_review_recommendation_accepted_by_operator_override
-local_advisory_result: POST_INVENTORY_RECOMMENDATION_ACCEPTED_BY_OPERATOR_OVERRIDE
-next_safe_task: DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE
+version: v0.0.124
+focus: DARS panel productization closure gate recorded; active queue restored to codebase-analysis M21.6 Prepare without external or completion-boundary upgrade.
+formal_hisys_result: dars_panel_productization_closure_gate_recorded
+local_advisory_result: DARS_PANEL_PRODUCTIZATION_CLOSURE_GATE_RECORDED
+next_safe_task: MB-CODEBASE-M21-6-PREP
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: rloo
-bootstrap_inference: "Hisys records a bounded operator override accepting the post-inventory active/historical repository-record recommendation. The acceptance is limited to repository-record treatment; no DARS completion, bounded unattended readiness, release action, credential, live external/model call, or human-review-removal boundary is upgraded."
+bootstrap_inference: "Hisys records a local DARS panel productization closure gate and restores the codebase-analysis queue. No DARS completion, bounded unattended readiness, release action, credential, live external/model call, or human-review-removal boundary is upgraded."
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.123.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.124.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: bf9578b
-previous_bootstrap_version: v0.0.122
+current_head_at_plan_creation: 7ff4aa1
+previous_bootstrap_version: v0.0.123
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true

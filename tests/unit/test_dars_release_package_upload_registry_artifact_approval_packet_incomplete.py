@@ -72,5 +72,5 @@ def test_notes_record_traceability_and_profile_keep_same_gate() -> None:
     assert "next_safe_task=DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-ARTIFACT-EXACT-APPROVAL" in record
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-ARTIFACT-EXACT-APPROVAL — approval packet incomplete" in trace
     assert "dars-release-package-upload-registry-artifact-approval-packet-incomplete-v0.0.115.md" in checklist
-    assert "previous_bootstrap_version: v0.0.122" in profile
-    assert "next_safe_task: DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE" in profile
+    assert "previous_bootstrap_version: v0.0.123" in profile
+    assert "next_safe_task: MB-CODEBASE-M21-6-PREP" in profile

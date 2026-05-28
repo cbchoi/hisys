@@ -72,7 +72,7 @@ def test_notes_profile_traceability_and_ralph_keep_exact_approval_gate() -> None
     assert "active_controlled_record_set_accepted: false" in record
     assert "DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL — exact approval missing" in trace
     assert "dars-release-post-inventory-exact-approval-missing-v0.0.122.md" in checklist
-    assert "version: v0.0.123" in profile
-    assert "formal_hisys_result: post_inventory_review_recommendation_accepted_by_operator_override" in profile
-    assert "next_safe_task: DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE" in profile
+    assert "version: v0.0.124" in profile
+    assert "formal_hisys_result: dars_panel_productization_closure_gate_recorded" in profile
+    assert "next_safe_task: MB-CODEBASE-M21-6-PREP" in profile
     assert "DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in ralph

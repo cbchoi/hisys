@@ -9,6 +9,13 @@ updated: 2026-05-28
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE — closure gate recorded
+
+- Scope: after the post-inventory recommendation was accepted by bounded operator override, this gate records local productization bookkeeping closure and restores the active queue to codebase analysis.
+- Artifacts: `docs/release/dars-panel-productization-closure-gate-v0.0.124.md`, `docs/release/dars-panel-release-notes-v0.0.124.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.124.md`, `tests/unit/test_dars_panel_productization_closure_gate.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `docs/milestone-bootstrap/README.md`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `dars_panel_productization_closure_gate_recorded`; `productization_closure_gate_recorded=true`; `post_inventory_recommendation_accepted=true`; `active_controlled_record_set_accepted=true`; `historical_only_record_set_accepted=true`; `restored_queue=codebase-analysis`; `next_safe_task=MB-CODEBASE-M21-6-PREP`; `dars_completion_upgrade_claimed=false`; `bounded_unattended_advisory_operation_ready=false`; `released_for_controlled_advisory_use=false`.
+- Boundary: no artifact build, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, force push, branch rewrite, completion upgrade, bounded-unattended-readiness claim, release action, or human-review removal is introduced.
+
 ## DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-OVERRIDE-ACCEPTANCE — recommendation accepted by operator override
 
 - Scope: after the v0.0.122 exact-approval-missing record, the operator stated that typing the full phrase was difficult and instructed Hisys to accept. Hisys recorded a bounded override of the exact-token requirement for repository-record treatment only.

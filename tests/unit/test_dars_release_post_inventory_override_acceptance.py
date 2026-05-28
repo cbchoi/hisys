@@ -73,7 +73,7 @@ def test_notes_profile_traceability_and_ralph_advance_to_closure_gate() -> None:
     assert "active_controlled_record_set_accepted: true" in record
     assert "DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-OVERRIDE-ACCEPTANCE — recommendation accepted by operator override" in trace
     assert "dars-release-post-inventory-override-acceptance-v0.0.123.md" in checklist
-    assert "version: v0.0.123" in profile
-    assert "formal_hisys_result: post_inventory_review_recommendation_accepted_by_operator_override" in profile
-    assert "next_safe_task: DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE" in profile
+    assert "version: v0.0.124" in profile
+    assert "formal_hisys_result: dars_panel_productization_closure_gate_recorded" in profile
+    assert "next_safe_task: MB-CODEBASE-M21-6-PREP" in profile
     assert "DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-OVERRIDE-ACCEPTANCE" in ralph
