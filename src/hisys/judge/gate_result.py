@@ -485,6 +485,47 @@ def render_judge_advisory_panel_report_text(report: Mapping[str, Any]) -> str:
     )
 
 
+def build_judge_advisory_panel_review_bundle(
+    packets: Iterable[Mapping[str, Any] | Any],
+) -> dict[str, Any]:
+    """Bundle the JSON advisory panel report with its human-readable text.
+
+    ``packets`` is any iterable of the JSON-serializable mappings produced by
+    :func:`build_judge_gate_result_packet`. The returned mapping is plain,
+    deterministic, and JSON-serializable. It composes
+    :func:`build_judge_advisory_panel_report` (the ``report`` mapping) and
+    :func:`render_judge_advisory_panel_report_text` (its ``report_text``
+    rendering) over the *same* report, so one bundle carries both the machine
+    view and the human-readable view for local tooling and human review. The
+    report is built once and the text is rendered from that same report, so a
+    one-shot iterable (e.g. a generator) populates the whole bundle rather than
+    being exhausted partway through.
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate its inputs, and returns a fresh mapping (with an independent nested
+    ``report`` mapping) on every call. It grants no execution authority: the
+    top-level ``authority_locks`` pin ``advisory_only=true`` /
+    ``requires_human_review=true`` (no escalation keys), and
+    ``non_authorization_note`` repeats that a human reviewer must decide before
+    any action is taken.
+    """
+
+    report = build_judge_advisory_panel_report(packets)
+
+    return {
+        "subsystem": "judge",
+        "kind": "advisory_gate_result_panel_review_bundle",
+        "packet_count": report["packet_count"],
+        "report": report,
+        "report_text": render_judge_advisory_panel_report_text(report),
+        "authority_locks": {
+            "advisory_only": True,
+            "requires_human_review": True,
+        },
+        "non_authorization_note": JUDGE_GATE_NON_AUTHORIZATION_NOTE,
+    }
+
+
 def render_judge_gate_result(
     source: JudgeAdvisoryDecisionPacket | Mapping[str, Any] | Any,
 ) -> JudgeGateResult:
@@ -519,6 +560,7 @@ __all__ = [
     "JUDGE_WORK_QUEUE_UNIDENTIFIED_PACKET_ID",
     "JudgeGateResult",
     "build_judge_advisory_panel_report",
+    "build_judge_advisory_panel_review_bundle",
     "build_judge_gate_result_packet",
     "build_judge_human_review_work_queue",
     "render_judge_advisory_panel_report_text",
