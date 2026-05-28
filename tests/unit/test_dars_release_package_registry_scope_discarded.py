@@ -78,7 +78,7 @@ def test_release_notes_profile_traceability_and_ralph_advance_to_discard_state()
     assert "package_upload_scope_retired: true" in record
     assert "DARS-LIVE-RELEASE-PACKAGE-REGISTRY-UPLOAD-SCOPE-DISCARDED — registry/upload scope discarded" in trace
     assert "dars-release-package-registry-upload-scope-discarded-v0.0.117.md" in checklist
-    assert "previous_bootstrap_version: v0.0.120" in profile
-    assert "formal_hisys_result: post_inventory_review_gate_entered_for_human_review" in profile
+    assert "previous_bootstrap_version: v0.0.121" in profile
+    assert "formal_hisys_result: post_inventory_review_exact_approval_missing" in profile
     assert "next_safe_task: DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in profile
     assert "Local artifact/release-scope review approved" in ralph

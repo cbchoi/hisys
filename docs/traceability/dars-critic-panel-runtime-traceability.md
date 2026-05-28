@@ -9,6 +9,14 @@ updated: 2026-05-28
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL — exact approval missing
+
+- Scope: after the v0.0.121 post-inventory review gate, the operator instruction `수락` did not match exact approval `APPROVE-POST-INVENTORY-REVIEW-v0.0.121`.
+- Artifacts: `docs/release/dars-release-post-inventory-exact-approval-missing-v0.0.122.md`, `docs/release/dars-panel-release-notes-v0.0.122.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.122.md`, `tests/unit/test_dars_release_post_inventory_exact_approval_missing.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `post_inventory_review_exact_approval_missing`; `operator_instruction=수락`; `required_exact_approval=APPROVE-POST-INVENTORY-REVIEW-v0.0.121`; `exact_human_approval_matched=false`; `active_controlled_record_set_accepted=false`; `historical_only_record_set_accepted=false`; `dars_completion_upgrade_claimed=false`; `bounded_unattended_advisory_operation_ready=false`; `credential_lookup_by_hisys=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 remains at `DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL`; exact approval is still required before accepting the active/historical record recommendation.
+- Boundary: no artifact build, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, force push, branch rewrite, completion upgrade, bounded-unattended-readiness claim, recommendation acceptance, or human-review removal is introduced.
+
 ## DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-GATE — post-inventory review gate entered
 
 - Scope: after the v0.0.120 repository-record recommendation, Hisys recorded entry into the post-inventory human-review gate for the single-operator DARS panel.

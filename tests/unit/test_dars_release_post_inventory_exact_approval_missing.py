@@ -1,33 +1,33 @@
-"""DARS post-inventory review gate checks."""
+"""DARS post-inventory exact-approval missing checks."""
 
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PACKET = ROOT / "docs" / "release" / "dars-release-post-inventory-review-gate-v0.0.121.md"
-NOTES = ROOT / "docs" / "release" / "dars-panel-release-notes-v0.0.121.md"
-RECORD = ROOT / "docs" / "milestone-bootstrap" / "documents" / "readiness_decision_record_v0.0.121.md"
+PACKET = ROOT / "docs" / "release" / "dars-release-post-inventory-exact-approval-missing-v0.0.122.md"
+NOTES = ROOT / "docs" / "release" / "dars-panel-release-notes-v0.0.122.md"
+RECORD = ROOT / "docs" / "milestone-bootstrap" / "documents" / "readiness_decision_record_v0.0.122.md"
 TRACEABILITY = ROOT / "docs" / "traceability" / "dars-critic-panel-runtime-traceability.md"
 CHECKLIST = ROOT / "docs" / "release" / "dars-panel-release-candidate-checklist.md"
 PROFILE = ROOT / "docs" / "milestone-bootstrap" / "profile.yaml"
 RALPH = ROOT / "ralph.md"
 
 
-def test_post_inventory_review_gate_enters_human_review_without_acceptance() -> None:
+def test_generic_acceptance_does_not_match_exact_approval() -> None:
     text = PACKET.read_text(encoding="utf-8")
 
-    assert "task_id=DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-GATE" in text
-    assert "predecessor_claim=repository_record_recommendation_recorded_for_human_review" in text
-    assert "accepted_claim=post_inventory_review_gate_entered_for_human_review" in text
-    assert "post_inventory_review_gate_entered=true" in text
-    assert "active_controlled_record_set_accepted=false" in text
-    assert "historical_only_record_set_accepted=false" in text
-    assert "exact_human_approval_required=true" in text
+    assert "task_id=DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in text
+    assert "operator_instruction=수락" in text
+    assert "required_exact_approval=APPROVE-POST-INVENTORY-REVIEW-v0.0.121" in text
+    assert "exact_human_approval_matched=false" in text
+    assert "accepted_claim=post_inventory_review_exact_approval_missing" in text
 
 
-def test_post_inventory_review_gate_preserves_r4c_and_release_boundaries() -> None:
+def test_recommendation_remains_unaccepted_and_boundaries_closed() -> None:
     text = PACKET.read_text(encoding="utf-8")
 
     for flag in [
+        "active_controlled_record_set_accepted=false",
+        "historical_only_record_set_accepted=false",
         "r4c_success_report_recommended_as_active_transport_evidence=true",
         "r4c_auth_stop_report_recommended_as_historical_only=true",
         "dars_completion_upgrade_claimed=false",
@@ -51,16 +51,14 @@ def test_post_inventory_review_gate_preserves_r4c_and_release_boundaries() -> No
         assert flag in text
 
 
-def test_post_inventory_review_gate_names_exact_approval_token_and_next_task() -> None:
+def test_exact_approval_gate_remains_next_safe_task() -> None:
     text = PACKET.read_text(encoding="utf-8")
 
-    assert "required_exact_approval=APPROVE-POST-INVENTORY-REVIEW-v0.0.121" in text
     assert "next_safe_task=DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in text
-    assert "docs/release/dars-release-repository-record-recommendation-v0.0.120.md" in text
-    assert "docs/reports/dars-r4c-codex-subprocess-panel-smoke-success-2026-05-28.md" in text
+    assert "APPROVE-POST-INVENTORY-REVIEW-v0.0.121" in text
 
 
-def test_notes_profile_traceability_and_ralph_advance_to_exact_approval() -> None:
+def test_notes_profile_traceability_and_ralph_keep_exact_approval_gate() -> None:
     notes = NOTES.read_text(encoding="utf-8")
     record = RECORD.read_text(encoding="utf-8")
     trace = TRACEABILITY.read_text(encoding="utf-8")
@@ -68,13 +66,13 @@ def test_notes_profile_traceability_and_ralph_advance_to_exact_approval() -> Non
     profile = PROFILE.read_text(encoding="utf-8")
     ralph = RALPH.read_text(encoding="utf-8")
 
-    assert "post-inventory review gate is entered" in notes
-    assert "accepted_claim=post_inventory_review_gate_entered_for_human_review" in record
-    assert "post_inventory_review_gate_entered: true" in record
+    assert "post-inventory exact approval is missing" in notes
+    assert "accepted_claim=post_inventory_review_exact_approval_missing" in record
+    assert "exact_human_approval_matched: false" in record
     assert "active_controlled_record_set_accepted: false" in record
-    assert "DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-GATE — post-inventory review gate entered" in trace
-    assert "dars-release-post-inventory-review-gate-v0.0.121.md" in checklist
+    assert "DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL — exact approval missing" in trace
+    assert "dars-release-post-inventory-exact-approval-missing-v0.0.122.md" in checklist
     assert "version: v0.0.122" in profile
     assert "formal_hisys_result: post_inventory_review_exact_approval_missing" in profile
     assert "next_safe_task: DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in profile
-    assert "DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-GATE" in ralph
+    assert "DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in ralph
