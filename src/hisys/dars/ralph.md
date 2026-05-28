@@ -46,8 +46,9 @@ prfl -> action -> pofl
 DARS-SUBSYSTEM-PUBLIC-SEAM-CONTINUATION
 ```
 
-Continue from the public seam in `src/hisys/dars/__init__.py`. Keep the subsystem independently invocable and compatibility-preserving.
+Continue from the public seam in `src/hisys/dars/__init__.py`. Keep the subsystem independently invocable and compatibility-preserving. Next candidate: surface a small DARS-only structured boundary packet (e.g., a `get_dars_subsystem_role_packet` composing manifest and invocation modes) or expose additional bounded advisory protocol seams from `hisys.agents.dars_protocol` without moving legacy implementations.
 
 ## Reflection log
 
 - 2026-05-28 — `DARS-SUBSYSTEM-LOCAL-RALPH`: Added subsystem-local RLOO control file so DARS can run independently from Altas/Judge worktrees. Boundary preserved: no live provider/model call, raw provider API call, credential lookup, remote push, release, publication, deployment, vault mutation, or human-review removal.
+- 2026-05-28 — `DARS-SUBSYSTEM-INVOCATION-MODE-SEAM`: Added `DarsSubsystemInvocationMode` and `get_dars_subsystem_invocation_modes` to the public seam in `src/hisys/dars/__init__.py`. Surfaces the documented `dars-only` standalone advisory mode and the `full-loop` composition stage from `docs/design/hisys-subsystem-architecture.md` as a stable, ordered, serializable tuple. RED-first tests (`tests/unit/test_dars_subsystem_public_seam.py`) cover mode identity, advisory/human-review locks, exclusion of `altas-only`/`judge-only`, and packet shape. Additive only — no change to existing exports, no movement of legacy `hisys.agents.*` implementations. Boundary preserved: no live provider/model call, raw provider API call, credential lookup, remote push, release, publication, deployment, vault mutation, or human-review removal.

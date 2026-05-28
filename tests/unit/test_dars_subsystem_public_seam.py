@@ -53,3 +53,66 @@ def test_dars_subsystem_manifest_exports_serializable_boundary_packet() -> None:
         "adapter_native_readiness": False,
         "bounded_unattended_advisory_operation_ready": False,
     }
+
+
+
+def test_dars_subsystem_invocation_modes_match_architecture_doc() -> None:
+    from hisys.dars import (
+        DarsSubsystemInvocationMode,
+        get_dars_subsystem_invocation_modes,
+    )
+
+    modes = get_dars_subsystem_invocation_modes()
+
+    assert isinstance(modes, tuple)
+    for mode in modes:
+        assert isinstance(mode, DarsSubsystemInvocationMode)
+        assert mode.advisory_only is True
+        assert mode.requires_human_review is True
+
+    mode_ids = tuple(mode.mode_id for mode in modes)
+    assert mode_ids == ("dars-only", "full-loop")
+
+    by_id = {mode.mode_id: mode for mode in modes}
+    assert by_id["dars-only"].dars_role == "sole_subsystem"
+    assert by_id["dars-only"].description == (
+        "developmental opposition and advisory critique"
+    )
+    assert by_id["full-loop"].dars_role == "developmental_opposition_stage"
+    assert by_id["full-loop"].description == "Altas -> DARS -> Judge"
+
+
+
+def test_dars_subsystem_invocation_modes_exclude_altas_only_and_judge_only() -> None:
+    from hisys.dars import get_dars_subsystem_invocation_modes
+
+    mode_ids = {mode.mode_id for mode in get_dars_subsystem_invocation_modes()}
+
+    assert "altas-only" not in mode_ids
+    assert "judge-only" not in mode_ids
+
+
+
+def test_dars_subsystem_invocation_modes_are_serializable() -> None:
+    from dataclasses import asdict
+
+    from hisys.dars import get_dars_subsystem_invocation_modes
+
+    packets = [asdict(mode) for mode in get_dars_subsystem_invocation_modes()]
+
+    assert packets == [
+        {
+            "mode_id": "dars-only",
+            "description": "developmental opposition and advisory critique",
+            "dars_role": "sole_subsystem",
+            "advisory_only": True,
+            "requires_human_review": True,
+        },
+        {
+            "mode_id": "full-loop",
+            "description": "Altas -> DARS -> Judge",
+            "dars_role": "developmental_opposition_stage",
+            "advisory_only": True,
+            "requires_human_review": True,
+        },
+    ]

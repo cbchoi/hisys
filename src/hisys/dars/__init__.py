@@ -38,12 +38,55 @@ def get_dars_subsystem_manifest() -> DarsSubsystemManifest:
     return DarsSubsystemManifest()
 
 
+@dataclass(frozen=True)
+class DarsSubsystemInvocationMode:
+    """A documented Hisys invocation mode that DARS participates in.
+
+    Mirrors the invocation-mode record in
+    ``docs/design/hisys-subsystem-architecture.md`` for the modes that involve
+    DARS. The other documented modes (``altas-only`` and ``judge-only``) do
+    not run DARS and are intentionally not represented here.
+    """
+
+    mode_id: Literal["dars-only", "full-loop"]
+    description: str
+    dars_role: Literal["sole_subsystem", "developmental_opposition_stage"]
+    advisory_only: Literal[True] = True
+    requires_human_review: Literal[True] = True
+
+
+def get_dars_subsystem_invocation_modes() -> tuple[
+    DarsSubsystemInvocationMode, ...
+]:
+    """Return the documented invocation modes that DARS participates in.
+
+    Returns the ``dars-only`` standalone advisory mode and the ``full-loop``
+    composition stage. The returned tuple is ordered and stable so callers can
+    rely on positional access for the standalone mode and the composed stage.
+    """
+
+    return (
+        DarsSubsystemInvocationMode(
+            mode_id="dars-only",
+            description="developmental opposition and advisory critique",
+            dars_role="sole_subsystem",
+        ),
+        DarsSubsystemInvocationMode(
+            mode_id="full-loop",
+            description="Altas -> DARS -> Judge",
+            dars_role="developmental_opposition_stage",
+        ),
+    )
+
+
 __all__ = [
     "DarsCritiqueRecord",
     "DarsCritiqueReport",
     "DarsRequestEnvelope",
     "DarsResponseEnvelope",
     "DarsRuntime",
+    "DarsSubsystemInvocationMode",
     "DarsSubsystemManifest",
+    "get_dars_subsystem_invocation_modes",
     "get_dars_subsystem_manifest",
 ]
