@@ -21,6 +21,7 @@ publication, or removal of human review; a human reviewer must decide.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
@@ -554,6 +555,43 @@ def serialize_judge_advisory_panel_review_bundle(
     )
 
 
+# Standard-library hash algorithm used for the advisory panel review bundle
+# content fingerprint. SHA-256 (``hashlib.sha256``) is a fixed-output,
+# deterministic digest from the Python standard library; its 256-bit output
+# renders as 64 lowercase hexadecimal characters.
+JUDGE_ADVISORY_PANEL_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM = "sha256"
+
+
+def fingerprint_judge_advisory_panel_review_bundle(
+    bundle: Mapping[str, Any],
+) -> str:
+    """Compute a deterministic content fingerprint of a review bundle.
+
+    ``bundle`` is the mapping produced by
+    :func:`build_judge_advisory_panel_review_bundle`. The returned value is a
+    single stable hex digest string -- the
+    :data:`JUDGE_ADVISORY_PANEL_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM` (SHA-256)
+    digest of the canonical JSON serialization produced by
+    :func:`serialize_judge_advisory_panel_review_bundle` (the canonical
+    byte/text source), encoded as UTF-8. Because the canonical serialization has
+    stable sorted keys, two bundles with the same advisory content fingerprint to
+    the same digest regardless of dict insertion order, and any change in content
+    changes the digest. The function returns the digest string only.
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate ``bundle``, and returns a fresh string on every call. It grants no
+    execution authority: the digest is derived purely from the canonical content,
+    so the pinned ``advisory_only=true`` / ``requires_human_review=true`` locks
+    and the ``non_authorization_note`` are part of what is fingerprinted, and any
+    rejected or malformed entry surfaces unchanged through the canonical source.
+    """
+
+    canonical = serialize_judge_advisory_panel_review_bundle(bundle)
+    digest = hashlib.new(JUDGE_ADVISORY_PANEL_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM)
+    digest.update(canonical.encode("utf-8"))
+    return digest.hexdigest()
+
+
 def render_judge_gate_result(
     source: JudgeAdvisoryDecisionPacket | Mapping[str, Any] | Any,
 ) -> JudgeGateResult:
@@ -580,6 +618,7 @@ def render_judge_gate_result(
 
 
 __all__ = [
+    "JUDGE_ADVISORY_PANEL_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM",
     "JUDGE_GATE_NON_AUTHORIZATION_NOTE",
     "JUDGE_GATE_REJECTED_STATUS",
     "JUDGE_GATE_STATUS_BY_VERDICT",
@@ -591,6 +630,7 @@ __all__ = [
     "build_judge_advisory_panel_review_bundle",
     "build_judge_gate_result_packet",
     "build_judge_human_review_work_queue",
+    "fingerprint_judge_advisory_panel_review_bundle",
     "render_judge_advisory_panel_report_text",
     "render_judge_gate_result",
     "serialize_judge_advisory_panel_review_bundle",

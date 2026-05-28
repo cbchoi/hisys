@@ -21,6 +21,7 @@ from .decision_packet import (
     validate_judge_decision_packet,
 )
 from .gate_result import (
+    JUDGE_ADVISORY_PANEL_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM,
     JUDGE_GATE_NON_AUTHORIZATION_NOTE,
     JUDGE_GATE_REJECTED_STATUS,
     JUDGE_GATE_STATUS_BY_VERDICT,
@@ -32,6 +33,7 @@ from .gate_result import (
     build_judge_advisory_panel_review_bundle,
     build_judge_gate_result_packet,
     build_judge_human_review_work_queue,
+    fingerprint_judge_advisory_panel_review_bundle,
     render_judge_advisory_panel_report_text,
     render_judge_gate_result,
     serialize_judge_advisory_panel_review_bundle,
@@ -99,6 +101,7 @@ def get_judge_subsystem_invocation_modes() -> tuple[
 
 
 __all__ = [
+    "JUDGE_ADVISORY_PANEL_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM",
     "JUDGE_GATE_NON_AUTHORIZATION_NOTE",
     "JUDGE_GATE_REJECTED_STATUS",
     "JUDGE_GATE_STATUS_BY_VERDICT",
@@ -116,6 +119,7 @@ __all__ = [
     "build_judge_advisory_panel_review_bundle",
     "build_judge_gate_result_packet",
     "build_judge_human_review_work_queue",
+    "fingerprint_judge_advisory_panel_review_bundle",
     "get_judge_subsystem_invocation_modes",
     "get_judge_subsystem_manifest",
     "render_judge_advisory_panel_report_text",
