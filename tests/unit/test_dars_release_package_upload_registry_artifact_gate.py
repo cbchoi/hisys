@@ -82,5 +82,5 @@ def test_registry_artifact_gate_updates_current_state_and_next_task() -> None:
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-AND-ARTIFACT-HUMAN-GATE" in trace
     assert "dars-release-package-upload-registry-artifact-human-gate-v0.0.113.md" in checklist
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-ARTIFACT-EXACT-APPROVAL`" in ralph
-    assert "previous_bootstrap_version: v0.0.121" in profile
-    assert "next_safe_task: DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in profile
+    assert "previous_bootstrap_version: v0.0.122" in profile
+    assert "next_safe_task: DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE" in profile

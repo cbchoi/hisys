@@ -73,7 +73,7 @@ def test_notes_profile_traceability_and_ralph_advance_to_post_inventory_review_g
     assert "historical_only_record_set_recommended: true" in record
     assert "DARS-LIVE-RELEASE-REPOSITORY-RECORD-RECOMMENDATION — repository-record recommendation recorded" in trace
     assert "dars-release-repository-record-recommendation-v0.0.120.md" in checklist
-    assert "version: v0.0.122" in profile
-    assert "formal_hisys_result: post_inventory_review_exact_approval_missing" in profile
-    assert "next_safe_task: DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in profile
+    assert "version: v0.0.123" in profile
+    assert "formal_hisys_result: post_inventory_review_recommendation_accepted_by_operator_override" in profile
+    assert "next_safe_task: DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE" in profile
     assert "DARS-LIVE-RELEASE-REPOSITORY-RECORD-RECOMMENDATION" in ralph

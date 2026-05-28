@@ -9,6 +9,14 @@ updated: 2026-05-28
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-OVERRIDE-ACCEPTANCE — recommendation accepted by operator override
+
+- Scope: after the v0.0.122 exact-approval-missing record, the operator stated that typing the full phrase was difficult and instructed Hisys to accept. Hisys recorded a bounded override of the exact-token requirement for repository-record treatment only.
+- Artifacts: `docs/release/dars-release-post-inventory-override-acceptance-v0.0.123.md`, `docs/release/dars-panel-release-notes-v0.0.123.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.123.md`, `tests/unit/test_dars_release_post_inventory_override_acceptance.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `post_inventory_review_recommendation_accepted_by_operator_override`; `operator_override_exact_token_requirement=true`; `active_controlled_record_set_accepted=true`; `historical_only_record_set_accepted=true`; `r4c_success_report_accepted_as_active_transport_evidence=true`; `r4c_auth_stop_report_accepted_as_historical_only=true`; `dars_completion_upgrade_claimed=false`; `bounded_unattended_advisory_operation_ready=false`; `credential_lookup_by_hisys=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 advances to `DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE`; the accepted recommendation does not itself close the DARS productization queue or upgrade completion.
+- Boundary: no artifact build, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, force push, branch rewrite, completion upgrade, bounded-unattended-readiness claim, release action, or human-review removal is introduced.
+
 ## DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL — exact approval missing
 
 - Scope: after the v0.0.121 post-inventory review gate, the operator instruction `수락` did not match exact approval `APPROVE-POST-INVENTORY-REVIEW-v0.0.121`.

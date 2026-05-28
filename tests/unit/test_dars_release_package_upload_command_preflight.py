@@ -76,4 +76,4 @@ def test_package_upload_command_preflight_updates_current_state_and_next_gate() 
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-COMMAND-PREFLIGHT" in trace
     assert "dars-release-package-upload-command-preflight-v0.0.112.md" in checklist
     assert "DARS-LIVE-RELEASE-PACKAGE-UPLOAD-REGISTRY-AND-ARTIFACT-HUMAN-GATE`" in ralph
-    assert "next_safe_task: DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in profile
+    assert "next_safe_task: DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE" in profile
