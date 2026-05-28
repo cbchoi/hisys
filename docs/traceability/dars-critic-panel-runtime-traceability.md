@@ -1,13 +1,21 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.59.0
+version: 0.60.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-28
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
+
+## DARS-LIVE-RELEASE-REPOSITORY-RECORD-RECOMMENDATION — repository-record recommendation recorded
+
+- Scope: after the v0.0.119 local artifact inventory review, Hisys recorded which repository records should remain active controlled evidence and which should remain historical-only for the single-operator DARS panel.
+- Artifacts: `docs/release/dars-release-repository-record-recommendation-v0.0.120.md`, `docs/release/dars-panel-release-notes-v0.0.120.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.120.md`, `tests/unit/test_dars_release_repository_record_recommendation.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `repository_record_recommendation_recorded_for_human_review`; `active_controlled_record_set_recommended=true`; `historical_only_record_set_recommended=true`; `r4c_success_report_recommended_as_active_transport_evidence=true`; `r4c_auth_stop_report_recommended_as_historical_only=true`; `dars_completion_upgrade_claimed=false`; `bounded_unattended_advisory_operation_ready=false`; `credential_lookup_by_hisys=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 advances to `DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-GATE`; the R4C success report is recommended as active transport evidence and the earlier auth-stop report is recommended as historical-only evidence.
+- Boundary: no artifact build, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, force push, branch rewrite, completion upgrade, bounded-unattended-readiness claim, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-LOCAL-ARTIFACT-INVENTORY-REVIEW — local artifact inventory review recorded
 
