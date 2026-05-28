@@ -9,6 +9,13 @@ updated: 2026-05-28
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## JUDGE-SUBSYSTEM-INDIVIDUAL-EXECUTION-COMMAND — Judge local readiness command added
+
+- Scope: this gate adds the first Judge subsystem implementation surface: a public manifest/invocation seam and a deterministic Judge-only RLOO readiness command. It allows Hermes or a CLI-capable agent to invoke Judge independently for local readiness/status without collapsing Judge into Altas or DARS.
+- Artifacts: `src/hisys/judge/__init__.py`, `src/hisys/judge/rloo.py`, `src/hisys/judge/ralph.md`, `tests/unit/test_judge_subsystem_public_seam.py`, and `tests/unit/test_judge_subsystem_individual_execution.py`.
+- Evidence contract: accepted claim is `judge_subsystem_individual_execution_command_added`; `subsystem=judge`; `scope=Judge only`; `advisory_only=true`; `requires_human_review=true`; `live_external_action_authorized=false`; `mutation_authorized=false`; `publication_authorized=false`; `remote_push_authorized=false`; `human_review_removal_authorized=false`; `subsystem_locally_invocable=true`.
+- Boundary: no live provider/model call, raw provider API readiness, adapter-native readiness, credential lookup, network access, vault/evidence mutation, remote push, release, publication, deployment, cross-subsystem invocation, consequential action authorization, or human-review removal is introduced.
+
 ## HISYS-SUBSYSTEM-ROLE-SEPARATION-PREP — Altas/DARS/Judge roles recorded
 
 - Scope: this gate records Hisys as `Altas + DARS + Judge` before module/package refactoring. It separates retrieval/projection, developmental opposition, and bounded advisory judgment without changing runtime authority.
