@@ -1,21 +1,21 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.120
-focus: Repository-record recommendation recorded for single-operator DARS panel; R4C success report is active transport evidence and earlier auth-stop report is historical-only.
-formal_hisys_result: repository_record_recommendation_recorded_for_human_review
-local_advisory_result: REPOSITORY_RECORD_RECOMMENDATION_RECORDED_FOR_HUMAN_REVIEW
-next_safe_task: DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-GATE
+version: v0.0.121
+focus: Post-inventory review gate entered for single-operator DARS panel; exact approval is required before accepting active/historical repository-record recommendation.
+formal_hisys_result: post_inventory_review_gate_entered_for_human_review
+local_advisory_result: POST_INVENTORY_REVIEW_GATE_ENTERED_FOR_HUMAN_REVIEW
+next_safe_task: DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
 bootstrap_arguments: rloo
-bootstrap_inference: "Hisys records a repository-record recommendation after the v0.0.119 local artifact inventory. The R4C success report is recommended as active controlled transport evidence; the previous auth-stop report remains historical-only. The recommendation does not upgrade DARS completion or remove human review."
+bootstrap_inference: "Hisys records entry into the post-inventory review gate after the v0.0.120 repository-record recommendation. Exact approval is required before accepting the active/historical recommendation; no DARS completion, bounded unattended readiness, release action, credential, live external/model call, or human-review-removal boundary is upgraded."
 roadmap_ref: docs/plans/dars-panel-live-provider-unattended-release-final-plan.md
-next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.120.md
+next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.121.md
 planning_baseline_head: '7ced5fa docs: record dars r3 action transport prep'
-current_head_at_plan_creation: 377cac6
-previous_bootstrap_version: v0.0.119
+current_head_at_plan_creation: b22a098
+previous_bootstrap_version: v0.0.120
 tmux_or_background_agent_spawned: false
 production_code_created: false
 tests_created: true

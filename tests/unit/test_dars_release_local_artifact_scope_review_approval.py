@@ -71,7 +71,7 @@ def test_notes_profile_traceability_and_ralph_advance_to_local_inventory_review(
     assert "requires_human_review: true" in record
     assert "DARS-LIVE-RELEASE-LOCAL-ARTIFACT-RELEASE-SCOPE-REVIEW — local artifact scope review approved" in trace
     assert "dars-release-local-artifact-scope-review-approval-v0.0.118.md" in checklist
-    assert "version: v0.0.118" in profile
-    assert "formal_hisys_result: local_artifact_release_scope_review_approved" in profile
-    assert "next_safe_task: DARS-LIVE-RELEASE-LOCAL-ARTIFACT-INVENTORY-REVIEW" in profile
+    assert "version: v0.0.121" in profile
+    assert "formal_hisys_result: post_inventory_review_gate_entered_for_human_review" in profile
+    assert "next_safe_task: DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL" in profile
     assert "Local artifact/release-scope review approved" in ralph

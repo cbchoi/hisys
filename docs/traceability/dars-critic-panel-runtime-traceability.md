@@ -9,6 +9,14 @@ updated: 2026-05-28
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-GATE — post-inventory review gate entered
+
+- Scope: after the v0.0.120 repository-record recommendation, Hisys recorded entry into the post-inventory human-review gate for the single-operator DARS panel.
+- Artifacts: `docs/release/dars-release-post-inventory-review-gate-v0.0.121.md`, `docs/release/dars-panel-release-notes-v0.0.121.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.121.md`, `tests/unit/test_dars_release_post_inventory_review_gate.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `post_inventory_review_gate_entered_for_human_review`; `post_inventory_review_gate_entered=true`; `required_exact_approval=APPROVE-POST-INVENTORY-REVIEW-v0.0.121`; `active_controlled_record_set_accepted=false`; `historical_only_record_set_accepted=false`; `r4c_success_report_recommended_as_active_transport_evidence=true`; `r4c_auth_stop_report_recommended_as_historical_only=true`; `dars_completion_upgrade_claimed=false`; `bounded_unattended_advisory_operation_ready=false`; `credential_lookup_by_hisys=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 advances to `DARS-LIVE-RELEASE-POST-INVENTORY-REVIEW-EXACT-APPROVAL`; exact approval is required before accepting the active/historical record recommendation.
+- Boundary: no artifact build, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, force push, branch rewrite, completion upgrade, bounded-unattended-readiness claim, recommendation acceptance, or human-review removal is introduced.
+
 ## DARS-LIVE-RELEASE-REPOSITORY-RECORD-RECOMMENDATION — repository-record recommendation recorded
 
 - Scope: after the v0.0.119 local artifact inventory review, Hisys recorded which repository records should remain active controlled evidence and which should remain historical-only for the single-operator DARS panel.
