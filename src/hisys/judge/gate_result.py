@@ -39,6 +39,12 @@ JUDGE_GATE_REJECTED_STATUS = "rejected"
 
 JUDGE_PANEL_MALFORMED_GATE_STATUS = "malformed"
 
+# Placeholder packet id used in the human-review work queue for a gate-result
+# packet that carries no usable ``packet_id`` (a rejected result projects
+# ``packet_id=None``; a malformed entry has none at all). The placeholder keeps
+# the queue JSON-serializable and the grouped ids sortable.
+JUDGE_WORK_QUEUE_UNIDENTIFIED_PACKET_ID = "(unidentified)"
+
 # Ascending restrictiveness of an advisory gate status: ``advisory_pass`` is the
 # least blocking outcome and ``rejected`` (a packet that failed validation) the
 # most. ``needs_human_review`` is a soft hold ranked below a determined ``fail``,
@@ -300,6 +306,80 @@ def summarize_judge_gate_result_packets(
     }
 
 
+def _packet_id(packet: Any) -> str:
+    if isinstance(packet, Mapping):
+        packet_id = packet.get("packet_id")
+        if isinstance(packet_id, str) and packet_id.strip() != "":
+            return packet_id
+    return JUDGE_WORK_QUEUE_UNIDENTIFIED_PACKET_ID
+
+
+def build_judge_human_review_work_queue(
+    packets: Iterable[Mapping[str, Any] | Any],
+) -> dict[str, Any]:
+    """Project advisory gate-result packets into a human-review work queue.
+
+    ``packets`` is any iterable of the JSON-serializable mappings produced by
+    :func:`build_judge_gate_result_packet`. The returned mapping is plain,
+    deterministic, and JSON-serializable. ``queue`` lists every packet ordered
+    most-restrictive gate status first, so the packets that most need human
+    review surface at the top (deterministic tie-break by gate status then
+    packet id, making the ordering independent of input order).
+    ``packet_ids_by_gate_status`` groups the packet ids by gate status, with the
+    groups themselves ordered most-restrictive first and the ids sorted within
+    each group. A packet whose ``packet_id`` is missing or not a non-empty
+    string (a rejected result projects ``packet_id=None``) is represented by
+    :data:`JUDGE_WORK_QUEUE_UNIDENTIFIED_PACKET_ID`; an entry that is not a
+    mapping, or whose ``gate_status`` is missing or not a non-empty string, is
+    treated as :data:`JUDGE_PANEL_MALFORMED_GATE_STATUS` and surfaced as the
+    most restrictive so the queue never under-reports how blocking it is.
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate its inputs, and returns a fresh mapping on every call. It grants no
+    execution authority: the ``authority_locks`` pin ``advisory_only=true`` /
+    ``requires_human_review=true`` and ``non_authorization_note`` repeats that a
+    human reviewer must decide before any action is taken.
+    """
+
+    entries = [
+        {
+            "packet_id": _packet_id(packet),
+            "gate_status": _packet_gate_status(packet),
+        }
+        for packet in packets
+    ]
+
+    queue = sorted(
+        entries,
+        key=lambda entry: (
+            -_restrictiveness(entry["gate_status"]),
+            entry["gate_status"],
+            entry["packet_id"],
+        ),
+    )
+
+    packet_ids_by_gate_status: dict[str, list[str]] = {}
+    for entry in queue:
+        packet_ids_by_gate_status.setdefault(entry["gate_status"], []).append(
+            entry["packet_id"]
+        )
+    for ids in packet_ids_by_gate_status.values():
+        ids.sort()
+
+    return {
+        "subsystem": "judge",
+        "kind": "advisory_gate_result_human_review_work_queue",
+        "packet_count": len(queue),
+        "queue": queue,
+        "packet_ids_by_gate_status": packet_ids_by_gate_status,
+        "authority_locks": {
+            "advisory_only": True,
+            "requires_human_review": True,
+        },
+        "non_authorization_note": JUDGE_GATE_NON_AUTHORIZATION_NOTE,
+    }
+
+
 def render_judge_gate_result(
     source: JudgeAdvisoryDecisionPacket | Mapping[str, Any] | Any,
 ) -> JudgeGateResult:
@@ -331,8 +411,10 @@ __all__ = [
     "JUDGE_GATE_STATUS_BY_VERDICT",
     "JUDGE_GATE_STATUS_RESTRICTIVENESS",
     "JUDGE_PANEL_MALFORMED_GATE_STATUS",
+    "JUDGE_WORK_QUEUE_UNIDENTIFIED_PACKET_ID",
     "JudgeGateResult",
     "build_judge_gate_result_packet",
+    "build_judge_human_review_work_queue",
     "render_judge_gate_result",
     "summarize_judge_gate_result_packets",
 ]
