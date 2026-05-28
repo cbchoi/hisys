@@ -21,6 +21,7 @@ publication, or removal of human review; a human reviewer must decide.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
@@ -526,6 +527,33 @@ def build_judge_advisory_panel_review_bundle(
     }
 
 
+def serialize_judge_advisory_panel_review_bundle(
+    bundle: Mapping[str, Any],
+) -> str:
+    """Serialize an advisory panel review bundle into canonical JSON text.
+
+    ``bundle`` is the mapping produced by
+    :func:`build_judge_advisory_panel_review_bundle`. The returned value is a
+    single deterministic, canonical JSON text string with stable sorted keys
+    (compact separators, no insignificant whitespace) so local logging/diffing
+    tooling sees the same bytes for the same advisory content regardless of the
+    bundle's dict insertion order. The function returns the string only.
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate ``bundle``, and returns a fresh string on every call. It grants no
+    execution authority: it serializes the bundle as given, so the pinned
+    ``advisory_only=true`` / ``requires_human_review=true`` locks and the
+    ``non_authorization_note`` are preserved verbatim in the text.
+    """
+
+    return json.dumps(
+        bundle,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
 def render_judge_gate_result(
     source: JudgeAdvisoryDecisionPacket | Mapping[str, Any] | Any,
 ) -> JudgeGateResult:
@@ -565,5 +593,6 @@ __all__ = [
     "build_judge_human_review_work_queue",
     "render_judge_advisory_panel_report_text",
     "render_judge_gate_result",
+    "serialize_judge_advisory_panel_review_bundle",
     "summarize_judge_gate_result_packets",
 ]
