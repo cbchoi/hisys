@@ -20,6 +20,13 @@ from .decision_packet import (
     JudgeDecisionPacketValidation,
     validate_judge_decision_packet,
 )
+from .gate_result import (
+    JUDGE_GATE_NON_AUTHORIZATION_NOTE,
+    JUDGE_GATE_REJECTED_STATUS,
+    JUDGE_GATE_STATUS_BY_VERDICT,
+    JudgeGateResult,
+    render_judge_gate_result,
+)
 
 
 @dataclass(frozen=True)
@@ -82,13 +89,18 @@ def get_judge_subsystem_invocation_modes() -> tuple[
 
 
 __all__ = [
+    "JUDGE_GATE_NON_AUTHORIZATION_NOTE",
+    "JUDGE_GATE_REJECTED_STATUS",
+    "JUDGE_GATE_STATUS_BY_VERDICT",
     "JUDGE_VERDICTS",
     "SCHEMA_VALIDITY_WARNING",
     "JudgeAdvisoryDecisionPacket",
     "JudgeDecisionPacketValidation",
+    "JudgeGateResult",
     "JudgeSubsystemInvocationMode",
     "JudgeSubsystemManifest",
     "get_judge_subsystem_invocation_modes",
     "get_judge_subsystem_manifest",
+    "render_judge_gate_result",
     "validate_judge_decision_packet",
 ]
