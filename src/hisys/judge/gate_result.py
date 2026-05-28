@@ -22,7 +22,7 @@ publication, or removal of human review; a human reviewer must decide.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 from .decision_packet import (
     JUDGE_VERDICTS,
@@ -36,6 +36,22 @@ JUDGE_GATE_STATUS_BY_VERDICT: dict[str, str] = {
 }
 
 JUDGE_GATE_REJECTED_STATUS = "rejected"
+
+JUDGE_PANEL_MALFORMED_GATE_STATUS = "malformed"
+
+# Ascending restrictiveness of an advisory gate status: ``advisory_pass`` is the
+# least blocking outcome and ``rejected`` (a packet that failed validation) the
+# most. ``needs_human_review`` is a soft hold ranked below a determined ``fail``,
+# which in turn ranks below a hard ``block``. A status that is missing or
+# unrecognized is treated as the most restrictive (see ``_restrictiveness``) so
+# the panel summary never under-reports how blocking a result set is.
+JUDGE_GATE_STATUS_RESTRICTIVENESS: dict[str, int] = {
+    "advisory_pass": 0,
+    "advisory_needs_human_review": 1,
+    "advisory_fail": 2,
+    "advisory_block": 3,
+    JUDGE_GATE_REJECTED_STATUS: 4,
+}
 
 JUDGE_GATE_NON_AUTHORIZATION_NOTE = (
     "This gate result is advisory only and does not authorize any execution, "
@@ -217,6 +233,73 @@ def build_judge_gate_result_packet(result: JudgeGateResult) -> dict[str, Any]:
     }
 
 
+def _packet_gate_status(packet: Any) -> str:
+    if isinstance(packet, Mapping):
+        status = packet.get("gate_status")
+        if isinstance(status, str) and status.strip() != "":
+            return status
+    return JUDGE_PANEL_MALFORMED_GATE_STATUS
+
+
+def _restrictiveness(gate_status: str) -> int:
+    return JUDGE_GATE_STATUS_RESTRICTIVENESS.get(
+        gate_status, max(JUDGE_GATE_STATUS_RESTRICTIVENESS.values()) + 1
+    )
+
+
+def summarize_judge_gate_result_packets(
+    packets: Iterable[Mapping[str, Any] | Any],
+) -> dict[str, Any]:
+    """Aggregate advisory gate-result packets into a bounded panel summary.
+
+    ``packets`` is any iterable of the JSON-serializable mappings produced by
+    :func:`build_judge_gate_result_packet`. The returned mapping is plain,
+    deterministic, and JSON-serializable, carrying ``gate_status_counts`` (counts
+    per gate status, ordered by status name), the ``most_restrictive_gate_status``
+    present in the panel, and the pinned Judge authority locks. An entry that is
+    not a mapping, or whose ``gate_status`` is missing or not a non-empty string,
+    is counted under :data:`JUDGE_PANEL_MALFORMED_GATE_STATUS` and treated as the
+    most restrictive outcome so the panel never under-reports how blocking the
+    result set is. An empty panel reports ``packet_count=0``, no counts, and a
+    ``None`` most-restrictive status.
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate its inputs, and returns a fresh mapping on every call. It grants no
+    execution authority: the ``authority_locks`` pin ``advisory_only=true`` /
+    ``requires_human_review=true`` and ``non_authorization_note`` repeats that a
+    human reviewer must decide before any action is taken.
+    """
+
+    statuses = [_packet_gate_status(packet) for packet in packets]
+
+    counts: dict[str, int] = {}
+    for status in statuses:
+        counts[status] = counts.get(status, 0) + 1
+    gate_status_counts = {status: counts[status] for status in sorted(counts)}
+
+    most_restrictive = (
+        max(
+            gate_status_counts,
+            key=lambda status: (_restrictiveness(status), status),
+        )
+        if gate_status_counts
+        else None
+    )
+
+    return {
+        "subsystem": "judge",
+        "kind": "advisory_gate_result_panel_summary",
+        "packet_count": len(statuses),
+        "gate_status_counts": gate_status_counts,
+        "most_restrictive_gate_status": most_restrictive,
+        "authority_locks": {
+            "advisory_only": True,
+            "requires_human_review": True,
+        },
+        "non_authorization_note": JUDGE_GATE_NON_AUTHORIZATION_NOTE,
+    }
+
+
 def render_judge_gate_result(
     source: JudgeAdvisoryDecisionPacket | Mapping[str, Any] | Any,
 ) -> JudgeGateResult:
@@ -246,7 +329,10 @@ __all__ = [
     "JUDGE_GATE_NON_AUTHORIZATION_NOTE",
     "JUDGE_GATE_REJECTED_STATUS",
     "JUDGE_GATE_STATUS_BY_VERDICT",
+    "JUDGE_GATE_STATUS_RESTRICTIVENESS",
+    "JUDGE_PANEL_MALFORMED_GATE_STATUS",
     "JudgeGateResult",
     "build_judge_gate_result_packet",
     "render_judge_gate_result",
+    "summarize_judge_gate_result_packets",
 ]

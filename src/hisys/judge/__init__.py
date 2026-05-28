@@ -24,9 +24,12 @@ from .gate_result import (
     JUDGE_GATE_NON_AUTHORIZATION_NOTE,
     JUDGE_GATE_REJECTED_STATUS,
     JUDGE_GATE_STATUS_BY_VERDICT,
+    JUDGE_GATE_STATUS_RESTRICTIVENESS,
+    JUDGE_PANEL_MALFORMED_GATE_STATUS,
     JudgeGateResult,
     build_judge_gate_result_packet,
     render_judge_gate_result,
+    summarize_judge_gate_result_packets,
 )
 
 
@@ -93,6 +96,8 @@ __all__ = [
     "JUDGE_GATE_NON_AUTHORIZATION_NOTE",
     "JUDGE_GATE_REJECTED_STATUS",
     "JUDGE_GATE_STATUS_BY_VERDICT",
+    "JUDGE_GATE_STATUS_RESTRICTIVENESS",
+    "JUDGE_PANEL_MALFORMED_GATE_STATUS",
     "JUDGE_VERDICTS",
     "SCHEMA_VALIDITY_WARNING",
     "JudgeAdvisoryDecisionPacket",
@@ -104,5 +109,6 @@ __all__ = [
     "get_judge_subsystem_invocation_modes",
     "get_judge_subsystem_manifest",
     "render_judge_gate_result",
+    "summarize_judge_gate_result_packets",
     "validate_judge_decision_packet",
 ]
