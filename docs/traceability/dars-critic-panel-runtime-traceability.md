@@ -9,6 +9,13 @@ updated: 2026-05-28
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## HISYS-HERMES-DARS-PANEL-SMOKE-GATE — Hermes smoke completed
+
+- Scope: this gate records the operator-requested actual Hermes-call smoke test. A child Hermes CLI session invoked the local Hisys DARS panel readiness surface through the terminal tool and returned the expected advisory fields.
+- Artifacts: `docs/release/hisys-hermes-dars-panel-smoke-gate-v0.0.126.md`, `docs/release/dars-panel-release-notes-v0.0.126.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.126.md`, `docs/reports/hisys-hermes-dars-panel-readiness-smoke-2026-05-28.md`, `tests/unit/test_hisys_hermes_dars_panel_smoke_gate.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `docs/milestone-bootstrap/README.md`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `hermes_dars_panel_readiness_smoke_completed`; `hermes_child_session_id=20260528_205103_8880e6`; `hermes_terminal_tool_call_verified=true`; `hisys_command_exit_code=0`; `hisys_command_external_call_made=false`; `hisys_command_mutation_performed=false`; `hisys_command_publication_performed=false`; `requires_human_review=true`; `next_safe_task=MB-CODEBASE-M21-6-PREP`.
+- Boundary: the child Hermes model boundary was crossed for this operator-requested smoke, but the Hisys command remained a local readiness/status surface. No raw provider API readiness, adapter-native readiness, DARS completion upgrade, bounded-unattended-readiness claim, controlled advisory use release, release action, credential lookup, live external action, raw provider API call by Hisys, standing unattended activation, repository synchronization, or human-review removal is introduced.
+
 ## DARS-LIVE-PROVIDER-ADVISORY-SMOKED-REVIEW-GATE — current state reviewed
 
 - Scope: after the DARS panel productization closure gate, this review records the current accepted `live_provider_advisory_smoked` state for the operator question. The usable scope is local, single-operator, human-reviewed advisory work through the Codex subscription subprocess transport evidence.

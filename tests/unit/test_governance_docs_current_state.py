@@ -21,7 +21,7 @@ def test_governance_profile_and_ralph_checkpoint_match_current_head() -> None:
     assert report.schema_id == "hisys.governance.current_state.v1"
     assert report.repository == "/home/cbchoi/workspaces/develop/repos/hisys"
     assert report.branch == "main"
-    assert report.profile_version == "v0.0.125"
+    assert report.profile_version == "v0.0.126"
     assert (
         report.next_safe_task
         == "MB-CODEBASE-M21-6-PREP"
