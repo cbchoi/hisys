@@ -1,0 +1,208 @@
+{
+  "authority_locks": {
+    "advisory_only": true,
+    "human_review_removal_authorized": false,
+    "live_external_action_authorized": false,
+    "mutation_authorized": false,
+    "publication_authorized": false,
+    "remote_push_authorized": false,
+    "requires_human_review": true
+  },
+  "bundle_fingerprint": "05a935a14c65b73fab87df88aac411520638cce4e307a5148353cffba5e5e460",
+  "bundle_fingerprint_algorithm": "sha256",
+  "bundle_serialized_byte_length": 3041,
+  "checks": [
+    {
+      "name": "all_fixture_outcomes_match_expectation",
+      "passed": true
+    },
+    {
+      "name": "all_gate_results_advisory_only_locked",
+      "passed": true
+    },
+    {
+      "name": "all_gate_results_require_human_review",
+      "passed": true
+    },
+    {
+      "name": "no_escalation_authority_present",
+      "passed": true
+    },
+    {
+      "name": "panel_bundle_packet_count_matches_fixture_count",
+      "passed": true
+    },
+    {
+      "name": "bundle_serialization_round_trips",
+      "passed": true
+    },
+    {
+      "name": "bundle_fingerprint_is_stable_hex_digest",
+      "passed": true
+    },
+    {
+      "name": "verdict_range_and_rejected_path_exercised",
+      "passed": true
+    }
+  ],
+  "fixture_count": 5,
+  "fixtures": [
+    {
+      "advisory_only_locked": true,
+      "expected_gate_status": "advisory_pass",
+      "expected_rendered": true,
+      "gate_status": "advisory_pass",
+      "label": "advisory_pass_case",
+      "no_escalation_authority": true,
+      "outcome_matches_expectation": true,
+      "rendered": true,
+      "requires_human_review_locked": true
+    },
+    {
+      "advisory_only_locked": true,
+      "expected_gate_status": "advisory_needs_human_review",
+      "expected_rendered": true,
+      "gate_status": "advisory_needs_human_review",
+      "label": "advisory_needs_human_review_case",
+      "no_escalation_authority": true,
+      "outcome_matches_expectation": true,
+      "rendered": true,
+      "requires_human_review_locked": true
+    },
+    {
+      "advisory_only_locked": true,
+      "expected_gate_status": "advisory_fail",
+      "expected_rendered": true,
+      "gate_status": "advisory_fail",
+      "label": "advisory_fail_case",
+      "no_escalation_authority": true,
+      "outcome_matches_expectation": true,
+      "rendered": true,
+      "requires_human_review_locked": true
+    },
+    {
+      "advisory_only_locked": true,
+      "expected_gate_status": "advisory_block",
+      "expected_rendered": true,
+      "gate_status": "advisory_block",
+      "label": "advisory_block_case",
+      "no_escalation_authority": true,
+      "outcome_matches_expectation": true,
+      "rendered": true,
+      "requires_human_review_locked": true
+    },
+    {
+      "advisory_only_locked": true,
+      "expected_gate_status": "rejected",
+      "expected_rendered": false,
+      "gate_status": "rejected",
+      "label": "rejected_case",
+      "no_escalation_authority": true,
+      "outcome_matches_expectation": true,
+      "rendered": false,
+      "requires_human_review_locked": true
+    }
+  ],
+  "kind": "advisory_smoke_report",
+  "mode": "local_fixture_in_process",
+  "non_authorization_note": "This gate result is advisory only and does not authorize any execution, mutation, publication, or removal of human review. A human reviewer must decide before any action is taken.",
+  "panel_review_bundle": {
+    "authority_locks": {
+      "advisory_only": true,
+      "requires_human_review": true
+    },
+    "kind": "advisory_gate_result_panel_review_bundle",
+    "non_authorization_note": "This gate result is advisory only and does not authorize any execution, mutation, publication, or removal of human review. A human reviewer must decide before any action is taken.",
+    "packet_count": 5,
+    "report": {
+      "authority_locks": {
+        "advisory_only": true,
+        "requires_human_review": true
+      },
+      "human_review_work_queue": {
+        "authority_locks": {
+          "advisory_only": true,
+          "requires_human_review": true
+        },
+        "kind": "advisory_gate_result_human_review_work_queue",
+        "non_authorization_note": "This gate result is advisory only and does not authorize any execution, mutation, publication, or removal of human review. A human reviewer must decide before any action is taken.",
+        "packet_count": 5,
+        "packet_ids_by_gate_status": {
+          "advisory_block": [
+            "judge-smoke-block"
+          ],
+          "advisory_fail": [
+            "judge-smoke-fail"
+          ],
+          "advisory_needs_human_review": [
+            "judge-smoke-needs-human-review"
+          ],
+          "advisory_pass": [
+            "judge-smoke-pass"
+          ],
+          "rejected": [
+            "(unidentified)"
+          ]
+        },
+        "queue": [
+          {
+            "gate_status": "rejected",
+            "packet_id": "(unidentified)"
+          },
+          {
+            "gate_status": "advisory_block",
+            "packet_id": "judge-smoke-block"
+          },
+          {
+            "gate_status": "advisory_fail",
+            "packet_id": "judge-smoke-fail"
+          },
+          {
+            "gate_status": "advisory_needs_human_review",
+            "packet_id": "judge-smoke-needs-human-review"
+          },
+          {
+            "gate_status": "advisory_pass",
+            "packet_id": "judge-smoke-pass"
+          }
+        ],
+        "subsystem": "judge"
+      },
+      "kind": "advisory_gate_result_panel_report",
+      "non_authorization_note": "This gate result is advisory only and does not authorize any execution, mutation, publication, or removal of human review. A human reviewer must decide before any action is taken.",
+      "packet_count": 5,
+      "panel_summary": {
+        "authority_locks": {
+          "advisory_only": true,
+          "requires_human_review": true
+        },
+        "gate_status_counts": {
+          "advisory_block": 1,
+          "advisory_fail": 1,
+          "advisory_needs_human_review": 1,
+          "advisory_pass": 1,
+          "rejected": 1
+        },
+        "kind": "advisory_gate_result_panel_summary",
+        "most_restrictive_gate_status": "rejected",
+        "non_authorization_note": "This gate result is advisory only and does not authorize any execution, mutation, publication, or removal of human review. A human reviewer must decide before any action is taken.",
+        "packet_count": 5,
+        "subsystem": "judge"
+      },
+      "subsystem": "judge"
+    },
+    "report_text": "Judge Advisory Panel Report\n===========================\nPackets reviewed: 5\nMost restrictive gate status: rejected\nAdvisory only: yes\nRequires human review: yes\n\nGate status counts:\n  - advisory_block: 1\n  - advisory_fail: 1\n  - advisory_needs_human_review: 1\n  - advisory_pass: 1\n  - rejected: 1\n\nHuman-review work queue (most restrictive first):\n  1. rejected - (unidentified)\n  2. advisory_block - judge-smoke-block\n  3. advisory_fail - judge-smoke-fail\n  4. advisory_needs_human_review - judge-smoke-needs-human-review\n  5. advisory_pass - judge-smoke-pass\n\nNote: This gate result is advisory only and does not authorize any execution, mutation, publication, or removal of human review. A human reviewer must decide before any action is taken.",
+    "subsystem": "judge"
+  },
+  "side_effects": {
+    "performed_credential_lookup": false,
+    "performed_cross_subsystem_call": false,
+    "performed_evidence_mutation": false,
+    "performed_live_provider_call": false,
+    "performed_network_call": false,
+    "performed_remote_push": false,
+    "performed_vault_mutation": false
+  },
+  "smoke_passed": true,
+  "subsystem": "judge"
+}
