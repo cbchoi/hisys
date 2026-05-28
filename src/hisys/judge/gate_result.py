@@ -152,6 +152,71 @@ def _rendered_result(
     )
 
 
+def _project_decision_packet(
+    packet: JudgeAdvisoryDecisionPacket,
+) -> dict[str, Any]:
+    return {
+        "packet_id": packet.packet_id,
+        "decision_subject_ref": packet.decision_subject_ref,
+        "verdict": packet.verdict,
+        "rationale": packet.rationale,
+        "evidence_refs": list(packet.evidence_refs),
+        "opposition_refs": list(packet.opposition_refs),
+        "authority_locks": {
+            "advisory_only": packet.advisory_only,
+            "requires_human_review": packet.requires_human_review,
+            "live_external_action_authorized": (
+                packet.live_external_action_authorized
+            ),
+            "mutation_authorized": packet.mutation_authorized,
+            "publication_authorized": packet.publication_authorized,
+            "human_review_removal_authorized": (
+                packet.human_review_removal_authorized
+            ),
+        },
+    }
+
+
+def build_judge_gate_result_packet(result: JudgeGateResult) -> dict[str, Any]:
+    """Project a rendered gate result into a JSON-serializable mapping.
+
+    Returns a plain, deterministic mapping built only from ``str``, ``bool``,
+    ``None``, ``list``, and nested ``dict`` values so the advisory gate outcome
+    can be consumed by local tooling (logging, status surfaces, fixtures). The
+    function performs no I/O and no external action of any kind, does not mutate
+    ``result``, and returns a fresh mapping on every call.
+
+    The projection grants no execution authority: the top-level
+    ``authority_locks`` pin ``advisory_only=true`` / ``requires_human_review=
+    true``, the embedded ``decision_packet`` (when present) carries the packet's
+    pinned advisory-only authority locks, and ``non_authorization_note`` repeats
+    that a human reviewer must decide before any action is taken.
+    """
+
+    return {
+        "subsystem": "judge",
+        "kind": "advisory_gate_result",
+        "rendered": result.rendered,
+        "gate_status": result.gate_status,
+        "verdict": result.verdict,
+        "packet_id": result.packet_id,
+        "headline": result.headline,
+        "body": result.body,
+        "failures": list(result.failures),
+        "warnings": list(result.warnings),
+        "authority_locks": {
+            "advisory_only": result.advisory_only,
+            "requires_human_review": result.requires_human_review,
+        },
+        "decision_packet": (
+            _project_decision_packet(result.packet)
+            if result.packet is not None
+            else None
+        ),
+        "non_authorization_note": JUDGE_GATE_NON_AUTHORIZATION_NOTE,
+    }
+
+
 def render_judge_gate_result(
     source: JudgeAdvisoryDecisionPacket | Mapping[str, Any] | Any,
 ) -> JudgeGateResult:
@@ -182,5 +247,6 @@ __all__ = [
     "JUDGE_GATE_REJECTED_STATUS",
     "JUDGE_GATE_STATUS_BY_VERDICT",
     "JudgeGateResult",
+    "build_judge_gate_result_packet",
     "render_judge_gate_result",
 ]

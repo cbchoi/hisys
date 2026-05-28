@@ -25,6 +25,7 @@ from .gate_result import (
     JUDGE_GATE_REJECTED_STATUS,
     JUDGE_GATE_STATUS_BY_VERDICT,
     JudgeGateResult,
+    build_judge_gate_result_packet,
     render_judge_gate_result,
 )
 
@@ -99,6 +100,7 @@ __all__ = [
     "JudgeGateResult",
     "JudgeSubsystemInvocationMode",
     "JudgeSubsystemManifest",
+    "build_judge_gate_result_packet",
     "get_judge_subsystem_invocation_modes",
     "get_judge_subsystem_manifest",
     "render_judge_gate_result",
