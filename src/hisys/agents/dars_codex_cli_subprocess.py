@@ -49,6 +49,31 @@ class SubprocessRunner(Protocol):
     def __call__(self, argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]: ...
 
 
+def prepare_codex_scratch_git_workdir(instance_root: Path, *, request_id: str) -> Path:
+    """Create an ephemeral git root for prompt-only Codex DARS critic calls.
+
+    Codex CLI requires a trusted working root even when the subprocess sandbox is
+    read-only and the critic only evaluates a prompt packet. This helper keeps
+    that runtime root under the Hisys instance instead of pointing Codex at the
+    product repository or using ``--skip-git-repo-check``.
+    """
+
+    if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", request_id):
+        raise ValueError("codex_cli_invalid_scratch_request_id")
+    scratch = Path(instance_root) / "codex-cli-scratch" / request_id
+    scratch.mkdir(parents=True, exist_ok=True)
+    if not (scratch / ".git").exists():
+        completed = subprocess.run(
+            ["git", "init", "--quiet", str(scratch)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise ValueError("codex_cli_scratch_git_init_failed")
+    return scratch
+
+
 @dataclass(frozen=True)
 class CodexCliSubprocessConfig:
     codex_executable: str

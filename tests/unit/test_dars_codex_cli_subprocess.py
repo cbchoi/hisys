@@ -79,10 +79,21 @@ def _executor_payload(prompt: str = "Critique the bounded DARS evidence summary 
     }
 
 
+def test_prepare_codex_scratch_git_workdir_creates_ephemeral_repo_under_instance(tmp_path: Path):
+    from hisys.agents.dars_codex_cli_subprocess import prepare_codex_scratch_git_workdir
+
+    scratch = prepare_codex_scratch_git_workdir(tmp_path, request_id="REQ-DARS-CODEX-001")
+
+    assert scratch == tmp_path / "codex-cli-scratch" / "REQ-DARS-CODEX-001"
+    assert (scratch / ".git").is_dir()
+    assert scratch.is_dir()
+
+
 def test_codex_cli_prompt_mode_executor_uses_read_only_noninteractive_command(tmp_path: Path):
     from hisys.agents.dars_codex_cli_subprocess import (
         CodexCliSubprocessConfig,
         build_codex_cli_prompt_mode_executor,
+        prepare_codex_scratch_git_workdir,
     )
 
     calls = []
@@ -91,8 +102,7 @@ def test_codex_cli_prompt_mode_executor_uses_read_only_noninteractive_command(tm
         calls.append((argv, kwargs))
         return SimpleNamespace(returncode=0, stdout="  Codex advisory critique text.  ", stderr="")
 
-    workdir = tmp_path / "codex-workdir"
-    workdir.mkdir()
+    workdir = prepare_codex_scratch_git_workdir(tmp_path, request_id="REQ-DARS-CODEX-001")
     executor = build_codex_cli_prompt_mode_executor(
         CodexCliSubprocessConfig(
             codex_executable="/usr/bin/codex",
