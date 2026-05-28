@@ -1,13 +1,20 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.60.0
+version: 0.61.0
 document_status: draft-for-tdd
 created: 2026-05-19
 updated: 2026-05-28
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
+
+## DARS-LIVE-PROVIDER-ADVISORY-SMOKED-REVIEW-GATE — current state reviewed
+
+- Scope: after the DARS panel productization closure gate, this review records the current accepted `live_provider_advisory_smoked` state for the operator question. The usable scope is local, single-operator, human-reviewed advisory work through the Codex subscription subprocess transport evidence.
+- Artifacts: `docs/release/dars-live-provider-advisory-smoked-review-gate-v0.0.125.md`, `docs/release/dars-panel-release-notes-v0.0.125.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.125.md`, `tests/unit/test_dars_live_provider_advisory_smoked_review_gate.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `docs/milestone-bootstrap/README.md`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `live_provider_advisory_smoked_current_state_reviewed`; `live_provider_advisory_smoked: usable_with_scoped_human_review`; `scope=codex_subscription_subprocess_transport_only`; `single_operator_dars_panel_usable=true`; `active_transport_evidence_ref=docs/reports/dars-r4c-codex-subprocess-panel-smoke-success-2026-05-28.md`; `next_safe_task=MB-CODEBASE-M21-6-PREP`.
+- Boundary: no raw provider API readiness, adapter-native readiness, DARS completion upgrade, bounded-unattended-readiness claim, controlled advisory use release, release action, credential lookup, live external action, live model call, raw provider API call by Hisys, standing unattended activation, or human-review removal is introduced.
 
 ## DARS-PANEL-PRODUCTIZATION-CLOSURE-GATE — closure gate recorded
 
