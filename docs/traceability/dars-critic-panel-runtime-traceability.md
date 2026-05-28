@@ -9,6 +9,13 @@ updated: 2026-05-28
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## HISYS-SUBSYSTEM-ROLE-SEPARATION-PREP — Altas/DARS/Judge roles recorded
+
+- Scope: this gate records Hisys as `Altas + DARS + Judge` before module/package refactoring. It separates retrieval/projection, developmental opposition, and bounded advisory judgment without changing runtime authority.
+- Artifacts: `docs/design/hisys-subsystem-architecture.md`, `docs/release/hisys-subsystem-role-separation-prep-v0.0.127.md`, `docs/release/dars-panel-release-notes-v0.0.127.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.127.md`, `tests/unit/test_hisys_subsystem_role_separation.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `hisys_altas_dars_judge_role_separation_recorded`; `dars_bounded_advisory_productized_baseline=true`; `dars_completion_upgrade_claimed=false`; `bounded_unattended_advisory_operation_ready=false`; `raw_provider_api_readiness=false`; `adapter_native_readiness=false`; `live_external_action_authorized=false`; `requires_human_review=true`; `next_safe_task=HISYS-ALTAS-DARS-JUDGE-MODULE-SKELETON`.
+- Boundary: no implementation migration, raw provider API readiness, adapter-native readiness, bounded-unattended-readiness claim, live external action, release action, credential lookup, standing unattended activation, repository synchronization, vault mutation, publication, or human-review removal is introduced.
+
 ## HISYS-HERMES-DARS-PANEL-SMOKE-GATE — Hermes smoke completed
 
 - Scope: this gate records the operator-requested actual Hermes-call smoke test. A child Hermes CLI session invoked the local Hisys DARS panel readiness surface through the terminal tool and returned the expected advisory fields.
