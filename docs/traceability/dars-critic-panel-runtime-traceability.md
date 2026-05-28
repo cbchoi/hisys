@@ -1,13 +1,21 @@
 ---
 doc_id: HISYS-DARS-CP-RTM-001
 title: DARS Critic Panel Runtime Traceability Matrix
-version: 0.58.0
+version: 0.59.0
 document_status: draft-for-tdd
 created: 2026-05-19
-updated: 2026-05-25
+updated: 2026-05-28
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
+
+## DARS-LIVE-RELEASE-LOCAL-ARTIFACT-INVENTORY-REVIEW — local artifact inventory review recorded
+
+- Scope: after the v0.0.118 local artifact/release-scope approval and the separately completed bounded R4C Codex subprocess panel smoke, Hisys recorded the controlled local artifact inventory for the single-operator DARS panel.
+- Artifacts: `docs/release/dars-release-local-artifact-inventory-review-v0.0.119.md`, `docs/release/dars-panel-release-notes-v0.0.119.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.119.md`, `docs/reports/dars-r4c-codex-subprocess-panel-smoke-success-2026-05-28.md`, `tests/unit/test_dars_release_local_artifact_inventory_review.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+- Evidence contract: accepted claim is `local_artifact_inventory_review_recorded_for_human_review`; `local_artifact_inventory_review_recorded=true`; `repository_record_inventory_recorded=true`; `transient_runtime_evidence_reference_only=true`; `copy_transient_runtime_payloads_into_repo=false`; `raw_provider_output_persisted=false`; `credential_or_token_material_recorded=false`; `package_upload_scope_retired=true`; `credential_lookup_by_hisys=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `requires_human_review=true`.
+- Traceability: HISYS-FR-DARS-CP-015 / HISYS-T-DARS-CP-017 advances to `DARS-LIVE-RELEASE-REPOSITORY-RECORD-RECOMMENDATION`; the R4C success report is a controlled repository record, while `/tmp/hisys-r4c-codex-panel-smoke-20260528-002-r049wku8` remains reference-only transient evidence.
+- Boundary: no artifact build, credential lookup, deployment, publication, external notification, live provider/model call, raw provider API call, standing unattended activation, force push, branch rewrite, transient payload copying, or human-review removal is introduced.
 
 ## DARS-LIVE-RELEASE-LOCAL-ARTIFACT-RELEASE-SCOPE-REVIEW — local artifact scope review approved
 
