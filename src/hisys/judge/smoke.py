@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Mapping
 from typing import Any
 
 from .gate_result import (
@@ -295,6 +296,83 @@ def build_judge_smoke_report(
     }
 
 
+def summarize_judge_smoke_report(report: Mapping[str, Any]) -> dict[str, Any]:
+    """Project a full Judge smoke report into a compact readiness summary.
+
+    Consumes the mapping produced by :func:`build_judge_smoke_report` and returns
+    a small, deterministic, JSON-serializable summary so a human reviewer or local
+    agent can inspect Judge smoke readiness -- pass/fail, which checks failed,
+    which fixtures mismatched expectation, the gate-status spread, and the bundle
+    fingerprint identity -- without parsing the full report or its embedded panel
+    review bundle. The summary deliberately omits the large ``panel_review_bundle``
+    and the per-fixture/per-check detail lists, carrying only counts and the names
+    of anything that failed.
+
+    The summary grants no execution authority: the top-level ``authority_locks``
+    pin ``advisory_only=true`` / ``requires_human_review=true`` with every
+    escalation lock false, and ``non_authorization_note`` repeats that a human
+    reviewer must decide before any action. The function performs no I/O, does not
+    mutate ``report``, and returns a fresh mapping on every call.
+    """
+
+    fixtures = [item for item in report.get("fixtures", []) if isinstance(item, dict)]
+    checks = [item for item in report.get("checks", []) if isinstance(item, dict)]
+
+    failed_check_names = [
+        str(check.get("name")) for check in checks if check.get("passed") is not True
+    ]
+    checks_passed = len(checks) - len(failed_check_names)
+
+    fixture_mismatch_labels = [
+        str(fixture.get("label"))
+        for fixture in fixtures
+        if fixture.get("outcome_matches_expectation") is not True
+    ]
+    fixtures_matched = len(fixtures) - len(fixture_mismatch_labels)
+
+    raw_counts: dict[str, int] = {}
+    for fixture in fixtures:
+        status = str(fixture.get("gate_status"))
+        raw_counts[status] = raw_counts.get(status, 0) + 1
+    gate_status_counts = {status: raw_counts[status] for status in sorted(raw_counts)}
+
+    advisory_locks_preserved = all(
+        fixture.get("advisory_only_locked") is True
+        and fixture.get("requires_human_review_locked") is True
+        and fixture.get("no_escalation_authority") is True
+        for fixture in fixtures
+    )
+
+    return {
+        "subsystem": report.get("subsystem", "judge"),
+        "kind": "advisory_smoke_status",
+        "mode": report.get("mode"),
+        "smoke_passed": report.get("smoke_passed") is True,
+        "fixture_count": len(fixtures),
+        "fixtures_matched_expectation": fixtures_matched,
+        "fixture_mismatch_labels": fixture_mismatch_labels,
+        "gate_status_counts": gate_status_counts,
+        "checks_total": len(checks),
+        "checks_passed": checks_passed,
+        "checks_failed": len(failed_check_names),
+        "failed_check_names": failed_check_names,
+        "advisory_locks_preserved_for_all_fixtures": advisory_locks_preserved,
+        "bundle_fingerprint": report.get("bundle_fingerprint"),
+        "bundle_fingerprint_algorithm": report.get("bundle_fingerprint_algorithm"),
+        "bundle_serialized_byte_length": report.get("bundle_serialized_byte_length"),
+        "authority_locks": {
+            "advisory_only": True,
+            "requires_human_review": True,
+            "live_external_action_authorized": False,
+            "mutation_authorized": False,
+            "publication_authorized": False,
+            "remote_push_authorized": False,
+            "human_review_removal_authorized": False,
+        },
+        "non_authorization_note": JUDGE_GATE_NON_AUTHORIZATION_NOTE,
+    }
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hisys.judge.smoke",
@@ -311,15 +389,25 @@ def _build_parser() -> argparse.ArgumentParser:
         default="json",
         help="Output format for the smoke report (default: json).",
     )
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help=(
+            "Emit the compact readiness summary instead of the full smoke "
+            "report, so agents can inspect smoke readiness without parsing the "
+            "full report. The exit code still reflects whether the smoke passed."
+        ),
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
-    parser.parse_args(argv)
+    args = parser.parse_args(argv)
 
     report = build_judge_smoke_report()
-    sys.stdout.write(json.dumps(report, indent=2, sort_keys=True))
+    payload = summarize_judge_smoke_report(report) if args.summary else report
+    sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True))
     sys.stdout.write("\n")
     return 0 if report["smoke_passed"] else 1
 
