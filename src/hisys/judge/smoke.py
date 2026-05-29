@@ -373,6 +373,77 @@ def summarize_judge_smoke_report(report: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def render_judge_smoke_status_text(summary_or_report: Mapping[str, Any]) -> str:
+    """Render a short human/agent-readable Judge smoke status text.
+
+    ``summary_or_report`` is either the full smoke report produced by
+    :func:`build_judge_smoke_report` or the compact summary produced by
+    :func:`summarize_judge_smoke_report`. A full report is projected through
+    :func:`summarize_judge_smoke_report` first (an already-compact summary is
+    used as-is), so this renderer never duplicates the readiness logic. The
+    returned value is a single deterministic, short, multi-line status string
+    that surfaces pass/fail, the fixture/check counts, the gate-status spread,
+    the bundle fingerprint identity, and -- only when present -- the names of any
+    failed checks and any fixtures that mismatched expectation.
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate its input, and returns a fresh string on every call. It grants no
+    execution authority: the rendered text states that the result is advisory
+    only and that human review is required, and it repeats the summary's
+    ``non_authorization_note`` that a human reviewer must decide before any
+    action is taken.
+    """
+
+    if summary_or_report.get("kind") == "advisory_smoke_status":
+        summary: Mapping[str, Any] = summary_or_report
+    else:
+        summary = summarize_judge_smoke_report(summary_or_report)
+
+    status = "PASS" if summary.get("smoke_passed") is True else "FAIL"
+
+    counts = summary.get("gate_status_counts", {})
+    counts_text = (
+        ", ".join(f"{name}={counts[name]}" for name in sorted(counts))
+        if counts
+        else "(none)"
+    )
+
+    lines = [
+        f"Judge Advisory Smoke Status: {status}",
+        f"Mode: {summary.get('mode')}",
+        "Fixtures matched expectation: "
+        f"{summary.get('fixtures_matched_expectation')}/{summary.get('fixture_count')}",
+    ]
+
+    mismatches = [str(label) for label in summary.get("fixture_mismatch_labels", [])]
+    if mismatches:
+        lines.append(f"Fixture mismatches: {', '.join(mismatches)}")
+
+    lines.append(
+        f"Checks passed: {summary.get('checks_passed')}/{summary.get('checks_total')}"
+    )
+
+    failed_checks = [str(name) for name in summary.get("failed_check_names", [])]
+    if failed_checks:
+        lines.append(f"Failed checks: {', '.join(failed_checks)}")
+
+    lines.append(f"Gate status counts: {counts_text}")
+    lines.append(
+        "Advisory locks preserved for all fixtures: "
+        + ("yes" if summary.get("advisory_locks_preserved_for_all_fixtures") else "no")
+    )
+    lines.append(
+        "Bundle fingerprint "
+        f"({summary.get('bundle_fingerprint_algorithm')}): "
+        f"{summary.get('bundle_fingerprint')}"
+    )
+    lines.append("Advisory only: yes")
+    lines.append("Requires human review: yes")
+    lines.append(f"Note: {summary.get('non_authorization_note')}")
+
+    return "\n".join(lines)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hisys.judge.smoke",
@@ -389,13 +460,23 @@ def _build_parser() -> argparse.ArgumentParser:
         default="json",
         help="Output format for the smoke report (default: json).",
     )
-    parser.add_argument(
+    output_group = parser.add_mutually_exclusive_group()
+    output_group.add_argument(
         "--summary",
         action="store_true",
         help=(
             "Emit the compact readiness summary instead of the full smoke "
             "report, so agents can inspect smoke readiness without parsing the "
             "full report. The exit code still reflects whether the smoke passed."
+        ),
+    )
+    output_group.add_argument(
+        "--text",
+        action="store_true",
+        help=(
+            "Emit a short human/agent-readable status text instead of JSON, so "
+            "an operator sees Judge smoke readiness at a glance. The exit code "
+            "still reflects whether the smoke passed."
         ),
     )
     return parser
@@ -406,8 +487,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     report = build_judge_smoke_report()
-    payload = summarize_judge_smoke_report(report) if args.summary else report
-    sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True))
+    if args.text:
+        sys.stdout.write(render_judge_smoke_status_text(report))
+    else:
+        payload = summarize_judge_smoke_report(report) if args.summary else report
+        sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True))
     sys.stdout.write("\n")
     return 0 if report["smoke_passed"] else 1
 
