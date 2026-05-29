@@ -22,10 +22,11 @@ The smoke command is::
 It emits the JSON smoke report to stdout and exits ``0`` when the smoke passed,
 ``1`` otherwise. ``--summary`` emits the compact readiness summary, ``--text``
 emits a short human-readable status text, ``--status-bundle`` emits a JSON
-bundle pairing that summary with its status text, and
-``--status-bundle-canonical`` emits that same bundle as a single canonical JSON
-text string (stable sorted keys, compact separators); these output modes are
-mutually exclusive and the default output remains the full JSON report.
+bundle pairing that summary with its status text, ``--status-bundle-canonical``
+emits that same bundle as a single canonical JSON text string (stable sorted
+keys, compact separators), and ``--status-bundle-fingerprint`` emits a tiny JSON
+identity packet carrying the bundle's content fingerprint; these output modes
+are mutually exclusive and the default output remains the full JSON report.
 
 The harness is pure and side-effect free: it performs no live provider/model
 call, no raw provider API call, no network request, no credential lookup, no
@@ -39,6 +40,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import sys
 from collections.abc import Mapping
@@ -528,6 +530,45 @@ def serialize_judge_smoke_status_review_bundle(
     )
 
 
+# Standard-library hash algorithm used for the smoke status review bundle
+# content fingerprint. SHA-256 (``hashlib.sha256``) is a fixed-output,
+# deterministic digest from the Python standard library; its 256-bit output
+# renders as 64 lowercase hexadecimal characters.
+JUDGE_SMOKE_STATUS_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM = "sha256"
+
+
+def fingerprint_judge_smoke_status_review_bundle(
+    bundle: Mapping[str, Any],
+) -> str:
+    """Compute a deterministic content fingerprint of a smoke status bundle.
+
+    ``bundle`` is the mapping produced by
+    :func:`build_judge_smoke_status_review_bundle`. The returned value is a
+    single lowercase hex digest string -- the
+    :data:`JUDGE_SMOKE_STATUS_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM` (SHA-256)
+    digest of the canonical JSON serialization produced by
+    :func:`serialize_judge_smoke_status_review_bundle` (the canonical byte/text
+    source), encoded as UTF-8. Because the canonical serialization has stable
+    sorted keys, two bundles with insertion-order-equivalent content fingerprint
+    to the same digest, while any content change changes the digest. The function
+    returns the digest string only. This mirrors the gate-result
+    :func:`hisys.judge.gate_result.fingerprint_judge_advisory_panel_review_bundle`
+    lineage.
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate ``bundle``, and returns a fresh string on every call. It grants no
+    execution authority: the digest is derived purely from the canonical content,
+    so the pinned ``advisory_only=true`` / ``requires_human_review=true`` locks
+    and the ``non_authorization_note`` are part of what is fingerprinted, not
+    mutated or escalated.
+    """
+
+    canonical = serialize_judge_smoke_status_review_bundle(bundle)
+    digest = hashlib.new(JUDGE_SMOKE_STATUS_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM)
+    digest.update(canonical.encode("utf-8"))
+    return digest.hexdigest()
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hisys.judge.smoke",
@@ -584,7 +625,41 @@ def _build_parser() -> argparse.ArgumentParser:
             "reflects whether the smoke passed."
         ),
     )
+    output_group.add_argument(
+        "--status-bundle-fingerprint",
+        action="store_true",
+        help=(
+            "Emit a tiny JSON identity packet carrying the smoke status review "
+            "bundle's content fingerprint (the SHA-256 digest of its canonical "
+            "JSON serialization), so local diffing/deduplication tooling can "
+            "identify the readiness content by digest. The exit code still "
+            "reflects whether the smoke passed."
+        ),
+    )
     return parser
+
+
+def _build_fingerprint_identity_packet(bundle: Mapping[str, Any]) -> dict[str, Any]:
+    """Build the tiny JSON identity packet emitted by ``--status-bundle-fingerprint``.
+
+    The packet carries the bundle's content fingerprint plus the pinned
+    advisory-only/requires-human-review locks and the non-authorization note, so
+    even the fingerprint surface preserves the Judge authority boundary. It
+    grants no execution authority and performs no I/O.
+    """
+
+    return {
+        "subsystem": "judge",
+        "kind": "advisory_smoke_status_review_bundle_fingerprint",
+        "smoke_passed": bundle.get("smoke_passed") is True,
+        "fingerprint": fingerprint_judge_smoke_status_review_bundle(bundle),
+        "fingerprint_algorithm": JUDGE_SMOKE_STATUS_REVIEW_BUNDLE_FINGERPRINT_ALGORITHM,
+        "authority_locks": {
+            "advisory_only": True,
+            "requires_human_review": True,
+        },
+        "non_authorization_note": JUDGE_GATE_NON_AUTHORIZATION_NOTE,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -600,6 +675,10 @@ def main(argv: list[str] | None = None) -> int:
     elif args.status_bundle_canonical:
         bundle = build_judge_smoke_status_review_bundle(report)
         sys.stdout.write(serialize_judge_smoke_status_review_bundle(bundle))
+    elif args.status_bundle_fingerprint:
+        bundle = build_judge_smoke_status_review_bundle(report)
+        identity = _build_fingerprint_identity_packet(bundle)
+        sys.stdout.write(json.dumps(identity, indent=2, sort_keys=True))
     else:
         payload = summarize_judge_smoke_report(report) if args.summary else report
         sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True))
