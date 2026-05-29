@@ -1,0 +1,45 @@
+{
+  "authority_locks": {
+    "advisory_only": true,
+    "requires_human_review": true
+  },
+  "kind": "advisory_smoke_status_review_bundle",
+  "non_authorization_note": "This gate result is advisory only and does not authorize any execution, mutation, publication, or removal of human review. A human reviewer must decide before any action is taken.",
+  "smoke_passed": true,
+  "status_text": "Judge Advisory Smoke Status: PASS\nMode: local_fixture_in_process\nFixtures matched expectation: 5/5\nChecks passed: 8/8\nGate status counts: advisory_block=1, advisory_fail=1, advisory_needs_human_review=1, advisory_pass=1, rejected=1\nAdvisory locks preserved for all fixtures: yes\nBundle fingerprint (sha256): 05a935a14c65b73fab87df88aac411520638cce4e307a5148353cffba5e5e460\nAdvisory only: yes\nRequires human review: yes\nNote: This gate result is advisory only and does not authorize any execution, mutation, publication, or removal of human review. A human reviewer must decide before any action is taken.",
+  "subsystem": "judge",
+  "summary": {
+    "advisory_locks_preserved_for_all_fixtures": true,
+    "authority_locks": {
+      "advisory_only": true,
+      "human_review_removal_authorized": false,
+      "live_external_action_authorized": false,
+      "mutation_authorized": false,
+      "publication_authorized": false,
+      "remote_push_authorized": false,
+      "requires_human_review": true
+    },
+    "bundle_fingerprint": "05a935a14c65b73fab87df88aac411520638cce4e307a5148353cffba5e5e460",
+    "bundle_fingerprint_algorithm": "sha256",
+    "bundle_serialized_byte_length": 3041,
+    "checks_failed": 0,
+    "checks_passed": 8,
+    "checks_total": 8,
+    "failed_check_names": [],
+    "fixture_count": 5,
+    "fixture_mismatch_labels": [],
+    "fixtures_matched_expectation": 5,
+    "gate_status_counts": {
+      "advisory_block": 1,
+      "advisory_fail": 1,
+      "advisory_needs_human_review": 1,
+      "advisory_pass": 1,
+      "rejected": 1
+    },
+    "kind": "advisory_smoke_status",
+    "mode": "local_fixture_in_process",
+    "non_authorization_note": "This gate result is advisory only and does not authorize any execution, mutation, publication, or removal of human review. A human reviewer must decide before any action is taken.",
+    "smoke_passed": true,
+    "subsystem": "judge"
+  }
+}
