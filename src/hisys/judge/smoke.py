@@ -20,7 +20,10 @@ The smoke command is::
     PYTHONPATH=src:. python3 -m hisys.judge.smoke
 
 It emits the JSON smoke report to stdout and exits ``0`` when the smoke passed,
-``1`` otherwise.
+``1`` otherwise. ``--summary`` emits the compact readiness summary, ``--text``
+emits a short human-readable status text, and ``--status-bundle`` emits a JSON
+bundle pairing that summary with its status text; these output modes are
+mutually exclusive and the default output remains the full JSON report.
 
 The harness is pure and side-effect free: it performs no live provider/model
 call, no raw provider API call, no network request, no credential lookup, no
@@ -33,6 +36,7 @@ advisory-only and always requires human review.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from collections.abc import Mapping
@@ -444,6 +448,54 @@ def render_judge_smoke_status_text(summary_or_report: Mapping[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def build_judge_smoke_status_review_bundle(
+    summary_or_report: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bundle the compact smoke status summary with its status text.
+
+    ``summary_or_report`` is either the full smoke report produced by
+    :func:`build_judge_smoke_report` or the compact summary produced by
+    :func:`summarize_judge_smoke_report`. A full report is projected through
+    :func:`summarize_judge_smoke_report` once (an already-compact summary is
+    used as-is, deep-copied so the bundle is independent of the caller's
+    mapping); both the bundled ``summary`` and the ``status_text`` are derived
+    from that *same* projected summary via :func:`render_judge_smoke_status_text`,
+    so this builder never duplicates the readiness logic and the machine view and
+    human view stay consistent. This mirrors the gate-result
+    :func:`build_judge_advisory_panel_review_bundle` lineage so local tooling gets
+    both views of Judge smoke readiness in one JSON-serializable artifact.
+
+    The returned mapping is plain, deterministic, and JSON-serializable, with a
+    stable top-level key set (``subsystem``, ``kind``, ``smoke_passed``,
+    ``summary``, ``status_text``, ``authority_locks``, ``non_authorization_note``).
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate its input, and returns a fresh mapping (with an independent nested
+    ``summary``) on every call. It grants no execution authority: the top-level
+    ``authority_locks`` pin ``advisory_only=true`` / ``requires_human_review=true``
+    (no escalation keys), and ``non_authorization_note`` repeats that a human
+    reviewer must decide before any action is taken.
+    """
+
+    if summary_or_report.get("kind") == "advisory_smoke_status":
+        summary: dict[str, Any] = copy.deepcopy(dict(summary_or_report))
+    else:
+        summary = summarize_judge_smoke_report(summary_or_report)
+
+    return {
+        "subsystem": "judge",
+        "kind": "advisory_smoke_status_review_bundle",
+        "smoke_passed": summary.get("smoke_passed") is True,
+        "summary": summary,
+        "status_text": render_judge_smoke_status_text(summary),
+        "authority_locks": {
+            "advisory_only": True,
+            "requires_human_review": True,
+        },
+        "non_authorization_note": JUDGE_GATE_NON_AUTHORIZATION_NOTE,
+    }
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hisys.judge.smoke",
@@ -479,6 +531,16 @@ def _build_parser() -> argparse.ArgumentParser:
             "still reflects whether the smoke passed."
         ),
     )
+    output_group.add_argument(
+        "--status-bundle",
+        action="store_true",
+        help=(
+            "Emit a JSON smoke status review bundle pairing the compact "
+            "readiness summary with its human-readable status text, so local "
+            "tooling gets both the machine and human views in one artifact. The "
+            "exit code still reflects whether the smoke passed."
+        ),
+    )
     return parser
 
 
@@ -489,6 +551,9 @@ def main(argv: list[str] | None = None) -> int:
     report = build_judge_smoke_report()
     if args.text:
         sys.stdout.write(render_judge_smoke_status_text(report))
+    elif args.status_bundle:
+        bundle = build_judge_smoke_status_review_bundle(report)
+        sys.stdout.write(json.dumps(bundle, indent=2, sort_keys=True))
     else:
         payload = summarize_judge_smoke_report(report) if args.summary else report
         sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True))
