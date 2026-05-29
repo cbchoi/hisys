@@ -21,8 +21,10 @@ The smoke command is::
 
 It emits the JSON smoke report to stdout and exits ``0`` when the smoke passed,
 ``1`` otherwise. ``--summary`` emits the compact readiness summary, ``--text``
-emits a short human-readable status text, and ``--status-bundle`` emits a JSON
-bundle pairing that summary with its status text; these output modes are
+emits a short human-readable status text, ``--status-bundle`` emits a JSON
+bundle pairing that summary with its status text, and
+``--status-bundle-canonical`` emits that same bundle as a single canonical JSON
+text string (stable sorted keys, compact separators); these output modes are
 mutually exclusive and the default output remains the full JSON report.
 
 The harness is pure and side-effect free: it performs no live provider/model
@@ -496,6 +498,36 @@ def build_judge_smoke_status_review_bundle(
     }
 
 
+def serialize_judge_smoke_status_review_bundle(
+    bundle: Mapping[str, Any],
+) -> str:
+    """Serialize a smoke status review bundle into canonical JSON text.
+
+    ``bundle`` is the mapping produced by
+    :func:`build_judge_smoke_status_review_bundle`. The returned value is a
+    single deterministic, canonical JSON text string with stable sorted keys
+    (compact separators, no insignificant whitespace) so local logging/diffing
+    tooling sees the same bytes for the same advisory content regardless of the
+    bundle's dict insertion order. The function returns the string only. This
+    mirrors the gate-result
+    :func:`hisys.judge.gate_result.serialize_judge_advisory_panel_review_bundle`
+    lineage.
+
+    The function performs no I/O and no external action of any kind, does not
+    mutate ``bundle``, and returns a fresh string on every call. It grants no
+    execution authority: it serializes the bundle as given, so the pinned
+    ``advisory_only=true`` / ``requires_human_review=true`` locks and the
+    ``non_authorization_note`` are preserved verbatim in the text.
+    """
+
+    return json.dumps(
+        bundle,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hisys.judge.smoke",
@@ -541,6 +573,17 @@ def _build_parser() -> argparse.ArgumentParser:
             "exit code still reflects whether the smoke passed."
         ),
     )
+    output_group.add_argument(
+        "--status-bundle-canonical",
+        action="store_true",
+        help=(
+            "Emit the smoke status review bundle as a single canonical JSON "
+            "text string (stable sorted keys, compact separators, no "
+            "insignificant whitespace), so local logging/diffing tooling sees "
+            "the same bytes for the same advisory content. The exit code still "
+            "reflects whether the smoke passed."
+        ),
+    )
     return parser
 
 
@@ -554,6 +597,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.status_bundle:
         bundle = build_judge_smoke_status_review_bundle(report)
         sys.stdout.write(json.dumps(bundle, indent=2, sort_keys=True))
+    elif args.status_bundle_canonical:
+        bundle = build_judge_smoke_status_review_bundle(report)
+        sys.stdout.write(serialize_judge_smoke_status_review_bundle(bundle))
     else:
         payload = summarize_judge_smoke_report(report) if args.summary else report
         sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True))
