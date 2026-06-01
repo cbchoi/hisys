@@ -8,7 +8,7 @@
 |---|---|
 | Plan ID | `RALPH-HISYS-DARS-LIVE-RELEASE-2026-05-23` |
 | Repository | `/home/cbchoi/workspaces/develop/repos/hisys` |
-| Branch | `dars` |
+| Branch | `main` |
 | Baseline at plan creation | `7b40649` |
 | Previous active control file | archived into `ralph.history.md` on 2026-05-23 |
 | Runtime | one coherent RED--GREEN--validate--commit unit per run; maximum 5 hours |
@@ -392,3 +392,5 @@ Report:
 - Current HEAD: 181e7d8
 - 2026-06-02 — `JUDGE-SUBSYSTEM-READINESS-TEXT`: JUDGE READINESS TEXT SURFACE GREEN. After the operator instructed `go` from the DARS v0.0.128 release-promotion checkpoint, continued the next safe task `JUDGE-SUBSYSTEM-READINESS-PACKET-CONTINUATION` with a Judge-only local increment. RED-first added `tests/unit/test_judge_subsystem_readiness_text.py` and observed missing `render_judge_subsystem_readiness_text` plus missing `--format text` CLI support (6 failed). GREEN added `render_judge_subsystem_readiness_text` in `src/hisys/judge/rloo.py`, extended the readiness CLI to support `PYTHONPATH=src:. python3 -m hisys.judge.rloo --check --format text`, and updated Judge/local traceability reflections. The text rendering consumes the existing readiness packet, surfaces READY/NOT READY status, controller path, next safe task, authority locks, independence declarations, and no-side-effect flags. Boundary preserved: no live provider/model call, raw provider API call, credential lookup, network access, remote push, release, publication, deployment, vault/evidence mutation, cross-subsystem call, consequential action authorization, or human-review removal. Next safe task remains `JUDGE-SUBSYSTEM-READINESS-PACKET-CONTINUATION`.
 - Current HEAD: 6ec13b9
+- 2026-06-02 — `DARS-TO-MAIN-FAST-FORWARD-INTEGRATION`: MAIN BRANCH INTEGRATION RECORDED. After the operator confirmed `진행` for integrating `dars` into `main`, pushed the latest `dars` commit to `origin/dars`, checked out `main`, and fast-forwarded `main` from `6ef0a51` to `040efa2`. This integration changes the repository control branch marker from `dars` to `main` and preserves the same controlled advisory DARS/Judge boundaries. Boundary preserved: no tag creation, package upload, deployment, publication, external notification, live provider/model call, raw provider API call, credential lookup, standing unattended activation, force push, branch rewrite, or human-review removal. Next safe task remains `JUDGE-SUBSYSTEM-READINESS-PACKET-CONTINUATION`.
+- Current HEAD: 040efa2

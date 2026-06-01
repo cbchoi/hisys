@@ -4,7 +4,7 @@
 subsystem: dars
 scope: DARS only
 architecture_ref: docs/design/hisys-subsystem-architecture.md
-branch: dars
+branch: main
 package_root: src/hisys/dars
 root_controller: ../../../ralph.md
 ```

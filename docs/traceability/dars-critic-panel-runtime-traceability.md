@@ -9,6 +9,13 @@ updated: 2026-06-02
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## DARS-TO-MAIN-FAST-FORWARD-INTEGRATION — DARS branch integrated to main
+
+- Scope: this gate records the operator-approved repository synchronization that fast-forwarded `main` to the current `dars` controlled advisory baseline. It updates root and subsystem controller branch markers to `main` while preserving the DARS/Judge advisory-only and human-review-required authority locks.
+- Artifacts: `ralph.md`, `src/hisys/dars/ralph.md`, `src/hisys/judge/ralph.md`, `docs/milestone-bootstrap/profile.yaml`, `tests/unit/test_governance_docs_current_state.py`, `tests/unit/test_dars_subsystem_individual_execution.py`, and `tests/unit/test_judge_subsystem_individual_execution.py`.
+- Evidence contract: `dars_branch_pushed=true`; `main_fast_forwarded_to_dars=true`; `main_integration_baseline=040efa2`; `branch=main`; `next_safe_task=JUDGE-SUBSYSTEM-READINESS-PACKET-CONTINUATION`; `requires_human_review=true`; `tag_creation_authorized=false`; `package_upload_authorized=false`; `deployment_authorized=false`; `publication_authorized=false`; `live_external_action_authorized=false`; `credential_lookup_by_hisys=false`; `human_review_removal_authorized=false`.
+- Boundary: no tag creation, package upload, deployment, publication, external notification, live provider/model call, raw provider API call, credential lookup, standing unattended activation, force push, branch rewrite, or human-review removal is introduced.
+
 ## JUDGE-SUBSYSTEM-READINESS-TEXT — Judge readiness packet text renderer added
 
 - Scope: this gate adds a human-readable Judge-only rendering of the existing subsystem readiness packet and a `--format text` CLI mode for local inspection. It reuses the same readiness packet as the JSON command and does not change the packet schema or execution authority.

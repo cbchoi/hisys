@@ -87,7 +87,7 @@ def test_judge_subsystem_rloo_check_json_records_controller_anchor() -> None:
     metadata = controller["metadata"]
     assert metadata["subsystem"] == "judge"
     assert metadata["scope"] == "Judge only"
-    assert metadata["branch"] == "dars"
+    assert metadata["branch"] == "main"
     assert metadata["package_root"] == "src/hisys/judge"
     assert metadata["architecture_ref"] == (
         "docs/design/hisys-subsystem-architecture.md"

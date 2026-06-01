@@ -4,7 +4,7 @@
 subsystem: judge
 scope: Judge only
 architecture_ref: docs/design/hisys-subsystem-architecture.md
-branch: dars
+branch: main
 package_root: src/hisys/judge
 root_controller: ../../../ralph.md
 ```
