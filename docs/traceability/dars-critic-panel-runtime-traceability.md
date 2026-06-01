@@ -4,10 +4,14 @@ title: DARS Critic Panel Runtime Traceability Matrix
 version: 0.61.0
 document_status: draft-for-tdd
 created: 2026-05-19
-updated: 2026-05-28
+updated: 2026-06-02
 ---
 
 # DARS Critic Panel Runtime Traceability Matrix
+
+- 2026-06-02 — `DARS-RELEASE-PROMOTION-GATE`: RELEASE PROMOTION RECORDED.
+  - Artifacts: `docs/release/dars-release-promotion-v0.0.128.md`, `docs/release/dars-panel-release-notes-v0.0.128.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.128.md`, `tests/unit/test_dars_release_promotion_gate.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
+  - Evidence contract: accepted claim is `dars_released_for_controlled_advisory_use`; `dars_release_promoted=true`; `released_for_controlled_advisory_use=true`; `dars_bounded_advisory_productized_baseline=true`; `single_operator_dars_panel_usable=true`; `tag_creation_authorized=false`; `tag_push_authorized=false`; `package_upload_authorized=false`; `deployment_authorized=false`; `publication_authorized=false`; `external_notification_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`; `standing_unattended_approval_activated=false`; `human_review_removal_authorized=false`; `requires_human_review=true`; `next_safe_task=JUDGE-SUBSYSTEM-READINESS-PACKET-CONTINUATION`.
 
 ## JUDGE-SUBSYSTEM-INDIVIDUAL-EXECUTION-COMMAND — Judge local readiness command added
 
