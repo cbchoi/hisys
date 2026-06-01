@@ -96,6 +96,10 @@ def _locks_match_required(parsed: dict[str, bool]) -> bool:
     return True
 
 
+def _yes_no(value: Any) -> str:
+    return "yes" if value is True else "no"
+
+
 def build_judge_subsystem_readiness_packet() -> dict[str, Any]:
     """Return a deterministic Judge subsystem readiness packet.
 
@@ -159,6 +163,50 @@ def build_judge_subsystem_readiness_packet() -> dict[str, Any]:
     }
 
 
+def render_judge_subsystem_readiness_text(packet: dict[str, Any]) -> str:
+    """Render a Judge subsystem readiness packet as deterministic text.
+
+    The renderer is read-only: it consumes the already-built readiness packet,
+    performs no I/O or external action, does not mutate the packet, and grants no
+    execution authority. It exists so human reviewers and local agents can inspect
+    Judge readiness without parsing the JSON packet.
+    """
+
+    controller = packet.get("controller", {})
+    authority_locks = packet.get("authority_locks", {})
+    independence = packet.get("independence", {})
+    side_effects = packet.get("side_effects", {})
+    status = "READY" if packet.get("ready") is True else "NOT READY"
+
+    lines = [
+        f"Judge Subsystem Readiness: {status}",
+        f"Subsystem: {packet.get('subsystem', '')}",
+        f"Scope: {packet.get('scope', '')}",
+        f"Controller: {controller.get('path', '')}",
+        f"Next safe task: {controller.get('current_next_safe_task', '')}",
+        f"Advisory only: {_yes_no(authority_locks.get('advisory_only'))}",
+        f"Requires human review: {_yes_no(authority_locks.get('requires_human_review'))}",
+        f"Live external action authorized: {_yes_no(authority_locks.get('live_external_action_authorized'))}",
+        f"Mutation authorized: {_yes_no(authority_locks.get('mutation_authorized'))}",
+        f"Publication authorized: {_yes_no(authority_locks.get('publication_authorized'))}",
+        f"Remote push authorized: {_yes_no(authority_locks.get('remote_push_authorized'))}",
+        f"Human-review removal authorized: {_yes_no(authority_locks.get('human_review_removal_authorized'))}",
+        f"Depends on root RLOO: {_yes_no(independence.get('depends_on_root_rloo'))}",
+        f"Depends on Altas: {_yes_no(independence.get('depends_on_altas'))}",
+        f"Depends on DARS: {_yes_no(independence.get('depends_on_dars'))}",
+        f"Subsystem locally invocable: {_yes_no(independence.get('subsystem_locally_invocable'))}",
+        f"Performed live provider call: {_yes_no(side_effects.get('performed_live_provider_call'))}",
+        f"Performed credential lookup: {_yes_no(side_effects.get('performed_credential_lookup'))}",
+        f"Performed network call: {_yes_no(side_effects.get('performed_network_call'))}",
+        f"Performed remote push: {_yes_no(side_effects.get('performed_remote_push'))}",
+        f"Performed vault mutation: {_yes_no(side_effects.get('performed_vault_mutation'))}",
+        f"Performed evidence mutation: {_yes_no(side_effects.get('performed_evidence_mutation'))}",
+        f"Performed cross-subsystem call: {_yes_no(side_effects.get('performed_cross_subsystem_call'))}",
+        "Note: This readiness text grants no execution authority; a human reviewer must decide before any action.",
+    ]
+    return "\n".join(lines)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hisys.judge.rloo",
@@ -179,7 +227,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--format",
-        choices=("json",),
+        choices=("json", "text"),
         default="json",
         help="Output format for the readiness packet (default: json).",
     )
@@ -195,7 +243,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     packet = build_judge_subsystem_readiness_packet()
-    sys.stdout.write(json.dumps(packet, indent=2, sort_keys=True))
+    if args.format == "text":
+        sys.stdout.write(render_judge_subsystem_readiness_text(packet))
+    else:
+        sys.stdout.write(json.dumps(packet, indent=2, sort_keys=True))
     sys.stdout.write("\n")
     return 0
 

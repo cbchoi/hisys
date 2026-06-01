@@ -9,6 +9,13 @@ updated: 2026-06-02
 
 # DARS Critic Panel Runtime Traceability Matrix
 
+## JUDGE-SUBSYSTEM-READINESS-TEXT — Judge readiness packet text renderer added
+
+- Scope: this gate adds a human-readable Judge-only rendering of the existing subsystem readiness packet and a `--format text` CLI mode for local inspection. It reuses the same readiness packet as the JSON command and does not change the packet schema or execution authority.
+- Artifacts: `src/hisys/judge/rloo.py`, `tests/unit/test_judge_subsystem_readiness_text.py`, and `src/hisys/judge/ralph.md`.
+- Evidence contract: accepted claim is `judge_subsystem_readiness_text_added`; `ready=true`; `subsystem=judge`; `scope=Judge only`; `advisory_only=true`; `requires_human_review=true`; `live_external_action_authorized=false`; `mutation_authorized=false`; `publication_authorized=false`; `remote_push_authorized=false`; `human_review_removal_authorized=false`; `performed_live_provider_call=false`; `performed_credential_lookup=false`; `performed_network_call=false`; `performed_remote_push=false`; `performed_cross_subsystem_call=false`; `next_safe_task=JUDGE-SUBSYSTEM-READINESS-PACKET-CONTINUATION`.
+- Boundary: no live provider/model call, raw provider API readiness, adapter-native readiness, credential lookup, network access, vault/evidence mutation, remote push, release, publication, deployment, cross-subsystem invocation, consequential action authorization, or human-review removal is introduced.
+
 - 2026-06-02 — `DARS-RELEASE-PROMOTION-GATE`: RELEASE PROMOTION RECORDED.
   - Artifacts: `docs/release/dars-release-promotion-v0.0.128.md`, `docs/release/dars-panel-release-notes-v0.0.128.md`, `docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.128.md`, `tests/unit/test_dars_release_promotion_gate.py`, `docs/release/dars-panel-release-candidate-checklist.md`, `docs/milestone-bootstrap/profile.yaml`, `ralph.md`, and `tests/unit/test_governance_docs_current_state.py`.
   - Evidence contract: accepted claim is `dars_released_for_controlled_advisory_use`; `dars_release_promoted=true`; `released_for_controlled_advisory_use=true`; `dars_bounded_advisory_productized_baseline=true`; `single_operator_dars_panel_usable=true`; `tag_creation_authorized=false`; `tag_push_authorized=false`; `package_upload_authorized=false`; `deployment_authorized=false`; `publication_authorized=false`; `external_notification_authorized=false`; `live_external_action_authorized=false`; `live_model_call_authorized=false`; `raw_provider_api_call_by_hisys=false`; `credential_lookup_by_hisys=false`; `standing_unattended_approval_activated=false`; `human_review_removal_authorized=false`; `requires_human_review=true`; `next_safe_task=JUDGE-SUBSYSTEM-READINESS-PACKET-CONTINUATION`.

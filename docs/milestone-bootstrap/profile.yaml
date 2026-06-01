@@ -13,8 +13,8 @@ bootstrap_arguments: rloo
 bootstrap_inference: "The operator instruction `dars release로 승격` promotes the existing DARS panel baseline to local controlled release status for human-reviewed advisory use. This does not authorize tag creation, tag push, package upload, deployment, publication, external notification, live provider/model calls, raw provider API calls, credential lookup, standing unattended approval activation, branch rewrite, force push, or human-review removal."
 roadmap_ref: docs/release/dars-release-promotion-v0.0.128.md
 next_artifact_ref: docs/milestone-bootstrap/documents/readiness_decision_record_v0.0.128.md
-planning_baseline_head: '181e7d8 Document Judge example artifact discoverability'
-current_head_at_plan_creation: 181e7d8
+planning_baseline_head: '6ec13b9 docs: promote DARS release status'
+current_head_at_plan_creation: 6ec13b9
 previous_bootstrap_version: v0.0.127
 previous_controlled_profile_version: v0.0.127
 prior_previous_bootstrap_version: v0.0.126
