@@ -171,7 +171,10 @@ Hisys evidence/runtime-boundary/DARS artifacts
 Headroom is an optional dependency, not a core dependency. If it is missing,
 disabled, produces a non-shorter result, or fails at runtime, Hisys must return
 the original digest or an existing bounded summary and keep the investigation
-result valid.
+result valid. A successful compressed digest is prefixed with a Hisys boundary
+header that marks the text as lossy/untrusted, repeats the original artifact ref,
+and preserves selected source handles such as file paths, line markers,
+`runtime-boundary/...` refs, and `schema_id` markers for review.
 
 The compressed digest is lossy and advisory. It must not replace:
 
