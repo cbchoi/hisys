@@ -117,6 +117,15 @@ disagree, the controlled docs (and `INDEX.md` within them) govern.
   graph-rewrite structural transitions, marked human-review-required and
   publisher-source-validation-needed, with `external_call_made=false` and
   `mutation_performed=false`.
+- Increment **Domain intent inference guard for natural-language wrappers** -
+  `hisys investigate-domain --infer-domain-intent` can remap an incoming
+  `domain="general"` request to the best currently implemented adapter domain
+  from request objective/source/focus signals before artifact routing. Manuscript,
+  paper, journal-fit, literature, claim/evidence, and source/PDF review signals
+  map to `research`; code/repo/adapter/implementation/test architecture signals
+  map to `codebase`; `general` remains the audited fallback only when no specific
+  implemented adapter signal matches. The written request preserves an audit ref
+  such as `domain-inference:research:high` in `config_snapshot_refs`.
 - Increment **Hisys MVP A4 DARS fixture critique trace** -
   The research domain fixture writes advisory-only DARS request, response, and
   trace-link artifacts under `runtime-boundary/dars/<YYYYMMDD>/`. The local

@@ -80,11 +80,13 @@ from ..contracts.pass_registry import PassContractRegistryEntry, candidate_from_
 from ..contracts.review_package import build_review_package
 from ..domain import (
     DomainAdapterRegistry,
+    DomainIntentInput,
     DomainInvestigationContext,
     StructuredDomainAdapter,
     codebase_spec,
     investment_spec,
     research_spec,
+    infer_domain_intent,
 )
 from ..domain.specs import validate_spec_collisions
 from ..editor import EditorialRuntime, FixtureMemoDrafter, MemoDraftReport, MemoReviewReport, MemoReviewRuntime
@@ -3426,6 +3428,11 @@ def _build_parser() -> argparse.ArgumentParser:
     investigate_domain.add_argument("--instance", required=True, help="runtime instance root for outputs")
     investigate_domain.add_argument("--request", required=True, help="DomainInvestigationRequest JSON path")
     investigate_domain.add_argument("--date", required=True, help="YYYYMMDD output partition")
+    investigate_domain.add_argument(
+        "--infer-domain-intent",
+        action="store_true",
+        help="infer the best implemented domain from objective/sources before routing; preserves an audit ref",
+    )
     investigate_domain.add_argument("--pass-contract-registry", help="optional pass-contract registry JSON for domain/question evaluation")
     investigate_domain.add_argument("--question-type", help="question type for pass-contract lookup")
     investigate_domain.add_argument("--evidence-summary", help="optional evidence summary JSON for pass-contract evaluation")
@@ -4689,6 +4696,7 @@ def main(argv: list[str] | None = None) -> int:
             recommendation_claim_registry_refs=args.recommendation_claim_registry_refs,
             live_source_access_refs=args.live_source_access_refs,
             live_source_evidence_refs=args.live_source_evidence_refs,
+            infer_domain_intent_flag=args.infer_domain_intent,
         )
     if args.command == "live-ideation-run":
         return _cmd_live_ideation_run(
@@ -8961,11 +8969,28 @@ def _cmd_investigate_domain(
     recommendation_claim_registry_refs: list[str] | None = None,
     live_source_access_refs: list[str] | None = None,
     live_source_evidence_refs: list[str] | None = None,
+    infer_domain_intent_flag: bool = False,
 ) -> int:
     """Persist the local MVP boundary for a domain investigation request."""
 
     instance = InstanceRoot(instance_root)
     request = DomainInvestigationRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
+    if infer_domain_intent_flag:
+        resolution = infer_domain_intent(
+            DomainIntentInput(
+                objective=request.objective,
+                sources=tuple(request.sources),
+                user_focus=request.user_focus,
+                explicit_domain=None if request.domain == "general" else request.domain,
+            )
+        )
+        if resolution.domain != request.domain or resolution.audit_ref not in request.config_snapshot_refs:
+            request = request.model_copy(
+                update={
+                    "domain": resolution.domain,
+                    "config_snapshot_refs": [*request.config_snapshot_refs, resolution.audit_ref],
+                }
+            )
     boundary_dir = instance.root / "runtime-boundary" / "domain-investigation" / request.domain / yyyymmdd
     boundary_dir.mkdir(parents=True, exist_ok=True)
 
