@@ -154,6 +154,54 @@ Hisys should return a structured tool result:
 }
 ```
 
+### 4.1 Optional presentation-only compression
+
+Long Hermes-facing summaries may be post-processed by an optional compression
+adapter after the canonical Hisys artifacts have already been written. The
+compression boundary is intentionally outside Hisys evidence generation:
+
+```text
+Hisys evidence/runtime-boundary/DARS artifacts
+  -> persisted as system-of-record
+  -> optional redaction
+  -> optional Headroom digest compression
+  -> Hermes-facing summary with original_artifact_ref + compression metadata
+```
+
+Headroom is an optional dependency, not a core dependency. If it is missing,
+disabled, produces a non-shorter result, or fails at runtime, Hisys must return
+the original digest or an existing bounded summary and keep the investigation
+result valid.
+
+The compressed digest is lossy and advisory. It must not replace:
+
+- evidence packages;
+- runtime-boundary records;
+- DARS request/response artifacts;
+- rubric scores;
+- release/readiness decision packets;
+- audit records.
+
+A compressed tool-result fragment should carry an explicit boundary record:
+
+```json
+{
+  "summary": "compressed advisory digest ...",
+  "original_artifact_ref": "runtime-boundary/domain-investigation/.../recommendation-memo.md",
+  "compression": {
+    "engine": "headroom",
+    "mode": "digest_only",
+    "applied": true,
+    "lossy": true,
+    "failed": false,
+    "original_chars": 31549,
+    "compressed_chars": 8874,
+    "redacted_before_compress": true,
+    "failure_reason": ""
+  }
+}
+```
+
 ## 5. Three-Layer Domain Use-Case Model
 
 Hisys should not hardcode every domain into one workflow. Each domain should be
