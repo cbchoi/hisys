@@ -670,7 +670,7 @@ If MCP service registration causes trouble:
 
 ## Open Questions / Gates
 
-1. **MCP SDK transport choice:** confirm exact Python MCP SDK API for HTTP/streamable server in the implementation environment before coding `server.py`.
+1. **MCP SDK transport choice:** answered for the local-safe preflight on 2026-06-07. The implementation environment provides `mcp.server.fastmcp.FastMCP` with `streamable_http_path`, `run(transport="streamable-http")`, `streamable_http_app()`, `mcp.client.streamable_http.streamablehttp_client`, and `mcp.ClientSession`. The accepted current increment uses only an ephemeral loopback SDK smoke; production listener activation and Docker service publication remain gated.
 2. **Image layering:** decide whether `hisys-mcp` first image should include browser extras. Recommendation: no; create a later `hisys-mcp-browser` or gated extra image.
 3. **Altas package status:** Altas appears conceptually present in memory/governance, but an explicit `src/hisys/altas` package was not found in initial file search. Plan assumes an initial service contract placeholder before implementation.
 4. **Hermes config mutation:** do not edit production Hermes config until Docker smoke passes and the operator approves registration.
