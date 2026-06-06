@@ -57,6 +57,22 @@ def test_root_ralph_adopts_drloo_queue_semantics_without_relaxing_hisys_boundari
         assert boundary in content
 
 
+def test_drloo_preflight_can_authorize_repeated_local_safe_implementation_loop() -> None:
+    control_rules = CONTROL_RULES.read_text(encoding="utf-8")
+    ralph = RALPH.read_text(encoding="utf-8")
+
+    required_phrases = [
+        "preflight-to-implementation continuation",
+        "PREP/PREFLIGHT -> RED -> GREEN -> VALIDATE -> COMMIT",
+        "repeated local-safe implementation loop",
+        "same controlled next_safe_task family",
+        "stop before production listener",
+    ]
+    for phrase in required_phrases:
+        assert phrase in control_rules
+        assert phrase in ralph
+
+
 def test_ralph_reflection_records_drloo_adoption_as_docs_control_only() -> None:
     content = RALPH.read_text(encoding="utf-8")
 

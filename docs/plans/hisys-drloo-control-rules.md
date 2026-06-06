@@ -36,6 +36,18 @@ Locked boundaries remain locked:
 - raw provider API;
 - `requires_human_review=false` or any equivalent removal of human review.
 
+## Preflight-to-implementation continuation rule
+
+When a controlled row is already selected as the next safe task and a local PREP/PREFLIGHT checkpoint passes, the operator's explicit request to run DRLOO, continue, or proceed authorizes a repeated local-safe implementation loop for the same controlled next_safe_task family:
+
+```text
+PREP/PREFLIGHT -> RED -> GREEN -> VALIDATE -> COMMIT
+```
+
+The loop may repeat without another approval prompt while each iteration stays inside the same controlled family, uses local files only, writes RED tests before GREEN changes when behavior changes, runs focused and repository validation, and records traceability/profile/Ralph reflections after each coherent commit.
+
+This preflight-to-implementation continuation rule is intended to avoid stopping after every local preflight when the next implementation step is still fixture or loopback local. It does not authorize scope expansion. DRLOO must stop before production listener activation, Hermes config mutation, live provider/model calls, credential lookup, raw provider API use, release/deploy/publication, external notification, remote push, branch rewrite/force push, destructive Git, or human-review removal.
+
 ## Candidate-state reconciliation
 
 Before seeding a new row, Hisys RLOO must reconcile candidate state. Candidate-state reconciliation classifies each candidate as one of the following:
@@ -65,6 +77,6 @@ The stop packet must not merely say that work is complete. It must state which c
 
 ## Application boundary for this increment
 
-This increment changes the controller semantics only. It does not modify Hisys runtime behavior, Hisys DARS/Judge/Altas product claims, MCP sidecar behavior, or release state. It does not execute a model call, raw provider API, credential lookup, standing unattended activation, artifact build, deployment, publication, external notification, remote push, force push, branch rewrite, or human-review removal.
+This increment changes the controller semantics only. It does not modify Hisys runtime behavior, Hisys DARS/Judge/Altas product claims, MCP sidecar behavior, or release state. It does not execute a model call, raw provider API, credential lookup, standing unattended activation, artifact build, deployment, publication, external notification, remote push, force push, branch rewrite, or human-review removal. The preflight-to-implementation continuation rule permits repeated local-safe implementation loop execution only inside an already selected controlled next_safe_task family and still requires DRLOO to stop before production listener, live, credential, release, external-action, remote, destructive Git, or human-review boundary crossings.
 
 The next safe task remains `JUDGE-SUBSYSTEM-READINESS-PACKET-CONTINUATION` unless a later controlled checkpoint explicitly changes the active queue.
