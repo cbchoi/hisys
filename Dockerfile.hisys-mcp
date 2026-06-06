@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV HISYS_INSTANCE_ROOT=/runtime
+ENV HISYS_MCP_SAMPLING_ENABLED=false
+ENV HISYS_ALLOW_LIVE_ACTIONS=false
+
+WORKDIR /app
+
+RUN adduser --disabled-password --gecos "" --home /home/hisys hisys \
+    && mkdir -p /runtime \
+    && chown -R hisys:hisys /runtime /app
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+
+RUN python -m pip install --no-cache-dir --upgrade pip \
+    && python -m pip install --no-cache-dir ".[mcp]"
+
+USER hisys
+VOLUME ["/runtime"]
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD python -m hisys.mcp.server --health >/dev/null || exit 1
+
+CMD ["python", "-m", "hisys.mcp.server", "--stdio", "--list-tools-json"]

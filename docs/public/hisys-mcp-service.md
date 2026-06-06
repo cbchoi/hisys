@@ -18,6 +18,56 @@ Implemented surfaces:
 
 This first slice is local and fixture-only. It does not start a network server, perform a live provider/model call, inspect credentials, perform publication or deployment, run browser/search collection, or mutate external systems. MCP sampling is disabled by default, future Altas/DARS/Judge placeholder tools are hidden by default, and every result envelope defaults to `external_call_made=false`, `mutation_performed=false`, `publication_or_live_action_approved=false`, and `human_approval_required=true`.
 
+The Docker/Compose smoke slice is also local and fixture-only. It packages the deterministic introspection entry points, not a live MCP network listener. The compose smoke intentionally publishes no host ports. Real streamable HTTP MCP binding remains a separate gated transport increment.
+
+## Local sidecar smoke
+
+The local Docker sidecar smoke files are:
+
+- `Dockerfile.hisys-mcp`
+- `docker/compose.hisys-mcp-smoke.yaml`
+
+The image installs `.[mcp]`, keeps browser dependencies out of the first image, runs as the non-root `hisys` user, sets `HISYS_INSTANCE_ROOT=/runtime`, and keeps both `HISYS_MCP_SAMPLING_ENABLED=false` and `HISYS_ALLOW_LIVE_ACTIONS=false` by default.
+
+The compose smoke runs the deterministic tool-list entry point:
+
+```bash
+docker compose -f docker/compose.hisys-mcp-smoke.yaml run --rm hisys-mcp
+```
+
+This command is a packaging/introspection smoke only. It should print the deterministic local tool catalog and exit. It has no live MCP network listener, does not publish port `8765`, and does not call live providers or external sources.
+
+## Candidate config for future Hermes registration
+
+The following is a candidate config only; do not auto-apply it. It requires explicit operator approval, a completed HTTP MCP transport smoke, and a Hermes restart before it becomes active.
+
+```yaml
+mcp_servers:
+  hisys:
+    url: "http://hisys-mcp:8765/mcp"
+    timeout: 180
+    connect_timeout: 60
+    sampling:
+      enabled: false
+```
+
+This candidate keeps sampling disabled. It is not permission to mutate Hermes profiles, register the server in production config, start a live connector, inspect credentials, publish, deploy, or remove human review.
+
+## Rollback
+
+If the candidate registration is tested later and must be reverted:
+
+1. Remove the `mcp_servers.hisys` entry from the Hermes config.
+2. restart Hermes so the registration is no longer loaded.
+3. Stop the local sidecar stack:
+
+   ```bash
+   docker compose -f docker/compose.hisys-mcp-smoke.yaml down
+   ```
+
+4. Preserve runtime evidence until reviewed; delete generated smoke runtime directories only after confirming they contain no needed evidence.
+5. Keep the existing Hisys CLI and Hermes snapshot path as the fallback.
+
 ## Verification
 
 Focused verification command:
@@ -28,6 +78,12 @@ PYTHONPATH=src:. pytest tests/unit/test_mcp_contracts.py tests/unit/test_mcp_con
 
 Observed result on 2026-06-06: `20 passed`.
 
+Docker/Compose/doc static verification command:
+
+```bash
+PYTHONPATH=src:. pytest tests/unit/test_mcp_docker_sidecar_docs.py -q
+```
+
 ## Next local-safe continuation
 
-The next safe continuation is to add the Docker/Compose and public manual slice around the already-tested local entry points, still without live network exposure or credential handling by default.
+The next safe continuation is to implement the real streamable HTTP MCP transport and client smoke behind tests, still with local-only binding, sampling disabled, no credential handling, and no live external action.

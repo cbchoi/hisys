@@ -1,0 +1,17 @@
+services:
+  hisys-mcp:
+    build:
+      context: ..
+      dockerfile: Dockerfile.hisys-mcp
+    environment:
+      HISYS_INSTANCE_ROOT: /runtime
+      HISYS_MCP_SAMPLING_ENABLED: "false"
+      HISYS_ALLOW_LIVE_ACTIONS: "false"
+    volumes:
+      - ../tmp/hisys-runtime:/runtime
+    command:
+      - python
+      - -m
+      - hisys.mcp.server
+      - --stdio
+      - --list-tools-json

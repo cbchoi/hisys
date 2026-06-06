@@ -1,28 +1,31 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.130
-focus: "Hisys MCP gateway first slice implemented under DRLOO local-safe continuation: fail-closed contracts/config, subprocess-safe CLI adapter, local tool wrappers, and deterministic server smoke entry points."
-formal_hisys_result: hisys_mcp_gateway_first_slice_green
-local_advisory_result: HISYS_MCP_GATEWAY_FIRST_SLICE_GREEN
-next_safe_task: HISYS-MCP-DOCKER-SERVICE-DOCS-DOCKER-SMOKE-CONTINUATION
+version: v0.0.131
+focus: "Hisys MCP Docker/Compose/public-doc local smoke slice implemented under DRLOO parallel execution: mcp optional extra, lightweight non-root sidecar Dockerfile, one-shot no-port Compose smoke, public candidate config and rollback boundaries."
+formal_hisys_result: hisys_mcp_docker_sidecar_local_smoke_green
+local_advisory_result: HISYS_MCP_DOCKER_SIDECAR_LOCAL_SMOKE_GREEN
+next_safe_task: HISYS-MCP-HTTP-TRANSPORT-LOCAL-CLIENT-SMOKE-CONTINUATION
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: drloo 실행
-bootstrap_inference: "The operator instruction continues the DRLOO-governed local-safe surface on the hermes-mcp branch. The cleaned active surface contains the already-authored MCP sidecar RED tests and implementation plan. This authorizes local code/docs/test edits, fixture-only smoke checks, validation, and a coherent local commit only; it does not authorize a live MCP network service, live provider/model call, credential lookup, raw provider API call, standing unattended activation, release tag/package/upload/deploy/publication, external notification, branch rewrite, force push, or human-review removal."
+bootstrap_arguments: drloo 병렬실행
+bootstrap_inference: "The operator instruction authorizes parallel DRLOO read-only mapping plus one coherent local-safe implementation checkpoint. Parallel subagents inspected Docker packaging, server transport, and public-doc candidate config surfaces. This checkpoint authorizes local code/docs/test edits, static Docker/Compose validation, and a coherent local commit only; it does not authorize a live MCP network listener, live provider/model call, credential lookup, raw provider API call, standing unattended activation, release tag/package/upload/deploy/publication, external notification, remote push, branch rewrite, force push, or human-review removal."
 roadmap_ref: docs/plans/hisys-mcp-docker-service-implementation-tasks.md
 next_artifact_ref: docs/public/hisys-mcp-service.md
-planning_baseline_head: 'c2204c4 docs: adopt drloo control rules for hisys'
-current_head_at_plan_creation: c2204c4
-previous_bootstrap_version: v0.0.129
-previous_controlled_profile_version: v0.0.129
-prior_previous_bootstrap_version: v0.0.128
-prior_formal_hisys_result: hisys_drloo_control_rules_adopted
+planning_baseline_head: '27fc6d2 feat: add hisys mcp gateway first slice'
+current_head_at_plan_creation: 27fc6d2
+previous_bootstrap_version: v0.0.130
+previous_controlled_profile_version: v0.0.130
+prior_previous_bootstrap_version: v0.0.129
+prior_formal_hisys_result: hisys_mcp_gateway_first_slice_green
 tmux_or_background_agent_spawned: false
-production_code_created: true
+parallel_read_only_subagents_spawned: true
+production_code_created: false
 tests_created: true
 legacy_test_markers: |
+  version: v0.0.130
+  formal_hisys_result: hisys_mcp_gateway_first_slice_green
   version: v0.0.126
   formal_hisys_result: hermes_dars_panel_readiness_smoke_completed
   version: v0.0.125
