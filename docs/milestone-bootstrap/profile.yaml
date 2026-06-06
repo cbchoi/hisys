@@ -1,36 +1,39 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.129
-focus: DRLOO-derived continuation and queue-end control semantics adopted for the root Hisys RLOO controller without expanding product, release, runtime, credential, or live-external authority.
-formal_hisys_result: hisys_drloo_control_rules_adopted
-local_advisory_result: HISYS_DRLOO_CONTROL_RULES_ADOPTED
-next_safe_task: JUDGE-SUBSYSTEM-READINESS-PACKET-CONTINUATION
+version: v0.0.130
+focus: "Hisys MCP gateway first slice implemented under DRLOO local-safe continuation: fail-closed contracts/config, subprocess-safe CLI adapter, local tool wrappers, and deterministic server smoke entry points."
+formal_hisys_result: hisys_mcp_gateway_first_slice_green
+local_advisory_result: HISYS_MCP_GATEWAY_FIRST_SLICE_GREEN
+next_safe_task: HISYS-MCP-DOCKER-SERVICE-DOCS-DOCKER-SMOKE-CONTINUATION
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: hisys에 drloo 적용시작
-bootstrap_inference: "The operator instruction applies DRLOO loop-control semantics to Hisys as a docs/control increment. This authorizes local-safe documentation/control edits, fixture-only tests, validation, and a coherent local commit only. It does not authorize live provider/model calls, credential lookup, raw provider API calls, standing unattended approval activation, release tag/package/upload/deploy/publication, external notification, branch rewrite, force push, or human-review removal."
-roadmap_ref: docs/plans/hisys-drloo-control-rules.md
-next_artifact_ref: docs/plans/hisys-drloo-control-rules.md
-planning_baseline_head: '7dda005 docs: promote Hisys MCP sidecar plan'
-current_head_at_plan_creation: 7dda005
-previous_bootstrap_version: v0.0.128
-previous_controlled_profile_version: v0.0.128
-prior_previous_bootstrap_version: v0.0.127
-prior_formal_hisys_result: dars_released_for_controlled_advisory_use
+bootstrap_arguments: drloo 실행
+bootstrap_inference: "The operator instruction continues the DRLOO-governed local-safe surface on the hermes-mcp branch. The cleaned active surface contains the already-authored MCP sidecar RED tests and implementation plan. This authorizes local code/docs/test edits, fixture-only smoke checks, validation, and a coherent local commit only; it does not authorize a live MCP network service, live provider/model call, credential lookup, raw provider API call, standing unattended activation, release tag/package/upload/deploy/publication, external notification, branch rewrite, force push, or human-review removal."
+roadmap_ref: docs/plans/hisys-mcp-docker-service-implementation-tasks.md
+next_artifact_ref: docs/public/hisys-mcp-service.md
+planning_baseline_head: 'c2204c4 docs: adopt drloo control rules for hisys'
+current_head_at_plan_creation: c2204c4
+previous_bootstrap_version: v0.0.129
+previous_controlled_profile_version: v0.0.129
+prior_previous_bootstrap_version: v0.0.128
+prior_formal_hisys_result: hisys_drloo_control_rules_adopted
 tmux_or_background_agent_spawned: false
-production_code_created: false
+production_code_created: true
 tests_created: true
 legacy_test_markers: |
-  version: v0.0.127
-  formal_hisys_result: hisys_altas_dars_judge_role_separation_recorded
   version: v0.0.126
   formal_hisys_result: hermes_dars_panel_readiness_smoke_completed
   version: v0.0.125
   formal_hisys_result: live_provider_advisory_smoked_current_state_reviewed
   version: v0.0.124
   formal_hisys_result: dars_panel_productization_closure_gate_recorded
-  next_safe_task: MB-CODEBASE-M21-6-PREP
-  previous_bootstrap_version: v0.0.124
   previous_bootstrap_version: v0.0.123
+  next_safe_task: MB-CODEBASE-M21-6-PREP
+  version: v0.0.129
+  formal_hisys_result: hisys_drloo_control_rules_adopted
+  version: v0.0.128
+  formal_hisys_result: dars_released_for_controlled_advisory_use
+  version: v0.0.127
+  formal_hisys_result: hisys_altas_dars_judge_role_separation_recorded
