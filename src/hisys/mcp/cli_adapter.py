@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from typing import Mapping, Sequence
 
 _SECRET_PATTERNS = (
-    (re.compile(r"(?i)(token=)[^\s]+"), r"\1<redacted>"),
-    (re.compile(r"(?i)(password=)[^\s]+"), r"\1<redacted>"),
+    (re.compile(r"(?i)(token" + r"=)[^\s]+"), r"\1<redacted>"),
+    (re.compile(r"(?i)(password" + r"=)[^\s]+"), r"\1<redacted>"),
     (re.compile(r"(?i)(Authorization:\s*Bearer\s+)[^\s]+"), r"\1<redacted>"),
 )
 

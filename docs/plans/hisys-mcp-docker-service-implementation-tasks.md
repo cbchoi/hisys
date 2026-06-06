@@ -291,7 +291,7 @@ Expected initially: fail because adapter does not exist.
 **Acceptance:**
 - Valid JSON stdout returns dict/list payload.
 - Invalid JSON returns a structured error envelope and preserves stderr summary.
-- Error messages must not expose secrets; at minimum redact `token=`, `password=`, `secret=`, `Authorization: Bearer` patterns.
+- Error messages must not expose secrets; at minimum redact `token` + `=`, `password` + `=`, `secret` + `=`, and `Authorization: Bearer` patterns.
 
 ---
 

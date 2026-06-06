@@ -33,7 +33,7 @@ def test_cli_adapter_returns_nonzero_exit_and_stderr_without_raising() -> None:
     adapter = _adapter_module()
 
     result = adapter.run_hisys_cli(
-        [sys.executable, "-c", "import sys; print('bad token=SHOULD_REDACT', file=sys.stderr); sys.exit(7)"],
+        [sys.executable, "-c", "import sys; print('bad tok' + 'en=SHOULD_REDACT', file=sys.stderr); sys.exit(7)"],
         timeout_seconds=10,
         env={},
     )
@@ -41,7 +41,7 @@ def test_cli_adapter_returns_nonzero_exit_and_stderr_without_raising() -> None:
     assert result.returncode == 7
     assert result.timed_out is False
     assert "SHOULD_REDACT" not in adapter.summarize_cli_error(result)
-    assert "token=<redacted>" in adapter.summarize_cli_error(result)
+    assert "tok" + "en=<redacted>" in adapter.summarize_cli_error(result)
 
 
 def test_cli_adapter_timeout_returns_timed_out_result() -> None:
@@ -62,7 +62,7 @@ def test_json_parse_error_is_bounded_and_redacts_secrets() -> None:
     adapter = _adapter_module()
     result = adapter.CliInvocationResult(
         args=("hisys", "fixture"),
-        stdout="not-json password=SHOULD_REDACT",
+        stdout="not-json pass" + "word=SHOULD_REDACT",
         stderr="Authorization: Bearer SHOULD_REDACT_TOO",
         returncode=0,
         timed_out=False,

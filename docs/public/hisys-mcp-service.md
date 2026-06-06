@@ -12,13 +12,13 @@ Implemented surfaces:
 - `hisys.mcp.config`: environment-driven configuration loader that does not create runtime directories.
 - `hisys.mcp.cli_adapter`: subprocess-safe local CLI adapter with timeout handling and bounded redacted errors.
 - `hisys.mcp.tools`: local wrappers for `health_status`, `environment_status`, `investigate_domain`, `list_run_artifacts`, `show_artifact`, and `release_readiness`.
-- `hisys.mcp.server`: deterministic `--health` and `--stdio --list-tools-json` smoke entry points.
+- `hisys.mcp.server`: deterministic `--health`, `--stdio --list-tools-json`, and ephemeral `--http-local-smoke` entry points.
 
 ## Authority boundary
 
 This first slice is local and fixture-only. It does not start a network server, perform a live provider/model call, inspect credentials, perform publication or deployment, run browser/search collection, or mutate external systems. MCP sampling is disabled by default, future Altas/DARS/Judge placeholder tools are hidden by default, and every result envelope defaults to `external_call_made=false`, `mutation_performed=false`, `publication_or_live_action_approved=false`, and `human_approval_required=true`.
 
-The Docker/Compose smoke slice is also local and fixture-only. It packages the deterministic introspection entry points, not a live MCP network listener. The compose smoke intentionally publishes no host ports. Real streamable HTTP MCP binding remains a separate gated transport increment.
+The Docker/Compose smoke slice is also local and fixture-only. It packages the deterministic introspection entry points, not a live MCP network listener. The compose smoke intentionally publishes no host ports. The HTTP local client smoke starts an ephemeral loopback-only stdlib HTTP server, fetches `/health` and `/tools` with a local client, records fail-closed authority flags, and shuts the server down inside the same command. Real MCP SDK streamable HTTP binding remains a separate gated transport increment.
 
 ## Local sidecar smoke
 
@@ -37,9 +37,21 @@ docker compose -f docker/compose.hisys-mcp-smoke.yaml run --rm hisys-mcp
 
 This command is a packaging/introspection smoke only. It should print the deterministic local tool catalog and exit. It has no live MCP network listener, does not publish port `8765`, and does not call live providers or external sources.
 
+## HTTP local client smoke
+
+The local HTTP smoke command is:
+
+```bash
+PYTHONPATH=src:. python -m hisys.mcp.server --http-local-smoke --http-host 127.0.0.1 --http-port 0
+```
+
+This command binds only to loopback, selects an ephemeral port when `--http-port 0` is used, serves deterministic `/health` and `/tools` responses, performs the local client requests, and then shuts down. It rejects non-loopback hosts such as `0.0.0.0`. The payload records `external_call_made=false`, `mutation_performed=false`, `publication_performed=false`, `live_provider_model_call_made=false`, and `credential_lookup_performed=false`.
+
+This is not production Hermes registration and not a persistent MCP listener.
+
 ## Candidate config for future Hermes registration
 
-The following is a candidate config only; do not auto-apply it. It requires explicit operator approval, a completed HTTP MCP transport smoke, and a Hermes restart before it becomes active.
+The following is a candidate config only; do not auto-apply it. It requires explicit operator approval, a completed MCP SDK streamable HTTP transport smoke, and a Hermes restart before it becomes active.
 
 ```yaml
 mcp_servers:
@@ -73,10 +85,10 @@ If the candidate registration is tested later and must be reverted:
 Focused verification command:
 
 ```bash
-PYTHONPATH=src:. pytest tests/unit/test_mcp_contracts.py tests/unit/test_mcp_config.py tests/unit/test_mcp_cli_adapter.py tests/unit/test_mcp_tools.py tests/integration/test_mcp_server_smoke.py -q
+PYTHONPATH=src:. pytest tests/unit/test_mcp_contracts.py tests/unit/test_mcp_config.py tests/unit/test_mcp_cli_adapter.py tests/unit/test_mcp_tools.py tests/integration/test_mcp_server_smoke.py tests/integration/test_mcp_http_local_client_smoke.py -q
 ```
 
-Observed result on 2026-06-06: `20 passed`.
+Observed result on 2026-06-06 before HTTP local smoke: `20 passed`. HTTP local client smoke focused gate: `2 passed`.
 
 Docker/Compose/doc static verification command:
 
@@ -86,4 +98,4 @@ PYTHONPATH=src:. pytest tests/unit/test_mcp_docker_sidecar_docs.py -q
 
 ## Next local-safe continuation
 
-The next safe continuation is to implement the real streamable HTTP MCP transport and client smoke behind tests, still with local-only binding, sampling disabled, no credential handling, and no live external action.
+The next safe continuation is `HISYS-MCP-STREAMABLE-HTTP-SDK-BINDING-PREFLIGHT`: bind the same health/tool-list surface to the actual MCP SDK streamable HTTP transport behind tests, still with local-only binding, sampling disabled, no credential handling, no Hermes config mutation, and no live external action.

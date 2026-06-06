@@ -1,29 +1,32 @@
 selected_profile: develop
 detected_profile: develop
 target_workspace: /home/cbchoi/workspaces/develop/repos/hisys
-version: v0.0.131
-focus: "Hisys MCP Docker/Compose/public-doc local smoke slice implemented under DRLOO parallel execution: mcp optional extra, lightweight non-root sidecar Dockerfile, one-shot no-port Compose smoke, public candidate config and rollback boundaries."
-formal_hisys_result: hisys_mcp_docker_sidecar_local_smoke_green
-local_advisory_result: HISYS_MCP_DOCKER_SIDECAR_LOCAL_SMOKE_GREEN
-next_safe_task: HISYS-MCP-HTTP-TRANSPORT-LOCAL-CLIENT-SMOKE-CONTINUATION
+version: v0.0.132
+focus: "Hisys MCP HTTP local client smoke implemented: ephemeral loopback server/client harness for deterministic health and tool-list endpoints, with no production listener or live external authority."
+formal_hisys_result: hisys_mcp_http_local_client_smoke_green
+local_advisory_result: HISYS_MCP_HTTP_LOCAL_CLIENT_SMOKE_GREEN
+next_safe_task: HISYS-MCP-STREAMABLE-HTTP-SDK-BINDING-PREFLIGHT
 remote_push_authorized: false
 live_external_action_authorized: false
 live_model_call_authorized: false
-bootstrap_arguments: drloo 병렬실행
-bootstrap_inference: "The operator instruction authorizes parallel DRLOO read-only mapping plus one coherent local-safe implementation checkpoint. Parallel subagents inspected Docker packaging, server transport, and public-doc candidate config surfaces. This checkpoint authorizes local code/docs/test edits, static Docker/Compose validation, and a coherent local commit only; it does not authorize a live MCP network listener, live provider/model call, credential lookup, raw provider API call, standing unattended activation, release tag/package/upload/deploy/publication, external notification, remote push, branch rewrite, force push, or human-review removal."
+bootstrap_arguments: 다음 진행
+bootstrap_inference: "The operator instruction authorizes the next local-safe DRLOO checkpoint. This checkpoint authorizes local code/docs/test edits and an ephemeral 127.0.0.1 HTTP client/server smoke that starts and shuts down inside one command. It does not authorize a production MCP listener, Hermes config mutation, live provider/model call, credential lookup, raw provider API call, standing unattended activation, release tag/package/upload/deploy/publication, external notification, remote push, branch rewrite, force push, or human-review removal."
 roadmap_ref: docs/plans/hisys-mcp-docker-service-implementation-tasks.md
 next_artifact_ref: docs/public/hisys-mcp-service.md
-planning_baseline_head: '27fc6d2 feat: add hisys mcp gateway first slice'
-current_head_at_plan_creation: 27fc6d2
-previous_bootstrap_version: v0.0.130
-previous_controlled_profile_version: v0.0.130
+planning_baseline_head: 'fb5ed6c feat: add hisys mcp sidecar smoke packaging'
+current_head_at_plan_creation: fb5ed6c
+previous_bootstrap_version: v0.0.131
+previous_controlled_profile_version: v0.0.131
 prior_previous_bootstrap_version: v0.0.129
-prior_formal_hisys_result: hisys_mcp_gateway_first_slice_green
+prior_formal_hisys_result: hisys_mcp_docker_sidecar_local_smoke_green
 tmux_or_background_agent_spawned: false
 parallel_read_only_subagents_spawned: true
-production_code_created: false
+production_code_created: true
 tests_created: true
 legacy_test_markers: |
+  version: v0.0.131
+  formal_hisys_result: hisys_mcp_docker_sidecar_local_smoke_green
+  next_safe_task: HISYS-MCP-HTTP-TRANSPORT-LOCAL-CLIENT-SMOKE-CONTINUATION
   version: v0.0.130
   formal_hisys_result: hisys_mcp_gateway_first_slice_green
   version: v0.0.126
