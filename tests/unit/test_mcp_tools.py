@@ -216,6 +216,41 @@ def test_investigate_domain_with_request_path_writes_canonical_boundary_artifact
     assert tool_result["mutation_performed"] is False
 
 
+def test_investigate_domain_inline_request_materializes_request_artifact_ref(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    request = {
+        "producer_id": "hermes",
+        "status": "submitted",
+        "request_id": "HISYS-REQ-INLINE-001",
+        "domain": "research",
+        "objective": "find research gap among formalisms for self-organizing structure",
+        "sources": [
+            {
+                "source_id": "SRC-FORMALISM-FIXTURE-001",
+                "source_type": "fixture",
+                "ref": "fixture://formalism-gap",
+                "access_mode": "read_only",
+            }
+        ],
+        "user_focus": "Separate source evidence from interpreted gap statements.",
+    }
+
+    result = tools.hisys_investigate_domain(
+        instance_root=instance,
+        date="20260509",
+        request=request,
+    )
+    envelope = _to_dict(result)
+
+    inline_request_ref = "reports/run-summaries/20260509/mcp-investigate-domain-request-HISYS-REQ-INLINE-001.json"
+    assert (instance / inline_request_ref).is_file()
+    assert inline_request_ref in envelope["artifact_refs"]
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert envelope["publication_or_live_action_approved"] is False
+
+
 def test_investigate_domain_rejects_unsafe_request_path_without_cli_call(tmp_path: Path, monkeypatch) -> None:
     tools = _tools_module()
 
@@ -249,6 +284,46 @@ def test_investigate_domain_preserves_live_action_block_with_request_path(tmp_pa
     assert envelope["external_call_made"] is False
     assert envelope["mutation_performed"] is False
     assert "live" in envelope["error"].lower()
+
+
+def test_investigate_domain_cli_validation_failure_returns_safe_error_envelope(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    request_path = instance / "requests" / "invalid-request.json"
+    request_path.parent.mkdir(parents=True, exist_ok=True)
+    request_path.write_text(
+        json.dumps(
+            {
+                "producer_id": "hermes",
+                "status": "submitted",
+                "request_id": "HISYS-REQ-INVALID-001",
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = tools.hisys_investigate_domain(
+        instance_root=instance,
+        date="20260509",
+        request_path="requests/invalid-request.json",
+    )
+    envelope = _to_dict(result)
+
+    assert envelope["status"] == "error"
+    assert envelope["tool_name"] == "investigate_domain"
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert envelope["publication_or_live_action_approved"] is False
+    payload = envelope["payload"]
+    assert "returncode" in payload
+    assert payload["timed_out"] is False
+    assert isinstance(payload["command_args"], list) and payload["command_args"]
+    assert "stdout" in payload
+    assert "stderr" in payload
+    assert envelope["error"]
 
 
 def test_investigate_domain_rejects_inline_request_and_request_path_together(tmp_path: Path) -> None:

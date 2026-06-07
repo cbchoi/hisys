@@ -308,6 +308,7 @@ def hisys_investigate_domain(
     if not request and not request_path:
         return _blocked("investigate_domain", "request or request_path is required")
 
+    inline_request_ref: str | None = None
     if request_path is not None:
         resolved_request_path = _safe_request_path(root, request_path)
         if resolved_request_path is None:
@@ -323,6 +324,7 @@ def hisys_investigate_domain(
         if _request_mentions_live_action(request_payload):
             return _blocked("investigate_domain", "live source or live action request rejected without explicit MCP approval contract")
         resolved_request_path = _write_inline_investigation_request(root, date, request_payload)
+        inline_request_ref = _safe_ref(root, resolved_request_path)
 
     if _request_mentions_live_action(request_payload):
         return _blocked("investigate_domain", "live source or live action request rejected without explicit MCP approval contract")
@@ -367,6 +369,8 @@ def hisys_investigate_domain(
     if isinstance(tool_result_ref, str) and tool_result_ref.endswith(".json"):
         runtime_refs.append(tool_result_ref[:-5] + ".md")
     runtime_refs.extend([report_ref, report_md_ref])
+    if inline_request_ref is not None:
+        runtime_refs.append(inline_request_ref)
     artifact_refs = _safe_existing_artifact_refs(root, runtime_refs)
     status = "ok" if report.get("status") == "completed" and report.get("quality_gate") == "passed" else "needs_more_evidence"
     payload = {
