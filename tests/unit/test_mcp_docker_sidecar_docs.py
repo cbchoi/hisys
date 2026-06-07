@@ -18,6 +18,8 @@ COMPOSE = ROOT / "docker" / "compose.hisys-mcp-smoke.yaml"
 SERVICE_COMPOSE = ROOT / "docker-compose.yml"
 DOCKERIGNORE = ROOT / ".dockerignore"
 PUBLIC_DOC = ROOT / "docs" / "public" / "hisys-mcp-service.md"
+README = ROOT / "README.md"
+SETUP_SCRIPT = ROOT / "scripts" / "setup_hisys_mcp_docker.sh"
 PYPROJECT = ROOT / "pyproject.toml"
 
 
@@ -96,6 +98,21 @@ def test_dockerignore_excludes_runtime_and_development_artifacts() -> None:
     assert "runtime-boundary" in ignored
 
 
+def test_setup_script_wraps_docker_compose_without_public_binding() -> None:
+    text = SETUP_SCRIPT.read_text(encoding="utf-8")
+
+    assert text.startswith("#!/usr/bin/env bash")
+    assert "set -euo pipefail" in text
+    assert "docker compose" in text
+    assert "up -d --build" in text
+    assert "hermes mcp test hisys" in text
+    assert "http://127.0.0.1:19613/mcp" in text
+    assert "runtime/hisys-mcp-instance" in text
+    assert "--stop-user-service" in text
+    assert "systemctl --user stop hisys-mcp.service" in text
+    assert "0.0.0.0:19613" not in text
+
+
 def test_public_docs_include_candidate_config_approval_and_rollback_boundaries() -> None:
     text = PUBLIC_DOC.read_text(encoding="utf-8")
 
@@ -115,3 +132,18 @@ def test_public_docs_include_candidate_config_approval_and_rollback_boundaries()
     assert "mcp_servers.hisys" in text
     assert "docker compose -f docker/compose.hisys-mcp-smoke.yaml down" in text
     assert "has no live MCP network listener" in text
+    assert "scripts/setup_hisys_mcp_docker.sh up" in text
+    assert "scripts/setup_hisys_mcp_docker.sh test" in text
+    assert "--stop-user-service" in text
+
+
+def test_readme_has_operator_quickstart_for_docker_mcp_service() -> None:
+    text = README.read_text(encoding="utf-8")
+
+    assert "Quick start: local Hisys MCP Docker service" in text
+    assert "scripts/setup_hisys_mcp_docker.sh up" in text
+    assert "scripts/setup_hisys_mcp_docker.sh status" in text
+    assert "scripts/setup_hisys_mcp_docker.sh test" in text
+    assert "http://127.0.0.1:19613/mcp" in text
+    assert "../../runtime/hisys-mcp-instance -> /runtime" in text
+    assert "127.0.0.1:19613:8765" in text

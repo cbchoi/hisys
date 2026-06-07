@@ -10,6 +10,68 @@ This repo is a thin product-code mirror of that package; it does not redefine
 requirements or design baselines. When this repo and the controlled docs
 disagree, the controlled docs (and `INDEX.md` within them) govern.
 
+## Quick start: local Hisys MCP Docker service
+
+Use this path when Hermes should call Hisys through a container-managed MCP
+sidecar instead of a `systemd --user`, `tmux`, or supervisor process.
+
+Prerequisites:
+
+- Docker with the `docker compose` plugin.
+- This repository checked out locally.
+- Optional but recommended for verification: Hermes CLI configured with an MCP
+  server named `hisys` that points to `http://127.0.0.1:19613/mcp`.
+
+Start or update the service:
+
+```bash
+cd /home/cbchoi/workspaces/develop/repos/hisys
+scripts/setup_hisys_mcp_docker.sh up
+```
+
+If an older user service is still active and occupies the same port, stop it
+with explicit operator approval:
+
+```bash
+scripts/setup_hisys_mcp_docker.sh up --stop-user-service
+```
+
+Check status and verify Hermes connectivity:
+
+```bash
+scripts/setup_hisys_mcp_docker.sh status
+scripts/setup_hisys_mcp_docker.sh test
+```
+
+The compose service publishes only this host-loopback endpoint:
+
+```text
+http://127.0.0.1:19613/mcp
+```
+
+Runtime data is mounted outside the repo so generated evidence does not enter
+Git by accident:
+
+```text
+../../runtime/hisys-mcp-instance -> /runtime
+```
+
+Common operations:
+
+```bash
+scripts/setup_hisys_mcp_docker.sh restart
+scripts/setup_hisys_mcp_docker.sh logs
+scripts/setup_hisys_mcp_docker.sh down
+scripts/setup_hisys_mcp_docker.sh doctor
+```
+
+The container keeps MCP sampling and live actions disabled by default. Docker
+needs the process to bind `0.0.0.0:8765` inside the container namespace, but the
+host publication remains loopback-only: `127.0.0.1:19613:8765`.
+
+For the detailed safety boundary, rollback notes, and Hermes registration
+candidate, see [`docs/public/hisys-mcp-service.md`](docs/public/hisys-mcp-service.md).
+
 ## Status
 
 - Increment **I0** (Repository skeleton) - in place.

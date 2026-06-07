@@ -39,7 +39,35 @@ This command is a packaging/introspection smoke only. It should print the determ
 
 ## Container-managed MCP service
 
-The standard compose service is:
+The easiest operator path is the checked-in setup script:
+
+```bash
+cd /home/cbchoi/workspaces/develop/repos/hisys
+scripts/setup_hisys_mcp_docker.sh up
+scripts/setup_hisys_mcp_docker.sh status
+scripts/setup_hisys_mcp_docker.sh test
+```
+
+The script creates the required repo-external runtime directories, builds the
+image, starts the compose service, and prints the local MCP endpoint. If a
+legacy `systemd --user` service is still active and may occupy the same port,
+the script warns by default. Stopping/disabling that legacy service remains an
+explicit operator action:
+
+```bash
+scripts/setup_hisys_mcp_docker.sh up --stop-user-service
+```
+
+The script also supports:
+
+```bash
+scripts/setup_hisys_mcp_docker.sh restart
+scripts/setup_hisys_mcp_docker.sh logs
+scripts/setup_hisys_mcp_docker.sh down
+scripts/setup_hisys_mcp_docker.sh doctor
+```
+
+The underlying compose service is still directly runnable:
 
 ```bash
 mkdir -p /home/cbchoi/workspaces/develop/runtime/hisys-mcp-instance/{config,data,reports,runtime-boundary}
