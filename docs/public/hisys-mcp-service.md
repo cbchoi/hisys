@@ -103,6 +103,31 @@ Then call `health_status`; it should report `overall_status: ok` when the
 mounted runtime root contains `config/`, `data/`, `reports/`, and
 `runtime-boundary/`.
 
+### Hermes MCP registration
+
+After the Docker service is running, register the host-loopback endpoint in the
+Hermes profile that should use Hisys:
+
+```bash
+hermes mcp add hisys --url http://127.0.0.1:19613/mcp
+hermes mcp test hisys
+```
+
+If `hisys` is already present, do not add a duplicate. Inspect and test the
+existing entry instead:
+
+```bash
+hermes mcp list
+hermes mcp test hisys
+```
+
+The expected registration URL from the host is
+`http://127.0.0.1:19613/mcp`. Use the container-internal
+`http://hisys-mcp:8765/mcp` URL only for a Hermes process that runs inside the
+same Docker Compose network as the `hisys-mcp` service.
+
+Hermes may need a new session or restart to load newly added MCP tools.
+
 ## HTTP local client smoke
 
 The local HTTP smoke command is:

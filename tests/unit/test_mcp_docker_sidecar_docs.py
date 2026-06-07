@@ -134,6 +134,8 @@ def test_public_docs_include_candidate_config_approval_and_rollback_boundaries()
     assert "has no live MCP network listener" in text
     assert "scripts/setup_hisys_mcp_docker.sh up" in text
     assert "scripts/setup_hisys_mcp_docker.sh test" in text
+    assert "hermes mcp add hisys --url http://127.0.0.1:19613/mcp" in text
+    assert "hermes mcp test hisys" in text
     assert "--stop-user-service" in text
 
 
@@ -144,6 +146,8 @@ def test_readme_has_operator_quickstart_for_docker_mcp_service() -> None:
     assert "scripts/setup_hisys_mcp_docker.sh up" in text
     assert "scripts/setup_hisys_mcp_docker.sh status" in text
     assert "scripts/setup_hisys_mcp_docker.sh test" in text
+    assert "hermes mcp add hisys --url http://127.0.0.1:19613/mcp" in text
+    assert "hermes mcp test hisys" in text
     assert "http://127.0.0.1:19613/mcp" in text
     assert "../../runtime/hisys-mcp-instance -> /runtime" in text
     assert "127.0.0.1:19613:8765" in text

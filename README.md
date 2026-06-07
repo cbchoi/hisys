@@ -36,11 +36,24 @@ with explicit operator approval:
 scripts/setup_hisys_mcp_docker.sh up --stop-user-service
 ```
 
-Check status and verify Hermes connectivity:
+Check status:
 
 ```bash
 scripts/setup_hisys_mcp_docker.sh status
+```
+
+Register the local endpoint with Hermes MCP if it is not already registered:
+
+```bash
+hermes mcp add hisys --url http://127.0.0.1:19613/mcp
+```
+
+Verify Hermes connectivity:
+
+```bash
 scripts/setup_hisys_mcp_docker.sh test
+# equivalent direct check:
+hermes mcp test hisys
 ```
 
 The compose service publishes only this host-loopback endpoint:
