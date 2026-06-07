@@ -48,6 +48,23 @@ The loop may repeat without another approval prompt while each iteration stays i
 
 This preflight-to-implementation continuation rule is intended to avoid stopping after every local preflight when the next implementation step is still fixture or loopback local. It does not authorize scope expansion. DRLOO must stop before production listener activation, Hermes config mutation, live provider/model calls, credential lookup, raw provider API use, release/deploy/publication, external notification, remote push, branch rewrite/force push, destructive Git, or human-review removal.
 
+## parallel-write lane discovery and execution rule
+
+When the operator asks for parallel writing rather than read-only mapping, DRLOO must first run milestone dependency analysis before launching write-capable subagents. The analysis reads the active milestone plan, current profile, Ralph queue, traceability anchors, existing tests, and Git/worktree state, then builds a finite lane plan from tasks that have disjoint write sets.
+
+Allowed parallel-write execution requires all of the following:
+
+1. each lane has a lane packet that states objective, non-goals, exact write set, RED test target, validation command, stop conditions, and approval boundary;
+2. each write-capable subagent runs in one branch/worktree per lane, not in the parent worktree;
+3. lane write sets are disjoint and do not include shared governance files;
+4. shared governance files remain parent-only, including `ralph.md`, `docs/milestone-bootstrap/profile.yaml`, traceability summaries, release/checklist records, and integration reflections;
+5. parent integration review merges or cherry-picks lane commits, resolves conflicts, updates shared governance files, runs focused gates plus full validation, runs traceability and secret scans, and creates the final integration commit;
+6. remote push remains unauthorized unless a separate explicit repository-synchronization approval is present.
+
+If milestone dependency analysis finds no two safe disjoint lanes, DRLOO must report the conflict graph and fall back to the single-writer local-safe loop. Parallel write-capable subagent authority is not standing approval for future runs; each parallel batch must be derived from the current milestone, current Git state, and current controlled boundaries.
+
+This rule permits local write-capable subagents only for fixture/local code, tests, docs scoped to their lane, and local branch/worktree commits. It does not authorize production listener activation, Hermes config mutation, live provider/model calls, credential lookup, raw provider API use, release/deploy/publication, external notification, remote push, branch rewrite/force push, destructive Git, or human-review removal.
+
 ## Candidate-state reconciliation
 
 Before seeding a new row, Hisys RLOO must reconcile candidate state. Candidate-state reconciliation classifies each candidate as one of the following:
