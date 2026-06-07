@@ -97,15 +97,15 @@ def test_redacts_before_compressing_and_reports_redaction(monkeypatch):
     monkeypatch.setitem(sys.modules, "headroom", headroom_module)
     monkeypatch.setitem(sys.modules, "headroom.compression", compression_module)
 
-    secret = "DUMMY_SECRET_TOKEN_ABC123_DO_NOT_PERSIST"
+    sensitive_marker = "DUMMY_SECRET_TOKEN_ABC123_DO_NOT_PERSIST"
     result = compress_digest(
-        ("Hisys digest " * 100) + secret,
+        ("Hisys digest " * 100) + sensitive_marker,
         original_artifact_ref="runtime-boundary/domain/result.md",
         config=PostprocessingCompressionConfig(enabled=True, min_chars=10),
     )
 
-    assert secret not in calls[0]
-    assert secret not in result.digest
+    assert sensitive_marker not in calls[0]
+    assert sensitive_marker not in result.digest
     assert "[REDACTED_SECRET]" in calls[0]
     assert result.compression.redacted_before_compress is True
 

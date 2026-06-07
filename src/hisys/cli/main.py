@@ -343,6 +343,10 @@ def _slug(value: str) -> str:
     return "".join(char.lower() if char.isalnum() else "-" for char in value).strip("-") or "unspecified"
 
 
+def _safe_file_segment(value: str) -> str:
+    return "".join(char if char.isalnum() or char in {"-", "_"} else "-" for char in value) or "unspecified"
+
+
 def _contract_fixture_name(domain: str, question_type: str) -> str:
     return f"{_slug(domain).replace('-', '_')}_{_slug(question_type).replace('-', '_')}.yaml"
 
@@ -8975,6 +8979,9 @@ def _cmd_investigate_domain(
 
     instance = InstanceRoot(instance_root)
     request = DomainInvestigationRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
+    safe_request_id = _safe_file_segment(request.request_id)
+    if safe_request_id != request.request_id:
+        request = request.model_copy(update={"request_id": safe_request_id})
     if infer_domain_intent_flag:
         resolution = infer_domain_intent(
             DomainIntentInput(

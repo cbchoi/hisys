@@ -21,4 +21,5 @@ dist/
 
 # Local runtime outputs
 hisys/runtime-boundary/
+tmp/
 *.log
