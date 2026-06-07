@@ -251,6 +251,39 @@ def test_investigate_domain_inline_request_materializes_request_artifact_ref(tmp
     assert envelope["publication_or_live_action_approved"] is False
 
 
+def test_investigate_domain_inline_request_sanitizes_traversal_request_id(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    request = {
+        "producer_id": "hermes",
+        "status": "submitted",
+        "request_id": "../../escape?x=1",
+        "domain": "research",
+        "objective": "find research gap among formalisms for self-organizing structure",
+        "sources": [
+            {
+                "source_id": "SRC-FORMALISM-FIXTURE-001",
+                "source_type": "fixture",
+                "ref": "fixture://formalism-gap",
+                "access_mode": "read_only",
+            }
+        ],
+    }
+
+    result = tools.hisys_investigate_domain(instance_root=instance, date="20260509", request=request)
+    envelope = _to_dict(result)
+
+    sanitized_ref = "reports/run-summaries/20260509/mcp-investigate-domain-request-------escape-x-1.json"
+    assert envelope["status"] == "ok"
+    assert envelope["payload"]["request_id"] == "------escape-x-1"
+    assert sanitized_ref in envelope["artifact_refs"]
+    assert "runtime-boundary/domain-investigation/research/20260509/hisys-tool-request-------escape-x-1.json" in envelope["artifact_refs"]
+    assert (instance / sanitized_ref).is_file()
+    assert all(not ref.startswith("/") and ".." not in ref for ref in envelope["artifact_refs"])
+    escaped_candidates = list(tmp_path.glob("**/escape?x=1*"))
+    assert escaped_candidates == []
+
+
 def test_investigate_domain_rejects_unsafe_request_path_without_cli_call(tmp_path: Path, monkeypatch) -> None:
     tools = _tools_module()
 
