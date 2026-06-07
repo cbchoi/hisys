@@ -190,10 +190,20 @@ def build_streamable_http_mcp_server(*, host: str, port: int, path: str = "/mcp"
         return _envelope_dict(hisys_environment_status(environment_config=selected_config))
 
     @mcp_server.tool(name="investigate_domain")
-    def investigate_domain(instance_root: str | None = None, date: str | None = None, request: dict[str, Any] | None = None) -> dict[str, object]:
+    def investigate_domain(
+        instance_root: str | None = None,
+        date: str | None = None,
+        request: dict[str, Any] | None = None,
+        request_path: str | None = None,
+    ) -> dict[str, object]:
         config = load_mcp_config()
         return _envelope_dict(
-            hisys_investigate_domain(instance_root=instance_root or config.instance_root, request=request or {}, date=date or _default_date())
+            hisys_investigate_domain(
+                instance_root=instance_root or config.instance_root,
+                request=request,
+                request_path=request_path,
+                date=date or _default_date(),
+            )
         )
 
     @mcp_server.tool(name="list_run_artifacts")

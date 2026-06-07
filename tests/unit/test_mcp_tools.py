@@ -29,6 +29,38 @@ def _make_healthy_instance(root: Path) -> None:
     (root / "config" / "source-registry.yaml").write_text("sources: []\n", encoding="utf-8")
 
 
+def _write_domain_request(path: Path, *, live: bool = False) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    source_type = "web" if live else "fixture"
+    payload = {
+        "producer_id": "hermes",
+        "status": "submitted",
+        "request_id": "HISYS-REQ-RESEARCH-GAP-001",
+        "domain": "research",
+        "objective": "find research gap among formalisms for self-organizing structure",
+        "sources": [
+            {
+                "source_id": "SRC-FORMALISM-FIXTURE-001",
+                "source_type": source_type,
+                "ref": "https://example.com/live" if live else "fixture://formalism-gap",
+                "access_mode": "read_only",
+            }
+        ],
+        "user_focus": "Separate source evidence from interpreted gap statements.",
+    }
+    if live:
+        payload["allow_live_actions"] = True
+    path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_health_status_tool_returns_fail_closed_envelope_and_artifact_refs(tmp_path: Path) -> None:
     tools = _tools_module()
     instance = tmp_path / "instance"
@@ -150,6 +182,90 @@ def test_investigate_domain_rejects_live_request_fields_without_approval(tmp_pat
     assert envelope["mutation_performed"] is False
     assert envelope["publication_or_live_action_approved"] is False
     assert "live" in envelope["error"].lower()
+
+
+def test_investigate_domain_with_request_path_writes_canonical_boundary_artifacts(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    request_path = instance / "requests" / "domain-request.json"
+    _write_domain_request(request_path)
+
+    result = tools.hisys_investigate_domain(
+        instance_root=instance,
+        date="20260509",
+        request_path="requests/domain-request.json",
+    )
+    envelope = _to_dict(result)
+
+    assert envelope["status"] == "ok"
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert envelope["payload"]["request_id"] == "HISYS-REQ-RESEARCH-GAP-001"
+    result_ref = "runtime-boundary/domain-investigation/research/20260509/hisys-tool-result-HISYS-REQ-RESEARCH-GAP-001.json"
+    result_md_ref = "runtime-boundary/domain-investigation/research/20260509/hisys-tool-result-HISYS-REQ-RESEARCH-GAP-001.md"
+    report_ref = "reports/run-summaries/20260509/domain-investigation-report.json"
+    assert result_ref in envelope["artifact_refs"]
+    assert result_md_ref in envelope["artifact_refs"]
+    assert report_ref in envelope["artifact_refs"]
+    assert (instance / result_ref).is_file()
+    assert (instance / result_md_ref).is_file()
+    assert (instance / report_ref).is_file()
+    tool_result = json.loads((instance / result_ref).read_text(encoding="utf-8"))
+    assert tool_result["status"] == "completed"
+    assert tool_result["external_call_made"] is False
+    assert tool_result["mutation_performed"] is False
+
+
+def test_investigate_domain_rejects_unsafe_request_path_without_cli_call(tmp_path: Path, monkeypatch) -> None:
+    tools = _tools_module()
+
+    def _forbidden_call(*args, **kwargs):  # pragma: no cover - failure path only
+        raise AssertionError("unsafe request paths must be blocked before CLI execution")
+
+    monkeypatch.setattr(tools, "run_hisys_cli", _forbidden_call, raising=False)
+
+    for request_path in ["../escape.json", "/tmp/escape.json", "requests/domain-request.txt"]:
+        result = tools.hisys_investigate_domain(instance_root=tmp_path, date="20260509", request_path=request_path)
+        envelope = _to_dict(result)
+        assert envelope["status"] == "blocked"
+        assert envelope["external_call_made"] is False
+        assert envelope["mutation_performed"] is False
+
+
+def test_investigate_domain_preserves_live_action_block_with_request_path(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    request_path = instance / "requests" / "live-request.json"
+    _write_domain_request(request_path, live=True)
+
+    result = tools.hisys_investigate_domain(
+        instance_root=instance,
+        date="20260509",
+        request_path="requests/live-request.json",
+    )
+    envelope = _to_dict(result)
+
+    assert envelope["status"] == "blocked"
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert "live" in envelope["error"].lower()
+
+
+def test_investigate_domain_rejects_inline_request_and_request_path_together(tmp_path: Path) -> None:
+    tools = _tools_module()
+    request_path = tmp_path / "requests" / "domain-request.json"
+    _write_domain_request(request_path)
+
+    result = tools.hisys_investigate_domain(
+        instance_root=tmp_path,
+        date="20260509",
+        request={"request_id": "HISYS-REQ-INLINE-001"},
+        request_path="requests/domain-request.json",
+    )
+    envelope = _to_dict(result)
+
+    assert envelope["status"] == "blocked"
+    assert "either request or request_path" in envelope["error"].lower()
 
 
 def test_release_readiness_missing_quality_gates_does_not_invent_pass(tmp_path: Path) -> None:

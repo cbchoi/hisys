@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any, cast
 
@@ -12,7 +14,7 @@ from hisys.environment_config import environment_config_status
 from hisys.operations.health import collect_health_status
 from hisys.operations.release_readiness import QualityGateResult, build_release_readiness_report
 
-from .cli_adapter import run_hisys_cli
+from .cli_adapter import redact_text, run_hisys_cli, summarize_cli_error
 from .contracts import McpToolResultEnvelope
 
 BASE_TOOL_NAMES = [
@@ -241,14 +243,144 @@ def _request_mentions_live_action(request: dict[str, Any]) -> bool:
     return False
 
 
-def hisys_investigate_domain(*, instance_root: str | Path, request: dict[str, Any], date: str) -> McpToolResultEnvelope:
-    if _request_mentions_live_action(request):
+def _safe_request_path(root: Path, request_path: str | Path) -> Path | None:
+    path = Path(request_path)
+    if path.is_absolute() or ".." in path.parts or path.suffix != ".json":
+        return None
+    resolved_root = root.resolve()
+    resolved = (resolved_root / path).resolve()
+    if not str(resolved).startswith(str(resolved_root)):
+        return None
+    return resolved
+
+
+def _repo_src_path() -> str:
+    return str(Path(__file__).resolve().parents[2])
+
+
+def _cli_env() -> dict[str, str]:
+    src_path = _repo_src_path()
+    existing = os.environ.get("PYTHONPATH")
+    return {"PYTHONPATH": f"{src_path}{os.pathsep}{existing}" if existing else src_path}
+
+
+def _dedupe_refs(refs: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for ref in refs:
+        if ref in seen:
+            continue
+        seen.add(ref)
+        deduped.append(ref)
+    return deduped
+
+
+def _safe_existing_artifact_refs(root: Path, refs: list[str]) -> list[str]:
+    safe_refs: list[str] = []
+    for ref in refs:
+        if not _artifact_ref_is_safe(ref):
+            continue
+        path = (root / ref).resolve()
+        if str(path).startswith(str(root.resolve())) and path.is_file():
+            safe_refs.append(ref)
+    return _dedupe_refs(safe_refs)
+
+
+def _write_inline_investigation_request(root: Path, date: str, request: dict[str, Any]) -> Path:
+    request_id = str(request.get("request_id") or "MCP-INLINE-REQUEST")
+    safe_request_id = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "-" for ch in request_id)
+    path = root / "reports" / "run-summaries" / date / f"mcp-investigate-domain-request-{safe_request_id}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(request, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
+def hisys_investigate_domain(
+    *,
+    instance_root: str | Path,
+    request: dict[str, Any] | None = None,
+    request_path: str | Path | None = None,
+    date: str,
+) -> McpToolResultEnvelope:
+    root = Path(instance_root)
+    if request and request_path:
+        return _blocked("investigate_domain", "provide either request or request_path, not both")
+    if not request and not request_path:
+        return _blocked("investigate_domain", "request or request_path is required")
+
+    if request_path is not None:
+        resolved_request_path = _safe_request_path(root, request_path)
+        if resolved_request_path is None:
+            return _blocked("investigate_domain", f"unsafe or unsupported request_path: {request_path}")
+        try:
+            request_payload = json.loads(resolved_request_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return McpToolResultEnvelope(status="error", tool_name="investigate_domain", error=f"could not read request_path: {exc}")
+        if not isinstance(request_payload, dict):
+            return _blocked("investigate_domain", "request_path JSON must be an object")
+    else:
+        request_payload = request or {}
+        if _request_mentions_live_action(request_payload):
+            return _blocked("investigate_domain", "live source or live action request rejected without explicit MCP approval contract")
+        resolved_request_path = _write_inline_investigation_request(root, date, request_payload)
+
+    if _request_mentions_live_action(request_payload):
         return _blocked("investigate_domain", "live source or live action request rejected without explicit MCP approval contract")
-    return McpToolResultEnvelope(
-        status="needs_more_evidence",
-        tool_name="investigate_domain",
-        payload={"date": date, "instance_root": str(instance_root), "formal_hisys_status": "not_run_from_mcp_first_slice"},
+
+    result = run_hisys_cli(
+        [
+            sys.executable,
+            "-m",
+            "hisys.cli.main",
+            "investigate-domain",
+            "--instance",
+            str(root),
+            "--request",
+            str(resolved_request_path),
+            "--date",
+            date,
+        ],
+        timeout_seconds=120,
+        env=_cli_env(),
     )
+    if result.returncode != 0:
+        return McpToolResultEnvelope(
+            status="error" if not result.timed_out else "blocked",
+            tool_name="investigate_domain",
+            error=summarize_cli_error(result),
+            payload={
+                "command_args": list(result.args),
+                "returncode": result.returncode,
+                "timed_out": result.timed_out,
+                "stdout": redact_text(result.stdout),
+                "stderr": redact_text(result.stderr),
+            },
+        )
+
+    report_ref = f"reports/run-summaries/{date}/domain-investigation-report.json"
+    report_md_ref = f"reports/run-summaries/{date}/domain-investigation-report.md"
+    report = _read_json(root / report_ref)
+    runtime_refs = [str(ref) for ref in report.get("runtime_boundary_refs", []) if isinstance(ref, str)]
+    tool_result_ref = report.get("tool_result_ref")
+    if isinstance(tool_result_ref, str) and tool_result_ref not in runtime_refs:
+        runtime_refs.append(tool_result_ref)
+    if isinstance(tool_result_ref, str) and tool_result_ref.endswith(".json"):
+        runtime_refs.append(tool_result_ref[:-5] + ".md")
+    runtime_refs.extend([report_ref, report_md_ref])
+    artifact_refs = _safe_existing_artifact_refs(root, runtime_refs)
+    status = "ok" if report.get("status") == "completed" and report.get("quality_gate") == "passed" else "needs_more_evidence"
+    payload = {
+        "schema_id": "hisys.mcp.investigate_domain_result",
+        "schema_version": "0.1.0",
+        **report,
+        "command_args": list(result.args),
+        "stdout": redact_text(result.stdout),
+        "stderr": redact_text(result.stderr),
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+    return McpToolResultEnvelope(status=status, tool_name="investigate_domain", artifact_refs=artifact_refs, payload=payload)
 
 
 def hisys_release_readiness(

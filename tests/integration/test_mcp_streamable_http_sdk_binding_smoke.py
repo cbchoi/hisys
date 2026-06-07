@@ -27,6 +27,34 @@ EXPECTED_TOOLS = [
 ]
 
 
+def _write_domain_request(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "producer_id": "hermes",
+                "status": "submitted",
+                "request_id": "HISYS-REQ-RESEARCH-GAP-001",
+                "domain": "research",
+                "objective": "find research gap among formalisms for self-organizing structure",
+                "sources": [
+                    {
+                        "source_id": "SRC-FORMALISM-FIXTURE-001",
+                        "source_type": "fixture",
+                        "ref": "fixture://formalism-gap",
+                        "access_mode": "read_only",
+                    }
+                ],
+                "user_focus": "Separate source evidence from interpreted gap statements.",
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_mcp_streamable_http_sdk_client_lists_tools_without_runtime_mutation(tmp_path: Path) -> None:
     runtime = tmp_path / "runtime"
     env = {
@@ -170,6 +198,73 @@ def test_mcp_streamable_http_sdk_call_tool_no_args_uses_config_root_and_today(tm
     assert result["tool_name"] == "health_status"
     assert f"reports/run-summaries/{today}/hisys-health-status.json" in result["artifact_refs"]
     assert (runtime / f"reports/run-summaries/{today}/hisys-health-status.json").is_file()
+
+
+def test_mcp_streamable_http_sdk_call_tool_investigate_domain_creates_runtime_boundary_artifacts(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    request_path = runtime / "requests" / "domain-request.json"
+    _write_domain_request(request_path)
+    env = {
+        **os.environ,
+        "PYTHONPATH": "src",
+        "HISYS_INSTANCE_ROOT": str(runtime),
+        "HISYS_ALLOW_LIVE_ACTIONS": "false",
+        "HISYS_MCP_SAMPLING_ENABLED": "false",
+    }
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hisys.mcp.server",
+            "--streamable-http-local-call-tool-smoke",
+            "--http-host",
+            "127.0.0.1",
+            "--http-port",
+            "0",
+            "--tool-name",
+            "investigate_domain",
+            "--tool-args-json",
+            json.dumps(
+                {
+                    "instance_root": str(runtime),
+                    "date": "20260509",
+                    "request_path": "requests/domain-request.json",
+                }
+            ),
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=30,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["schema_id"] == "hisys.mcp.streamable_http_sdk_call_tool_smoke.v1"
+    assert payload["status"] == "ok"
+    assert payload["tool_name"] == "investigate_domain"
+    assert payload["external_call_made"] is False
+    assert payload["mutation_performed"] is False
+    assert payload["publication_performed"] is False
+    assert payload["hermes_config_mutated"] is False
+    assert payload["production_listener_started"] is False
+    result = payload["tool_result"]
+    assert result["tool_name"] == "investigate_domain"
+    assert result["status"] == "ok"
+    result_ref = "runtime-boundary/domain-investigation/research/20260509/hisys-tool-result-HISYS-REQ-RESEARCH-GAP-001.json"
+    report_ref = "reports/run-summaries/20260509/domain-investigation-report.json"
+    assert result_ref in result["artifact_refs"]
+    assert report_ref in result["artifact_refs"]
+    assert (runtime / result_ref).is_file()
+    assert (runtime / report_ref).is_file()
+    tool_result = json.loads((runtime / result_ref).read_text(encoding="utf-8"))
+    assert tool_result["status"] == "completed"
+    assert tool_result["external_call_made"] is False
+    assert tool_result["mutation_performed"] is False
 
 
 def test_mcp_streamable_http_sdk_smoke_rejects_non_loopback_host(tmp_path: Path) -> None:
