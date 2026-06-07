@@ -18,11 +18,20 @@ import socket
 import sys
 import threading
 import urllib.request
+from datetime import date as calendar_date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Mapping, Sequence
 
 from .config import load_mcp_config
-from .tools import list_hisys_mcp_tool_names
+from .tools import (
+    hisys_environment_status,
+    hisys_health_status,
+    hisys_investigate_domain,
+    hisys_list_run_artifacts,
+    hisys_release_readiness,
+    hisys_show_artifact,
+    list_hisys_mcp_tool_names,
+)
 
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 NON_LOOPBACK_APPROVAL_ENV = "HISYS_MCP_ALLOW_NON_LOOPBACK_BIND"
@@ -130,11 +139,34 @@ def _reserve_loopback_port(host: str) -> int:
         return int(sock.getsockname()[1])
 
 
+def _default_date() -> str:
+    return calendar_date.today().strftime("%Y%m%d")
+
+
+def _envelope_dict(result: Any) -> dict[str, object]:
+    if hasattr(result, "model_dump"):
+        return result.model_dump(mode="json")
+    if isinstance(result, dict):
+        return result
+    return {"status": "error", "error": f"unsupported tool result type: {type(result).__name__}"}
+
+
+def _blocked_tool_payload(tool_name: str, error: str) -> dict[str, object]:
+    return {
+        "status": "blocked",
+        "tool_name": tool_name,
+        "error": error,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+        "human_approval_required": True,
+    }
+
+
 def build_streamable_http_mcp_server(*, host: str, port: int, path: str = "/mcp") -> Any:
-    """Build a FastMCP server for local streamable HTTP smoke only."""
+    """Build a FastMCP server for local streamable HTTP smoke and guarded sidecar use."""
     from mcp.server.fastmcp import FastMCP
 
-    config = load_mcp_config()
     mcp_server = FastMCP(
         "hisys-mcp",
         host=host,
@@ -145,28 +177,61 @@ def build_streamable_http_mcp_server(*, host: str, port: int, path: str = "/mcp"
     )
 
     @mcp_server.tool(name="health_status")
-    def health_status() -> dict[str, object]:
-        return health_payload()
+    def health_status(instance_root: str | None = None, date: str | None = None) -> dict[str, object]:
+        config = load_mcp_config()
+        return _envelope_dict(hisys_health_status(instance_root=instance_root or config.instance_root, date=date or _default_date()))
 
     @mcp_server.tool(name="environment_status")
-    def environment_status() -> dict[str, object]:
-        return {"status": "not_run_from_sdk_local_smoke", "environment_config": str(config.environment_config)}
+    def environment_status(environment_config: str | None = None) -> dict[str, object]:
+        config = load_mcp_config()
+        selected_config = environment_config or config.environment_config
+        if selected_config is None:
+            return _blocked_tool_payload("environment_status", "environment_config is required")
+        return _envelope_dict(hisys_environment_status(environment_config=selected_config))
 
     @mcp_server.tool(name="investigate_domain")
-    def investigate_domain() -> dict[str, object]:
-        return {"status": "needs_more_evidence", "live_action_rejected_by_default": True}
+    def investigate_domain(instance_root: str | None = None, date: str | None = None, request: dict[str, Any] | None = None) -> dict[str, object]:
+        config = load_mcp_config()
+        return _envelope_dict(
+            hisys_investigate_domain(instance_root=instance_root or config.instance_root, request=request or {}, date=date or _default_date())
+        )
 
     @mcp_server.tool(name="list_run_artifacts")
-    def list_run_artifacts() -> dict[str, object]:
-        return {"status": "not_run_from_sdk_local_smoke", "artifacts": []}
+    def list_run_artifacts(
+        instance_root: str | None = None,
+        date: str | None = None,
+        request_id: str | None = None,
+    ) -> dict[str, object]:
+        config = load_mcp_config()
+        return _envelope_dict(
+            hisys_list_run_artifacts(instance_root=instance_root or config.instance_root, date=date or _default_date(), request_id=request_id)
+        )
 
     @mcp_server.tool(name="show_artifact")
-    def show_artifact() -> dict[str, object]:
-        return {"status": "not_run_from_sdk_local_smoke", "artifact": None}
+    def show_artifact(instance_root: str | None = None, artifact_ref: str | None = None) -> dict[str, object]:
+        config = load_mcp_config()
+        if not artifact_ref:
+            return _blocked_tool_payload("show_artifact", "artifact_ref is required")
+        return _envelope_dict(hisys_show_artifact(instance_root=instance_root or config.instance_root, artifact_ref=artifact_ref))
 
     @mcp_server.tool(name="release_readiness")
-    def release_readiness() -> dict[str, object]:
-        return {"status": "needs_more_evidence", "requires_human_review": True}
+    def release_readiness(
+        instance_root: str | None = None,
+        date: str | None = None,
+        quality_gates: list[str] | None = None,
+        trace_refs: list[str] | None = None,
+        known_gaps: list[str] | None = None,
+    ) -> dict[str, object]:
+        config = load_mcp_config()
+        return _envelope_dict(
+            hisys_release_readiness(
+                instance_root=instance_root or config.instance_root,
+                date=date or _default_date(),
+                quality_gates=quality_gates or [],
+                trace_refs=trace_refs or [],
+                known_gaps=known_gaps or [],
+            )
+        )
 
     return mcp_server
 
@@ -180,6 +245,36 @@ async def _list_streamable_http_tools(url: str) -> list[str]:
             await session.initialize()
             result = await session.list_tools()
     return [tool.name for tool in result.tools]
+
+
+def _decode_call_tool_result(result: Any) -> dict[str, object]:
+    structured = getattr(result, "structuredContent", None)
+    if isinstance(structured, dict):
+        return structured
+    content_items = getattr(result, "content", []) or []
+    for item in content_items:
+        text = getattr(item, "text", None)
+        if not isinstance(text, str):
+            continue
+        try:
+            decoded = json.loads(text)
+        except json.JSONDecodeError:
+            return {"text": text}
+        if isinstance(decoded, dict):
+            return decoded
+        return {"value": decoded}
+    return {"status": "error", "error": "MCP call_tool returned no decodable content"}
+
+
+async def _call_streamable_http_tool(url: str, tool_name: str, tool_args: dict[str, object]) -> dict[str, object]:
+    from mcp import ClientSession
+    from mcp.client.streamable_http import streamable_http_client
+
+    async with streamable_http_client(url) as (read_stream, write_stream, _get_session_id):
+        async with ClientSession(read_stream, write_stream) as session:
+            await session.initialize()
+            result = await session.call_tool(tool_name, tool_args)
+    return _decode_call_tool_result(result)
 
 
 def streamable_http_sdk_local_smoke_payload(*, host: str, port: int, path: str = "/mcp") -> dict[str, object]:
@@ -247,6 +342,85 @@ def streamable_http_sdk_local_smoke_payload(*, host: str, port: int, path: str =
 
 def run_streamable_http_sdk_local_smoke(*, host: str, port: int, path: str = "/mcp") -> dict[str, object]:
     return streamable_http_sdk_local_smoke_payload(host=host, port=port, path=path)
+
+
+def streamable_http_sdk_call_tool_smoke_payload(
+    *,
+    host: str,
+    port: int,
+    path: str = "/mcp",
+    tool_name: str,
+    tool_args: dict[str, object],
+) -> dict[str, object]:
+    if host not in LOOPBACK_HOSTS:
+        raise ValueError("streamable HTTP SDK call-tool smoke requires a loopback host")
+
+    actual_port = _reserve_loopback_port(host) if port == 0 else port
+    mcp_server = build_streamable_http_mcp_server(host=host, port=actual_port, path=path)
+
+    import uvicorn
+
+    uvicorn_server = uvicorn.Server(
+        uvicorn.Config(
+            mcp_server.streamable_http_app(),
+            host=host,
+            port=actual_port,
+            log_level="warning",
+            access_log=False,
+        )
+    )
+    thread = threading.Thread(target=uvicorn_server.run, daemon=True)
+    thread.start()
+    payload: dict[str, object] = {"server_shutdown": False}
+    try:
+        url_host = "[::1]" if host == "::1" else host
+        url = f"http://{url_host}:{actual_port}{path}"
+        tool_result: dict[str, object] | None = None
+        last_error: Exception | None = None
+        for _ in range(40):
+            if uvicorn_server.started:
+                try:
+                    tool_result = asyncio.run(_call_streamable_http_tool(url, tool_name, tool_args))
+                    break
+                except Exception as exc:  # pragma: no cover - retry path is timing-sensitive
+                    last_error = exc
+            threading.Event().wait(0.05)
+        if tool_result is None:
+            raise RuntimeError(f"streamable HTTP SDK local client could not call tool {tool_name}: {last_error}")
+        config = load_mcp_config()
+        payload.update(
+            {
+                "schema_id": "hisys.mcp.streamable_http_sdk_call_tool_smoke.v1",
+                "status": "ok" if tool_result.get("tool_name") == tool_name else "error",
+                "transport_kind": "streamable-http",
+                "host": host,
+                "port": actual_port,
+                "path": path,
+                "tool_name": tool_name,
+                "tool_result": tool_result,
+                "external_call_made": False,
+                "mutation_performed": False,
+                "publication_performed": False,
+                "live_provider_model_call_made": False,
+                "credential_lookup_performed": False,
+                "hermes_config_mutated": False,
+                "production_listener_started": False,
+                "sampling_enabled": config.sampling_enabled,
+            }
+        )
+        return payload
+    finally:
+        uvicorn_server.should_exit = True
+        thread.join(timeout=5)
+        payload["server_shutdown"] = not thread.is_alive()
+
+
+def run_streamable_http_sdk_call_tool_smoke(
+    *, host: str, port: int, path: str = "/mcp", tool_name: str, tool_args: dict[str, object]
+) -> dict[str, object]:
+    return streamable_http_sdk_call_tool_smoke_payload(
+        host=host, port=port, path=path, tool_name=tool_name, tool_args=tool_args
+    )
 
 
 def production_listener_preflight_payload(
@@ -429,6 +603,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="run an ephemeral loopback MCP SDK streamable HTTP client/server smoke and exit",
     )
     parser.add_argument(
+        "--streamable-http-local-call-tool-smoke",
+        action="store_true",
+        help="run an ephemeral loopback MCP SDK call-tool smoke and exit",
+    )
+    parser.add_argument(
         "--production-listener",
         action="store_true",
         help=(
@@ -449,6 +628,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--http-host", default="127.0.0.1", help="loopback host for --http-local-smoke")
     parser.add_argument("--http-port", type=int, default=0, help="loopback port for --http-local-smoke; 0 selects an ephemeral port")
     parser.add_argument("--mcp-path", default="/mcp", help="streamable HTTP MCP path for local SDK smoke")
+    parser.add_argument("--tool-name", default="", help="tool name for --streamable-http-local-call-tool-smoke")
+    parser.add_argument("--tool-args-json", default="{}", help="JSON object args for --streamable-http-local-call-tool-smoke")
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if args.health:
@@ -471,6 +652,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error(str(exc))
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0
+    if args.streamable_http_local_call_tool_smoke:
+        if not args.tool_name:
+            parser.error("--tool-name is required for --streamable-http-local-call-tool-smoke")
+        try:
+            tool_args = json.loads(args.tool_args_json)
+        except json.JSONDecodeError as exc:
+            parser.error(f"--tool-args-json must be a JSON object: {exc.msg}")
+        if not isinstance(tool_args, dict):
+            parser.error("--tool-args-json must be a JSON object")
+        try:
+            payload = run_streamable_http_sdk_call_tool_smoke(
+                host=args.http_host,
+                port=args.http_port,
+                path=args.mcp_path,
+                tool_name=args.tool_name,
+                tool_args=tool_args,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0
     if args.production_listener_preflight:
         payload = run_production_listener_preflight(host=args.http_host, port=args.http_port, path=args.mcp_path)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
@@ -479,7 +681,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_production_listener(host=args.http_host, port=args.http_port, path=args.mcp_path)
     parser.error(
         "MCP server modes: --health, --stdio --list-tools-json, --http-local-smoke, "
-        "--streamable-http-local-smoke, --production-listener-preflight, or --production-listener"
+        "--streamable-http-local-smoke, --streamable-http-local-call-tool-smoke, "
+        "--production-listener-preflight, or --production-listener"
     )
     return 2
 

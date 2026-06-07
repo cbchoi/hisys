@@ -163,36 +163,73 @@ def hisys_show_artifact(*, instance_root: str | Path, artifact_ref: str) -> McpT
     return McpToolResultEnvelope(status="ok", tool_name="show_artifact", artifact_refs=[artifact_ref], payload=payload)
 
 
+def _artifact_kind(ref: str) -> str:
+    if ref.startswith("reports/run-summaries/"):
+        return "run_summary"
+    if ref.startswith("data/chief-editor-final-browser-reviews/"):
+        return "final_chief_editor_review"
+    if ref.startswith("data/browser-dars-revision-resolutions/"):
+        return "browser_dars_revision_resolution"
+    if ref.startswith("data/dars-browser-reviews/"):
+        return "dars_browser_review"
+    if ref.startswith("data/chief-editor-reviews/"):
+        return "chief_editor_review"
+    if ref.startswith("data/evidence-packages/"):
+        return "evidence_package"
+    if ref.startswith("data/source-access/"):
+        return "source_access"
+    if ref.startswith("data/investigation-memos/"):
+        return "investigation_memo"
+    return "artifact"
+
+
 def hisys_list_run_artifacts(
     *, instance_root: str | Path, date: str, request_id: str | None = None
 ) -> McpToolResultEnvelope:
     root = Path(instance_root)
-    search_roots = [root / "reports" / "run-summaries" / date, root / "data" / "evidence-packages" / date]
+    search_roots = [
+        root / "reports" / "run-summaries" / date,
+        root / "data" / "source-access" / date,
+        root / "data" / "evidence-packages" / date,
+        root / "data" / "investigation-memos" / date,
+        root / "data" / "chief-editor-reviews" / date,
+        root / "data" / "dars-browser-reviews" / date,
+        root / "data" / "browser-dars-revision-resolutions" / date,
+        root / "data" / "chief-editor-final-browser-reviews" / date,
+    ]
     refs: list[str] = []
     artifacts: list[dict[str, Any]] = []
     for search_root in search_roots:
         if not search_root.exists():
             continue
         for path in sorted([*search_root.glob("*.json"), *search_root.glob("*.md")]):
-            if request_id and request_id not in path.name:
-                # Preserve run-summary files only when no request-specific filter is needed.
-                if "run-summaries" not in path.as_posix():
-                    continue
             ref = _safe_ref(root, path)
+            if request_id and request_id not in path.name and "public-browser" not in path.name:
+                continue
             refs.append(ref)
-            artifacts.append({"ref": ref, "format": path.suffix.lstrip("."), "bytes": path.stat().st_size})
+            artifacts.append(
+                {"ref": ref, "kind": _artifact_kind(ref), "format": path.suffix.lstrip("."), "bytes": path.stat().st_size}
+            )
     return McpToolResultEnvelope(
         status="ok",
         tool_name="list_run_artifacts",
         artifact_refs=refs,
-        payload={"date": date, "request_id": request_id, "artifacts": artifacts},
+        payload={
+            "schema_id": "hisys.run_artifact_index",
+            "date": date,
+            "request_id": request_id,
+            "artifacts": artifacts,
+            "external_call_made": False,
+            "mutation_performed": False,
+        },
     )
 
 
 def hisys_environment_status(*, environment_config: str | Path) -> McpToolResultEnvelope:
     payload = environment_config_status(environment_config)
     payload["command_args"] = ["environment-status", "--config", str(environment_config), "--format", "json"]
-    return McpToolResultEnvelope(status="ok", tool_name="environment_status", payload=payload)
+    status = "ok" if payload.get("safe_to_use") is True else "needs_more_evidence"
+    return McpToolResultEnvelope(status=status, tool_name="environment_status", payload=payload)
 
 
 def _request_mentions_live_action(request: dict[str, Any]) -> bool:
@@ -237,11 +274,13 @@ def hisys_release_readiness(
     report_dir = root / "reports" / "run-summaries" / date
     report_dir.mkdir(parents=True, exist_ok=True)
     json_path = report_dir / "hisys-release-readiness.json"
+    md_path = report_dir / "hisys-release-readiness.md"
     json_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+    md_path.write_text(report.to_markdown(), encoding="utf-8")
     return McpToolResultEnvelope(
         status="ok" if report.overall_status == "ready_for_review" else "needs_more_evidence",
         tool_name="release_readiness",
-        artifact_refs=[_safe_ref(root, json_path)],
+        artifact_refs=[_safe_ref(root, json_path), _safe_ref(root, md_path)],
         payload=report.model_dump(mode="json"),
     )
 

@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 
@@ -75,6 +76,100 @@ def test_mcp_streamable_http_sdk_client_lists_tools_without_runtime_mutation(tmp
     assert payload["sampling_enabled"] is False
     assert payload["server_shutdown"] is True
     assert not runtime.exists(), "SDK list-tools smoke must not create runtime artifacts"
+
+
+def test_mcp_streamable_http_sdk_call_tool_creates_health_artifacts(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    env = {
+        **os.environ,
+        "PYTHONPATH": "src",
+        "HISYS_INSTANCE_ROOT": str(runtime),
+        "HISYS_ALLOW_LIVE_ACTIONS": "false",
+        "HISYS_MCP_SAMPLING_ENABLED": "false",
+    }
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hisys.mcp.server",
+            "--streamable-http-local-call-tool-smoke",
+            "--http-host",
+            "127.0.0.1",
+            "--http-port",
+            "0",
+            "--tool-name",
+            "health_status",
+            "--tool-args-json",
+            json.dumps({"instance_root": str(runtime), "date": "20260605"}),
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=20,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["schema_id"] == "hisys.mcp.streamable_http_sdk_call_tool_smoke.v1"
+    assert payload["status"] == "ok"
+    assert payload["tool_name"] == "health_status"
+    assert payload["external_call_made"] is False
+    assert payload["mutation_performed"] is False
+    assert payload["publication_performed"] is False
+    assert payload["hermes_config_mutated"] is False
+    assert payload["production_listener_started"] is False
+    result = payload["tool_result"]
+    assert result["tool_name"] == "health_status"
+    assert "reports/run-summaries/20260605/hisys-health-status.json" in result["artifact_refs"]
+    assert "reports/run-summaries/20260605/hisys-health-status.md" in result["artifact_refs"]
+    assert (runtime / "reports/run-summaries/20260605/hisys-health-status.json").is_file()
+    assert (runtime / "reports/run-summaries/20260605/hisys-health-status.md").is_file()
+
+
+def test_mcp_streamable_http_sdk_call_tool_no_args_uses_config_root_and_today(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    today = date.today().strftime("%Y%m%d")
+    env = {
+        **os.environ,
+        "PYTHONPATH": "src",
+        "HISYS_INSTANCE_ROOT": str(runtime),
+        "HISYS_ALLOW_LIVE_ACTIONS": "false",
+        "HISYS_MCP_SAMPLING_ENABLED": "false",
+    }
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hisys.mcp.server",
+            "--streamable-http-local-call-tool-smoke",
+            "--http-host",
+            "127.0.0.1",
+            "--http-port",
+            "0",
+            "--tool-name",
+            "health_status",
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=20,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["status"] == "ok"
+    result = payload["tool_result"]
+    assert result["tool_name"] == "health_status"
+    assert f"reports/run-summaries/{today}/hisys-health-status.json" in result["artifact_refs"]
+    assert (runtime / f"reports/run-summaries/{today}/hisys-health-status.json").is_file()
 
 
 def test_mcp_streamable_http_sdk_smoke_rejects_non_loopback_host(tmp_path: Path) -> None:

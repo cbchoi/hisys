@@ -69,6 +69,12 @@ def test_list_run_artifacts_returns_safe_relative_refs(tmp_path: Path) -> None:
         "reports/run-summaries/20260605/hisys-health-status.json",
         "reports/run-summaries/20260605/hisys-health-status.md",
         "data/evidence-packages/20260605/HISYS-REQ-MCP-001.json",
+        "data/source-access/20260605/HISYS-REQ-MCP-001-source.json",
+        "data/investigation-memos/20260605/HISYS-REQ-MCP-001-memo.md",
+        "data/chief-editor-reviews/20260605/HISYS-REQ-MCP-001-review.json",
+        "data/dars-browser-reviews/20260605/HISYS-REQ-MCP-001-dars.md",
+        "data/browser-dars-revision-resolutions/20260605/HISYS-REQ-MCP-001-resolution.json",
+        "data/chief-editor-final-browser-reviews/20260605/HISYS-REQ-MCP-001-final.md",
     ]
     for ref in refs:
         path = tmp_path / ref
@@ -83,6 +89,9 @@ def test_list_run_artifacts_returns_safe_relative_refs(tmp_path: Path) -> None:
     assert envelope["external_call_made"] is False
     assert all(not ref.startswith("/") and ".." not in ref for ref in envelope["artifact_refs"])
     assert "data/evidence-packages/20260605/HISYS-REQ-MCP-001.json" in envelope["artifact_refs"]
+    assert "data/source-access/20260605/HISYS-REQ-MCP-001-source.json" in envelope["artifact_refs"]
+    assert "data/investigation-memos/20260605/HISYS-REQ-MCP-001-memo.md" in envelope["artifact_refs"]
+    assert all("kind" in artifact for artifact in envelope["payload"]["artifacts"])
 
 
 def test_environment_status_tool_uses_config_path_not_instance_argument(tmp_path: Path) -> None:
@@ -106,6 +115,19 @@ def test_environment_status_tool_uses_config_path_not_instance_argument(tmp_path
     assert envelope["external_call_made"] is False
     assert envelope["mutation_performed"] is False
     assert "instance" not in envelope.get("payload", {}).get("command_args", [])
+
+
+def test_environment_status_missing_config_maps_to_needs_more_evidence(tmp_path: Path) -> None:
+    tools = _tools_module()
+
+    result = tools.hisys_environment_status(environment_config=tmp_path / "missing-environment.yaml")
+    envelope = _to_dict(result)
+
+    assert envelope["status"] == "needs_more_evidence"
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert envelope["payload"]["exists"] is False
+    assert envelope["payload"]["safe_to_use"] is False
 
 
 def test_investigate_domain_rejects_live_request_fields_without_approval(tmp_path: Path) -> None:
@@ -146,6 +168,9 @@ def test_release_readiness_missing_quality_gates_does_not_invent_pass(tmp_path: 
     assert envelope["external_call_made"] is False
     assert envelope["mutation_performed"] is False
     assert envelope["payload"].get("release_decision") != "human_review_ready"
+    assert "reports/run-summaries/20260605/hisys-release-readiness.json" in envelope["artifact_refs"]
+    assert "reports/run-summaries/20260605/hisys-release-readiness.md" in envelope["artifact_refs"]
+    assert (tmp_path / "reports/run-summaries/20260605/hisys-release-readiness.md").is_file()
 
 
 def test_future_altas_dars_judge_tools_are_not_exposed_by_default() -> None:
