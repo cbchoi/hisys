@@ -60,5 +60,9 @@ def test_mcp_server_stdio_lists_initial_tool_names(tmp_path: Path) -> None:
         "list_run_artifacts",
         "show_artifact",
         "release_readiness",
+        "altas_search",
+        "dars_panel_readiness",
+        "run_dars_panel_golden",
+        "judge_advisory",
     ]
     assert payload["future_tools_exposed"] is False

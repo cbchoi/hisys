@@ -24,6 +24,10 @@ EXPECTED_TOOLS = [
     "list_run_artifacts",
     "show_artifact",
     "release_readiness",
+    "altas_search",
+    "dars_panel_readiness",
+    "run_dars_panel_golden",
+    "judge_advisory",
 ]
 
 
@@ -340,6 +344,128 @@ def test_mcp_streamable_http_sdk_call_tool_investigate_domain_inline_request_mat
     inline_request_ref = "reports/run-summaries/20260509/mcp-investigate-domain-request-HISYS-REQ-INLINE-001.json"
     assert inline_request_ref in result["artifact_refs"]
     assert (runtime / inline_request_ref).is_file()
+
+
+def test_mcp_streamable_http_sdk_call_tool_altas_search_writes_fixture_search_report(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    env = {
+        **os.environ,
+        "PYTHONPATH": "src",
+        "HISYS_INSTANCE_ROOT": str(runtime),
+        "HISYS_ALLOW_LIVE_ACTIONS": "false",
+        "HISYS_MCP_SAMPLING_ENABLED": "false",
+    }
+    env.pop("HISYS_ALLOW_LIVE_SEARCH_SMOKE", None)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hisys.mcp.server",
+            "--streamable-http-local-call-tool-smoke",
+            "--http-host",
+            "127.0.0.1",
+            "--http-port",
+            "0",
+            "--tool-name",
+            "altas_search",
+            "--tool-args-json",
+            json.dumps(
+                {
+                    "instance_root": str(runtime),
+                    "date": "20260607",
+                    "request_id": "HISYS-REQ-MCP-ALTAS-SDK-001",
+                    "topic": "self-organizing executable digital twin governance",
+                }
+            ),
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=60,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["schema_id"] == "hisys.mcp.streamable_http_sdk_call_tool_smoke.v1"
+    assert payload["status"] == "ok"
+    assert payload["tool_name"] == "altas_search"
+    assert payload["external_call_made"] is False
+    assert payload["mutation_performed"] is False
+    assert payload["publication_performed"] is False
+    assert payload["hermes_config_mutated"] is False
+    assert payload["production_listener_started"] is False
+    result = payload["tool_result"]
+    assert result["tool_name"] == "altas_search"
+    assert "reports/run-summaries/20260607/search-topic-report.json" in result["artifact_refs"]
+    report = json.loads((runtime / "reports/run-summaries/20260607/search-topic-report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "completed"
+    assert report["transport_kind"] == "fixture_injected"
+    assert report["external_call_made"] is False
+
+
+def test_mcp_streamable_http_sdk_call_tool_run_dars_panel_golden_creates_round_report(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    env = {
+        **os.environ,
+        "PYTHONPATH": "src",
+        "HISYS_INSTANCE_ROOT": str(runtime),
+        "HISYS_ALLOW_LIVE_ACTIONS": "false",
+        "HISYS_MCP_SAMPLING_ENABLED": "false",
+    }
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hisys.mcp.server",
+            "--streamable-http-local-call-tool-smoke",
+            "--http-host",
+            "127.0.0.1",
+            "--http-port",
+            "0",
+            "--tool-name",
+            "run_dars_panel_golden",
+            "--tool-args-json",
+            json.dumps(
+                {
+                    "instance_root": str(runtime),
+                    "date": "20260607",
+                    "request_id": "HISYS-REQ-MCP-DARS-GOLDEN-SDK-001",
+                }
+            ),
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=120,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["schema_id"] == "hisys.mcp.streamable_http_sdk_call_tool_smoke.v1"
+    assert payload["status"] == "ok"
+    assert payload["tool_name"] == "run_dars_panel_golden"
+    assert payload["external_call_made"] is False
+    assert payload["mutation_performed"] is False
+    assert payload["publication_performed"] is False
+    assert payload["hermes_config_mutated"] is False
+    assert payload["production_listener_started"] is False
+    result = payload["tool_result"]
+    assert result["tool_name"] == "run_dars_panel_golden"
+    report_ref = "reports/run-summaries/20260607/dars-panel-round-report.json"
+    assert report_ref in result["artifact_refs"]
+    report = json.loads((runtime / report_ref).read_text(encoding="utf-8"))
+    assert report["advisory_only"] is True
+    assert report["requires_human_review"] is True
+    assert report["external_call_made"] is False
+    assert report["live_external_action_authorized"] is False
 
 
 def test_mcp_streamable_http_sdk_smoke_rejects_non_loopback_host(tmp_path: Path) -> None:

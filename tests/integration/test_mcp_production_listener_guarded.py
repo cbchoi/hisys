@@ -32,6 +32,10 @@ EXPECTED_TOOLS = [
     "list_run_artifacts",
     "show_artifact",
     "release_readiness",
+    "altas_search",
+    "dars_panel_readiness",
+    "run_dars_panel_golden",
+    "judge_advisory",
 ]
 
 NON_LOOPBACK_APPROVAL_ENV = "HISYS_MCP_ALLOW_NON_LOOPBACK_BIND"

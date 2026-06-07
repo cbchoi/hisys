@@ -65,6 +65,10 @@ def test_mcp_server_http_local_client_smoke_lists_tools_without_runtime_mutation
         "list_run_artifacts",
         "show_artifact",
         "release_readiness",
+        "altas_search",
+        "dars_panel_readiness",
+        "run_dars_panel_golden",
+        "judge_advisory",
     ]
     assert not runtime.exists(), "local HTTP smoke must not create runtime artifacts"
 

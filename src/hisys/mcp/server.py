@@ -24,11 +24,15 @@ from typing import Any, Mapping, Sequence
 
 from .config import load_mcp_config
 from .tools import (
+    hisys_altas_search,
+    hisys_dars_panel_readiness,
     hisys_environment_status,
     hisys_health_status,
     hisys_investigate_domain,
+    hisys_judge_advisory,
     hisys_list_run_artifacts,
     hisys_release_readiness,
+    hisys_run_dars_panel_golden,
     hisys_show_artifact,
     list_hisys_mcp_tool_names,
 )
@@ -240,6 +244,84 @@ def build_streamable_http_mcp_server(*, host: str, port: int, path: str = "/mcp"
                 quality_gates=quality_gates or [],
                 trace_refs=trace_refs or [],
                 known_gaps=known_gaps or [],
+            )
+        )
+
+    @mcp_server.tool(name="altas_search")
+    def altas_search(
+        instance_root: str | None = None,
+        date: str | None = None,
+        request_id: str | None = None,
+        topic: str | None = None,
+        user_opinion: str | None = None,
+        provider_url_ref: str | None = None,
+        credential_ref: str | None = None,
+        provider: str | None = None,
+        provider_response_fixture: str | None = None,
+    ) -> dict[str, object]:
+        config = load_mcp_config()
+        if not request_id:
+            return _blocked_tool_payload("altas_search", "request_id is required")
+        if not topic:
+            return _blocked_tool_payload("altas_search", "topic is required")
+        return _envelope_dict(
+            hisys_altas_search(
+                instance_root=instance_root or config.instance_root,
+                date=date or _default_date(),
+                request_id=request_id,
+                topic=topic,
+                user_opinion=user_opinion,
+                provider_url_ref=provider_url_ref,
+                credential_ref=credential_ref,
+                provider=provider,
+                provider_response_fixture=provider_response_fixture,
+            )
+        )
+
+    @mcp_server.tool(name="dars_panel_readiness")
+    def dars_panel_readiness(
+        instance_root: str | None = None,
+        date: str | None = None,
+    ) -> dict[str, object]:
+        config = load_mcp_config()
+        return _envelope_dict(
+            hisys_dars_panel_readiness(
+                instance_root=instance_root or config.instance_root,
+                date=date or _default_date(),
+            )
+        )
+
+    @mcp_server.tool(name="run_dars_panel_golden")
+    def run_dars_panel_golden(
+        instance_root: str | None = None,
+        date: str | None = None,
+        request_id: str | None = None,
+    ) -> dict[str, object]:
+        config = load_mcp_config()
+        if not request_id:
+            return _blocked_tool_payload("run_dars_panel_golden", "request_id is required")
+        return _envelope_dict(
+            hisys_run_dars_panel_golden(
+                instance_root=instance_root or config.instance_root,
+                date=date or _default_date(),
+                request_id=request_id,
+            )
+        )
+
+    @mcp_server.tool(name="judge_advisory")
+    def judge_advisory(
+        instance_root: str | None = None,
+        date: str | None = None,
+        request_id: str | None = None,
+    ) -> dict[str, object]:
+        config = load_mcp_config()
+        if not request_id:
+            return _blocked_tool_payload("judge_advisory", "request_id is required")
+        return _envelope_dict(
+            hisys_judge_advisory(
+                instance_root=instance_root or config.instance_root,
+                date=date or _default_date(),
+                request_id=request_id,
             )
         )
 

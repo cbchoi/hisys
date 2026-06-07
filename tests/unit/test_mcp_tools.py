@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 from pathlib import Path
 
 
@@ -409,6 +410,22 @@ def test_future_altas_dars_judge_tools_are_not_exposed_by_default() -> None:
     assert "judge_decide" not in names
 
 
+def test_operational_altas_dars_judge_tools_are_exposed_by_default() -> None:
+    """The DRLOO checkpoint promotes fixture/local operational wrappers into the
+    default tool catalog so SDK clients can call them without opt-in."""
+
+    tools = _tools_module()
+
+    names = set(tools.list_hisys_mcp_tool_names(expose_future_tools=False))
+
+    assert {
+        "altas_search",
+        "dars_panel_readiness",
+        "run_dars_panel_golden",
+        "judge_advisory",
+    } <= names
+
+
 def test_future_status_tools_are_exposed_only_when_requested() -> None:
     tools = _tools_module()
 
@@ -441,3 +458,217 @@ def test_subsystem_status_placeholders_fail_closed_without_subprocesses(monkeypa
         assert envelope["human_approval_required"] is True
         assert envelope["error"]
         assert "unimplemented" in envelope["error"].lower() or "placeholder" in envelope["error"].lower()
+
+
+def test_altas_search_uses_fixture_transport_and_sets_smoke_env_var(tmp_path: Path) -> None:
+    """Altas-search wrapper must invoke the local CLI with fixture transport and
+    set HISYS_ALLOW_LIVE_SEARCH_SMOKE=1 in the subprocess env without leaking
+    that env into the parent process."""
+
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    instance.mkdir(parents=True, exist_ok=True)
+
+    result = tools.hisys_altas_search(
+        instance_root=instance,
+        date="20260607",
+        request_id="HISYS-REQ-MCP-ALTAS-001",
+        topic="self-organizing executable digital twin governance",
+    )
+    envelope = _to_dict(result)
+
+    assert envelope["tool_name"] == "altas_search"
+    assert envelope["status"] in {"ok", "needs_more_evidence"}
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert envelope["publication_or_live_action_approved"] is False
+
+    report_ref = "reports/run-summaries/20260607/search-topic-report.json"
+    assert report_ref in envelope["artifact_refs"]
+    assert (instance / report_ref).is_file()
+    report = json.loads((instance / report_ref).read_text(encoding="utf-8"))
+    assert report["status"] == "completed"
+    assert report["transport_kind"] == "fixture_injected"
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False
+
+    payload = envelope["payload"]
+    assert payload.get("schema_id", "").startswith("hisys.mcp.altas_search")
+    assert payload["transport_kind"] == "fixture_injected"
+    cmd = payload["command_args"]
+    assert "search-topic" in cmd
+    assert "--transport-fixture-search" in cmd
+
+    # The subprocess env carries the smoke gate, but the parent must not.
+    assert os.environ.get("HISYS_ALLOW_LIVE_SEARCH_SMOKE") != "1"
+
+
+def test_altas_search_blocks_live_provider_arguments(tmp_path: Path, monkeypatch) -> None:
+    tools = _tools_module()
+
+    def _forbidden_call(*args, **kwargs):  # pragma: no cover
+        raise AssertionError("live provider altas_search must be blocked before CLI execution")
+
+    monkeypatch.setattr(tools, "run_hisys_cli", _forbidden_call, raising=False)
+
+    instance = tmp_path / "instance"
+    instance.mkdir(parents=True, exist_ok=True)
+
+    envelope = _to_dict(
+        tools.hisys_altas_search(
+            instance_root=instance,
+            date="20260607",
+            request_id="HISYS-REQ-MCP-ALTAS-LIVE-001",
+            topic="live web search",
+            provider_url_ref="env:HISYS_SEARCH_PROVIDER_URL",
+        )
+    )
+
+    assert envelope["status"] == "blocked"
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert envelope["publication_or_live_action_approved"] is False
+    assert "live" in envelope["error"].lower() or "provider" in envelope["error"].lower()
+
+
+def test_dars_panel_readiness_returns_advisory_envelope_with_report_artifact(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    instance.mkdir(parents=True, exist_ok=True)
+
+    envelope = _to_dict(
+        tools.hisys_dars_panel_readiness(instance_root=instance, date="20260607")
+    )
+
+    assert envelope["tool_name"] == "dars_panel_readiness"
+    assert envelope["status"] in {"ok", "needs_more_evidence"}
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert envelope["publication_or_live_action_approved"] is False
+
+    report_ref = "reports/run-summaries/20260607/dars-panel-readiness-status.json"
+    assert report_ref in envelope["artifact_refs"]
+    assert (instance / report_ref).is_file()
+
+    payload = envelope["payload"]
+    assert payload.get("advisory_only") is True
+    assert payload.get("requires_human_review") is True
+    assert payload.get("live_external_action_authorized") is False
+
+
+def test_run_dars_panel_golden_executes_local_fixture_panel(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    instance.mkdir(parents=True, exist_ok=True)
+
+    envelope = _to_dict(
+        tools.hisys_run_dars_panel_golden(
+            instance_root=instance,
+            date="20260607",
+            request_id="HISYS-REQ-MCP-DARS-GOLDEN-001",
+        )
+    )
+
+    assert envelope["tool_name"] == "run_dars_panel_golden"
+    assert envelope["status"] in {"ok", "needs_more_evidence"}
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert envelope["publication_or_live_action_approved"] is False
+
+    report_ref = "reports/run-summaries/20260607/dars-panel-round-report.json"
+    assert report_ref in envelope["artifact_refs"]
+    assert (instance / report_ref).is_file()
+    report = json.loads((instance / report_ref).read_text(encoding="utf-8"))
+    assert report["advisory_only"] is True
+    assert report["requires_human_review"] is True
+    assert report["external_call_made"] is False
+    assert report["mutation_performed"] is False
+    assert report["publication_performed"] is False
+    assert report["live_external_action_authorized"] is False
+
+
+def test_judge_advisory_returns_fail_closed_envelope_with_report_artifact(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    instance.mkdir(parents=True, exist_ok=True)
+
+    envelope = _to_dict(
+        tools.hisys_judge_advisory(
+            instance_root=instance,
+            date="20260607",
+            request_id="HISYS-REQ-MCP-JUDGE-001",
+        )
+    )
+
+    assert envelope["tool_name"] == "judge_advisory"
+    assert envelope["status"] in {"ok", "needs_more_evidence"}
+    assert envelope["external_call_made"] is False
+    assert envelope["mutation_performed"] is False
+    assert envelope["publication_or_live_action_approved"] is False
+    assert envelope["human_approval_required"] is True
+
+    report_ref = "reports/run-summaries/20260607/judge-advisory.json"
+    assert report_ref in envelope["artifact_refs"]
+    assert (instance / report_ref).is_file()
+
+    payload = envelope["payload"]
+    assert payload.get("schema_id", "").startswith("hisys.mcp.judge_advisory")
+    assert payload.get("advisory_only") is True
+    assert payload.get("requires_human_review") is True
+    assert payload.get("publication_performed") is False
+    assert payload.get("live_external_action_authorized") is False
+
+
+def _assert_local_fixture_disclosure(payload: dict) -> None:
+    assert payload["result_basis"] == "Local fixture"
+    assert payload["execution_mode"] == "local_fixture"
+    assert payload["llm_service_used"] is False
+    assert "Local fixture" in payload["operator_notice"]
+
+
+def test_altas_search_payload_discloses_local_fixture_when_llm_is_not_used(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    instance.mkdir(parents=True, exist_ok=True)
+
+    envelope = _to_dict(
+        tools.hisys_altas_search(
+            instance_root=instance,
+            date="20260608",
+            request_id="HISYS-REQ-MCP-ALTAS-LOCAL-FIXTURE-001",
+            topic="fixture-only Altas disclosure",
+        )
+    )
+
+    _assert_local_fixture_disclosure(envelope["payload"])
+
+
+def test_dars_and_judge_payloads_disclose_local_fixture_when_llm_is_not_used(tmp_path: Path) -> None:
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    instance.mkdir(parents=True, exist_ok=True)
+
+    readiness = _to_dict(tools.hisys_dars_panel_readiness(instance_root=instance, date="20260608"))
+    golden = _to_dict(
+        tools.hisys_run_dars_panel_golden(
+            instance_root=instance,
+            date="20260608",
+            request_id="HISYS-REQ-MCP-DARS-LOCAL-FIXTURE-001",
+        )
+    )
+    judge = _to_dict(
+        tools.hisys_judge_advisory(
+            instance_root=instance,
+            date="20260608",
+            request_id="HISYS-REQ-MCP-JUDGE-LOCAL-FIXTURE-001",
+        )
+    )
+
+    _assert_local_fixture_disclosure(readiness["payload"])
+    _assert_local_fixture_disclosure(golden["payload"])
+    _assert_local_fixture_disclosure(judge["payload"])
+
+    judge_json = json.loads((instance / "reports/run-summaries/20260608/judge-advisory.json").read_text())
+    _assert_local_fixture_disclosure(judge_json)
+    judge_md = (instance / "reports/run-summaries/20260608/judge-advisory.md").read_text()
+    assert "Local fixture" in judge_md

@@ -2347,13 +2347,38 @@ def _cmd_run_dars_panel(
 # ``run-dars-panel-golden`` resolves these files at runtime; the corresponding
 # golden-contract test is ``test_run_dars_panel_cli_golden_fixture_writes_
 # stable_operator_report``.
-_DARS_PANEL_GOLDEN_BASIC_DIR = (
-    Path(__file__).resolve().parents[3]
-    / "tests"
-    / "fixtures"
-    / "dars_panel"
-    / "golden_basic"
-)
+def _dars_panel_golden_basic_dir() -> Path:
+    """Return the checked-in DARS golden fixture directory.
+
+    Source checkouts resolve this from the repository root. Installed Docker
+    images can copy the fixture under ``/app/tests`` or provide an explicit
+    ``HISYS_DARS_PANEL_GOLDEN_BASIC_DIR`` override, because an installed module
+    path such as ``site-packages/hisys/cli/main.py`` no longer has the repo root
+    at ``parents[3]``.
+    """
+
+    candidates: list[Path] = []
+    env_ref = os.environ.get("HISYS_DARS_PANEL_GOLDEN_BASIC_DIR")
+    if env_ref:
+        candidates.append(Path(env_ref))
+    repo_candidate = (
+        Path(__file__).resolve().parents[3]
+        / "tests"
+        / "fixtures"
+        / "dars_panel"
+        / "golden_basic"
+    )
+    candidates.extend(
+        [
+            repo_candidate,
+            Path.cwd() / "tests" / "fixtures" / "dars_panel" / "golden_basic",
+            Path("/app/tests/fixtures/dars_panel/golden_basic"),
+        ]
+    )
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    return candidates[0] if candidates else repo_candidate
 
 
 def _cmd_run_dars_panel_golden(
@@ -2372,19 +2397,20 @@ def _cmd_run_dars_panel_golden(
     external action remains outside this productization path.
     """
 
-    if not _DARS_PANEL_GOLDEN_BASIC_DIR.is_dir():
+    golden_basic_dir = _dars_panel_golden_basic_dir()
+    if not golden_basic_dir.is_dir():
         raise SystemExit(
             "run-dars-panel-golden: missing checked-in golden fixture at "
-            f"{_DARS_PANEL_GOLDEN_BASIC_DIR}"
+            f"{golden_basic_dir}"
         )
 
     data_dir = instance_root / "data" / "dars-panel-fixtures" / yyyymmdd
     data_dir.mkdir(parents=True, exist_ok=True)
     for filename in ("candidate-001.json", "evidence-001.json", "rubric-001.md"):
-        shutil.copy(_DARS_PANEL_GOLDEN_BASIC_DIR / filename, data_dir / filename)
+        shutil.copy(golden_basic_dir / filename, data_dir / filename)
 
     config_blueprint = json.loads(
-        (_DARS_PANEL_GOLDEN_BASIC_DIR / "panel-config.json").read_text(encoding="utf-8")
+        (golden_basic_dir / "panel-config.json").read_text(encoding="utf-8")
     )
     rubric_ref = f"data/dars-panel-fixtures/{yyyymmdd}/rubric-001.md"
     for critic in config_blueprint["critics"]:

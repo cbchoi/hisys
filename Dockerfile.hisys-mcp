@@ -8,6 +8,7 @@ ENV HISYS_ALLOW_LIVE_ACTIONS=false
 ENV HISYS_MCP_HOST=0.0.0.0
 ENV HISYS_MCP_PORT=8765
 ENV HISYS_MCP_PATH=/mcp
+ENV HISYS_DARS_PANEL_GOLDEN_BASIC_DIR=/app/tests/fixtures/dars_panel/golden_basic
 
 WORKDIR /app
 
@@ -17,6 +18,7 @@ RUN adduser --disabled-password --gecos "" --home /home/hisys hisys \
 
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY tests/fixtures/dars_panel/golden_basic ./tests/fixtures/dars_panel/golden_basic
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
     && python -m pip install --no-cache-dir ".[mcp]"

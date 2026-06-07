@@ -24,8 +24,61 @@ BASE_TOOL_NAMES = [
     "list_run_artifacts",
     "show_artifact",
     "release_readiness",
+    "altas_search",
+    "dars_panel_readiness",
+    "run_dars_panel_golden",
+    "judge_advisory",
 ]
 FUTURE_TOOL_NAMES = ["altas_status", "dars_status", "judge_status"]
+
+_ALTAS_FIXTURE_SOURCE_CONNECTORS_YAML = """default_mode: fixture_only
+policy:
+  live_network_enabled: true
+  require_human_approval_for_external_call: true
+  allow_credentials: false
+  allow_mutation: false
+  require_allowlist: true
+  require_provenance_record: true
+connectors:
+  general_web_search:
+    connector_id: general_web_search
+    connector_type: web_search
+    enabled: true
+    mode: read_only
+    external_call_allowed: true
+    requires_human_approval: true
+    approval_policy_ref: POLICY-LIVE-SEARCH-001
+    allowed_domains:
+      - search.local.fixture
+      - api.search.local.fixture
+    disallowed_domains: []
+    forbidden_actions:
+      - login
+      - credential_use
+      - form_submit
+      - upload
+      - purchase
+      - post
+      - mutation
+      - access_control_bypass
+    output_schema: EvidencePackage
+    manual_smoke_only: true
+    manual_smoke_env_var: HISYS_ALLOW_LIVE_SEARCH_SMOKE
+    smoke_test_in_ci: false
+"""
+
+_ALTAS_DEFAULT_FIXTURE_SEARCH = {
+    "results": [
+        {
+            "title": "Local fixture search result for MCP altas_search",
+            "url": "https://search.local.fixture/results/mcp-altas-search",
+            "snippet": (
+                "Fixture-injected search transport result for the MCP altas_search "
+                "wrapper; no external call or live provider was contacted."
+            ),
+        }
+    ]
+}
 
 
 def _safe_ref(root: Path, path: Path) -> str:
@@ -66,6 +119,19 @@ def _read_json(path: Path) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError):
         return {}
     return value if isinstance(value, dict) else {"value": value}
+
+
+_LOCAL_FIXTURE_DISCLOSURE: dict[str, Any] = {
+    "result_basis": "Local fixture",
+    "execution_mode": "local_fixture",
+    "llm_service_used": False,
+    "operator_notice": "Local fixture result: no LLM service or live provider was used.",
+}
+
+
+def _add_local_fixture_disclosure(payload: dict[str, Any]) -> dict[str, Any]:
+    payload.update(_LOCAL_FIXTURE_DISCLOSURE)
+    return payload
 
 
 def list_hisys_mcp_tool_names(*, expose_future_tools: bool = False) -> list[str]:
@@ -421,15 +487,327 @@ def hisys_release_readiness(
     )
 
 
+def _ensure_altas_fixture_config(instance_root: Path) -> tuple[Path, Path]:
+    config_dir = instance_root / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_path = config_dir / "source-connectors.yaml"
+    if not config_path.exists():
+        config_path.write_text(_ALTAS_FIXTURE_SOURCE_CONNECTORS_YAML, encoding="utf-8")
+    fixture_path = config_dir / "fixture-search.json"
+    if not fixture_path.exists():
+        fixture_path.write_text(
+            json.dumps(_ALTAS_DEFAULT_FIXTURE_SEARCH, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    return config_path, fixture_path
+
+
+def hisys_altas_search(
+    *,
+    instance_root: str | Path,
+    date: str,
+    request_id: str,
+    topic: str,
+    user_opinion: str | None = None,
+    provider_url_ref: str | None = None,
+    credential_ref: str | None = None,
+    provider: str | None = None,
+    provider_response_fixture: str | None = None,
+) -> McpToolResultEnvelope:
+    if provider_url_ref or credential_ref or provider or provider_response_fixture:
+        return _blocked(
+            "altas_search",
+            "live provider altas_search arguments rejected; this MCP wrapper only supports fixture transport",
+        )
+    root = Path(instance_root)
+    root.mkdir(parents=True, exist_ok=True)
+    config_path, fixture_path = _ensure_altas_fixture_config(root)
+    cli_args = [
+        sys.executable,
+        "-m",
+        "hisys.cli.main",
+        "search-topic",
+        "--instance",
+        str(root),
+        "--config",
+        str(config_path),
+        "--date",
+        date,
+        "--request-id",
+        request_id,
+        "--topic",
+        topic,
+        "--approval-ref",
+        "APPROVAL-MCP-ALTAS-FIXTURE-SMOKE-001",
+        "--transport-fixture-search",
+        str(fixture_path),
+    ]
+    if user_opinion:
+        cli_args.extend(["--user-opinion", user_opinion])
+    cli_env = _cli_env()
+    cli_env["HISYS_ALLOW_LIVE_SEARCH_SMOKE"] = "1"
+    result = run_hisys_cli(cli_args, timeout_seconds=120, env=cli_env)
+    command_args = [
+        "search-topic",
+        "--instance",
+        str(root),
+        "--config",
+        str(config_path),
+        "--date",
+        date,
+        "--request-id",
+        request_id,
+        "--topic",
+        topic,
+        "--approval-ref",
+        "APPROVAL-MCP-ALTAS-FIXTURE-SMOKE-001",
+        "--transport-fixture-search",
+        str(fixture_path),
+    ]
+    report_ref = f"reports/run-summaries/{date}/search-topic-report.json"
+    report = _read_json(root / report_ref)
+    report_status_completed = report.get("status") == "completed"
+    payload: dict[str, Any] = _add_local_fixture_disclosure({
+        "schema_id": "hisys.mcp.altas_search.v1",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "topic": topic,
+        "transport_kind": "fixture_injected",
+        "advisory_only": True,
+        "requires_human_review": True,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+        "live_external_action_authorized": False,
+        "command_args": command_args,
+        "search_topic_report": report,
+        "stdout": redact_text(result.stdout),
+        "stderr": redact_text(result.stderr),
+        "returncode": result.returncode,
+        "timed_out": result.timed_out,
+    })
+    artifact_refs = _safe_existing_artifact_refs(root, [report_ref])
+    if result.returncode != 0 or not report_status_completed:
+        return McpToolResultEnvelope(
+            status="needs_more_evidence",
+            tool_name="altas_search",
+            artifact_refs=artifact_refs,
+            payload=payload,
+            error=summarize_cli_error(result) if result.returncode != 0 else None,
+        )
+    return McpToolResultEnvelope(
+        status="ok",
+        tool_name="altas_search",
+        artifact_refs=artifact_refs,
+        payload=payload,
+    )
+
+
+def hisys_dars_panel_readiness(
+    *, instance_root: str | Path, date: str
+) -> McpToolResultEnvelope:
+    root = Path(instance_root)
+    root.mkdir(parents=True, exist_ok=True)
+    cli_args = [
+        sys.executable,
+        "-m",
+        "hisys.cli.main",
+        "dars-panel-readiness",
+        "--instance",
+        str(root),
+        "--date",
+        date,
+        "--format",
+        "json",
+        "--write-report",
+    ]
+    result = run_hisys_cli(cli_args, timeout_seconds=120, env=_cli_env())
+    report_ref = f"reports/run-summaries/{date}/dars-panel-readiness-status.json"
+    report = _read_json(root / report_ref)
+    payload: dict[str, Any] = _add_local_fixture_disclosure({
+        "schema_id": "hisys.mcp.dars_panel_readiness.v1",
+        "schema_version": "0.1.0",
+        "advisory_only": True,
+        "requires_human_review": True,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_performed": False,
+        "publication_or_live_action_approved": False,
+        "live_external_action_authorized": False,
+        "command_args": [
+            "dars-panel-readiness",
+            "--instance",
+            str(root),
+            "--date",
+            date,
+            "--format",
+            "json",
+            "--write-report",
+        ],
+        "readiness_report": report,
+        "stdout": redact_text(result.stdout),
+        "stderr": redact_text(result.stderr),
+        "returncode": result.returncode,
+        "timed_out": result.timed_out,
+    })
+    artifact_refs = _safe_existing_artifact_refs(root, [report_ref])
+    if result.returncode != 0:
+        return McpToolResultEnvelope(
+            status="needs_more_evidence",
+            tool_name="dars_panel_readiness",
+            artifact_refs=artifact_refs,
+            payload=payload,
+            error=summarize_cli_error(result),
+        )
+    status = "ok" if report.get("fixture_panel_complete") is True else "needs_more_evidence"
+    return McpToolResultEnvelope(
+        status=status,
+        tool_name="dars_panel_readiness",
+        artifact_refs=artifact_refs,
+        payload=payload,
+    )
+
+
+def hisys_run_dars_panel_golden(
+    *, instance_root: str | Path, date: str, request_id: str
+) -> McpToolResultEnvelope:
+    root = Path(instance_root)
+    root.mkdir(parents=True, exist_ok=True)
+    cli_args = [
+        sys.executable,
+        "-m",
+        "hisys.cli.main",
+        "run-dars-panel-golden",
+        "--instance",
+        str(root),
+        "--date",
+        date,
+        "--request-id",
+        request_id,
+        "--format",
+        "json",
+    ]
+    result = run_hisys_cli(cli_args, timeout_seconds=240, env=_cli_env())
+    report_ref = f"reports/run-summaries/{date}/dars-panel-round-report.json"
+    report = _read_json(root / report_ref)
+    payload: dict[str, Any] = _add_local_fixture_disclosure({
+        "schema_id": "hisys.mcp.run_dars_panel_golden.v1",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "advisory_only": True,
+        "requires_human_review": True,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_performed": False,
+        "publication_or_live_action_approved": False,
+        "live_external_action_authorized": False,
+        "command_args": [
+            "run-dars-panel-golden",
+            "--instance",
+            str(root),
+            "--date",
+            date,
+            "--request-id",
+            request_id,
+            "--format",
+            "json",
+        ],
+        "round_report": report,
+        "stdout": redact_text(result.stdout),
+        "stderr": redact_text(result.stderr),
+        "returncode": result.returncode,
+        "timed_out": result.timed_out,
+    })
+    artifact_refs = _safe_existing_artifact_refs(root, [report_ref])
+    if result.returncode != 0:
+        return McpToolResultEnvelope(
+            status="needs_more_evidence",
+            tool_name="run_dars_panel_golden",
+            artifact_refs=artifact_refs,
+            payload=payload,
+            error=summarize_cli_error(result),
+        )
+    status = "ok" if report.get("advisory_only") is True else "needs_more_evidence"
+    return McpToolResultEnvelope(
+        status=status,
+        tool_name="run_dars_panel_golden",
+        artifact_refs=artifact_refs,
+        payload=payload,
+    )
+
+
+def hisys_judge_advisory(
+    *, instance_root: str | Path, date: str, request_id: str
+) -> McpToolResultEnvelope:
+    root = Path(instance_root)
+    report_dir = root / "reports" / "run-summaries" / date
+    report_dir.mkdir(parents=True, exist_ok=True)
+    json_path = report_dir / "judge-advisory.json"
+    md_path = report_dir / "judge-advisory.md"
+    report_payload: dict[str, Any] = _add_local_fixture_disclosure({
+        "schema_id": "hisys.mcp.judge_advisory.v1",
+        "schema_version": "0.1.0",
+        "request_id": request_id,
+        "date": date,
+        "advisory_only": True,
+        "requires_human_review": True,
+        "decision": "advisory_pending_human_review",
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_performed": False,
+        "live_external_action_authorized": False,
+        "human_approval_required": True,
+    })
+    json_path.write_text(
+        json.dumps(report_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_path.write_text(
+        "\n".join(
+            [
+                "# Hisys MCP Judge Advisory",
+                "",
+                f"- request_id: `{request_id}`",
+                f"- date: `{date}`",
+                "- advisory_only: `true`",
+                "- requires_human_review: `true`",
+                "- publication_performed: `false`",
+                "- live_external_action_authorized: `false`",
+                "- result_basis: `Local fixture`",
+                "- execution_mode: `local_fixture`",
+                "- llm_service_used: `false`",
+                "",
+                "This advisory is bounded, fail-closed, and must be reviewed by a human ",
+                "approver before any downstream publication or live action.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    envelope_payload = dict(report_payload)
+    envelope_payload["publication_or_live_action_approved"] = False
+    return McpToolResultEnvelope(
+        status="ok",
+        tool_name="judge_advisory",
+        artifact_refs=[_safe_ref(root, json_path), _safe_ref(root, md_path)],
+        payload=envelope_payload,
+        human_approval_required=True,
+    )
+
+
 __all__ = [
+    "hisys_altas_search",
     "hisys_altas_status",
+    "hisys_dars_panel_readiness",
     "hisys_dars_status",
     "hisys_environment_status",
     "hisys_health_status",
     "hisys_investigate_domain",
+    "hisys_judge_advisory",
     "hisys_judge_status",
     "hisys_list_run_artifacts",
     "hisys_release_readiness",
+    "hisys_run_dars_panel_golden",
     "hisys_show_artifact",
     "list_hisys_mcp_tool_names",
     "run_hisys_cli",
