@@ -34,6 +34,25 @@ def _blocked(tool_name: str, error: str) -> McpToolResultEnvelope:
     return McpToolResultEnvelope(status="blocked", tool_name=tool_name, error=error)
 
 
+def _subsystem_status_placeholder(tool_name: str, subsystem: str, readiness_command: list[str] | None = None) -> McpToolResultEnvelope:
+    payload: dict[str, Any] = {
+        "subsystem": subsystem,
+        "implemented": False,
+        "gateway_routing_placeholder": True,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+    }
+    if readiness_command is not None:
+        payload["readiness_command_pending_wrap"] = readiness_command
+    return McpToolResultEnvelope(
+        status="blocked",
+        tool_name=tool_name,
+        payload=payload,
+        error=f"{subsystem} status gateway placeholder is unimplemented; no subsystem command was executed",
+    )
+
+
 def _artifact_ref_is_safe(ref: str) -> bool:
     path = Path(ref)
     return not path.is_absolute() and ".." not in path.parts and path.suffix in {".json", ".md"}
@@ -52,6 +71,40 @@ def list_hisys_mcp_tool_names(*, expose_future_tools: bool = False) -> list[str]
     if expose_future_tools:
         names.extend(FUTURE_TOOL_NAMES)
     return names
+
+
+def hisys_altas_status() -> McpToolResultEnvelope:
+    """Fail-closed ALTAS gateway routing placeholder.
+
+    This lane intentionally does not call subsystem commands; it only exposes a
+    future tool shape when explicitly requested by tool listing.
+    """
+
+    return _subsystem_status_placeholder("altas_status", "ALTAS")
+
+
+def hisys_dars_status() -> McpToolResultEnvelope:
+    """Fail-closed DARS gateway routing placeholder."""
+
+    return _subsystem_status_placeholder(
+        "dars_status",
+        "DARS",
+        ["python", "-m", "hisys.dars.rloo", "--check", "--format", "json"],
+    )
+
+
+def hisys_judge_status() -> McpToolResultEnvelope:
+    """Fail-closed Judge gateway routing placeholder.
+
+    This is a readiness/status placeholder only and must not be treated as a
+    final authoritative approval decision.
+    """
+
+    return _subsystem_status_placeholder(
+        "judge_status",
+        "Judge",
+        ["python", "-m", "hisys.judge.rloo", "--check", "--format", "json"],
+    )
 
 
 def hisys_health_status(*, instance_root: str | Path, date: str) -> McpToolResultEnvelope:
@@ -194,9 +247,12 @@ def hisys_release_readiness(
 
 
 __all__ = [
+    "hisys_altas_status",
+    "hisys_dars_status",
     "hisys_environment_status",
     "hisys_health_status",
     "hisys_investigate_domain",
+    "hisys_judge_status",
     "hisys_list_run_artifacts",
     "hisys_release_readiness",
     "hisys_show_artifact",

@@ -157,3 +157,38 @@ def test_future_altas_dars_judge_tools_are_not_exposed_by_default() -> None:
     assert "altas_status" not in names
     assert "dars_status" not in names
     assert "judge_status" not in names
+    assert "judge_decide" not in names
+
+
+def test_future_status_tools_are_exposed_only_when_requested() -> None:
+    tools = _tools_module()
+
+    names = set(tools.list_hisys_mcp_tool_names(expose_future_tools=True))
+
+    assert {"altas_status", "dars_status", "judge_status"} <= names
+    assert "judge_decide" not in names
+
+
+def test_subsystem_status_placeholders_fail_closed_without_subprocesses(monkeypatch) -> None:
+    tools = _tools_module()
+
+    def _forbidden_call(*args, **kwargs):  # pragma: no cover - failure path only
+        raise AssertionError("gateway placeholders must not execute subprocesses in this lane")
+
+    monkeypatch.setattr(tools, "run_hisys_cli", _forbidden_call, raising=False)
+
+    for func_name, tool_name in [
+        ("hisys_altas_status", "altas_status"),
+        ("hisys_dars_status", "dars_status"),
+        ("hisys_judge_status", "judge_status"),
+    ]:
+        result = getattr(tools, func_name)()
+        envelope = _to_dict(result)
+        assert envelope["status"] in {"blocked", "error"}
+        assert envelope["tool_name"] == tool_name
+        assert envelope["external_call_made"] is False
+        assert envelope["mutation_performed"] is False
+        assert envelope["publication_or_live_action_approved"] is False
+        assert envelope["human_approval_required"] is True
+        assert envelope["error"]
+        assert "unimplemented" in envelope["error"].lower() or "placeholder" in envelope["error"].lower()
