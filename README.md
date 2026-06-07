@@ -69,6 +69,68 @@ Git by accident:
 ../../runtime/hisys-mcp-instance -> /runtime
 ```
 
+### Configure local folders for Hisys MCP
+
+Hermes registration only tells Hermes where the MCP endpoint is. It does not give
+the container access to host folders. To let Hisys inspect a local knowledge or
+code folder, mount that folder into the `hisys-mcp` container and then refer to
+the container path in the MCP request.
+
+Create a local compose override that is not committed:
+
+```yaml
+# docker-compose.override.yml
+services:
+  hisys-mcp:
+    volumes:
+      - ../../runtime/hisys-mcp-instance:/runtime
+      - /home/cbchoi/ai.mind:/knowledge/ai.mind:ro
+```
+
+If the folder is `/home/cbchoi/ai.sapientia` rather than `/home/cbchoi/ai.mind`,
+mount that path instead:
+
+```yaml
+services:
+  hisys-mcp:
+    volumes:
+      - ../../runtime/hisys-mcp-instance:/runtime
+      - /home/cbchoi/ai.sapientia:/knowledge/ai.sapientia:ro
+```
+
+Restart and verify:
+
+```bash
+scripts/setup_hisys_mcp_docker.sh restart
+scripts/setup_hisys_mcp_docker.sh test
+```
+
+Then pass the container path in an `investigate_domain` request. For a local
+codebase/current-artifact inspection, use `domain: codebase` and a `current_artifact`
+source whose `source_id` or `ref` clearly labels it as a repo/codebase/source:
+
+```json
+{
+  "request_id": "HISYS-REQ-AIMIND-001",
+  "domain": "codebase",
+  "objective": "Inspect the mounted ai.mind folder as read-only current artifact evidence.",
+  "sources": [
+    {
+      "source_id": "SRC-AIMIND-REPO-001",
+      "source_type": "current_artifact",
+      "ref": "/knowledge/ai.mind",
+      "access_mode": "read_only"
+    }
+  ]
+}
+```
+
+Important boundary: the current `codebase` adapter can materialize a bounded
+local codebase source-inspection bundle from a mounted directory. General
+full-text search over arbitrary knowledge-vault folders is not a Hermes MCP
+registration setting; it needs a Hisys adapter/tool path that reads the mounted
+folder and records evidence under `/runtime`.
+
 Common operations:
 
 ```bash

@@ -137,6 +137,9 @@ def test_public_docs_include_candidate_config_approval_and_rollback_boundaries()
     assert "hermes mcp add hisys --url http://127.0.0.1:19613/mcp" in text
     assert "hermes mcp test hisys" in text
     assert "--stop-user-service" in text
+    assert "docker-compose.override.yml" in text
+    assert "/knowledge/ai.mind:ro" in text
+    assert "General full-text\nsearch over arbitrary vault folders is not controlled by `hermes mcp add`" in text
 
 
 def test_readme_has_operator_quickstart_for_docker_mcp_service() -> None:
@@ -151,3 +154,6 @@ def test_readme_has_operator_quickstart_for_docker_mcp_service() -> None:
     assert "http://127.0.0.1:19613/mcp" in text
     assert "../../runtime/hisys-mcp-instance -> /runtime" in text
     assert "127.0.0.1:19613:8765" in text
+    assert "docker-compose.override.yml" in text
+    assert "/knowledge/ai.mind:ro" in text
+    assert "General\nfull-text search over arbitrary knowledge-vault folders is not a Hermes MCP\nregistration setting" in text

@@ -128,6 +128,77 @@ same Docker Compose network as the `hisys-mcp` service.
 
 Hermes may need a new session or restart to load newly added MCP tools.
 
+### Runtime and local-folder configuration
+
+There are two separate configuration layers:
+
+1. **Hermes MCP registration**: maps the server name `hisys` to
+   `http://127.0.0.1:19613/mcp`.
+2. **Hisys runtime/source configuration**: decides what files the Hisys process
+   can read and where it writes evidence.
+
+For Docker, host folders are invisible until they are mounted into the
+container. The checked-in compose file mounts only the persistent Hisys runtime:
+
+```text
+../../runtime/hisys-mcp-instance -> /runtime
+```
+
+To inspect a local folder such as `ai.mind`, add a local override file:
+
+```yaml
+# docker-compose.override.yml
+services:
+  hisys-mcp:
+    volumes:
+      - ../../runtime/hisys-mcp-instance:/runtime
+      - /home/cbchoi/ai.mind:/knowledge/ai.mind:ro
+```
+
+Use the actual host path. For example, on this host the personal AI-system
+workspace may be `/home/cbchoi/ai.sapientia`, so the override would be:
+
+```yaml
+services:
+  hisys-mcp:
+    volumes:
+      - ../../runtime/hisys-mcp-instance:/runtime
+      - /home/cbchoi/ai.sapientia:/knowledge/ai.sapientia:ro
+```
+
+Restart after changing mounts:
+
+```bash
+scripts/setup_hisys_mcp_docker.sh restart
+scripts/setup_hisys_mcp_docker.sh test
+```
+
+Then refer to the **container path**, not the host path, in an MCP request. A
+bounded local codebase/current-artifact inspection uses `domain: codebase` and a
+`current_artifact` source:
+
+```json
+{
+  "request_id": "HISYS-REQ-AIMIND-001",
+  "domain": "codebase",
+  "objective": "Inspect the mounted ai.mind folder as read-only current artifact evidence.",
+  "sources": [
+    {
+      "source_id": "SRC-AIMIND-REPO-001",
+      "source_type": "current_artifact",
+      "ref": "/knowledge/ai.mind",
+      "access_mode": "read_only"
+    }
+  ]
+}
+```
+
+The current `codebase` adapter can produce bounded source-inspection artifacts
+from a mounted local directory and write them under `/runtime`. General full-text
+search over arbitrary vault folders is not controlled by `hermes mcp add`; it
+requires a Hisys adapter/tool path that reads the mounted folder and records the
+evidence boundary.
+
 ## HTTP local client smoke
 
 The local HTTP smoke command is:
