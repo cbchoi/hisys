@@ -18,7 +18,7 @@ Implemented surfaces:
 
 This slice is local and fail-closed. The default entry points do not start a persistent network server, perform a live provider/model call, inspect credentials, perform publication or deployment, run browser/search collection, or mutate external systems. The guarded production listener starts a long-lived streamable-http server only when the explicit `--production-listener` flag is passed, binds to loopback by default, and rejects non-loopback binds unless `HISYS_MCP_ALLOW_NON_LOOPBACK_BIND=true` is present in the launcher environment. MCP sampling is disabled by default, future Altas/DARS/Judge placeholder tools are hidden by default, and every result envelope defaults to `external_call_made=false`, `mutation_performed=false`, `publication_or_live_action_approved=false`, and `human_approval_required=true`.
 
-The Docker/Compose smoke slice is also local and fixture-only. It packages the deterministic introspection entry points, not a live MCP network listener. The compose smoke intentionally publishes no host ports. The HTTP local client smoke starts an ephemeral loopback-only stdlib HTTP server, fetches `/health` and `/tools` with a local client, records fail-closed authority flags, and shuts the server down inside the same command. The MCP SDK streamable HTTP local smoke starts an ephemeral loopback-only FastMCP `streamable-http` server, uses the MCP SDK client session to list the current tool catalog, records fail-closed authority flags, and shuts the server down inside the same command.
+The Docker/Compose service slice is local and fixture-only by default. It packages the guarded production MCP listener as a container-managed sidecar. The compose service publishes only `127.0.0.1:19613` on the host, mounts a repo-external runtime instance directory into `/runtime`, keeps MCP sampling and live actions disabled, and requires the explicit non-loopback bind approval only for the container-internal `0.0.0.0:8765` bind needed by Docker port publishing. The HTTP local client smoke starts an ephemeral loopback-only stdlib HTTP server, fetches `/health` and `/tools` with a local client, records fail-closed authority flags, and shuts the server down inside the same command. The MCP SDK streamable HTTP local smoke starts an ephemeral loopback-only FastMCP `streamable-http` server, uses the MCP SDK client session to list the current tool catalog, records fail-closed authority flags, and shuts the server down inside the same command.
 
 ## Local sidecar smoke
 
@@ -36,6 +36,44 @@ docker compose -f docker/compose.hisys-mcp-smoke.yaml run --rm hisys-mcp
 ```
 
 This command is a packaging/introspection smoke only. It should print the deterministic local tool catalog and exit. It has no live MCP network listener, does not publish port `8765`, and does not call live providers or external sources.
+
+## Container-managed MCP service
+
+The standard compose service is:
+
+```bash
+mkdir -p /home/cbchoi/workspaces/develop/runtime/hisys-mcp-instance/{config,data,reports,runtime-boundary}
+docker compose up -d --build hisys-mcp
+```
+
+It runs the guarded production listener in the container and publishes the MCP
+endpoint on the host loopback interface only:
+
+```text
+http://127.0.0.1:19613/mcp
+```
+
+The service uses these boundaries:
+
+- source image: `Dockerfile.hisys-mcp`
+- persistent instance root: `../../runtime/hisys-mcp-instance:/runtime`
+- container listener: `0.0.0.0:8765` so Docker can publish the port
+- host publication: `127.0.0.1:19613:8765`, not a public interface
+- `HISYS_MCP_ALLOW_NON_LOOPBACK_BIND=true` only inside the compose service to
+  approve the container-internal bind required by port publishing
+- `HISYS_MCP_SAMPLING_ENABLED=false`
+- `HISYS_ALLOW_LIVE_ACTIONS=false`
+
+Verify after startup:
+
+```bash
+docker compose ps
+hermes mcp test hisys
+```
+
+Then call `health_status`; it should report `overall_status: ok` when the
+mounted runtime root contains `config/`, `data/`, `reports/`, and
+`runtime-boundary/`.
 
 ## HTTP local client smoke
 

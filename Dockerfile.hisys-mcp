@@ -5,11 +5,14 @@ ENV PYTHONUNBUFFERED=1
 ENV HISYS_INSTANCE_ROOT=/runtime
 ENV HISYS_MCP_SAMPLING_ENABLED=false
 ENV HISYS_ALLOW_LIVE_ACTIONS=false
+ENV HISYS_MCP_HOST=0.0.0.0
+ENV HISYS_MCP_PORT=8765
+ENV HISYS_MCP_PATH=/mcp
 
 WORKDIR /app
 
 RUN adduser --disabled-password --gecos "" --home /home/hisys hisys \
-    && mkdir -p /runtime \
+    && mkdir -p /runtime/config /runtime/data /runtime/reports /runtime/runtime-boundary \
     && chown -R hisys:hisys /runtime /app
 
 COPY pyproject.toml README.md ./
@@ -20,8 +23,9 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 
 USER hisys
 VOLUME ["/runtime"]
+EXPOSE 8765
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -m hisys.mcp.server --health >/dev/null || exit 1
+    CMD python -c "import os, socket; s=socket.create_connection(('127.0.0.1', int(os.environ.get('HISYS_MCP_PORT', '8765'))), timeout=5); s.close()" || exit 1
 
-CMD ["python", "-m", "hisys.mcp.server", "--stdio", "--list-tools-json"]
+CMD ["sh", "-c", "python -m hisys.mcp.server --production-listener --http-host ${HISYS_MCP_HOST:-0.0.0.0} --http-port ${HISYS_MCP_PORT:-8765} --mcp-path ${HISYS_MCP_PATH:-/mcp}"]

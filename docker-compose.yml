@@ -1,0 +1,33 @@
+services:
+  hisys-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.hisys-mcp
+    image: hisys-mcp:local
+    container_name: hisys-mcp
+    restart: unless-stopped
+    environment:
+      HISYS_INSTANCE_ROOT: /runtime
+      HISYS_MCP_SAMPLING_ENABLED: "false"
+      HISYS_ALLOW_LIVE_ACTIONS: "false"
+      # Required only because Docker port publishing needs the process to bind
+      # inside the container network namespace. The host publication below is
+      # still loopback-only: 127.0.0.1:19613.
+      HISYS_MCP_ALLOW_NON_LOOPBACK_BIND: "true"
+      HISYS_MCP_HOST: 0.0.0.0
+      HISYS_MCP_PORT: "8765"
+      HISYS_MCP_PATH: /mcp
+    ports:
+      - "127.0.0.1:19613:8765"
+    volumes:
+      - ../../runtime/hisys-mcp-instance:/runtime
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import socket; s=socket.create_connection(('127.0.0.1', 8765), timeout=5); s.close()"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
