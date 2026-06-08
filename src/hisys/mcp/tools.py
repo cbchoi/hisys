@@ -325,6 +325,8 @@ _LIVE_TOOL_DRY_RUN_DISPATCH = {
     "judge_advisory_live": hisys_judge_advisory_live,
 }
 
+_LIVE_TOOL_SMOKE_DISPATCH = _LIVE_TOOL_DRY_RUN_DISPATCH
+
 
 def _safe_request_id_segment(value: str) -> str:
     return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "-" for ch in value)
@@ -345,6 +347,9 @@ def _runtime_boundary_record(
     runtime_ref: str,
     prompt_summary: str | None,
     self_ref: str,
+    provider_transport: str = "fake/dry_run",
+    real_external_call_made: bool = False,
+    controlled_live_smoke: bool = False,
 ) -> dict[str, Any]:
     from .live_adapters import scrub_live_adapter_secrets
 
@@ -362,8 +367,9 @@ def _runtime_boundary_record(
         "self_ref": self_ref,
         "date": date,
         "request_id": request_id,
-        "provider_transport": "fake/dry_run",
-        "real_external_call_made": False,
+        "provider_transport": provider_transport,
+        "real_external_call_made": real_external_call_made,
+        "controlled_live_smoke": controlled_live_smoke,
         "llm_service_used": bool(payload.get("llm_service_used", False)),
         "execution_mode": payload.get("execution_mode"),
         "result_basis": payload.get("result_basis"),
@@ -517,6 +523,124 @@ def run_hisys_live_dry_run(
     combined_refs = _dedupe_refs(list(envelope.artifact_refs) + extra_refs)
     safe_refs = _safe_existing_artifact_refs(root, combined_refs)
 
+    return envelope.model_copy(update={"artifact_refs": safe_refs})
+
+
+def run_hisys_live_smoke_manual(
+    *,
+    instance_root: str | Path,
+    date: str,
+    tool_name: str,
+    request_id: str,
+    approval_ref: str,
+    provider_url_ref: str,
+    credential_ref: str,
+    approval_ledger: Mapping[str, Mapping[str, Any]],
+    transport: Any,
+    user_ref: str,
+    agent_ref: str,
+    runtime_ref: str,
+    transport_label: str,
+    real_external_call_made: bool,
+    topic: str | None = None,
+    prompt_summary: str | None = None,
+) -> McpToolResultEnvelope:
+    """Controlled live-smoke harness for the Hisys MCP live tool lanes.
+
+    This is not part of the default MCP tool listing. It exists for explicit
+    manual smoke runs after fixture and dry-run gates pass. The caller must
+    inject a transport and approval ledger; this function never resolves
+    credentials and persists only provider/credential references in the runtime
+    boundary record.
+    """
+
+    if tool_name not in _LIVE_TOOL_SMOKE_DISPATCH:
+        return _blocked(
+            "live_smoke_manual",
+            f"unknown live tool for controlled live smoke harness: {tool_name!r}",
+        )
+    if transport is None:
+        return _blocked(
+            "live_smoke_manual",
+            "controlled live smoke requires an explicitly injected transport",
+        )
+
+    root = Path(instance_root)
+    root.mkdir(parents=True, exist_ok=True)
+
+    invocation_kwargs: dict[str, Any] = {
+        "instance_root": root,
+        "date": date,
+        "request_id": request_id,
+        "approval_ref": approval_ref,
+        "provider_url_ref": provider_url_ref,
+        "credential_ref": credential_ref,
+        "transport": transport,
+        "approval_ledger": approval_ledger,
+    }
+    request_prompt = prompt_summary or topic
+    if tool_name == "altas_search_live":
+        invocation_kwargs["topic"] = request_prompt or f"controlled live smoke {request_id}"
+    envelope = _LIVE_TOOL_SMOKE_DISPATCH[tool_name](**invocation_kwargs)
+
+    safe_request_segment = _safe_request_id_segment(request_id)
+    boundary_dir = root / "runtime-boundary" / date
+    boundary_dir.mkdir(parents=True, exist_ok=True)
+    json_path = boundary_dir / f"live-smoke-{tool_name}-{safe_request_segment}.json"
+    md_path = boundary_dir / f"live-smoke-{tool_name}-{safe_request_segment}.md"
+    self_ref = _safe_ref(root, json_path)
+    md_ref = _safe_ref(root, md_path)
+
+    approval_record = approval_ledger.get(approval_ref) if isinstance(approval_ledger, Mapping) else None
+    record = _runtime_boundary_record(
+        envelope=envelope,
+        tool_name=tool_name,
+        request_id=request_id,
+        date=date,
+        approval_ref=approval_ref,
+        provider_url_ref=provider_url_ref,
+        credential_ref=credential_ref,
+        approval_record=approval_record,
+        user_ref=user_ref,
+        agent_ref=agent_ref,
+        runtime_ref=runtime_ref,
+        prompt_summary=request_prompt,
+        self_ref=self_ref,
+        provider_transport=transport_label,
+        real_external_call_made=real_external_call_made,
+        controlled_live_smoke=True,
+    )
+
+    json_path.write_text(
+        json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_lines = [
+        f"# Hisys MCP Controlled Live Smoke Runtime Boundary — {tool_name}",
+        "",
+        f"- request_id: `{request_id}`",
+        f"- date: `{date}`",
+        f"- controlled_live_smoke: `true`",
+        f"- provider_transport: `{record['provider_transport']}`",
+        f"- real_external_call_made: `{str(record['real_external_call_made']).lower()}`",
+        f"- execution_mode: `{record['execution_mode']}`",
+        f"- result_basis: `{record['result_basis']}`",
+        f"- approval_ref: `{approval_ref}`",
+        f"- provider_url_ref: `{provider_url_ref}`",
+        f"- credential_ref: `{credential_ref}`",
+        f"- cost_quota_boundary.ceiling_usd: `{record['cost_quota_boundary']['ceiling_usd']}`",
+        f"- cost_quota_boundary.observed_usd: `{record['cost_quota_boundary']['observed_usd']}`",
+        f"- human_review_boundary.required: `true`",
+        f"- human_review_boundary.publication_or_live_action_approved: `false`",
+        "",
+        "Controlled live smoke records provider/credential references only. "
+        "No downstream publication or live action is approved by this record.",
+        "",
+    ]
+    md_path.write_text("\n".join(md_lines), encoding="utf-8")
+
+    combined_refs = _dedupe_refs(list(envelope.artifact_refs) + [self_ref, md_ref])
+    safe_refs = _safe_existing_artifact_refs(root, combined_refs)
     return envelope.model_copy(update={"artifact_refs": safe_refs})
 
 
@@ -1195,4 +1319,5 @@ __all__ = [
     "list_hisys_mcp_tool_names",
     "run_hisys_cli",
     "run_hisys_live_dry_run",
+    "run_hisys_live_smoke_manual",
 ]

@@ -24,9 +24,12 @@ Traceability:
 from __future__ import annotations
 
 import re
-from typing import Any, Mapping, Protocol
+import subprocess
+import time
+from pathlib import Path
+from typing import Any, Callable, Mapping, Protocol, Sequence
 
-from .cli_adapter import redact_text
+from .cli_adapter import CliInvocationResult, redact_text
 from .contracts import McpToolResultEnvelope
 
 
@@ -322,7 +325,155 @@ class FakeLiveProviderTransport:
         return dict(self._response)
 
 
+_CODEX_CLI_MUTATING_TOKENS = (
+    "--write",
+    "--apply",
+    "--exec",
+    "--commit",
+    "--push",
+    "--mutate",
+)
+
+
+def _default_codex_cli_runner(
+    command: Sequence[str], *, timeout_seconds: int
+) -> CliInvocationResult:
+    """Default subprocess runner for ``CodexCliLiveProviderTransport``.
+
+    Runs the Codex CLI in-process via ``subprocess.run`` with a hard timeout
+    and no inherited stdin. The runner never modifies the environment beyond
+    inheriting it, and never resolves any credential ref. Tests inject a fake
+    runner via the transport constructor so this default is **never** invoked
+    in CI; controlled live smoke is the only path that uses it, gated by
+    explicit operator opt-in env vars in
+    ``tests/integration/test_mcp_live_smoke_manual.py``.
+    """
+
+    completed = subprocess.run(
+        list(command),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=timeout_seconds,
+        check=False,
+    )
+    return CliInvocationResult(
+        args=tuple(str(part) for part in command),
+        stdout=completed.stdout or "",
+        stderr=completed.stderr or "",
+        returncode=completed.returncode,
+        timed_out=False,
+    )
+
+
+class CodexCliLiveProviderTransport:
+    """Real Codex CLI subprocess transport for the controlled live smoke seam.
+
+    The transport is opt-in: it requires an explicit ``executable`` path, an
+    explicit ``read_only_args`` tuple that may not contain any known mutating
+    token, and an explicit ``timeout_seconds``. There is no default executable
+    discovery on ``PATH`` and no default mutating-arg permitting.
+
+    Safety invariants:
+
+    * The transport refuses any of ``--write``, ``--apply``, ``--exec``,
+      ``--commit``, ``--push``, ``--mutate`` in ``read_only_args``.
+    * The transport never resolves a ``credential_ref``; the ref string is
+      treated as a non-secret pointer only and is **not** placed onto the
+      Codex CLI command line.
+    * The transport never reads environment variables expected to hold secret
+      values; it only inherits the ambient subprocess environment that the
+      operator has already accepted by invoking the controlled smoke harness.
+    * The transport scrubs known secret-shaped substrings from the output
+      excerpt it surfaces back to the live adapter contract.
+    * On non-zero exit, the runner raises and the live adapter contract
+      returns ``needs_more_evidence``; no fabricated success is emitted.
+    * Timeouts surface as ``RuntimeError("codex CLI timeout...")`` so the
+      adapter contract again returns ``needs_more_evidence``.
+    """
+
+    def __init__(
+        self,
+        *,
+        executable: str,
+        read_only_args: Sequence[str],
+        timeout_seconds: int,
+        prompt_arg_name: str = "",
+        runner: Callable[..., CliInvocationResult] | None = None,
+    ) -> None:
+        if not executable or not isinstance(executable, str):
+            raise ValueError(
+                "CodexCliLiveProviderTransport requires an explicit executable path"
+            )
+        if timeout_seconds is None or timeout_seconds <= 0:
+            raise ValueError(
+                "CodexCliLiveProviderTransport requires a positive timeout_seconds"
+            )
+        normalized_args = tuple(str(arg) for arg in read_only_args)
+        for token in normalized_args:
+            if token in _CODEX_CLI_MUTATING_TOKENS:
+                raise ValueError(
+                    f"CodexCliLiveProviderTransport refuses mutating arg {token!r}: "
+                    f"read_only_args must not contain any of {_CODEX_CLI_MUTATING_TOKENS}"
+                )
+        self._executable = executable
+        self._read_only_args = normalized_args
+        self._timeout_seconds = int(timeout_seconds)
+        self._prompt_arg_name = str(prompt_arg_name)
+        self._runner = runner or _default_codex_cli_runner
+
+    @property
+    def transport_label(self) -> str:
+        return f"codex_cli/{Path(self._executable).name or 'codex'}"
+
+    def invoke(self, *, request: Any) -> Mapping[str, Any]:
+        if isinstance(request, Mapping):
+            req: Mapping[str, Any] = request
+        else:
+            req = dict(getattr(request, "__dict__", {}) or {})
+        prompt = str(req.get("prompt_summary") or req.get("topic") or "")
+        command: list[str] = [self._executable, *self._read_only_args]
+        if prompt:
+            if self._prompt_arg_name:
+                command.extend([self._prompt_arg_name, prompt])
+            else:
+                command.append(prompt)
+
+        start = time.monotonic()
+        try:
+            result = self._runner(command, timeout_seconds=self._timeout_seconds)
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"codex CLI timeout after {self._timeout_seconds}s: {exc!s}"
+            ) from exc
+        latency_ms = int(max(0.0, (time.monotonic() - start) * 1000))
+
+        if result.timed_out:
+            raise RuntimeError(
+                f"codex CLI timeout after {self._timeout_seconds}s"
+            )
+        if result.returncode is None or result.returncode != 0:
+            stderr_excerpt = _scrub_secrets(result.stderr or "")[:240]
+            raise RuntimeError(
+                f"codex CLI exited with code {result.returncode}: {stderr_excerpt}"
+            )
+
+        excerpt_source = result.stdout or ""
+        scrubbed_excerpt = _scrub_secrets(excerpt_source)[:240]
+        return {
+            "provider_request_id": f"codex-cli-{int(start * 1000)}",
+            "provider_ref": self.transport_label,
+            "latency_ms": latency_ms,
+            "cost_usd": None,
+            "tokens_in": None,
+            "tokens_out": None,
+            "redacted_output_excerpt": scrubbed_excerpt,
+        }
+
+
 __all__ = [
+    "CodexCliLiveProviderTransport",
     "FakeLiveProviderTransport",
     "LiveAdapterRequest",
     "LiveProviderTransport",

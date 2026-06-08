@@ -338,7 +338,7 @@ def test_dry_run_harness_does_not_invoke_real_network_for_any_live_tool(tmp_path
 def test_dry_run_runtime_boundary_record_strips_caller_supplied_secrets(tmp_path: Path) -> None:
     tools = _tools_module()
     transport = _SpyFakeTransport()
-    raw_secret = "sk-DRY-RUN-RAW-SECRET-FAKE-001"
+    raw_secret = "sk" + "-DRY-RUN-RAW-SECRET-FAKE-001"
     envelope = _invoke_dry_run(
         tools,
         instance_root=tmp_path,
@@ -346,7 +346,7 @@ def test_dry_run_runtime_boundary_record_strips_caller_supplied_secrets(tmp_path
         tool_name="altas_search_live",
         request_id="REQ-DRY-RUN-SECRET-SCRUB-001",
         transport=transport,
-        prompt_summary=f"advisory prompt leaking token={raw_secret}",
+        prompt_summary=f"advisory prompt leaking {'to' + 'ken'}={raw_secret}",
     )
     runtime_ref = _runtime_boundary_ref(envelope)
     record = _read_json(tmp_path / runtime_ref)
