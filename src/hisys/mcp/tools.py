@@ -319,6 +319,207 @@ def hisys_judge_advisory_live(
     )
 
 
+_LIVE_TOOL_DRY_RUN_DISPATCH = {
+    "altas_search_live": hisys_altas_search_live,
+    "run_dars_panel_live": hisys_run_dars_panel_live,
+    "judge_advisory_live": hisys_judge_advisory_live,
+}
+
+
+def _safe_request_id_segment(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "-" for ch in value)
+
+
+def _runtime_boundary_record(
+    *,
+    envelope: McpToolResultEnvelope,
+    tool_name: str,
+    request_id: str,
+    date: str,
+    approval_ref: str,
+    provider_url_ref: str,
+    credential_ref: str,
+    approval_record: Mapping[str, Any] | None,
+    user_ref: str,
+    agent_ref: str,
+    runtime_ref: str,
+    prompt_summary: str | None,
+    self_ref: str,
+) -> dict[str, Any]:
+    from .live_adapters import scrub_live_adapter_secrets
+
+    payload = envelope.payload or {}
+    telemetry = payload.get("telemetry") or {}
+    cost_observed = telemetry.get("cost_usd") if isinstance(telemetry, Mapping) else None
+    cost_ceiling = (
+        approval_record.get("cost_quota_ceiling_usd")
+        if isinstance(approval_record, Mapping)
+        else None
+    )
+    record: dict[str, Any] = {
+        "schema_id": "hisys.mcp.live_dry_run_runtime_boundary.v1",
+        "schema_version": "0.1.0",
+        "self_ref": self_ref,
+        "date": date,
+        "request_id": request_id,
+        "provider_transport": "fake/dry_run",
+        "real_external_call_made": False,
+        "llm_service_used": bool(payload.get("llm_service_used", False)),
+        "execution_mode": payload.get("execution_mode"),
+        "result_basis": payload.get("result_basis"),
+        "user": {"ref": user_ref},
+        "tool": {
+            "name": tool_name,
+            "subsystem": _LIVE_TOOL_SUBSYSTEM.get(tool_name, ""),
+        },
+        "agent": {"ref": agent_ref},
+        "runtime": {"ref": runtime_ref},
+        "approval_ref": approval_ref,
+        "approval_artifact_ref": payload.get("approval_artifact_ref")
+        or (approval_record.get("approval_artifact_ref") if isinstance(approval_record, Mapping) else None),
+        "approver_role": payload.get("approver_role")
+        or (approval_record.get("approver_role") if isinstance(approval_record, Mapping) else None),
+        "provider_url_ref": provider_url_ref,
+        "credential_ref": credential_ref,
+        "provider_ref": payload.get("provider_ref"),
+        "cost_quota_boundary": {
+            "ceiling_usd": cost_ceiling if cost_ceiling is not None else 0.0,
+            "observed_usd": float(cost_observed) if isinstance(cost_observed, (int, float)) else 0.0,
+            "currency": "USD",
+        },
+        "human_review_boundary": {
+            "required": True,
+            "approval_required": True,
+            "publication_or_live_action_approved": False,
+            "mutation_performed": False,
+        },
+        "prompt_summary_redacted": scrub_live_adapter_secrets(prompt_summary) if prompt_summary else None,
+        "envelope_status": envelope.status,
+        "envelope_external_call_made_marker": envelope.external_call_made,
+    }
+    return cast(dict[str, Any], scrub_live_adapter_secrets(record))
+
+
+def run_hisys_live_dry_run(
+    *,
+    instance_root: str | Path,
+    date: str,
+    tool_name: str,
+    request_id: str,
+    approval_ref: str,
+    provider_url_ref: str,
+    credential_ref: str,
+    approval_ledger: Mapping[str, Mapping[str, Any]],
+    transport: Any,
+    user_ref: str,
+    agent_ref: str,
+    runtime_ref: str,
+    topic: str | None = None,
+    prompt_summary: str | None = None,
+) -> McpToolResultEnvelope:
+    """Full Live Dry-Run Harness for the Hisys MCP live tool lanes.
+
+    Routes through the live adapter contract with an explicitly injected fake
+    transport and an in-memory approval ledger. No real network or provider
+    call is performed. The harness writes a runtime-boundary record that
+    explicitly states ``provider_transport=fake/dry_run`` and
+    ``real_external_call_made=false`` so dry-run runs are distinguishable from
+    a controlled live smoke (Increment 5) even when the envelope-level
+    ``external_call_made`` flag is true as the fake-live contract marker.
+    """
+
+    if tool_name not in _LIVE_TOOL_DRY_RUN_DISPATCH:
+        return _blocked(
+            "live_dry_run",
+            f"unknown live tool for dry-run harness: {tool_name!r}",
+        )
+    if transport is None:
+        return _blocked(
+            "live_dry_run",
+            "dry-run harness requires an explicitly injected fake transport",
+        )
+
+    root = Path(instance_root)
+    root.mkdir(parents=True, exist_ok=True)
+
+    invocation_kwargs: dict[str, Any] = {
+        "instance_root": root,
+        "date": date,
+        "request_id": request_id,
+        "approval_ref": approval_ref,
+        "provider_url_ref": provider_url_ref,
+        "credential_ref": credential_ref,
+        "transport": transport,
+        "approval_ledger": approval_ledger,
+    }
+    if tool_name == "altas_search_live":
+        invocation_kwargs["topic"] = topic or prompt_summary or f"dry-run altas {request_id}"
+    envelope = _LIVE_TOOL_DRY_RUN_DISPATCH[tool_name](**invocation_kwargs)
+
+    safe_request_segment = _safe_request_id_segment(request_id)
+    boundary_dir = root / "runtime-boundary" / date
+    boundary_dir.mkdir(parents=True, exist_ok=True)
+    json_path = boundary_dir / f"live-dry-run-{tool_name}-{safe_request_segment}.json"
+    md_path = boundary_dir / f"live-dry-run-{tool_name}-{safe_request_segment}.md"
+    self_ref = _safe_ref(root, json_path)
+    md_ref = _safe_ref(root, md_path)
+
+    approval_record = approval_ledger.get(approval_ref) if isinstance(approval_ledger, Mapping) else None
+    record = _runtime_boundary_record(
+        envelope=envelope,
+        tool_name=tool_name,
+        request_id=request_id,
+        date=date,
+        approval_ref=approval_ref,
+        provider_url_ref=provider_url_ref,
+        credential_ref=credential_ref,
+        approval_record=approval_record,
+        user_ref=user_ref,
+        agent_ref=agent_ref,
+        runtime_ref=runtime_ref,
+        prompt_summary=prompt_summary,
+        self_ref=self_ref,
+    )
+
+    json_path.write_text(
+        json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_lines = [
+        f"# Hisys MCP Live Dry-Run Runtime Boundary — {tool_name}",
+        "",
+        f"- request_id: `{request_id}`",
+        f"- date: `{date}`",
+        f"- provider_transport: `fake/dry_run`",
+        f"- real_external_call_made: `false`",
+        f"- llm_service_used (fake-live marker): `{str(record['llm_service_used']).lower()}`",
+        f"- execution_mode: `{record['execution_mode']}`",
+        f"- result_basis: `{record['result_basis']}`",
+        f"- user.ref: `{record['user']['ref']}`",
+        f"- agent.ref: `{record['agent']['ref']}`",
+        f"- runtime.ref: `{record['runtime']['ref']}`",
+        f"- approval_ref: `{approval_ref}`",
+        f"- provider_url_ref: `{provider_url_ref}`",
+        f"- credential_ref: `{credential_ref}`",
+        f"- cost_quota_boundary.ceiling_usd: `{record['cost_quota_boundary']['ceiling_usd']}`",
+        f"- cost_quota_boundary.observed_usd: `{record['cost_quota_boundary']['observed_usd']}`",
+        f"- human_review_boundary.required: `true`",
+        f"- human_review_boundary.publication_or_live_action_approved: `false`",
+        "",
+        "This is a dry-run record. No real provider call was made. Controlled "
+        "live smoke (Increment 5) remains gated on explicit human approval and "
+        "a real provider transport.",
+        "",
+    ]
+    md_path.write_text("\n".join(md_lines), encoding="utf-8")
+
+    extra_refs = [self_ref, md_ref]
+    combined_refs = _dedupe_refs(list(envelope.artifact_refs) + extra_refs)
+    safe_refs = _safe_existing_artifact_refs(root, combined_refs)
+
+    return envelope.model_copy(update={"artifact_refs": safe_refs})
+
+
 def hisys_altas_status() -> McpToolResultEnvelope:
     """Fail-closed ALTAS gateway routing placeholder.
 
@@ -993,4 +1194,5 @@ __all__ = [
     "hisys_show_artifact",
     "list_hisys_mcp_tool_names",
     "run_hisys_cli",
+    "run_hisys_live_dry_run",
 ]

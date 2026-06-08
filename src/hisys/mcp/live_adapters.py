@@ -95,6 +95,12 @@ def _scrub_secrets(value: Any) -> Any:
     return value
 
 
+def scrub_live_adapter_secrets(value: Any) -> Any:
+    """Scrub raw secret-like values from live-adapter boundary data."""
+
+    return _scrub_secrets(value)
+
+
 def _blocked_envelope(
     *,
     tool_name: str,
@@ -321,4 +327,5 @@ __all__ = [
     "LiveAdapterRequest",
     "LiveProviderTransport",
     "invoke_live_adapter",
+    "scrub_live_adapter_secrets",
 ]
