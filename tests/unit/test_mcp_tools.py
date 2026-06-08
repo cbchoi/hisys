@@ -435,6 +435,168 @@ def test_future_status_tools_are_exposed_only_when_requested() -> None:
     assert "judge_decide" not in names
 
 
+def test_live_tools_are_not_in_default_tool_catalog() -> None:
+    """Increment 3: live tools must remain hidden from the default tool catalog."""
+
+    tools = _tools_module()
+
+    default_names = set(tools.list_hisys_mcp_tool_names())
+    future_only_names = set(tools.list_hisys_mcp_tool_names(expose_future_tools=True))
+
+    for live_name in ("altas_search_live", "run_dars_panel_live", "judge_advisory_live"):
+        assert live_name not in default_names
+        assert live_name not in future_only_names
+
+
+def test_live_tools_are_exposed_only_when_expose_live_tools_true() -> None:
+    """Increment 3: the live-tool gate must add exactly the three live tools and no others."""
+
+    tools = _tools_module()
+
+    names = list(tools.list_hisys_mcp_tool_names(expose_live_tools=True))
+    assert names.count("altas_search_live") == 1
+    assert names.count("run_dars_panel_live") == 1
+    assert names.count("judge_advisory_live") == 1
+    # The gate exposes only these three live tools.
+    assert {n for n in names if n.endswith("_live")} == {
+        "altas_search_live",
+        "run_dars_panel_live",
+        "judge_advisory_live",
+    }
+    # Future/status placeholders must remain orthogonal to the live gate.
+    assert "altas_status" not in names
+    assert "dars_status" not in names
+    assert "judge_status" not in names
+
+
+def test_live_and_future_tool_gates_are_independent() -> None:
+    """Both gates set independently must expose live + future without leakage."""
+
+    tools = _tools_module()
+    names = set(
+        tools.list_hisys_mcp_tool_names(expose_future_tools=True, expose_live_tools=True)
+    )
+    assert {
+        "altas_search_live",
+        "run_dars_panel_live",
+        "judge_advisory_live",
+        "altas_status",
+        "dars_status",
+        "judge_status",
+    } <= names
+
+
+def _live_approval_record(*, approved_tool: str, approved_subsystem: str) -> dict:
+    return {
+        "approval_ref": f"APPROVAL-MCP-LIVE-{approved_tool.upper()}-001",
+        "approver_role": "release_steward",
+        "approved_tool": approved_tool,
+        "approved_subsystem": approved_subsystem,
+        "allowed_provider_refs": [f"provider://fake-live-{approved_subsystem}"],
+        "approval_window_start": "2026-06-01T00:00:00Z",
+        "approval_window_end": "2026-12-31T23:59:59Z",
+        "cost_quota_ceiling_usd": 1.0,
+        "approval_artifact_ref": (
+            f"data/approvals/2026/APPROVAL-MCP-LIVE-{approved_tool.upper()}-001.json"
+        ),
+        "human_approved": True,
+    }
+
+
+def test_live_tool_wrappers_fail_closed_without_injected_transport(tmp_path: Path) -> None:
+    """Live wrappers must never reach a provider without an injected transport+ledger.
+
+    They must surface an MCP envelope that documents the Live LLM/provider
+    result_basis vocabulary and that the call was blocked before any provider
+    invocation.
+    """
+
+    tools = _tools_module()
+    instance = tmp_path / "instance"
+    instance.mkdir(parents=True, exist_ok=True)
+
+    cases = [
+        ("hisys_altas_search_live", "altas_search_live", {"topic": "self-organizing governance"}),
+        ("hisys_run_dars_panel_live", "run_dars_panel_live", {}),
+        ("hisys_judge_advisory_live", "judge_advisory_live", {}),
+    ]
+    for func_name, tool_name, extra_kwargs in cases:
+        envelope = _to_dict(
+            getattr(tools, func_name)(
+                instance_root=instance,
+                date="20260608",
+                request_id=f"HISYS-REQ-MCP-{tool_name.upper()}-001",
+                **extra_kwargs,
+            )
+        )
+        assert envelope["status"] == "blocked", f"{tool_name} must fail closed without injected transport"
+        assert envelope["tool_name"] == tool_name
+        assert envelope["external_call_made"] is False
+        assert envelope["mutation_performed"] is False
+        assert envelope["publication_or_live_action_approved"] is False
+        assert envelope["human_approval_required"] is True
+        payload = envelope.get("payload") or {}
+        # The blocked envelope must still document the live result_basis vocabulary
+        # so operators can tell this tool is a Live LLM/provider lane, not a fixture lane.
+        assert "Live LLM/provider" in (
+            payload.get("documented_result_basis", "") + " " + (envelope.get("error") or "")
+        )
+        # No real provider call was made.
+        assert payload.get("llm_service_used", False) is False
+        assert payload.get("external_call_made", False) is False
+
+
+def test_live_tool_wrappers_succeed_with_injected_fake_transport(tmp_path: Path) -> None:
+    """With injected fake transport + valid approval ledger, the live wrappers
+    must return the live envelope contract from live_adapters.invoke_live_adapter."""
+
+    tools = _tools_module()
+    from hisys.mcp.live_adapters import FakeLiveProviderTransport
+
+    instance = tmp_path / "instance"
+    instance.mkdir(parents=True, exist_ok=True)
+
+    cases = [
+        ("hisys_altas_search_live", "altas_search_live", "altas", {"topic": "live altas"}),
+        ("hisys_run_dars_panel_live", "run_dars_panel_live", "dars", {}),
+        ("hisys_judge_advisory_live", "judge_advisory_live", "judge", {}),
+    ]
+    for func_name, tool_name, subsystem, extra_kwargs in cases:
+        record = _live_approval_record(approved_tool=tool_name, approved_subsystem=subsystem)
+        provider_url_ref = record["allowed_provider_refs"][0]
+        transport = FakeLiveProviderTransport()
+
+        envelope = _to_dict(
+            getattr(tools, func_name)(
+                instance_root=instance,
+                date="20260608",
+                request_id=f"HISYS-REQ-MCP-{tool_name.upper()}-OK-001",
+                approval_ref=record["approval_ref"],
+                provider_url_ref=provider_url_ref,
+                credential_ref=f"credstore://{subsystem}/live/v1",
+                transport=transport,
+                approval_ledger={record["approval_ref"]: record},
+                **extra_kwargs,
+            )
+        )
+
+        assert envelope["status"] == "ok"
+        assert envelope["tool_name"] == tool_name
+        assert envelope["external_call_made"] is True
+        assert envelope["human_approval_required"] is True
+        assert envelope["mutation_performed"] is False
+        assert envelope["publication_or_live_action_approved"] is False
+        payload = envelope["payload"]
+        assert payload["execution_mode"] == "live_llm"
+        assert payload["result_basis"] == "Live LLM/provider"
+        assert payload["llm_service_used"] is True
+        assert payload["external_call_made"] is True
+        assert payload["requires_human_review"] is True
+        assert payload["approval_ref"] == record["approval_ref"]
+        assert payload["provider_url_ref"] == provider_url_ref
+        assert len(transport.invocations) == 1
+
+
 def test_subsystem_status_placeholders_fail_closed_without_subprocesses(monkeypatch) -> None:
     tools = _tools_module()
 

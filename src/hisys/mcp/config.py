@@ -19,6 +19,7 @@ class McpConfig(BaseModel):
     sampling_enabled: bool = False
     subprocess_timeout_seconds: int = 180
     expose_future_tools: bool = False
+    expose_live_tools: bool = False
 
 
 def _truthy(value: str | None) -> bool:
@@ -49,6 +50,7 @@ def load_mcp_config(env: Mapping[str, str] | None = None) -> McpConfig:
         sampling_enabled=_truthy(values.get("HISYS_MCP_SAMPLING_ENABLED")),
         subprocess_timeout_seconds=timeout,
         expose_future_tools=_truthy(values.get("HISYS_MCP_EXPOSE_FUTURE_TOOLS")),
+        expose_live_tools=_truthy(values.get("HISYS_MCP_EXPOSE_LIVE_TOOLS")),
     )
 
 

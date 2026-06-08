@@ -25,14 +25,17 @@ from typing import Any, Mapping, Sequence
 from .config import load_mcp_config
 from .tools import (
     hisys_altas_search,
+    hisys_altas_search_live,
     hisys_dars_panel_readiness,
     hisys_environment_status,
     hisys_health_status,
     hisys_investigate_domain,
     hisys_judge_advisory,
+    hisys_judge_advisory_live,
     hisys_list_run_artifacts,
     hisys_release_readiness,
     hisys_run_dars_panel_golden,
+    hisys_run_dars_panel_live,
     hisys_show_artifact,
     list_hisys_mcp_tool_names,
 )
@@ -54,14 +57,19 @@ def health_payload() -> dict[str, object]:
         "sampling_enabled": cfg.sampling_enabled,
         "allow_live_actions": cfg.allow_live_actions,
         "future_tools_exposed": cfg.expose_future_tools,
+        "live_tools_exposed": cfg.expose_live_tools,
     }
 
 
 def tool_list_payload() -> dict[str, object]:
     cfg = load_mcp_config()
     return {
-        "tools": list_hisys_mcp_tool_names(expose_future_tools=cfg.expose_future_tools),
+        "tools": list_hisys_mcp_tool_names(
+            expose_future_tools=cfg.expose_future_tools,
+            expose_live_tools=cfg.expose_live_tools,
+        ),
         "future_tools_exposed": cfg.expose_future_tools,
+        "live_tools_exposed": cfg.expose_live_tools,
         "sampling_enabled": cfg.sampling_enabled,
     }
 
@@ -167,8 +175,21 @@ def _blocked_tool_payload(tool_name: str, error: str) -> dict[str, object]:
     }
 
 
-def build_streamable_http_mcp_server(*, host: str, port: int, path: str = "/mcp") -> Any:
-    """Build a FastMCP server for local streamable HTTP smoke and guarded sidecar use."""
+def build_streamable_http_mcp_server(
+    *, host: str, port: int, path: str = "/mcp", expose_live_tools: bool = False
+) -> Any:
+    """Build a FastMCP server for local streamable HTTP smoke and guarded sidecar use.
+
+    Live tools (``altas_search_live``, ``run_dars_panel_live``,
+    ``judge_advisory_live``) are NEVER exposed by default. They are only
+    registered when ``expose_live_tools=True`` is passed explicitly, and even
+    then they fail closed at call time because no live provider transport or
+    approval ledger is wired into the default server (the server never resolves
+    credentials, never contacts a real provider, and never enables live tools
+    automatically). Fixture lanes use ``result_basis: "Local fixture"`` and live
+    lanes use ``result_basis: "Live LLM/provider"``; live tool descriptions
+    surface this distinction and the human-approval requirement.
+    """
     from mcp.server.fastmcp import FastMCP
 
     mcp_server = FastMCP(
@@ -324,6 +345,113 @@ def build_streamable_http_mcp_server(*, host: str, port: int, path: str = "/mcp"
                 request_id=request_id,
             )
         )
+
+    if expose_live_tools:
+
+        @mcp_server.tool(
+            name="altas_search_live",
+            description=(
+                "Live Altas search lane. result_basis: 'Live LLM/provider' on "
+                "success (vs 'Local fixture' for altas_search). Fail-closed: "
+                "requires an injected live provider transport and a verified "
+                "approval ledger entry; the default MCP server never resolves "
+                "credentials and never contacts a real provider. Returns "
+                "blocked when no transport/approval is wired. Human approval "
+                "is mandatory before any downstream live action."
+            ),
+        )
+        def altas_search_live(
+            instance_root: str | None = None,
+            date: str | None = None,
+            request_id: str | None = None,
+            topic: str | None = None,
+            approval_ref: str | None = None,
+            provider_url_ref: str | None = None,
+            credential_ref: str | None = None,
+        ) -> dict[str, object]:
+            config = load_mcp_config()
+            if not request_id:
+                return _blocked_tool_payload("altas_search_live", "request_id is required")
+            if not topic:
+                return _blocked_tool_payload("altas_search_live", "topic is required")
+            return _envelope_dict(
+                hisys_altas_search_live(
+                    instance_root=instance_root or config.instance_root,
+                    date=date or _default_date(),
+                    request_id=request_id,
+                    topic=topic,
+                    approval_ref=approval_ref,
+                    provider_url_ref=provider_url_ref,
+                    credential_ref=credential_ref,
+                )
+            )
+
+        @mcp_server.tool(
+            name="run_dars_panel_live",
+            description=(
+                "Live DARS panel lane. result_basis: 'Live LLM/provider' on "
+                "success (vs 'Local fixture' for run_dars_panel_golden). "
+                "Fail-closed: requires an injected live provider transport and "
+                "a verified approval ledger entry. The default MCP server does "
+                "not resolve credentials and does not contact any real "
+                "provider. Human approval is required before any live action."
+            ),
+        )
+        def run_dars_panel_live(
+            instance_root: str | None = None,
+            date: str | None = None,
+            request_id: str | None = None,
+            approval_ref: str | None = None,
+            provider_url_ref: str | None = None,
+            credential_ref: str | None = None,
+        ) -> dict[str, object]:
+            config = load_mcp_config()
+            if not request_id:
+                return _blocked_tool_payload("run_dars_panel_live", "request_id is required")
+            return _envelope_dict(
+                hisys_run_dars_panel_live(
+                    instance_root=instance_root or config.instance_root,
+                    date=date or _default_date(),
+                    request_id=request_id,
+                    approval_ref=approval_ref,
+                    provider_url_ref=provider_url_ref,
+                    credential_ref=credential_ref,
+                )
+            )
+
+        @mcp_server.tool(
+            name="judge_advisory_live",
+            description=(
+                "Live Judge advisory lane. result_basis: 'Live LLM/provider' "
+                "on success (vs 'Local fixture' for judge_advisory). "
+                "Fail-closed: requires an injected live provider transport and "
+                "a verified approval ledger entry. The default MCP server does "
+                "not resolve credentials and does not contact any real "
+                "provider. Human approval is required before any downstream "
+                "publication or live action."
+            ),
+        )
+        def judge_advisory_live(
+            instance_root: str | None = None,
+            date: str | None = None,
+            request_id: str | None = None,
+            approval_ref: str | None = None,
+            provider_url_ref: str | None = None,
+            credential_ref: str | None = None,
+        ) -> dict[str, object]:
+            config = load_mcp_config()
+            if not request_id:
+                return _blocked_tool_payload("judge_advisory_live", "request_id is required")
+            return _envelope_dict(
+                hisys_judge_advisory_live(
+                    instance_root=instance_root or config.instance_root,
+                    date=date or _default_date(),
+                    request_id=request_id,
+                    approval_ref=approval_ref,
+                    provider_url_ref=provider_url_ref,
+                    credential_ref=credential_ref,
+                )
+            )
 
     return mcp_server
 

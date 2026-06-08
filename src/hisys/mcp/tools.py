@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Mapping, cast
 
 from hisys.operations.release_readiness import GateStatus
 
@@ -30,6 +30,16 @@ BASE_TOOL_NAMES = [
     "judge_advisory",
 ]
 FUTURE_TOOL_NAMES = ["altas_status", "dars_status", "judge_status"]
+LIVE_TOOL_NAMES = [
+    "altas_search_live",
+    "run_dars_panel_live",
+    "judge_advisory_live",
+]
+_LIVE_TOOL_SUBSYSTEM = {
+    "altas_search_live": "altas",
+    "run_dars_panel_live": "dars",
+    "judge_advisory_live": "judge",
+}
 
 _ALTAS_FIXTURE_SOURCE_CONNECTORS_YAML = """default_mode: fixture_only
 policy:
@@ -134,11 +144,179 @@ def _add_local_fixture_disclosure(payload: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
-def list_hisys_mcp_tool_names(*, expose_future_tools: bool = False) -> list[str]:
+def list_hisys_mcp_tool_names(
+    *, expose_future_tools: bool = False, expose_live_tools: bool = False
+) -> list[str]:
     names = list(BASE_TOOL_NAMES)
+    if expose_live_tools:
+        names.extend(LIVE_TOOL_NAMES)
     if expose_future_tools:
         names.extend(FUTURE_TOOL_NAMES)
     return names
+
+
+def _live_tool_blocked_payload(*, tool_name: str, reason: str) -> dict[str, Any]:
+    return {
+        "documented_result_basis": "Live LLM/provider",
+        "documented_execution_mode": "live_llm",
+        "documented_local_fixture_result_basis": "Local fixture",
+        "execution_mode": "blocked",
+        "result_basis": "blocked_before_provider_invocation",
+        "llm_service_used": False,
+        "external_call_made": False,
+        "mutation_performed": False,
+        "publication_or_live_action_approved": False,
+        "advisory_only": True,
+        "requires_human_review": True,
+        "approval_required": True,
+        "operator_notice": (
+            f"{tool_name} is a Live LLM/provider lane and requires an injected "
+            "live provider transport plus a verified approval ledger entry "
+            "before any provider call. Fixture lanes use 'Local fixture' "
+            "result_basis instead. No external call was performed."
+        ),
+        "block_reason": reason,
+    }
+
+
+def _live_tool_blocked_envelope(*, tool_name: str, request_id: str, reason: str) -> McpToolResultEnvelope:
+    return McpToolResultEnvelope(
+        status="blocked",
+        tool_name=tool_name,
+        request_id=request_id,
+        external_call_made=False,
+        mutation_performed=False,
+        publication_or_live_action_approved=False,
+        human_approval_required=True,
+        payload=_live_tool_blocked_payload(tool_name=tool_name, reason=reason),
+        error=(
+            f"{tool_name} is a Live LLM/provider lane: it requires an injected "
+            "live provider transport and approval ledger before any provider "
+            "invocation. No external call was made."
+        ),
+    )
+
+
+def _invoke_live_tool(
+    *,
+    tool_name: str,
+    request_id: str,
+    approval_ref: str | None,
+    provider_url_ref: str | None,
+    credential_ref: str | None,
+    transport: Any | None,
+    approval_ledger: Mapping[str, Mapping[str, Any]] | None,
+    prompt_summary: str,
+) -> McpToolResultEnvelope:
+    if transport is None or approval_ledger is None:
+        return _live_tool_blocked_envelope(
+            tool_name=tool_name,
+            request_id=request_id,
+            reason=(
+                f"{tool_name} requires injected live provider transport and "
+                "approval ledger; default MCP server registration does not "
+                "resolve credentials, does not contact any provider, and does "
+                "not enable live tools by default."
+            ),
+        )
+    from .live_adapters import invoke_live_adapter
+
+    request = {
+        "subsystem": _LIVE_TOOL_SUBSYSTEM[tool_name],
+        "tool_name": tool_name,
+        "request_id": request_id,
+        "approval_ref": approval_ref,
+        "provider_url_ref": provider_url_ref,
+        "credential_ref": credential_ref,
+        "prompt_summary": prompt_summary,
+    }
+    return invoke_live_adapter(
+        request=request, transport=transport, approval_ledger=approval_ledger
+    )
+
+
+def hisys_altas_search_live(
+    *,
+    instance_root: str | Path,
+    date: str,
+    request_id: str,
+    topic: str,
+    approval_ref: str | None = None,
+    provider_url_ref: str | None = None,
+    credential_ref: str | None = None,
+    transport: Any | None = None,
+    approval_ledger: Mapping[str, Mapping[str, Any]] | None = None,
+) -> McpToolResultEnvelope:
+    """Live Altas search lane.
+
+    Fail-closed by default: requires an injected live provider transport and a
+    structured approval ledger. Does not resolve credentials. Does not perform
+    any real network call.
+    """
+
+    del instance_root, date  # routing metadata only; live transport owns I/O
+    return _invoke_live_tool(
+        tool_name="altas_search_live",
+        request_id=request_id,
+        approval_ref=approval_ref,
+        provider_url_ref=provider_url_ref,
+        credential_ref=credential_ref,
+        transport=transport,
+        approval_ledger=approval_ledger,
+        prompt_summary=topic,
+    )
+
+
+def hisys_run_dars_panel_live(
+    *,
+    instance_root: str | Path,
+    date: str,
+    request_id: str,
+    approval_ref: str | None = None,
+    provider_url_ref: str | None = None,
+    credential_ref: str | None = None,
+    transport: Any | None = None,
+    approval_ledger: Mapping[str, Mapping[str, Any]] | None = None,
+) -> McpToolResultEnvelope:
+    """Live DARS panel lane (fail-closed without injection)."""
+
+    del instance_root, date
+    return _invoke_live_tool(
+        tool_name="run_dars_panel_live",
+        request_id=request_id,
+        approval_ref=approval_ref,
+        provider_url_ref=provider_url_ref,
+        credential_ref=credential_ref,
+        transport=transport,
+        approval_ledger=approval_ledger,
+        prompt_summary=f"DARS panel live request {request_id}",
+    )
+
+
+def hisys_judge_advisory_live(
+    *,
+    instance_root: str | Path,
+    date: str,
+    request_id: str,
+    approval_ref: str | None = None,
+    provider_url_ref: str | None = None,
+    credential_ref: str | None = None,
+    transport: Any | None = None,
+    approval_ledger: Mapping[str, Mapping[str, Any]] | None = None,
+) -> McpToolResultEnvelope:
+    """Live Judge advisory lane (fail-closed without injection)."""
+
+    del instance_root, date
+    return _invoke_live_tool(
+        tool_name="judge_advisory_live",
+        request_id=request_id,
+        approval_ref=approval_ref,
+        provider_url_ref=provider_url_ref,
+        credential_ref=credential_ref,
+        transport=transport,
+        approval_ledger=approval_ledger,
+        prompt_summary=f"Judge advisory live request {request_id}",
+    )
 
 
 def hisys_altas_status() -> McpToolResultEnvelope:
@@ -796,7 +974,9 @@ def hisys_judge_advisory(
 
 
 __all__ = [
+    "LIVE_TOOL_NAMES",
     "hisys_altas_search",
+    "hisys_altas_search_live",
     "hisys_altas_status",
     "hisys_dars_panel_readiness",
     "hisys_dars_status",
@@ -804,10 +984,12 @@ __all__ = [
     "hisys_health_status",
     "hisys_investigate_domain",
     "hisys_judge_advisory",
+    "hisys_judge_advisory_live",
     "hisys_judge_status",
     "hisys_list_run_artifacts",
     "hisys_release_readiness",
     "hisys_run_dars_panel_golden",
+    "hisys_run_dars_panel_live",
     "hisys_show_artifact",
     "list_hisys_mcp_tool_names",
     "run_hisys_cli",
